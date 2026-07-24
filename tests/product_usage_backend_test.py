@@ -408,5 +408,84 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(stats["stats"]["average_per_cycle"], {"tampon": 5, "pad": 1, "cup": 1, "liner": 0, "underwear": 0})
 
 
+class _FakeLovelaceCollection:
+    def __init__(self, items: list[dict[str, str]] | None = None) -> None:
+        self._items = list(items or [])
+        self.create_calls: list[dict[str, str]] = []
+        self.raise_on_create = False
+
+    async def async_items(self) -> list[dict[str, str]]:
+        return list(self._items)
+
+    async def async_create_item(self, payload: dict[str, str]) -> None:
+        self.create_calls.append(payload)
+        if self.raise_on_create:
+            self._items.append({"url": payload["url"]})
+            raise RuntimeError("create failed after write")
+        self._items.append({"url": payload["url"]})
+
+
+class LovelaceResourceRegistrationTests(unittest.TestCase):
+    def test_ensure_lovelace_resource_skips_existing_normalized_urls(self) -> None:
+        resource_url, _, _ = integration.LOVELACE_RESOURCES[0]
+        normalized_url = integration._normalize_resource_url(resource_url)
+        self.assertIsNotNone(normalized_url)
+        assert normalized_url is not None
+
+        collection = _FakeLovelaceCollection([{"url": f"{normalized_url}?v=0.0.1"}])
+        hass = _FakeHass()
+
+        async def _fake_get_collection(_hass):
+            return collection, "storage"
+
+        async def _fake_cleanup(_hass, _version):
+            return None
+
+        original_get_collection = integration._async_get_lovelace_resource_collection
+        original_cleanup = integration._async_cleanup_old_lovelace_resources
+        integration._async_get_lovelace_resource_collection = _fake_get_collection
+        integration._async_cleanup_old_lovelace_resources = _fake_cleanup
+
+        original_resources = integration.LOVELACE_RESOURCES
+        integration.LOVELACE_RESOURCES = (original_resources[0],)
+        try:
+            asyncio.run(integration._async_ensure_lovelace_resource(hass))
+        finally:
+            integration._async_get_lovelace_resource_collection = original_get_collection
+            integration._async_cleanup_old_lovelace_resources = original_cleanup
+            integration.LOVELACE_RESOURCES = original_resources
+
+        self.assertEqual(collection.create_calls, [])
+
+    def test_ensure_lovelace_resource_stops_fallback_payloads_when_resource_appears(self) -> None:
+        resource_url, _, _ = integration.LOVELACE_RESOURCES[0]
+        collection = _FakeLovelaceCollection()
+        collection.raise_on_create = True
+        hass = _FakeHass()
+
+        async def _fake_get_collection(_hass):
+            return collection, "storage"
+
+        async def _fake_cleanup(_hass, _version):
+            return None
+
+        original_get_collection = integration._async_get_lovelace_resource_collection
+        original_cleanup = integration._async_cleanup_old_lovelace_resources
+        integration._async_get_lovelace_resource_collection = _fake_get_collection
+        integration._async_cleanup_old_lovelace_resources = _fake_cleanup
+
+        original_resources = integration.LOVELACE_RESOURCES
+        integration.LOVELACE_RESOURCES = (original_resources[0],)
+        try:
+            asyncio.run(integration._async_ensure_lovelace_resource(hass))
+        finally:
+            integration._async_get_lovelace_resource_collection = original_get_collection
+            integration._async_cleanup_old_lovelace_resources = original_cleanup
+            integration.LOVELACE_RESOURCES = original_resources
+
+        self.assertEqual(len(collection.create_calls), 1)
+        self.assertEqual(collection.create_calls[0]["url"], resource_url)
+
+
 if __name__ == "__main__":
     unittest.main()
