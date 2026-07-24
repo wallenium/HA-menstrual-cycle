@@ -15,7 +15,7 @@
     "/menstruation_gauge/menstruation-cycle-card-compact.js?v=1.3.13",
     "/menstruation_gauge/menstruation-cycle-compact-status-card.js?v=1.3.13",
     "/menstruation_gauge/menstruation-cycle-history-card-row.js?v=1.3.13",
-    "/menstruation_gauge/menstruation-statistics-card.js?v=1.3.13",
+    "/menstruation_gauge/menstruation-statistics-card.js?v=1.3.13"
   ],
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/nremey/HA-repo-test-menstrual-gauge/issues",
