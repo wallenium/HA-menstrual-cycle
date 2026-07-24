@@ -1980,22 +1980,49 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
         failed_urls: list[str] = []
         for resource_url, _static_url, filename in LOVELACE_RESOURCES:
             normalized_resource_url = _normalize_resource_url(resource_url)
-            if resource_url in existing_exact_urls:
+            if resource_url in existing_exact_urls or (
+                normalized_resource_url is not None and normalized_resource_url in existing_urls
+            ):
                 _LOGGER.debug("Lovelace resource already registered: %s", resource_url)
                 continue
 
             create_errors: list[str] = []
+            created = False
             for payload in _build_lovelace_resource_payloads(resource_url):
                 try:
                     await _maybe_await(collection.async_create_item(payload))
                     added_count += 1
-                    existing_urls.add(normalized_resource_url)
+                    if normalized_resource_url is not None:
+                        existing_urls.add(normalized_resource_url)
                     existing_exact_urls.add(resource_url)
                     _LOGGER.info("Registered Lovelace resource automatically: %s", resource_url)
+                    created = True
                     break
                 except Exception as err:
                     create_errors.append(f"{payload!r} -> {err}")
-            else:
+
+                latest_items = await _maybe_await(collection.async_items())
+                existing_urls = {
+                    _normalize_resource_url(item.get("url"))
+                    for item in latest_items or []
+                    if isinstance(item, dict) and item.get("url")
+                }
+                existing_exact_urls = {
+                    str(item.get("url"))
+                    for item in latest_items or []
+                    if isinstance(item, dict) and item.get("url")
+                }
+                if resource_url in existing_exact_urls or (
+                    normalized_resource_url is not None and normalized_resource_url in existing_urls
+                ):
+                    _LOGGER.debug(
+                        "Lovelace resource detected after create error; skipping fallback payloads: %s",
+                        resource_url,
+                    )
+                    created = True
+                    break
+
+            if not created:
                 failed_urls.append(resource_url)
                 _LOGGER.error(
                     "Failed to auto-register Lovelace resource %s (%s). Attempts: %s",
