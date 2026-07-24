@@ -73,6 +73,9 @@ class MenstruationCalendarCard extends HTMLElement {
         edit_symptoms: 'Symptome bearbeiten',
         save: 'Speichern',
         close: 'Schließen',
+        fertile: 'Fruchtbar',
+        period: 'Periode',
+        ovulation: 'Eisprung',
         bleeding_strength: 'Blutungsstärke',
         spotting: 'Schmierblutung',
         pain: 'Schmerzen',
@@ -188,6 +191,9 @@ class MenstruationCalendarCard extends HTMLElement {
         edit_symptoms: 'Edit symptoms',
         save: 'Save',
         close: 'Close',
+        fertile: 'Fertile',
+        period: 'Period',
+        ovulation: 'Ovulation',
         bleeding_strength: 'Bleeding strength',
         spotting: 'Spotting',
         pain: 'Pain',
@@ -1156,10 +1162,10 @@ class MenstruationCalendarCard extends HTMLElement {
           </div>
           <div class="grid" role="grid" aria-label="calendar">${this._calendarGrid(model, locale)}</div>
           <div class="legend">
-            <span class="legend-item"><span class="swatch period"></span>🔴 Period</span>
-            ${this._config?.show_fertile_period !== false ? '<span class="legend-item"><span class="swatch fertile"></span>🟡 Fertile</span>' : ''}
-            ${this._config?.show_ovulation_marker !== false ? '<span class="legend-item"><span class="swatch ovulation"></span>💚 Ovulation</span>' : ''}
-            ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span>🔮 ${this._t('predicted_period')}</span>` : ''}
+            <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}<</span>
+            ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
+            ${this._config?.show_ovulation_marker !== false ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
+            ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}
           </div>
         </div>
       </ha-card>
