@@ -709,12 +709,12 @@ class MenstruationGaugeCard extends HTMLElement {
       return all.filter((cat) => allowed.has(cat.key));
     }
     if (String(state || '') === 'menopause') {
-      const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity']);
+      const allowed = new Set(['spotting', 'smell', 'clots', 'clot_size', 'bleeding_type', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity']);
       return all.filter((cat) => allowed.has(cat.key));
     }
     if (pregnant) {
       const pregnancyConfig = all
-        .filter((cat) => (cat.key !== 'bleeding_strength' && cat.key !== 'clots' && cat.key !== 'clot_size' && cat.key !== 'bleeding_type'))
+        .filter((cat) => cat.key !== 'bleeding_strength')
         .map((cat) => {
           if (cat.key === 'hygiene') {
             return { ...cat, options: cat.options.filter((opt) => opt !== 'tampon' && opt !== 'cup') };
