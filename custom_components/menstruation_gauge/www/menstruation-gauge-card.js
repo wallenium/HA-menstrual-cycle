@@ -547,7 +547,14 @@ class MenstruationGaugeCard extends HTMLElement {
     let effectiveFertileStart = fertileStart;
     let effectiveFertileEnd = fertileEnd;
     let effectiveOvulationDay = ovulationDay;
-    if (groupedStarts.length > 0) {
+
+    // NFP data has priority: only use standard cycle-length calculation when no good NFP data is present
+    const nfpAnalysisAttrs = (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null;
+    const hasNfpData = nfpAnalysisAttrs
+      && nfpAnalysisAttrs.fertile_window
+      && nfpAnalysisAttrs.confidence_level !== 'low';
+
+    if (!hasNfpData && groupedStarts.length > 0) {
       const viewLastDayDt = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0, 12);
       const viewLastIso = this._isoFromDate(viewLastDayDt);
       const viewCycleStartIso = groupedStarts.filter((d) => d <= viewLastIso).pop() || null;
@@ -569,7 +576,7 @@ class MenstruationGaugeCard extends HTMLElement {
     // but the sensor's attribute values are in it, prefer the sensor's values.
     // This handles the common case where the current cycle start has not yet been recorded in
     // grouped_starts (e.g., the period is still ongoing or not yet confirmed).
-    if (groupedStarts.length > 0) {
+    if (!hasNfpData && groupedStarts.length > 0) {
       const viewYear = viewDate.getFullYear();
       const viewMonth = viewDate.getMonth();
       const effOvDt = effectiveOvulationDay ? this._parseISO(effectiveOvulationDay) : null;
@@ -596,7 +603,7 @@ class MenstruationGaugeCard extends HTMLElement {
       let dayFertile = false;
       let dayOvulation = false;
 
-      if (groupedStarts.length > 0) {
+      if (!hasNfpData && groupedStarts.length > 0) {
         // Find which cycle this day belongs to (latest cycle start on or before this date)
         let cycleStartForDay = null;
         let nextCycleStartForDay = null;
