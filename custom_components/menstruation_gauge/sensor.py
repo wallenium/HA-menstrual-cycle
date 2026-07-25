@@ -43,6 +43,7 @@ from .const import (
     ATTR_SYMPTOM_HISTORY,
     ATTR_WEEKS_PREGNANT,
     ATTR_MENOPAUSE_DATA,
+    ATTR_NFP_ANALYSIS,
     CONF_NUM_PREDICTIONS,
     DEFAULT_NUM_PREDICTIONS,
     DOMAIN,
@@ -789,6 +790,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "current_bleeding_block": current_bleeding_block,
             "cycle_statistics": cycle_statistics,
             "cycle_length_override": runtime.cycle_length_override,
+            ATTR_NFP_ANALYSIS: model.nfp_analysis,
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:

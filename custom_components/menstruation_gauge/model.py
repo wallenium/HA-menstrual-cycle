@@ -50,6 +50,7 @@ class CycleModel:
     pre_menarche_data: dict[str, Any]
     menopause_data: dict[str, Any]
     noncycle_data: dict[str, Any]
+    nfp_analysis: dict[str, Any] | None
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -284,6 +285,225 @@ def calculate_pregnancy_info(pregnancy_start_date: str | None, today: date | Non
     return weeks, due.isoformat()
 
 
+def analyze_nfp_cycle(
+    symptom_history: list[dict[str, Any]],
+    cycle_start_iso: str,
+    period_duration_days: int = 5,
+) -> dict[str, Any]:
+    """Analyze a cycle for NFP (Natural Family Planning / Symptothermal Method) indicators.
+
+    Uses the Roetzer rule for temperature rise detection and analyses cervical mucus
+    and cervix position data.  Returns a structured result dict.  When there is
+    insufficient data the returned ``confidence_level`` is ``"low"`` and
+    ``ovulation_detected`` is ``False``.
+    """
+    empty_result: dict[str, Any] = {
+        "ovulation_detected": False,
+        "ovulation_day": None,
+        "fertile_window": {"start": None, "end": None},
+        "temperature_rise_detected": False,
+        "temperature_rise_day": None,
+        "cervical_mucus_peak": None,
+        "cervix_peak": None,
+        "confidence_level": "low",
+        "nfp_symptom_score": 0.0,
+        "details": {
+            "temperature_rise_confirmed": False,
+            "has_cervical_mucus_data": False,
+            "has_cervix_data": False,
+            "conflicting_signals": False,
+        },
+    }
+
+    try:
+        cycle_start = date.fromisoformat(str(cycle_start_iso))
+    except (ValueError, AttributeError, TypeError):
+        return empty_result
+
+    # Collect entries from this cycle onwards, sorted by date
+    cycle_symptoms: list[dict[str, Any]] = []
+    for entry in symptom_history:
+        if not isinstance(entry, dict):
+            continue
+        entry_date = entry.get("date")
+        if not isinstance(entry_date, str):
+            continue
+        try:
+            date.fromisoformat(entry_date)
+        except ValueError:
+            continue
+        if entry_date >= cycle_start_iso:
+            cycle_symptoms.append(entry)
+    cycle_symptoms.sort(key=lambda x: x["date"])
+
+    if not cycle_symptoms:
+        return empty_result
+
+    # Skip period days for ovulation indicators
+    fertility_start_iso = (cycle_start + timedelta(days=period_duration_days)).isoformat()
+
+    # -----------------------------------------------------------------------
+    # Temperature Rise Detection (Roetzer Rule)
+    # -----------------------------------------------------------------------
+    # Build ordered list of (date_iso, temperature) pairs for this cycle.
+    temp_data: list[tuple[str, float]] = []
+    for entry in cycle_symptoms:
+        raw_temp = entry.get("basal_temp")
+        if raw_temp is None:
+            continue
+        try:
+            temp_val = float(raw_temp)
+        except (ValueError, TypeError):
+            continue
+        temp_data.append((entry["date"], temp_val))
+    temp_data.sort(key=lambda x: x[0])
+
+    temp_rise_day: str | None = None
+    temp_rise_confirmed = False
+
+    # Roetzer rule: baseline = lowest of the 6 preceding measurements;
+    # rise confirmed when 3+ consecutive readings are >= baseline + 0.2 °C.
+    if len(temp_data) >= 7:
+        for i in range(6, len(temp_data)):
+            baseline = min(t for _, t in temp_data[i - 6 : i])
+            threshold = baseline + 0.2
+            # Check how many consecutive days from position i are above threshold
+            consecutive = 0
+            for j in range(i, min(i + 3, len(temp_data))):
+                if temp_data[j][1] >= threshold:
+                    consecutive += 1
+                else:
+                    break
+            if consecutive >= 3:
+                temp_rise_day = temp_data[i][0]
+                temp_rise_confirmed = True
+                break
+
+    # -----------------------------------------------------------------------
+    # Cervical Mucus Peak
+    # -----------------------------------------------------------------------
+    fertile_mucus = {"cremig", "fadenziehend"}
+    mucus_peak: str | None = None
+    has_cervical_mucus_data = False
+    for entry in cycle_symptoms:
+        if entry.get("date", "") < fertility_start_iso:
+            continue
+        mucus = entry.get("cervical_mucus", "")
+        if mucus:
+            has_cervical_mucus_data = True
+        if mucus in fertile_mucus:
+            mucus_peak = entry["date"]  # keep updating → last fertile-quality day
+
+    # -----------------------------------------------------------------------
+    # Cervix Position Peak
+    # -----------------------------------------------------------------------
+    cervix_peak: str | None = None
+    has_cervix_data = False
+    for entry in cycle_symptoms:
+        if entry.get("date", "") < fertility_start_iso:
+            continue
+        pos = entry.get("cervix_position", "")
+        texture = entry.get("cervix_texture", "")
+        if pos:
+            has_cervix_data = True
+        if pos == "cervix_high" and texture in ("soft", "open"):
+            cervix_peak = entry["date"]  # keep updating → last favourable day
+
+    # -----------------------------------------------------------------------
+    # Ovulation Estimation
+    # -----------------------------------------------------------------------
+    # Ovulation ≈ 1 day after each indicator peak.
+    candidate_days: list[str] = []
+    if temp_rise_confirmed and temp_rise_day:
+        candidate_days.append(
+            (date.fromisoformat(temp_rise_day) + timedelta(days=1)).isoformat()
+        )
+    if mucus_peak:
+        candidate_days.append(
+            (date.fromisoformat(mucus_peak) + timedelta(days=1)).isoformat()
+        )
+    if cervix_peak:
+        candidate_days.append(
+            (date.fromisoformat(cervix_peak) + timedelta(days=1)).isoformat()
+        )
+
+    if not candidate_days:
+        return {
+            **empty_result,
+            "temperature_rise_detected": temp_rise_confirmed,
+            "temperature_rise_day": temp_rise_day,
+            "cervical_mucus_peak": mucus_peak,
+            "cervix_peak": cervix_peak,
+            "details": {
+                **empty_result["details"],
+                "temperature_rise_confirmed": temp_rise_confirmed,
+                "has_cervical_mucus_data": has_cervical_mucus_data,
+                "has_cervix_data": has_cervix_data,
+            },
+        }
+
+    # Use the latest candidate as ovulation estimate (most conservative / post-ovulation)
+    ovulation_day_iso = max(candidate_days)
+
+    # Fertile window: 5 days before ovulation through 1 day after
+    ov_date = date.fromisoformat(ovulation_day_iso)
+    fertile_start_iso = (ov_date - timedelta(days=5)).isoformat()
+    fertile_end_iso = (ov_date + timedelta(days=1)).isoformat()
+
+    # -----------------------------------------------------------------------
+    # Confidence Scoring
+    # -----------------------------------------------------------------------
+    score = 0.0
+    if temp_rise_confirmed:
+        score += 0.6
+    if mucus_peak:
+        score += 0.25
+    if cervix_peak:
+        score += 0.15
+
+    # Detect conflicting signals: temperature rise and mucus peak more than
+    # 5 days apart is suspicious.
+    conflicting = False
+    if temp_rise_day and mucus_peak:
+        gap = abs((date.fromisoformat(temp_rise_day) - date.fromisoformat(mucus_peak)).days)
+        if gap > 5:
+            conflicting = True
+            score *= 0.6
+
+    if temp_rise_confirmed and (mucus_peak or cervix_peak):
+        confidence: str = "high"
+    elif temp_rise_confirmed or mucus_peak:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    if conflicting:
+        confidence = "low"
+
+    ovulation_detected = confidence in ("high", "medium")
+
+    return {
+        "ovulation_detected": ovulation_detected,
+        "ovulation_day": ovulation_day_iso if ovulation_detected else None,
+        "fertile_window": {
+            "start": fertile_start_iso if ovulation_detected else None,
+            "end": fertile_end_iso if ovulation_detected else None,
+        },
+        "temperature_rise_detected": temp_rise_confirmed,
+        "temperature_rise_day": temp_rise_day,
+        "cervical_mucus_peak": mucus_peak,
+        "cervix_peak": cervix_peak,
+        "confidence_level": confidence,
+        "nfp_symptom_score": round(min(1.0, max(0.0, score)), 2),
+        "details": {
+            "temperature_rise_confirmed": temp_rise_confirmed,
+            "has_cervical_mucus_data": has_cervical_mucus_data,
+            "has_cervix_data": has_cervix_data,
+            "conflicting_signals": conflicting,
+        },
+    }
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,
@@ -348,6 +568,7 @@ def build_cycle_model(
             pre_menarche_data=pre_men_data,
             menopause_data=meno_data,
             noncycle_data=nc_data,
+            nfp_analysis=None,
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
@@ -376,6 +597,7 @@ def build_cycle_model(
             pre_menarche_data=pre_men_data,
             menopause_data=meno_data,
             noncycle_data=nc_data,
+            nfp_analysis=None,
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -410,6 +632,7 @@ def build_cycle_model(
                     pre_menarche_data=pre_men_data,
                     menopause_data=meno_data,
                     noncycle_data=nc_data,
+                    nfp_analysis=None,
                 )
         except ValueError:
             pass
@@ -471,6 +694,23 @@ def build_cycle_model(
         fertile_end = (ovulation_day + timedelta(days=5)).isoformat()
         days_until = (next_date - now).days
 
+    # NFP analysis: run when the current cycle start is known and symptom data exists.
+    # If NFP confidence is high or medium, override the standard ovulation/fertile window.
+    nfp_result: dict[str, Any] | None = None
+    if starts and symptoms:
+        current_cycle_start = starts[-1]
+        nfp_result = analyze_nfp_cycle(symptoms, current_cycle_start, effective_duration)
+        if (
+            nfp_result.get("ovulation_detected")
+            and nfp_result.get("confidence_level") in ("high", "medium")
+            and nfp_result.get("ovulation_day")
+        ):
+            ovulation_day_iso = nfp_result["ovulation_day"]
+            fw = nfp_result.get("fertile_window", {})
+            if fw.get("start") and fw.get("end"):
+                fertile_start = fw["start"]
+                fertile_end = fw["end"]
+
     state = STATE_NEUTRAL
     if current_period and current_period.get("is_active"):
         state = STATE_PERIOD
@@ -505,4 +745,5 @@ def build_cycle_model(
         pre_menarche_data=pre_men_data,
         menopause_data=meno_data,
         noncycle_data=nc_data,
+        nfp_analysis=nfp_result,
     )
