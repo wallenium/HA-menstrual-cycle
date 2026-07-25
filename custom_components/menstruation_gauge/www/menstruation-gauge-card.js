@@ -1242,13 +1242,7 @@ class MenstruationGaugeCard extends HTMLElement {
   }
 
   _periodSaveLabel(iso, model) {
-    if (iso !== model?.todayIso) {
-      return this._t('save');
-    }
-    if (model?.currentBleedingBlock?.is_active) {
-      return this._t('log_today');
-    }
-    return this._t('period_start');
+    return this._t('save');
   }
 
   async _handleModalSave() {
