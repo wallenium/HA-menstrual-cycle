@@ -472,7 +472,7 @@ def analyze_nfp_cycle(
 
     if temp_rise_confirmed and (mucus_peak or cervix_peak):
         confidence: str = "high"
-    elif temp_rise_confirmed or mucus_peak:
+    elif (temp_rise_confirmed and mucus_peak) or (temp_rise_confirmed and cervix_peak) or (mucus_peak and cervix_peak):
         confidence = "medium"
     else:
         confidence = "low"
