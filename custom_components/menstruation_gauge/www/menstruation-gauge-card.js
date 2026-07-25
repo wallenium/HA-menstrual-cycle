@@ -553,6 +553,9 @@ class MenstruationGaugeCard extends HTMLElement {
     const hasNfpData = nfpAnalysisAttrs
       && nfpAnalysisAttrs.fertile_window
       && nfpAnalysisAttrs.confidence_level !== 'low';
+    // Only use sensor attribute fallback (which may carry NFP-derived values) when NFP quality is
+    // acceptable or there is no NFP data at all.  Low-confidence NFP should not leak into the gauge.
+    const shouldUseSensorFallback = !nfpAnalysisAttrs || nfpAnalysisAttrs.confidence_level !== 'low';
 
     if (!hasNfpData && groupedStarts.length > 0) {
       const viewLastDayDt = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0, 12);
@@ -627,19 +630,23 @@ class MenstruationGaugeCard extends HTMLElement {
         }
         // Fallback: if grouped_starts computation didn't mark this day, use sensor attributes directly.
         // This handles the case where the current cycle start is not yet in grouped_starts.
-        if (!dayOvulation && ovulationDay && iso === ovulationDay) {
+        // Only do so when sensor attributes are trustworthy (no low-confidence NFP).
+        if (!dayOvulation && ovulationDay && iso === ovulationDay && shouldUseSensorFallback) {
           dayOvulation = true;
         }
-        if (!dayFertile && fertileStart && fertileEnd
+        if (!dayFertile && shouldUseSensorFallback && fertileStart && fertileEnd
             && this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso) >= 0) {
           dayFertile = true;
         }
       } else {
-        // Fallback to sensor attributes (no grouped_starts yet)
-        dayFertile = fertileStart && fertileEnd
-          ? (this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso) >= 0)
-          : false;
-        dayOvulation = ovulationDay ? iso === ovulationDay : false;
+        // Fallback to sensor attributes (no grouped_starts yet).
+        // But only if NFP is good quality or missing – low-confidence NFP must not set the gauge.
+        if (shouldUseSensorFallback) {
+          dayFertile = fertileStart && fertileEnd
+            ? (this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso) >= 0)
+            : false;
+          dayOvulation = ovulationDay ? iso === ovulationDay : false;
+        }
       }
 
       series.push({

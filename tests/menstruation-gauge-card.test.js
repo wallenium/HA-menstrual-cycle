@@ -819,6 +819,100 @@ function testTodaySaveButtonUsesPeriodLifecycleLabels() {
 }
 
 // ---------------------------------------------------------------------------
+// D4) NFP low-confidence: sensor attributes must NOT be used as fallback
+// ---------------------------------------------------------------------------
+
+function testNfpLowConfidenceIgnored() {
+  // --- Case 1: grouped_starts present, current cycle not in it, NFP confidence=low ---
+  // The standard cycle calc puts ovulation in the prior month (June).
+  // The sensor attributes contain low-confidence NFP values (July 26).
+  // The series must NOT show any ovulation/fertile days for July because the only
+  // source would be the low-confidence NFP sensor attributes.
+  const card1 = makeCard();
+  card1.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card1._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  card1._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-07-26',
+      fertile_window_start: '2026-07-21',
+      fertile_window_end: '2026-07-27',
+      grouped_starts: ['2026-06-10'],
+      avg_cycle_length: 28,
+      nfp_analysis: {
+        confidence_level: 'low',
+        fertile_window: { start: '2026-07-21', end: '2026-07-27' },
+        ovulation_day: '2026-07-26',
+        ovulation_detected: true,
+      },
+    },
+  });
+
+  const model1 = card1._buildModel();
+
+  // Low-confidence NFP: sensor attributes must not influence the series
+  assert.ok(!model1.series.some((s) => s.ovulation), 'series must have no ovulation day when NFP confidence is low');
+  assert.ok(!model1.series.some((s) => s.fertile), 'series must have no fertile days when NFP confidence is low');
+
+  // --- Case 2: no grouped_starts, NFP confidence=low ---
+  const card2 = makeCard();
+  card2.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card2._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  card2._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-07-26',
+      fertile_window_start: '2026-07-21',
+      fertile_window_end: '2026-07-27',
+      grouped_starts: [],
+      avg_cycle_length: 28,
+      nfp_analysis: {
+        confidence_level: 'low',
+        fertile_window: { start: '2026-07-21', end: '2026-07-27' },
+        ovulation_day: '2026-07-26',
+        ovulation_detected: true,
+      },
+    },
+  });
+
+  const model2 = card2._buildModel();
+
+  assert.ok(!model2.series.some((s) => s.ovulation), 'series must have no ovulation day when NFP is low and no grouped_starts');
+  assert.ok(!model2.series.some((s) => s.fertile), 'series must have no fertile days when NFP is low and no grouped_starts');
+
+  // --- Case 3: grouped_starts present, NFP confidence=medium → sensor fallback still allowed ---
+  const card3 = makeCard();
+  card3.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card3._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  card3._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-07-23',
+      fertile_window_start: '2026-07-14',
+      fertile_window_end: '2026-07-28',
+      grouped_starts: ['2026-06-10'],
+      avg_cycle_length: 28,
+      nfp_analysis: {
+        confidence_level: 'medium',
+        fertile_window: { start: '2026-07-14', end: '2026-07-28' },
+        ovulation_day: '2026-07-23',
+        ovulation_detected: true,
+      },
+    },
+  });
+
+  const model3 = card3._buildModel();
+
+  assert.ok(model3.series.some((s) => s.ovulation), 'series must have ovulation day when NFP confidence is medium');
+  assert.ok(model3.series.some((s) => s.fertile), 'series must have fertile days when NFP confidence is medium');
+
+  console.log('  ✓ NFP low-confidence: sensor attributes ignored, medium/high confidence respected');
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 
@@ -833,6 +927,7 @@ const tests = [
   ['fertile-ovulation-datetime-attributes', testFertileAndOvulationFromDateTimeAttributes],
   ['historical-cycle-fertile-ovulation', testHistoricalCycleFertileOvulation],
   ['ovulation-fallback-current-cycle-not-in-grouped-starts', testOvulationFallbackCurrentCycleNotInGroupedStarts],
+  ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],
