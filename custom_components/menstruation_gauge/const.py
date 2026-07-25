@@ -56,6 +56,7 @@ ATTR_AGE_AT_TRACKING = "age_at_tracking"
 ATTR_FAMILY_MENARCHE_AGE = "family_menarche_age"
 ATTR_PRE_MENARCHE_DATA = "pre_menarche_data"
 ATTR_MENOPAUSE_DATA = "menopause_data"
+ATTR_NFP_ANALYSIS = "nfp_analysis"
 
 SERVICE_ADD_CYCLE_START = "add_cycle_start"
 SERVICE_REMOVE_CYCLE_START = "remove_cycle_start"

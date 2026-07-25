@@ -733,6 +733,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         title: 'Statistiken',
         tab_period: 'Periode',
         tab_hygiene: 'Hygiene',
+        tab_nfp: 'NFP',
         tab_doctor: 'Arzt-Bericht',
         filter: 'Filter',
         filter_aria: 'Statistik-Filter öffnen',
@@ -782,11 +783,36 @@ class MenstruationStatisticsCard extends HTMLElement {
         last_n_days: (n) => `Letzte ${n} Tage`,
         no_symptom_data: 'Keine Symptomdaten',
         no_cycle_data: 'Keine Zyklusdaten',
+        nfp_title: 'NFP-Analyse (Symptothermalmethode)',
+        nfp_no_data: 'Keine NFP-Daten vorhanden. Messung der Basaltemperatur aktivieren, um NFP-Analyse zu nutzen.',
+        nfp_confidence: 'Konfidenz',
+        nfp_confidence_high: 'Hoch',
+        nfp_confidence_medium: 'Mittel',
+        nfp_confidence_low: 'Niedrig',
+        nfp_temp_rise: 'Temperaturanstieg',
+        nfp_mucus_peak: 'Zervixschleim-Peak',
+        nfp_cervix_peak: 'Zervixposition-Peak',
+        nfp_ovulation: 'Geschätzter Eisprung',
+        nfp_fertile_window: 'Fruchtbares Fenster',
+        nfp_score: 'NFP-Score',
+        nfp_method: 'Methode',
+        nfp_method_nfp: '📊 NFP',
+        nfp_method_standard: '📈 Standard',
+        nfp_temp_chart: 'Basaltemperaturkurve',
+        nfp_baseline: 'Basislinie',
+        nfp_threshold: 'Schwelle (+0,2°C)',
+        nfp_day: 'Tag',
+        nfp_temp_unit: '°C',
+        nfp_not_detected: 'Nicht erkannt',
+        nfp_day_label: (n) => `Tag ${n}`,
+        nfp_cycle_day: 'Zyklustag',
+        nfp_temperature: 'Temperatur (°C)',
       },
       en: {
         title: 'Statistics',
         tab_period: 'Period',
         tab_hygiene: 'Hygiene',
+        tab_nfp: 'NFP',
         tab_doctor: 'Doctor Report',
         filter: 'Filter',
         filter_aria: 'Open statistics filters',
@@ -836,6 +862,30 @@ class MenstruationStatisticsCard extends HTMLElement {
         last_n_days: (n) => `Last ${n} days`,
         no_symptom_data: 'No symptom data',
         no_cycle_data: 'No cycle data',
+        nfp_title: 'NFP Analysis (Symptothermal Method)',
+        nfp_no_data: 'No NFP data available. Log basal temperatures to enable NFP analysis.',
+        nfp_confidence: 'Confidence',
+        nfp_confidence_high: 'High',
+        nfp_confidence_medium: 'Medium',
+        nfp_confidence_low: 'Low',
+        nfp_temp_rise: 'Temperature Rise',
+        nfp_mucus_peak: 'Cervical Mucus Peak',
+        nfp_cervix_peak: 'Cervix Position Peak',
+        nfp_ovulation: 'Estimated Ovulation',
+        nfp_fertile_window: 'Fertile Window',
+        nfp_score: 'NFP Score',
+        nfp_method: 'Method',
+        nfp_method_nfp: '📊 NFP',
+        nfp_method_standard: '📈 Standard',
+        nfp_temp_chart: 'Basal Temperature Curve',
+        nfp_baseline: 'Baseline',
+        nfp_threshold: 'Threshold (+0.2°C)',
+        nfp_day: 'Day',
+        nfp_temp_unit: '°C',
+        nfp_not_detected: 'Not detected',
+        nfp_day_label: (n) => `Day ${n}`,
+        nfp_cycle_day: 'Cycle Day',
+        nfp_temperature: 'Temperature (°C)',
       },
     };
     const lang = this._lang();
@@ -1121,6 +1171,268 @@ class MenstruationStatisticsCard extends HTMLElement {
     return `<div class="hygiene-tab">${renderHygieneContent(this._hass, this._config, attrs || {})}</div>`;
   }
 
+  _hasNfpData(attrs) {
+    const nfp = attrs && attrs.nfp_analysis;
+    if (!nfp || typeof nfp !== 'object') return false;
+    // Has NFP data if any meaningful NFP indicator is present
+    return !!(nfp.temperature_rise_day || nfp.cervical_mucus_peak || nfp.cervix_peak || nfp.ovulation_day);
+  }
+
+  _renderNfpTab(attrs) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(s);
+    const nfp = attrs && attrs.nfp_analysis;
+
+    if (!this._hasNfpData(attrs)) {
+      return `<div class="section">
+        <div class="section-header"><span class="section-icon">📊</span><span>${esc(t('nfp_title'))}</span></div>
+        <p class="no-data">${esc(t('nfp_no_data'))}</p>
+      </div>`;
+    }
+
+    const confidence = nfp.confidence_level || 'low';
+    const confidenceLabel = confidence === 'high' ? t('nfp_confidence_high')
+      : confidence === 'medium' ? t('nfp_confidence_medium')
+      : t('nfp_confidence_low');
+    const confidenceClass = confidence === 'high' ? 'nfp-conf-high'
+      : confidence === 'medium' ? 'nfp-conf-medium'
+      : 'nfp-conf-low';
+    const score = nfp.nfp_symptom_score != null ? Math.round(nfp.nfp_symptom_score * 100) : 0;
+
+    // Determine cycle start for day numbers
+    const cycleStart = attrs.cycle_start_date || null;
+    const toDayNum = (iso) => {
+      if (!iso || !cycleStart) return null;
+      const d0 = new Date(cycleStart + 'T12:00:00Z');
+      const d1 = new Date(iso + 'T12:00:00Z');
+      if (isNaN(d0) || isNaN(d1)) return null;
+      return Math.round((d1 - d0) / 86400000) + 1;
+    };
+
+    const dayLabel = (iso) => {
+      if (!iso) return esc(t('nfp_not_detected'));
+      const num = toDayNum(iso);
+      return num != null ? esc(t('nfp_day_label')(num)) + ` (${esc(iso)})` : esc(iso);
+    };
+
+    const ovDay = nfp.ovulation_day;
+    const fwStart = nfp.fertile_window && nfp.fertile_window.start;
+    const fwEnd = nfp.fertile_window && nfp.fertile_window.end;
+    const fertileText = (fwStart && fwEnd)
+      ? `${esc(fwStart)} – ${esc(fwEnd)}`
+      : esc(t('nfp_not_detected'));
+
+    const methodLabel = (nfp.ovulation_detected && confidence !== 'low')
+      ? esc(t('nfp_method_nfp')) : esc(t('nfp_method_standard'));
+
+    // Build temperature chart from symptom history
+    const chartHtml = this._renderNfpTempChart(attrs, nfp);
+
+    return `
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📊</span>
+          <span>${esc(t('nfp_title'))}</span>
+          <span class="nfp-confidence-badge ${confidenceClass}">${esc(confidenceLabel)}</span>
+        </div>
+        <div class="nfp-info-box">
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">📊</span>
+            <span class="nfp-info-label">${esc(t('nfp_temp_rise'))}</span>
+            <span class="nfp-info-value">${dayLabel(nfp.temperature_rise_day)}</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">💧</span>
+            <span class="nfp-info-label">${esc(t('nfp_mucus_peak'))}</span>
+            <span class="nfp-info-value">${dayLabel(nfp.cervical_mucus_peak)}</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">📍</span>
+            <span class="nfp-info-label">${esc(t('nfp_cervix_peak'))}</span>
+            <span class="nfp-info-value">${dayLabel(nfp.cervix_peak)}</span>
+          </div>
+          <div class="nfp-info-row nfp-info-highlight">
+            <span class="nfp-info-icon">🎯</span>
+            <span class="nfp-info-label">${esc(t('nfp_ovulation'))}</span>
+            <span class="nfp-info-value">${dayLabel(ovDay)}</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">📅</span>
+            <span class="nfp-info-label">${esc(t('nfp_fertile_window'))}</span>
+            <span class="nfp-info-value">${fertileText}</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">🔢</span>
+            <span class="nfp-info-label">${esc(t('nfp_score'))}</span>
+            <span class="nfp-info-value">${score}%</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">🔬</span>
+            <span class="nfp-info-label">${esc(t('nfp_method'))}</span>
+            <span class="nfp-info-value">${methodLabel}</span>
+          </div>
+        </div>
+      </div>
+      ${chartHtml}`;
+  }
+
+  _renderNfpTempChart(attrs, nfp) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(s);
+    const cycleStart = attrs && attrs.cycle_start_date;
+    const symptomHistory = Array.isArray(attrs && attrs.symptom_history) ? attrs.symptom_history : [];
+
+    // Filter temp entries from cycle start onwards
+    const tempEntries = symptomHistory
+      .filter(e => e && e.basal_temp != null && cycleStart && e.date >= cycleStart)
+      .map(e => {
+        const temp = parseFloat(e.basal_temp);
+        if (isNaN(temp)) return null;
+        const d0 = new Date(cycleStart + 'T12:00:00Z');
+        const d1 = new Date(e.date + 'T12:00:00Z');
+        const cycleDay = Math.round((d1 - d0) / 86400000) + 1;
+        return { day: cycleDay, temp, date: e.date };
+      })
+      .filter(e => e !== null && e.day >= 1)
+      .sort((a, b) => a.day - b.day);
+
+    if (tempEntries.length < 2) {
+      return '';
+    }
+
+    // Chart dimensions
+    const W = 320;
+    const H = 160;
+    const padL = 36;
+    const padR = 12;
+    const padT = 12;
+    const padB = 28;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+
+    const temps = tempEntries.map(e => e.temp);
+    const days = tempEntries.map(e => e.day);
+    const minTemp = Math.min(...temps) - 0.1;
+    const maxTemp = Math.max(...temps) + 0.1;
+    const maxDay = Math.max(...days, 1);
+
+    const xScale = (day) => padL + ((day - 1) / Math.max(maxDay - 1, 1)) * chartW;
+    const yScale = (temp) => padT + chartH - ((temp - minTemp) / (maxTemp - minTemp)) * chartH;
+
+    // Baseline = min of first 6 measurements
+    const baseline = temps.length >= 6 ? Math.min(...temps.slice(0, 6)) : Math.min(...temps);
+    const threshold = baseline + 0.2;
+
+    // Fertile window shading
+    let fertileShade = '';
+    if (nfp && nfp.fertile_window && nfp.fertile_window.start && nfp.fertile_window.end && cycleStart) {
+      const d0 = new Date(cycleStart + 'T12:00:00Z');
+      const fwS = new Date(nfp.fertile_window.start + 'T12:00:00Z');
+      const fwE = new Date(nfp.fertile_window.end + 'T12:00:00Z');
+      const fwStartDay = Math.round((fwS - d0) / 86400000) + 1;
+      const fwEndDay = Math.round((fwE - d0) / 86400000) + 1;
+      const x1 = xScale(fwStartDay);
+      const x2 = xScale(fwEndDay);
+      if (x2 > x1) {
+        fertileShade = `<rect x="${x1.toFixed(1)}" y="${padT}" width="${(x2 - x1).toFixed(1)}" height="${chartH}" fill="rgba(250,200,50,0.18)" />`;
+      }
+    }
+
+    // Reference lines
+    const baselineY = yScale(baseline).toFixed(1);
+    const thresholdY = yScale(threshold).toFixed(1);
+    const refLines = `
+      <line x1="${padL}" y1="${baselineY}" x2="${W - padR}" y2="${baselineY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" />
+      <line x1="${padL}" y1="${thresholdY}" x2="${W - padR}" y2="${thresholdY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" />`;
+
+    // Temperature line path
+    const points = tempEntries.map(e => `${xScale(e.day).toFixed(1)},${yScale(e.temp).toFixed(1)}`).join(' ');
+    const polyline = `<polyline points="${points}" fill="none" stroke="var(--primary-color, #c0392b)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+
+    // Dots
+    const dots = tempEntries.map(e =>
+      `<circle cx="${xScale(e.day).toFixed(1)}" cy="${yScale(e.temp).toFixed(1)}" r="3" fill="var(--primary-color, #c0392b)" />`
+    ).join('');
+
+    // Ovulation marker
+    let ovMarker = '';
+    if (nfp && nfp.ovulation_day && cycleStart) {
+      const d0 = new Date(cycleStart + 'T12:00:00Z');
+      const ovD = new Date(nfp.ovulation_day + 'T12:00:00Z');
+      const ovDay = Math.round((ovD - d0) / 86400000) + 1;
+      const ox = xScale(ovDay);
+      ovMarker = `<line x1="${ox.toFixed(1)}" y1="${padT}" x2="${ox.toFixed(1)}" y2="${(padT + chartH).toFixed(1)}" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="3,2" />
+        <text x="${ox.toFixed(1)}" y="${padT - 2}" text-anchor="middle" font-size="9" fill="#16a34a">🎯</text>`;
+    }
+
+    // Mucus peak marker
+    let mucusMarker = '';
+    if (nfp && nfp.cervical_mucus_peak && cycleStart) {
+      const d0 = new Date(cycleStart + 'T12:00:00Z');
+      const mD = new Date(nfp.cervical_mucus_peak + 'T12:00:00Z');
+      const mDay = Math.round((mD - d0) / 86400000) + 1;
+      const mx = xScale(mDay);
+      mucusMarker = `<text x="${mx.toFixed(1)}" y="${(padT + chartH + 12).toFixed(1)}" text-anchor="middle" font-size="10">💧</text>`;
+    }
+
+    // Cervix peak marker
+    let cervixMarker = '';
+    if (nfp && nfp.cervix_peak && cycleStart) {
+      const d0 = new Date(cycleStart + 'T12:00:00Z');
+      const cD = new Date(nfp.cervix_peak + 'T12:00:00Z');
+      const cDay = Math.round((cD - d0) / 86400000) + 1;
+      const cx = xScale(cDay);
+      cervixMarker = `<text x="${cx.toFixed(1)}" y="${(padT + chartH + 22).toFixed(1)}" text-anchor="middle" font-size="10">📍</text>`;
+    }
+
+    // Y-axis labels
+    const yTicks = [];
+    const tempRange = maxTemp - minTemp;
+    const step = tempRange > 0.8 ? 0.5 : 0.2;
+    let tickTemp = Math.ceil(minTemp / step) * step;
+    while (tickTemp <= maxTemp + 0.01) {
+      yTicks.push(tickTemp);
+      tickTemp = Math.round((tickTemp + step) * 100) / 100;
+    }
+    const yLabels = yTicks.map(temp =>
+      `<text x="${(padL - 4).toFixed(0)}" y="${(yScale(temp) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${temp.toFixed(1)}</text>`
+    ).join('');
+
+    // X-axis labels (every ~5 days)
+    const xStep = Math.max(1, Math.round(maxDay / 7));
+    const xLabels = [];
+    for (let d = 1; d <= maxDay; d += xStep) {
+      xLabels.push(`<text x="${xScale(d).toFixed(1)}" y="${(padT + chartH + 10).toFixed(1)}" text-anchor="middle" font-size="8" fill="#888">${d}</text>`);
+    }
+
+    // Legend
+    const legendY = H - 4;
+    const legend = `
+      <line x1="${padL}" y1="${legendY}" x2="${padL + 14}" y2="${legendY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" />
+      <text x="${padL + 16}" y="${legendY + 3}" font-size="8" fill="#94a3b8">${esc(t('nfp_baseline'))}</text>
+      <line x1="${padL + 70}" y1="${legendY}" x2="${padL + 84}" y2="${legendY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" />
+      <text x="${padL + 86}" y="${legendY + 3}" font-size="8" fill="#f59e0b">${esc(t('nfp_threshold'))}</text>`;
+
+    const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" class="nfp-temp-chart" aria-label="${esc(t('nfp_temp_chart'))}">
+      ${fertileShade}
+      ${refLines}
+      ${polyline}
+      ${dots}
+      ${ovMarker}
+      ${mucusMarker}
+      ${cervixMarker}
+      ${yLabels}
+      ${xLabels.join('')}
+      ${legend}
+    </svg>`;
+
+    return `<div class="section">
+      <div class="section-header"><span class="section-icon">🌡️</span><span>${esc(t('nfp_temp_chart'))}</span></div>
+      <div class="nfp-chart-wrap">${svg}</div>
+      <div class="nfp-chart-axis-label">${esc(t('nfp_cycle_day'))}</div>
+    </div>`;
+  }
+
   _renderDoctorTab() {
     const t = (k) => this._t(k);
     const exportLang = this._exportLanguage || this._lang();
@@ -1193,7 +1505,10 @@ class MenstruationStatisticsCard extends HTMLElement {
     let tabContent = '';
     if (tab === 'stats') tabContent = this._renderStatsTab(stats);
     else if (tab === 'hygiene') tabContent = this._renderHygieneTab(attrs);
+    else if (tab === 'nfp') tabContent = this._renderNfpTab(attrs);
     else if (tab === 'doctor') tabContent = this._renderDoctorTab();
+
+    const hasNfp = this._hasNfpData(attrs);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -1244,6 +1559,20 @@ class MenstruationStatisticsCard extends HTMLElement {
         .days-btn.active { background: var(--primary-color, #c0392b); color: #fff; border-color: var(--primary-color, #c0392b); }
         .empty { padding: 20px; text-align: center; color: var(--secondary-text-color, #888); }
         .hygiene-tab { min-height: 0; }
+        .nfp-confidence-badge { margin-left: auto; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .nfp-conf-high { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
+        .nfp-conf-medium { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #f39c12); }
+        .nfp-conf-low { background: color-mix(in srgb, var(--secondary-text-color, #888) 14%, transparent); color: var(--secondary-text-color, #888); }
+        .nfp-info-box { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--divider-color, rgba(128,128,128,0.18)); }
+        .nfp-info-row { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--divider-color, rgba(128,128,128,0.1)); font-size: 12px; }
+        .nfp-info-row:last-child { border-bottom: none; }
+        .nfp-info-row.nfp-info-highlight { font-weight: 600; color: var(--success-color, #16a34a); }
+        .nfp-info-icon { flex: 0 0 18px; }
+        .nfp-info-label { flex: 0 0 140px; color: var(--secondary-text-color, #888); }
+        .nfp-info-value { flex: 1; color: var(--primary-text-color); }
+        .nfp-chart-wrap { width: 100%; overflow: hidden; }
+        .nfp-temp-chart { display: block; width: 100%; }
+        .nfp-chart-axis-label { text-align: center; font-size: 10px; color: var(--secondary-text-color, #888); margin-top: 2px; }
         ${productStyles}
         @media (max-width: 480px) {
           ha-card { padding: 12px; }
@@ -1252,6 +1581,7 @@ class MenstruationStatisticsCard extends HTMLElement {
           .tab-btn { font-size: 11px; }
           .bar-label { flex-basis: 96px; }
           .days-buttons.compact { grid-template-columns: 1fr; }
+          .nfp-info-label { flex-basis: 110px; }
         }
       </style>
       <ha-card>
@@ -1261,6 +1591,7 @@ class MenstruationStatisticsCard extends HTMLElement {
             <div class="tabs">
               <button class="tab-btn ${tab === 'stats' ? 'active' : ''}" data-tab="stats">${this._escHtml(t('tab_period'))}</button>
               <button class="tab-btn ${tab === 'hygiene' ? 'active' : ''}" data-tab="hygiene">${this._escHtml(t('tab_hygiene'))}</button>
+              ${hasNfp ? `<button class="tab-btn ${tab === 'nfp' ? 'active' : ''}" data-tab="nfp">${this._escHtml(t('tab_nfp'))}</button>` : ''}
               <button class="tab-btn ${tab === 'doctor' ? 'active' : ''}" data-tab="doctor">${this._escHtml(t('tab_doctor'))}</button>
             </div>
             <button class="filter-toggle" id="statistics-filter-toggle" title="${this._escHtml(`${t('filter')}: ${this._currentFilterLabel()}`)}" aria-label="${this._escHtml(t('filter_aria'))}"><span class="filter-glyph">⚙</span></button>

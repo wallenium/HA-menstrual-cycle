@@ -535,6 +535,7 @@ class MenstruationCalendarCard extends HTMLElement {
       symptomByDate: this._symptomMap(attrs),
       predictedStartSet,
       predictedPeriodSet,
+      nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
     };
   }
 
@@ -1116,6 +1117,7 @@ class MenstruationCalendarCard extends HTMLElement {
         .swatch.predicted-fertile { background: color-mix(in srgb, var(--warning-color, #facc15) 36%, transparent); border-style: dashed; }
         .swatch.predicted-ovulation { background: color-mix(in srgb, var(--success-color, #16a34a) 45%, transparent); border-style: dashed; }
         .ovulation-dot.predicted { background: color-mix(in srgb, var(--success-color, #16a34a) 55%, transparent); }
+        .nfp-method-badge { font-size: .72rem; opacity: .75; margin-left: auto; }
         /* Symptom modal */
         .sym-overlay { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; }
         .sym-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
@@ -1164,6 +1166,7 @@ class MenstruationCalendarCard extends HTMLElement {
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
             ${this._config?.show_ovulation_marker !== false ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}
+            ${model.nfpAnalysis && model.nfpAnalysis.ovulation_detected && model.nfpAnalysis.confidence_level !== 'low' ? `<span class="legend-item nfp-method-badge">📊 NFP</span>` : (model.sensorOvulation ? `<span class="legend-item nfp-method-badge">📈 Standard</span>` : '')}
           </div>
         </div>
       </ha-card>

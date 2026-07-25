@@ -663,7 +663,8 @@ class MenstruationGaugeCard extends HTMLElement {
       currentBleedingBlock,
       daysInMonth,
       series,
-      todayIso: this._isoFromDate(new Date())
+      todayIso: this._isoFromDate(new Date()),
+      nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
     };
   }
 
@@ -979,6 +980,15 @@ class MenstruationGaugeCard extends HTMLElement {
       }
     }
 
+    // NFP method label: show whether NFP or standard ovulation is used
+    let nfpMethodLabel = '';
+    if (showFertile && model.ovulationDay) {
+      const nfp = model.nfpAnalysis;
+      const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
+      const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+      nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
+    }
+
     let predictedMarker = '';
     let predictedBars = '';
     const showPredictedCycles = this._config?.show_predicted_cycles !== false;
@@ -1026,6 +1036,7 @@ class MenstruationGaugeCard extends HTMLElement {
         ${baseTicks}
         ${fertileBars}
         ${ovulationMarker}
+        ${nfpMethodLabel}
         ${currentMonthPeriodWindowBars}
         ${confirmedBars}
         ${predictedBars}
