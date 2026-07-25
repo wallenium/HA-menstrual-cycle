@@ -801,8 +801,8 @@ function testTodaySaveButtonUsesPeriodLifecycleLabels() {
   const activeModel = activeCard._buildModel();
   assert.strictEqual(
     activeCard._periodSaveLabel(todayIso, activeModel),
-    'Heute loggen',
-    'active period should use the log-today action label',
+    'Speichern',
+    'active period should use the save label',
   );
 
   const startCard = makeCard();
@@ -811,8 +811,8 @@ function testTodaySaveButtonUsesPeriodLifecycleLabels() {
   const startModel = startCard._buildModel();
   assert.strictEqual(
     startCard._periodSaveLabel(todayIso, startModel),
-    'Periode Start',
-    'new period day should use the period-start action label',
+    'Speichern',
+    'new period day should use the save label',
   );
 
   console.log('  ✓ period lifecycle save labels');
