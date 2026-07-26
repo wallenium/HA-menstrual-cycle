@@ -1054,6 +1054,44 @@ function testMonthBoundaryFertileOvulation() {
   console.log('  ✓ month boundary: fertile/ovulation correctly shown on day 1 when window crosses from previous month');
 }
 
+function testOvulationMarkerFallbackUsesIsoDayExtraction() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card._hass = makeHass();
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  const total = 31;
+  const model = {
+    daysInMonth: total,
+    periodDuration: 5,
+    ovulationDay: '2026-08-29',
+    nfpAnalysis: null,
+    predictedStarts: [],
+    series: Array.from({ length: total }, (_, idx) => ({
+      day: idx + 1,
+      iso: `2026-08-${String(idx + 1).padStart(2, '0')}`,
+      fertile: false,
+      ovulation: false,
+      confirmed: false,
+    })),
+  };
+  const palette = card._palette('neutral');
+
+  card._parseISO = () => {
+    throw new Error('ovulation marker fallback must not depend on Date parsing');
+  };
+
+  const html = card._renderGauge(model, palette);
+  const expectedAngle = -90 + ((((29 - 1) + 0.5) / total) * 360);
+  const expectedPos = card._polar(210, 210, 126 + 26 * 0.46, expectedAngle);
+  assert.ok(
+    html.includes(`cx="${expectedPos.x.toFixed(1)}" cy="${expectedPos.y.toFixed(1)}"`),
+    'ovulation marker fallback must use day 29 extracted from ISO string',
+  );
+
+  console.log('  ✓ ovulation marker fallback uses ISO day extraction');
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -1071,6 +1109,7 @@ const tests = [
   ['ovulation-fallback-current-cycle-not-in-grouped-starts', testOvulationFallbackCurrentCycleNotInGroupedStarts],
   ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
   ['month-boundary-fertile-ovulation', testMonthBoundaryFertileOvulation],
+  ['ovulation-marker-fallback-iso-day-extraction', testOvulationMarkerFallbackUsesIsoDayExtraction],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],
