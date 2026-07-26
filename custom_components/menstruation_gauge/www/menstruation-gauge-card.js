@@ -649,6 +649,18 @@ class MenstruationGaugeCard extends HTMLElement {
         }
       }
 
+      // Special handling for day 1: if the fertile window or ovulation extends from the previous
+      // month into day 1 of this month, ensure it is marked even when the regular per-day
+      // calculation missed it (e.g. cycle-length based computation or NFP constraints).
+      if (day === 1 && !dayFertile && fertileStart && fertileEnd
+          && this._dayDiff(iso, fertileStart) > 0 // fertileStart is strictly before day 1
+          && this._dayDiff(fertileEnd, iso) >= 0) { // fertileEnd is on or after day 1
+        dayFertile = true;
+      }
+      if (day === 1 && !dayOvulation && ovulationDay && iso === ovulationDay) {
+        dayOvulation = true;
+      }
+
       series.push({
         day,
         iso,

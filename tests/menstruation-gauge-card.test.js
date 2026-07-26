@@ -913,6 +913,148 @@ function testNfpLowConfidenceIgnored() {
 }
 
 // ---------------------------------------------------------------------------
+// D5) Month-boundary fertile/ovulation: when the fertile window or ovulation
+//     crosses from the previous month into day 1 of the viewed month, it must
+//     be correctly marked in the series.
+// ---------------------------------------------------------------------------
+
+function testMonthBoundaryFertileOvulation() {
+  // --- Case 1: no NFP, sensor attributes show ovulation on Aug 1, fertile end Aug 1 ---
+  // Cycle started June 1 (in grouped_starts). Viewing August 2026.
+  // Cycle-length based fw for June would place ovulation in June (not August).
+  // The sensor fallback already handles this, but the day-1 boundary check must also
+  // work when shouldUseSensorFallback is active.
+  const card1 = makeCard();
+  card1.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card1._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  card1._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-08-01',
+      fertile_window_start: '2026-07-27',
+      fertile_window_end: '2026-08-01',
+      grouped_starts: ['2026-06-01'],
+      avg_cycle_length: 28,
+    },
+  });
+
+  const model1 = card1._buildModel();
+  const aug1a = model1.series.find((s) => s.iso === '2026-08-01');
+  assert.ok(aug1a && aug1a.fertile, 'Aug 1 must be fertile when fertile_window_end = Aug 1 (month boundary)');
+  assert.ok(aug1a && aug1a.ovulation, 'Aug 1 must be ovulation day when ovulation_day = Aug 1 (month boundary)');
+
+  // --- Case 2: fertile_end one day after ovulation (backend computes ov + 1 day) ---
+  const card2 = makeCard();
+  card2.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card2._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  card2._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-08-01',
+      fertile_window_start: '2026-07-27',
+      fertile_window_end: '2026-08-02',
+      grouped_starts: ['2026-06-01'],
+      avg_cycle_length: 28,
+    },
+  });
+
+  const model2 = card2._buildModel();
+  const aug1b = model2.series.find((s) => s.iso === '2026-08-01');
+  const aug2b = model2.series.find((s) => s.iso === '2026-08-02');
+  assert.ok(aug1b && aug1b.fertile, 'Aug 1 must be fertile when ovulation = Aug 1, fertile_end = Aug 2');
+  assert.ok(aug1b && aug1b.ovulation, 'Aug 1 must be ovulation day when ovulation_day = Aug 1');
+  assert.ok(aug2b && aug2b.fertile, 'Aug 2 must be fertile when fertile_end = Aug 2');
+
+  // --- Case 3: NFP medium confidence, ovulation Aug 1, July cycle start in grouped_starts ---
+  const card3 = makeCard();
+  card3.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card3._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  card3._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-08-01',
+      fertile_window_start: '2026-07-27',
+      fertile_window_end: '2026-08-02',
+      grouped_starts: ['2026-07-01'],
+      avg_cycle_length: 28,
+      nfp_analysis: {
+        confidence_level: 'medium',
+        fertile_window: { start: '2026-07-27', end: '2026-08-02' },
+        ovulation_day: '2026-08-01',
+        ovulation_detected: true,
+      },
+    },
+  });
+
+  const model3 = card3._buildModel();
+  const aug1c = model3.series.find((s) => s.iso === '2026-08-01');
+  assert.ok(aug1c && aug1c.fertile, 'Aug 1 must be fertile with medium NFP and ovulation Aug 1');
+  assert.ok(aug1c && aug1c.ovulation, 'Aug 1 must be ovulation day with medium NFP');
+
+  // --- Case 4: low-confidence NFP with month-crossing boundary → day 1 must be marked ---
+  // When NFP confidence is low, shouldUseSensorFallback is false, so the normal
+  // sensor fallback is disabled. The day-1 boundary check must still correctly
+  // mark the first day of the month when the fertile window extends from the previous month.
+  const card4 = makeCard();
+  card4.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card4._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  card4._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-08-01',
+      fertile_window_start: '2026-07-27',
+      fertile_window_end: '2026-08-01',
+      grouped_starts: ['2026-06-01'],
+      avg_cycle_length: 28,
+      nfp_analysis: {
+        confidence_level: 'low',
+        fertile_window: { start: '2026-07-27', end: '2026-08-01' },
+        ovulation_day: '2026-08-01',
+        ovulation_detected: true,
+      },
+    },
+  });
+
+  const model4 = card4._buildModel();
+  const aug1d = model4.series.find((s) => s.iso === '2026-08-01');
+  assert.ok(aug1d && aug1d.fertile, 'Aug 1 must be fertile with low-confidence NFP when window crosses month boundary');
+  assert.ok(aug1d && aug1d.ovulation, 'Aug 1 must be ovulation day with low-confidence NFP when ovulation is on Aug 1');
+
+  // --- Case 5: verify day 1 is NOT incorrectly marked when fertile window is entirely
+  //             within the current month (and does NOT cross the month boundary) ---
+  const card5 = makeCard();
+  card5.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card5._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  card5._hass = makeHass({
+    state: 'fertile',
+    attributes: {
+      ovulation_day: '2026-08-15',
+      fertile_window_start: '2026-08-10', // starts in August, NOT the previous month
+      fertile_window_end: '2026-08-16',
+      grouped_starts: ['2026-07-01'],
+      avg_cycle_length: 28,
+    },
+  });
+
+  const model5 = card5._buildModel();
+  const aug1e = model5.series.find((s) => s.iso === '2026-08-01');
+  assert.ok(aug1e && !aug1e.fertile, 'Aug 1 must NOT be fertile when fertile window starts on Aug 10 (no month crossing)');
+  assert.ok(aug1e && !aug1e.ovulation, 'Aug 1 must NOT be ovulation when ovulation is Aug 15');
+
+  // Render: ovulation marker must appear in August
+  card1._render();
+  const html1 = card1.shadowRoot.innerHTML;
+  assert.ok(html1.includes('opacity="0.90"></circle>'), 'ovulation marker must render for Aug 1 when month boundary is crossed');
+
+  console.log('  ✓ month boundary: fertile/ovulation correctly shown on day 1 when window crosses from previous month');
+}
+
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 
@@ -928,6 +1070,7 @@ const tests = [
   ['historical-cycle-fertile-ovulation', testHistoricalCycleFertileOvulation],
   ['ovulation-fallback-current-cycle-not-in-grouped-starts', testOvulationFallbackCurrentCycleNotInGroupedStarts],
   ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
+  ['month-boundary-fertile-ovulation', testMonthBoundaryFertileOvulation],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],
