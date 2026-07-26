@@ -381,7 +381,75 @@ class ProductUsageBackendTests(unittest.TestCase):
         # ovulation_day should be cycle_start + 16 days = 2026-06-01 + 16 = 2026-06-17
         self.assertEqual(cycle.ovulation_day, "2026-06-17")
 
-    def test_storage_normalizes_aliases_and_dates(self) -> None:
+    def test_build_cycle_model_hybrid_mode_uses_formula_when_no_temperature_data(self) -> None:
+        # Hybrid mode (default): no symptoms → falls back to the statistical formula.
+        cycle = model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=[],
+            today=date(2026, 7, 1),
+            nfp_mode="hybrid",
+        )
+
+        self.assertEqual(cycle.nfp_mode, "hybrid")
+        # Formula: next_date - (cycle - cycle//2 + 1) = 2026-07-27 - 15 = 2026-07-12
+        self.assertEqual(cycle.ovulation_day, "2026-07-12")
+        self.assertEqual(cycle.fertile_window_start, "2026-07-07")
+        self.assertEqual(cycle.fertile_window_end, "2026-07-17")
+
+    def test_build_cycle_model_strict_mode_hides_ovulation_without_confirmed_temperature_rise(self) -> None:
+        # Strict mode: no temperature rise logged → ovulation/fertile window must be None.
+        cycle = model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=[],
+            today=date(2026, 7, 1),
+            nfp_mode="strict",
+        )
+
+        self.assertEqual(cycle.nfp_mode, "strict")
+        self.assertIsNone(cycle.ovulation_day)
+        self.assertIsNone(cycle.fertile_window_start)
+        self.assertIsNone(cycle.fertile_window_end)
+
+    def test_build_cycle_model_strict_mode_shows_ovulation_when_temperature_rise_confirmed(self) -> None:
+        # Strict mode: confirmed temperature rise + cervical mucus peak in current cycle → ovulation shown.
+        # Need both temperature rise AND mucus data to reach medium/high confidence.
+        from datetime import timedelta
+
+        cycle_start = date(2026, 6, 1)
+        rise_day_index = 14  # day 15 of cycle
+
+        symptoms = []
+        for i in range(rise_day_index + 3):
+            d = (cycle_start + timedelta(days=i)).isoformat()
+            temp = 36.5 if i < rise_day_index else 36.85
+            # Add cervical mucus fertile days just before the rise → mucus_peak triggers medium confidence
+            mucus = "fadenziehend" if rise_day_index - 3 <= i < rise_day_index else ""
+            entry: dict = {"date": d, "basal_temp": temp}
+            if mucus:
+                entry["cervical_mucus"] = mucus
+            symptoms.append(entry)
+
+        cycle = model.build_cycle_model(
+            history=["2026-05-01", str(cycle_start)],
+            period_duration_days=5,
+            symptom_history=symptoms,
+            today=date(2026, 6, 20),
+            nfp_mode="strict",
+        )
+
+        self.assertEqual(cycle.nfp_mode, "strict")
+        # Ovulation should be pinned to the temperature_rise_day from NFP analysis.
+        self.assertIsNotNone(cycle.ovulation_day)
+        # Fertile window should span 5 days before through 1 day after the temp rise.
+        if cycle.ovulation_day and cycle.fertile_window_start and cycle.fertile_window_end:
+            ov = date.fromisoformat(cycle.ovulation_day)
+            self.assertEqual(date.fromisoformat(cycle.fertile_window_start), ov - timedelta(days=5))
+            self.assertEqual(date.fromisoformat(cycle.fertile_window_end), ov + timedelta(days=1))
+
+
+
         entries = [
             {"created_at": "2026-07-18T09:15:00Z", "product": "pantyliners", "quantity": "2"},
             {"date": "2026-07-19T10:30:00+02:00", "product": "period panties"},

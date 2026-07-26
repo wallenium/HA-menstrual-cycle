@@ -10,6 +10,7 @@ from .const import (
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_CYCLE_LENGTH,
+    DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_PERIOD_DURATION_DAYS,
     STATE_FERTILE,
     STATE_MENARCHE,
@@ -52,6 +53,7 @@ class CycleModel:
     noncycle_data: dict[str, Any]
     nfp_analysis: dict[str, Any] | None
     learned_ovulation_offset: int | None
+    nfp_mode: str
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -573,6 +575,7 @@ def build_cycle_model(
     noncycle_data: dict[str, Any] | None = None,
     today: date | None = None,
     cycle_length_override: int | None = None,
+    nfp_mode: str = DEFAULT_NFP_ANALYSIS_MODE,
 ) -> CycleModel:
     """Build complete cycle model for sensor state + attributes."""
     now = today or date.today()
@@ -628,6 +631,7 @@ def build_cycle_model(
             noncycle_data=nc_data,
             nfp_analysis=None,
             learned_ovulation_offset=None,
+            nfp_mode=nfp_mode,
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
@@ -658,6 +662,7 @@ def build_cycle_model(
             noncycle_data=nc_data,
             nfp_analysis=None,
             learned_ovulation_offset=None,
+            nfp_mode=nfp_mode,
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -694,6 +699,7 @@ def build_cycle_model(
                     noncycle_data=nc_data,
                     nfp_analysis=None,
                     learned_ovulation_offset=None,
+                    nfp_mode=nfp_mode,
                 )
         except ValueError:
             pass
@@ -735,6 +741,7 @@ def build_cycle_model(
     fertile_end: str | None = None
     ovulation_day_iso: str | None = None
     days_until: int | None = None
+    learned_ov_offset: int | None = None
 
     if next_start:
         next_date = date.fromisoformat(next_start)
@@ -745,38 +752,62 @@ def build_cycle_model(
             effective_cycle = int(avg_cycle)
         else:
             effective_cycle = DEFAULT_CYCLE_LENGTH
-        # Ovulation: day floor(effective_cycle/2) from cycle start, consistent with frontend formula
-        # = next_date - (effective_cycle - effective_cycle//2 + 1)
-        # For 28-day: next_date - 15 = cycle_start + 13 = day 14 ✓
-        # Learn ovulation pattern from recent NFP data (uses temperature_rise_day, even LOW-confidence)
-        learned_ov_offset = learn_ovulation_pattern(symptoms, starts, effective_duration) if starts else None
-        if learned_ov_offset is not None:
-            cycle_start_date_obj = date.fromisoformat(starts[-1])
-            ovulation_day = cycle_start_date_obj + timedelta(days=learned_ov_offset)
-        else:
-            ovulation_day = next_date - timedelta(days=effective_cycle - effective_cycle // 2 + 1)
-        ovulation_day_iso = ovulation_day.isoformat()
-        # Fertile window spans 5 days before through 5 days after ovulation.
-        fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
-        fertile_end = (ovulation_day + timedelta(days=5)).isoformat()
         days_until = (next_date - now).days
 
+        if nfp_mode == "strict":
+            # STRICT MODE: Use only the current cycle's observed NFP data; no learning.
+            # Ovulation and fertile window are derived solely from this cycle's NFP analysis.
+            # They are set here as placeholders; the NFP analysis block below will populate them.
+            pass
+        else:
+            # HYBRID MODE: Learn ovulation pattern from recent NFP temperature data,
+            # fall back to the standard formula if insufficient data.
+            # Ovulation: day floor(effective_cycle/2) from cycle start, consistent with frontend formula
+            # = next_date - (effective_cycle - effective_cycle//2 + 1)
+            # For 28-day: next_date - 15 = cycle_start + 13 = day 14 ✓
+            learned_ov_offset = learn_ovulation_pattern(symptoms, starts, effective_duration) if starts else None
+            if learned_ov_offset is not None:
+                cycle_start_date_obj = date.fromisoformat(starts[-1])
+                ovulation_day = cycle_start_date_obj + timedelta(days=learned_ov_offset)
+            else:
+                ovulation_day = next_date - timedelta(days=effective_cycle - effective_cycle // 2 + 1)
+            ovulation_day_iso = ovulation_day.isoformat()
+            # Fertile window spans 5 days before through 5 days after ovulation.
+            fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
+            fertile_end = (ovulation_day + timedelta(days=5)).isoformat()
+
     # NFP analysis: run when the current cycle start is known and symptom data exists.
-    # If NFP confidence is high or medium, override the standard ovulation/fertile window.
     nfp_result: dict[str, Any] | None = None
     if starts and symptoms:
         current_cycle_start = starts[-1]
         nfp_result = analyze_nfp_cycle(symptoms, current_cycle_start, effective_duration)
-        if (
-            nfp_result.get("ovulation_detected")
-            and nfp_result.get("confidence_level") in ("high", "medium")
-            and nfp_result.get("ovulation_day")
-        ):
-            ovulation_day_iso = nfp_result["ovulation_day"]
-            fw = nfp_result.get("fertile_window", {})
-            if fw.get("start") and fw.get("end"):
-                fertile_start = fw["start"]
-                fertile_end = fw["end"]
+
+        if nfp_mode == "strict":
+            # STRICT MODE: Use only observed temperature rise day from the current cycle.
+            # Show ovulation and fertile window only when confidence is high or medium.
+            temp_rise_day_iso = nfp_result.get("temperature_rise_day")
+            confidence = nfp_result.get("confidence_level")
+            if temp_rise_day_iso and confidence and confidence != "low":
+                ovulation_day_iso = temp_rise_day_iso
+                temp_rise_date = date.fromisoformat(temp_rise_day_iso)
+                fertile_start = (temp_rise_date - timedelta(days=5)).isoformat()
+                fertile_end = (temp_rise_date + timedelta(days=1)).isoformat()
+            else:
+                ovulation_day_iso = None
+                fertile_start = None
+                fertile_end = None
+        else:
+            # HYBRID MODE: Override with high/medium confidence NFP result when available.
+            if (
+                nfp_result.get("ovulation_detected")
+                and nfp_result.get("confidence_level") in ("high", "medium")
+                and nfp_result.get("ovulation_day")
+            ):
+                ovulation_day_iso = nfp_result["ovulation_day"]
+                fw = nfp_result.get("fertile_window", {})
+                if fw.get("start") and fw.get("end"):
+                    fertile_start = fw["start"]
+                    fertile_end = fw["end"]
 
     state = STATE_NEUTRAL
     if current_period and current_period.get("is_active"):
@@ -814,4 +845,5 @@ def build_cycle_model(
         noncycle_data=nc_data,
         nfp_analysis=nfp_result,
         learned_ovulation_offset=learned_ov_offset,
+        nfp_mode=nfp_mode,
     )

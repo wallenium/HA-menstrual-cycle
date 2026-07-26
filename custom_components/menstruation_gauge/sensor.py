@@ -44,7 +44,9 @@ from .const import (
     ATTR_WEEKS_PREGNANT,
     ATTR_MENOPAUSE_DATA,
     ATTR_NFP_ANALYSIS,
+    CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
+    DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
     DOMAIN,
     MAX_NUM_PREDICTIONS,
@@ -692,6 +694,7 @@ class MenstruationGaugeSensor(SensorEntity):
             noncycle_data=runtime.noncycle_data,
             today=today,
             cycle_length_override=runtime.cycle_length_override,
+            nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
         )
         usage_stats = _build_product_usage_stats(
             runtime.history,
@@ -792,6 +795,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "cycle_length_override": runtime.cycle_length_override,
             ATTR_NFP_ANALYSIS: model.nfp_analysis,
             "learned_ovulation_offset": model.learned_ovulation_offset,
+            "nfp_mode": model.nfp_mode,
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:

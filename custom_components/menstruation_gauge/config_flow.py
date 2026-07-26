@@ -18,6 +18,7 @@ from .const import (
     CONF_ICON,
     CONF_MENOPAUSE_ENABLED,
     CONF_MENOPAUSE_START_DATE,
+    CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
     CONF_PERIOD_DURATION_DAYS,
     CONF_PRE_MENARCHE_ENABLED,
@@ -27,12 +28,14 @@ from .const import (
     CONF_CYCLE_LENGTH_OVERRIDE,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
+    DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
     DEFAULT_MENARCHE_AGE_MAX,
     DEFAULT_MENARCHE_AGE_MIN,
     DEFAULT_NAME,
     DEFAULT_PERIOD_DURATION_DAYS,
     DOMAIN,
+    NFP_ANALYSIS_MODES,
     SIGNAL_HISTORY_UPDATED,
     STORAGE_KEY,
     MAX_NUM_PREDICTIONS,
@@ -148,6 +151,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             menopause_data = stored.get("menopause_data", {"is_menopause": False, "start_date": None})
             current_cycle_length_override = stored.get("cycle_length_override") or 0
         current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
+        current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
 
         if user_input is not None:
             # Validate optional date fields
@@ -284,6 +288,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     data={
                         **self._entry.options,
                         CONF_NUM_PREDICTIONS: new_num_predictions,
+                        CONF_NFP_ANALYSIS_MODE: user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
                     },
                 )
 
@@ -332,6 +337,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_NUM_PREDICTIONS,
                     default=current_num_predictions,
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=MAX_NUM_PREDICTIONS)),
+                vol.Optional(
+                    CONF_NFP_ANALYSIS_MODE,
+                    default=current_nfp_mode,
+                ): vol.In(NFP_ANALYSIS_MODES),
             }
         )
 
