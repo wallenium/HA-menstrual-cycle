@@ -347,7 +347,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const n = this._normalizeISO(iso);
     if (!n) return null;
     const [y, m, d] = n.split('-').map((x) => Number(x));
-    const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+    const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
     return Number.isNaN(dt.getTime()) ? null : dt;
   }
 

@@ -353,6 +353,43 @@ function testFertileAndOvulationFromDateTimeAttributes() {
   console.log('  ✓ fertile/ovulation render from datetime-formatted attributes');
 }
 
+function testParseISOUsesUTC() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+
+  const RealDate = global.Date;
+  const calls = [];
+  class SpyDate extends RealDate {
+    constructor(...args) {
+      calls.push(args);
+      super(...args);
+    }
+    static UTC(...args) {
+      return RealDate.UTC(...args);
+    }
+    static now() {
+      return RealDate.now();
+    }
+    static parse(v) {
+      return RealDate.parse(v);
+    }
+  }
+
+  global.Date = SpyDate;
+  try {
+    const parsed = card._parseISO('2026-08-29');
+    assert.ok(parsed instanceof RealDate, 'parsed value must be a Date');
+  } finally {
+    global.Date = RealDate;
+  }
+
+  assert.strictEqual(calls.length, 1, '_parseISO must construct exactly one Date');
+  assert.strictEqual(calls[0].length, 1, '_parseISO must pass a UTC timestamp to Date constructor');
+  assert.strictEqual(calls[0][0], RealDate.UTC(2026, 7, 29, 12, 0, 0, 0), '_parseISO must use Date.UTC for stable date parsing');
+
+  console.log('  ✓ _parseISO uses UTC timestamp construction');
+}
+
 // ---------------------------------------------------------------------------
 // D2) Historical cycles: fertile/ovulation computed from grouped_starts
 // ---------------------------------------------------------------------------
@@ -1067,6 +1104,7 @@ const tests = [
   ['rerender-on-state-change', testRerenderOnStateChange],
   ['rerender-on-countdown-change', testRerenderOnCountdownChange],
   ['fertile-ovulation-datetime-attributes', testFertileAndOvulationFromDateTimeAttributes],
+  ['parse-iso-uses-utc', testParseISOUsesUTC],
   ['historical-cycle-fertile-ovulation', testHistoricalCycleFertileOvulation],
   ['ovulation-fallback-current-cycle-not-in-grouped-starts', testOvulationFallbackCurrentCycleNotInGroupedStarts],
   ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
