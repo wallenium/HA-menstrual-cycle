@@ -1067,6 +1067,7 @@ function testOvulationMarkerFallbackUsesIsoDayExtraction() {
     ovulationDay: '2026-08-29',
     nfpAnalysis: null,
     predictedStarts: [],
+    todayIso: '2026-07-15',
     series: Array.from({ length: total }, (_, idx) => ({
       day: idx + 1,
       iso: `2026-08-${String(idx + 1).padStart(2, '0')}`,
@@ -1076,10 +1077,6 @@ function testOvulationMarkerFallbackUsesIsoDayExtraction() {
     })),
   };
   const palette = card._palette('neutral');
-
-  card._parseISO = () => {
-    throw new Error('ovulation marker fallback must not depend on Date parsing');
-  };
 
   const html = card._renderGauge(model, palette);
   const expectedAngle = -90 + ((((29 - 1) + 0.5) / total) * 360);

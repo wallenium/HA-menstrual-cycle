@@ -500,8 +500,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const menarcheData = attrs.menarche_data || {};
     const normalizedEstimatedDate = this._normalizeISO(menarcheData?.estimated_date);
     const estimatedDate = this._parseISO(normalizedEstimatedDate) || new Date(menarcheData?.estimated_date || '');
-    const today = new Date();
-    const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
+    const todayNoon = this._parseISO(this._isoFromDate(new Date()));
     const daysUntilMenarche = String(stateObj?.state || '') === 'pre_menarche' && estimatedDate instanceof Date && !Number.isNaN(estimatedDate.getTime())
       ? Math.ceil((estimatedDate.getTime() - todayNoon.getTime()) / 86400000)
       : null;
@@ -937,10 +936,11 @@ class MenstruationGaugeCard extends HTMLElement {
     else if (gaugeWidth > 0 && gaugeWidth < 380) labelStep = 3;
     else if (gaugeWidth > 0 && gaugeWidth < 480) labelStep = 2;
     const now = new Date();
-    const dayNow = now.getDate();
+    const todayDate = this._parseISO(model.todayIso);
+    const dayNow = todayDate ? todayDate.getDate() : now.getDate();
     const handAngle = -90 + ((((dayNow - 1) + now.getHours() / 24) / total) * 360);
-    const isCurrentViewMonth = this._viewDate.getMonth() === now.getMonth()
-      && this._viewDate.getFullYear() === now.getFullYear();
+    const isCurrentViewMonth = this._viewDate.getMonth() === (todayDate?.getMonth() ?? now.getMonth())
+      && this._viewDate.getFullYear() === (todayDate?.getFullYear() ?? now.getFullYear());
 
     const baseTicks = model.series.map((_, i) => {
       const angle = -90 + ((i / total) * 360);
