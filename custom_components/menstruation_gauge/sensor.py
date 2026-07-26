@@ -791,6 +791,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "cycle_statistics": cycle_statistics,
             "cycle_length_override": runtime.cycle_length_override,
             ATTR_NFP_ANALYSIS: model.nfp_analysis,
+            "learned_ovulation_offset": model.learned_ovulation_offset,
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:
