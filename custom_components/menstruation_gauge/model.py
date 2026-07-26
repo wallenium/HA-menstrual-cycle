@@ -51,6 +51,7 @@ class CycleModel:
     menopause_data: dict[str, Any]
     noncycle_data: dict[str, Any]
     nfp_analysis: dict[str, Any] | None
+    learned_ovulation_offset: int | None
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -236,6 +237,63 @@ def predict_future_starts(grouped_starts: list[str], num_cycles: int = 6) -> lis
         (last_start + timedelta(days=cycle_days * idx)).isoformat()
         for idx in range(1, count + 1)
     ]
+
+
+def learn_ovulation_pattern(
+    symptom_history: list[dict[str, Any]],
+    cycle_starts: list[str],
+    period_duration_days: int = 5,
+    min_cycles: int = 2,
+    max_cycles: int = 5,
+) -> int | None:
+    """Learn average ovulation day offset from recent NFP analyses.
+
+    Examines the last N cycle starts and extracts temperature_rise_day
+    from each NFP analysis. If at least min_cycles analyses have valid
+    temperature data, returns the average day offset from cycle start.
+
+    Args:
+        symptom_history: Full symptom history
+        cycle_starts: Sorted list of cycle start dates (ISO format)
+        period_duration_days: Days to skip at cycle start
+        min_cycles: Minimum analyses needed to return a value (default 2)
+        max_cycles: Maximum recent cycles to examine (default 5)
+
+    Returns:
+        int: Average day offset (e.g., 17 means ovulation ~17 days after cycle start)
+        None: If insufficient data (< min_cycles with temperature data)
+    """
+    if not cycle_starts or len(cycle_starts) < min_cycles:
+        return None
+
+    recent_starts = cycle_starts[-max_cycles:]
+    ovulation_offsets: list[int] = []
+
+    for cycle_start_iso in recent_starts:
+        try:
+            cycle_start = date.fromisoformat(cycle_start_iso)
+        except ValueError:
+            continue
+
+        nfp_result = analyze_nfp_cycle(symptom_history, cycle_start_iso, period_duration_days)
+
+        # Extract temperature rise day if available (works even for LOW-confidence)
+        temp_rise_day_iso = nfp_result.get("temperature_rise_day")
+        if temp_rise_day_iso:
+            try:
+                temp_rise_day = date.fromisoformat(temp_rise_day_iso)
+                offset = (temp_rise_day - cycle_start).days
+                # Sanity check: ovulation should be between day 8 and day 25
+                if 8 <= offset <= 25:
+                    ovulation_offsets.append(offset)
+            except ValueError:
+                continue
+
+    # Return average only if we have enough data points
+    if len(ovulation_offsets) >= min_cycles:
+        return round(sum(ovulation_offsets) / len(ovulation_offsets))
+
+    return None
 
 
 def normalize_symptoms(symptom_history: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -569,6 +627,7 @@ def build_cycle_model(
             menopause_data=meno_data,
             noncycle_data=nc_data,
             nfp_analysis=None,
+            learned_ovulation_offset=None,
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
@@ -598,6 +657,7 @@ def build_cycle_model(
             menopause_data=meno_data,
             noncycle_data=nc_data,
             nfp_analysis=None,
+            learned_ovulation_offset=None,
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -633,6 +693,7 @@ def build_cycle_model(
                     menopause_data=meno_data,
                     noncycle_data=nc_data,
                     nfp_analysis=None,
+                    learned_ovulation_offset=None,
                 )
         except ValueError:
             pass
@@ -687,7 +748,13 @@ def build_cycle_model(
         # Ovulation: day floor(effective_cycle/2) from cycle start, consistent with frontend formula
         # = next_date - (effective_cycle - effective_cycle//2 + 1)
         # For 28-day: next_date - 15 = cycle_start + 13 = day 14 ✓
-        ovulation_day = next_date - timedelta(days=effective_cycle - effective_cycle // 2 + 1)
+        # Learn ovulation pattern from recent NFP data (uses temperature_rise_day, even LOW-confidence)
+        learned_ov_offset = learn_ovulation_pattern(symptoms, starts, effective_duration) if starts else None
+        if learned_ov_offset is not None:
+            cycle_start_date_obj = date.fromisoformat(starts[-1])
+            ovulation_day = cycle_start_date_obj + timedelta(days=learned_ov_offset)
+        else:
+            ovulation_day = next_date - timedelta(days=effective_cycle - effective_cycle // 2 + 1)
         ovulation_day_iso = ovulation_day.isoformat()
         # Fertile window spans 5 days before through 5 days after ovulation.
         fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
@@ -746,4 +813,5 @@ def build_cycle_model(
         menopause_data=meno_data,
         noncycle_data=nc_data,
         nfp_analysis=nfp_result,
+        learned_ovulation_offset=learned_ov_offset,
     )

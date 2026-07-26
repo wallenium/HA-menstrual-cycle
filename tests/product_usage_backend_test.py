@@ -291,6 +291,96 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(predictions[0], "2026-07-26")
         self.assertEqual(predictions[1], "2026-09-24")
 
+    def test_learn_ovulation_pattern_returns_none_when_no_cycle_starts(self) -> None:
+        result = model.learn_ovulation_pattern([], [])
+        self.assertIsNone(result)
+
+    def test_learn_ovulation_pattern_returns_none_with_only_one_cycle_start(self) -> None:
+        result = model.learn_ovulation_pattern([], ["2026-06-01"])
+        self.assertIsNone(result)
+
+    def test_learn_ovulation_pattern_returns_none_when_no_temperature_data(self) -> None:
+        cycle_starts = ["2026-05-01", "2026-05-29"]
+        # Symptom history with no basal temperature entries
+        symptoms = [{"date": "2026-05-10", "cervical_mucus": "watery"}]
+        result = model.learn_ovulation_pattern(symptoms, cycle_starts)
+        self.assertIsNone(result)
+
+    def test_learn_ovulation_pattern_returns_average_when_two_cycles_have_temperature_rise(self) -> None:
+        # Build symptom histories with temperature data for two cycles
+        # Cycle 1 starts 2026-04-01, temperature rises at index 16 (0-based) → offset 16
+        # Cycle 2 starts 2026-05-01, temperature rises at index 14 (0-based) → offset 14
+        # Roetzer rule: 3 consecutive readings >= baseline + 0.2
+        def make_temps(start_iso: str, rise_index: int) -> list[dict]:
+            """Generate basal temp entries: low up to rise_index, high from rise_index on."""
+            from datetime import date, timedelta
+            start = date.fromisoformat(start_iso)
+            entries = []
+            for i in range(rise_index + 5):
+                d = (start + timedelta(days=i)).isoformat()
+                temp = 36.5 if i < rise_index else 36.8
+                entries.append({"date": d, "basal_temp": temp})
+            return entries
+
+        symptoms = make_temps("2026-04-01", 16) + make_temps("2026-05-01", 14)
+        cycle_starts = ["2026-04-01", "2026-05-01"]
+        result = model.learn_ovulation_pattern(symptoms, cycle_starts)
+        # Average of offsets 16 and 14 = 15
+        self.assertIsNotNone(result)
+        self.assertEqual(result, 15)
+
+    def test_learn_ovulation_pattern_ignores_offsets_out_of_range(self) -> None:
+        # Offsets < 8 or > 25 should be excluded
+        from datetime import date, timedelta
+
+        def make_temps(start_iso: str, rise_index: int) -> list[dict]:
+            start = date.fromisoformat(start_iso)
+            entries = []
+            for i in range(rise_index + 5):
+                d = (start + timedelta(days=i)).isoformat()
+                temp = 36.5 if i < rise_index else 36.8
+                entries.append({"date": d, "basal_temp": temp})
+            return entries
+
+        # Cycle 1: rise_index=4 → offset 4 (too early, < 8, excluded)
+        # Cycles 2 and 3: rise_index=16 → offset 16
+        symptoms = make_temps("2026-03-01", 4) + make_temps("2026-04-01", 16) + make_temps("2026-05-01", 16)
+        cycle_starts = ["2026-03-01", "2026-04-01", "2026-05-01"]
+        result = model.learn_ovulation_pattern(symptoms, cycle_starts)
+        # offset 4 excluded, remaining [16, 16] → average 16
+        self.assertEqual(result, 16)
+
+    def test_build_cycle_model_uses_learned_offset_when_available(self) -> None:
+        from datetime import date, timedelta
+
+        def make_temps(start_iso: str, rise_index: int) -> list[dict]:
+            start = date.fromisoformat(start_iso)
+            entries = []
+            for i in range(rise_index + 5):
+                d = (start + timedelta(days=i)).isoformat()
+                temp = 36.5 if i < rise_index else 36.8
+                entries.append({"date": d, "basal_temp": temp})
+            return entries
+
+        # Two previous cycles with rise_index=16 → offset 16
+        symptoms = make_temps("2026-04-01", 16) + make_temps("2026-05-01", 16)
+        # History includes two previous cycles and current one
+        history = [
+            *[f"2026-04-0{d}" for d in range(1, 6)],
+            *[f"2026-05-0{d}" for d in range(1, 6)],
+            *[f"2026-06-0{d}" for d in range(1, 6)],
+        ]
+        cycle = model.build_cycle_model(
+            history=history,
+            period_duration_days=5,
+            symptom_history=symptoms,
+            today=date(2026, 6, 10),
+        )
+        # learned_ovulation_offset should be 16
+        self.assertEqual(cycle.learned_ovulation_offset, 16)
+        # ovulation_day should be cycle_start + 16 days = 2026-06-01 + 16 = 2026-06-17
+        self.assertEqual(cycle.ovulation_day, "2026-06-17")
+
     def test_storage_normalizes_aliases_and_dates(self) -> None:
         entries = [
             {"created_at": "2026-07-18T09:15:00Z", "product": "pantyliners", "quantity": "2"},
