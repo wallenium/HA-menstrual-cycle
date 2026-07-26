@@ -993,10 +993,12 @@ class MenstruationGaugeCard extends HTMLElement {
       // Fallback: if no series entry has ovulation flagged but model.ovulationDay falls in the
       // viewed month, render the marker directly (e.g. series computation missed it).
       if (oDay === null && model.ovulationDay) {
-        const ovDt = this._parseISO(model.ovulationDay);
-        if (ovDt && ovDt.getFullYear() === this._viewDate.getFullYear()
-            && ovDt.getMonth() === this._viewDate.getMonth()) {
-          oDay = ovDt.getDate();
+        const ovIso = this._normalizeISO(model.ovulationDay);
+        if (ovIso) {
+          const [ovYear, ovMonth, ovDay] = ovIso.split('-').map((x) => Number(x));
+          if (ovYear === this._viewDate.getFullYear() && (ovMonth - 1) === this._viewDate.getMonth()) {
+            oDay = ovDay;
+          }
         }
       }
       if (oDay !== null && oDay >= 1 && oDay <= total) {
