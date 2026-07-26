@@ -473,10 +473,16 @@ class MenstruationCalendarCard extends HTMLElement {
       }
     }
 
-    if (!isOvulation && ctx.sensorOvulation && iso === ctx.sensorOvulation) {
+    // Only use sensor attribute fallback when NFP quality is acceptable or absent.
+    // Low-confidence NFP data must not influence the calendar display.
+    const shouldUseSensorFallback = !ctx.nfpAnalysis
+      || !ctx.nfpAnalysis.confidence_level
+      || ctx.nfpAnalysis.confidence_level !== 'low';
+
+    if (!isOvulation && shouldUseSensorFallback && ctx.sensorOvulation && iso === ctx.sensorOvulation) {
       isOvulation = true;
     }
-    if (!isFertile && ctx.sensorFertileStart && ctx.sensorFertileEnd) {
+    if (!isFertile && shouldUseSensorFallback && ctx.sensorFertileStart && ctx.sensorFertileEnd) {
       isFertile = this._dayDiff(iso, ctx.sensorFertileStart) >= 0 && this._dayDiff(ctx.sensorFertileEnd, iso) >= 0;
     }
 
