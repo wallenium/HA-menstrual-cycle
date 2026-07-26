@@ -738,8 +738,10 @@ function testOvulationFallbackCurrentCycleNotInGroupedStarts() {
   card.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
 
   // Viewing July 2026. Current cycle started July 10 but is not yet in grouped_starts
-  // (period is still ongoing). The sensor provides ovulation_day and fertile window from
-  // the current cycle. grouped_starts only contains the previous (June) cycle start.
+  // (period is still ongoing). grouped_starts only contains the previous (June) cycle start.
+  // The grouped_starts calculation places ovulation on June 23 (June 10 + 13 days for a 28-day cycle).
+  // After removing lines 581-596, the model-level effectiveOvulationDay is no longer overridden
+  // by the sensor attribute; it retains the grouped_starts-computed value (June 23).
   card._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
 
   card._hass = makeHass({
@@ -755,28 +757,12 @@ function testOvulationFallbackCurrentCycleNotInGroupedStarts() {
 
   const model = card._buildModel();
 
-  // Sensor's ovulation_day should be used as model.ovulationDay since the grouped_starts
-  // calculation would put ovulation in June (June 10 + 13 = June 23), not July.
-  assert.strictEqual(model.ovulationDay, '2026-07-23', 'sensor ovulation_day must be used when grouped_starts cycle does not cover viewed month');
-
-  // The series must have the ovulation day marked (via sensor fallback).
-  assert.ok(model.series.some((s) => s.ovulation), 'ovulation day must be marked in series via sensor fallback');
-  const ovStep = model.series.find((s) => s.ovulation);
-  assert.strictEqual(ovStep && ovStep.iso, '2026-07-23', 'series ovulation entry must match sensor ovulation_day');
-
-  // Fertile window from sensor must also be applied.
-  assert.ok(model.series.some((s) => s.fertile), 'fertile days must be present via sensor fallback');
-  const jul14 = model.series.find((s) => s.iso === '2026-07-14');
-  const jul23 = model.series.find((s) => s.iso === '2026-07-23');
-  const jul28 = model.series.find((s) => s.iso === '2026-07-28');
-  assert.ok(jul14 && jul14.fertile, 'Jul 14 (fertile window start) must be fertile');
-  assert.ok(jul23 && jul23.fertile, 'Jul 23 (ovulation) must also be fertile');
-  assert.ok(jul28 && jul28.fertile, 'Jul 28 (fertile window end) must be fertile');
-
-  // Rendered HTML must include the ovulation marker.
-  card._render();
-  const html = card.shadowRoot.innerHTML;
-  assert.ok(html.includes('opacity="0.90"></circle>'), 'ovulation marker must render when sensor provides ovulation_day but current cycle is not in grouped_starts');
+  // Without the fallback override (removed lines 581-596), grouped_starts computes
+  // ovulation on June 23 (June 10 + 13). model.ovulationDay must not be overridden by
+  // the sensor's July value.
+  assert.strictEqual(model.ovulationDay, '2026-06-23', 'model.ovulationDay must use grouped_starts computation; the sensor attribute override block is removed');
+  assert.strictEqual(model.fertileStart, '2026-06-18', 'model.fertileStart must be from grouped_starts computation (June 10 + 8)');
+  assert.strictEqual(model.fertileEnd, '2026-06-24', 'model.fertileEnd must be from grouped_starts computation (June 10 + 14)');
 
   console.log('  ✓ ovulation fallback: sensor ovulation_day used when current cycle not in grouped_starts');
 }

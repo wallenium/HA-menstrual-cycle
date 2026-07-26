@@ -574,27 +574,6 @@ class MenstruationGaugeCard extends HTMLElement {
       }
     }
 
-    // Fallback: if the grouped_starts-computed ovulation/fertile falls outside the viewed month
-    // but the sensor's attribute values are in it, prefer the sensor's values.
-    // This handles the common case where the current cycle start has not yet been recorded in
-    // grouped_starts (e.g., the period is still ongoing or not yet confirmed).
-    if (!hasNfpData && groupedStarts.length > 0) {
-      const viewYear = viewDate.getFullYear();
-      const viewMonth = viewDate.getMonth();
-      const effOvDt = effectiveOvulationDay ? this._parseISO(effectiveOvulationDay) : null;
-      const effOvInMonth = effOvDt && effOvDt.getFullYear() === viewYear && effOvDt.getMonth() === viewMonth;
-      if (!effOvInMonth && ovulationDay) {
-        const sensOvDt = this._parseISO(ovulationDay);
-        if (sensOvDt && sensOvDt.getFullYear() === viewYear && sensOvDt.getMonth() === viewMonth) {
-          effectiveOvulationDay = ovulationDay;
-          if (fertileStart && fertileEnd) {
-            effectiveFertileStart = fertileStart;
-            effectiveFertileEnd = fertileEnd;
-          }
-        }
-      }
-    }
-
     const daysInMonth = this._monthDays(viewDate);
 
     const series = [];
