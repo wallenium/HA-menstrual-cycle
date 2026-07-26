@@ -601,7 +601,7 @@ class MenstruationGaugeCard extends HTMLElement {
           const fw = this._fertileWindowForCycle(cycleStartForDay, nextCycleStartForDay, effectiveAvgCycle);
           if (fw) {
             dayFertile = fw.fertileStart && fw.fertileEnd
-              ? (this._dayDiff(iso, fw.fertileStart) >= 0 && this._dayDiff(fw.fertileEnd, iso) >= 0)
+              ? (this._dayDiff(iso, fw.fertileStart) >= 0 && this._dayDiff(iso, fw.fertileEnd) <= 0)
               : false;
             dayOvulation = fw.ovulationDay ? iso === fw.ovulationDay : false;
           }
@@ -613,7 +613,7 @@ class MenstruationGaugeCard extends HTMLElement {
           dayOvulation = true;
         }
         if (!dayFertile && shouldUseSensorFallback && fertileStart && fertileEnd
-            && this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso) >= 0) {
+            && this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(iso, fertileEnd) <= 0) {
           dayFertile = true;
         }
       } else {
@@ -621,7 +621,7 @@ class MenstruationGaugeCard extends HTMLElement {
         // But only if NFP is good quality or missing – low-confidence NFP must not set the gauge.
         if (shouldUseSensorFallback) {
           dayFertile = fertileStart && fertileEnd
-            ? (this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso) >= 0)
+            ? (this._dayDiff(iso, fertileStart) >= 0 && this._dayDiff(iso, fertileEnd) <= 0)
             : false;
           dayOvulation = ovulationDay ? iso === ovulationDay : false;
         }
@@ -632,7 +632,7 @@ class MenstruationGaugeCard extends HTMLElement {
       // calculation missed it (e.g. cycle-length based computation or NFP constraints).
       if (day === 1 && !dayFertile && fertileStart && fertileEnd
           && this._dayDiff(iso, fertileStart) > 0 // fertileStart is strictly before day 1
-          && this._dayDiff(fertileEnd, iso) >= 0) { // fertileEnd is on or after day 1
+          && this._dayDiff(iso, fertileEnd) <= 0) { // day 1 is on or before fertileEnd
         dayFertile = true;
       }
       if (day === 1 && !dayOvulation && ovulationDay && iso === ovulationDay) {
