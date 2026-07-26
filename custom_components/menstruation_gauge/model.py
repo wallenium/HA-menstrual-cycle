@@ -505,7 +505,7 @@ def analyze_nfp_cycle(
     # Use the latest candidate as ovulation estimate (most conservative / post-ovulation)
     ovulation_day_iso = max(candidate_days)
 
-    # Fertile window: 5 days before ovulation through 1 day after
+    # Fertile window: 5 days before ovulation through 1 day after (Sensiplan standard)
     ov_date = date.fromisoformat(ovulation_day_iso)
     fertile_start_iso = (ov_date - timedelta(days=5)).isoformat()
     fertile_end_iso = (ov_date + timedelta(days=1)).isoformat()
@@ -772,9 +772,9 @@ def build_cycle_model(
             else:
                 ovulation_day = next_date - timedelta(days=effective_cycle - effective_cycle // 2 + 1)
             ovulation_day_iso = ovulation_day.isoformat()
-            # Fertile window spans 5 days before through 5 days after ovulation.
+            # Fertile window: 5 days before ovulation through 1 day after (Sensiplan standard: 5+1+1=7 days)
             fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
-            fertile_end = (ovulation_day + timedelta(days=5)).isoformat()
+            fertile_end = (ovulation_day + timedelta(days=1)).isoformat()
 
     # NFP analysis: run when the current cycle start is known and symptom data exists.
     nfp_result: dict[str, Any] | None = None
