@@ -1089,6 +1089,49 @@ function testOvulationMarkerFallbackUsesIsoDayExtraction() {
   console.log('  ✓ ovulation marker fallback uses ISO day extraction');
 }
 
+function testRenderGaugeUsesIsoTodayForHandAndCurrentMonth() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card._hass = makeHass();
+  card._viewDate = new Date(2032, 0, 1, 12, 0, 0, 0); // January 2032
+
+  const total = 31;
+  const model = {
+    daysInMonth: total,
+    periodDuration: 5,
+    ovulationDay: null,
+    nfpAnalysis: null,
+    predictedStarts: [],
+    series: Array.from({ length: total }, (_, idx) => ({
+      day: idx + 1,
+      iso: `2032-01-${String(idx + 1).padStart(2, '0')}`,
+      fertile: false,
+      ovulation: false,
+      confirmed: idx === 2,
+    })),
+  };
+  const palette = card._palette('neutral');
+  const nowHour = new Date().getHours();
+
+  card._isoFromDate = () => '2032-01-15';
+  card._parseISO = () => new Date(2032, 0, 15, 12, 0, 0, 0);
+
+  const html = card._renderGauge(model, palette);
+  const expectedAngle = -90 + ((((15 - 1) + nowHour / 24) / total) * 360);
+  const expectedHandA = card._polar(210, 210, 124, expectedAngle);
+
+  assert.ok(
+    html.includes(`x1="${expectedHandA.x.toFixed(1)}" y1="${expectedHandA.y.toFixed(1)}"`),
+    'hand position must use ISO/parsed today day value instead of direct local day extraction',
+  );
+  assert.ok(
+    html.includes('stroke-opacity="0.24"'),
+    'current month period window must use ISO/parsed today month/year comparison',
+  );
+
+  console.log('  ✓ render gauge uses ISO/parsed today for hand angle and current month checks');
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -1107,6 +1150,7 @@ const tests = [
   ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
   ['month-boundary-fertile-ovulation', testMonthBoundaryFertileOvulation],
   ['ovulation-marker-fallback-iso-day-extraction', testOvulationMarkerFallbackUsesIsoDayExtraction],
+  ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],

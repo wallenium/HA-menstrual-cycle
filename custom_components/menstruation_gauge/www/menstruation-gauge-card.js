@@ -936,7 +936,13 @@ class MenstruationGaugeCard extends HTMLElement {
     else if (gaugeWidth > 0 && gaugeWidth < 380) labelStep = 3;
     else if (gaugeWidth > 0 && gaugeWidth < 480) labelStep = 2;
     const now = new Date();
-    const todayDate = this._parseISO(model.todayIso);
+    const todayIso = model?.todayIso || this._isoFromDate(new Date());
+    let todayDate = null;
+    try {
+      todayDate = this._parseISO(todayIso);
+    } catch (_error) {
+      todayDate = null;
+    }
     const dayNow = todayDate ? todayDate.getDate() : now.getDate();
     const handAngle = -90 + ((((dayNow - 1) + now.getHours() / 24) / total) * 360);
     const isCurrentViewMonth = this._viewDate.getMonth() === (todayDate?.getMonth() ?? now.getMonth())
