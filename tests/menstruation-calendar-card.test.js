@@ -51,13 +51,6 @@ const cardSrc = fs.readFileSync(
 // eslint-disable-next-line no-eval
 eval(cardSrc);
 
-const editorSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-calendar-card-editor.js'),
-  'utf8',
-);
-// eslint-disable-next-line no-eval
-eval(editorSrc);
-
 const CardClass = defined['menstruation-calendar-card'];
 const EditorClass = defined['menstruation-calendar-card-editor'];
 
@@ -262,6 +255,68 @@ function testEditorHasPredictedOptions() {
   console.log('  ✓ editor defaults show_predicted_cycles and num_predicted_cycles');
 }
 
+function testNfpLowConfidenceIgnoredInCalendar() {
+  // Cycle started June 5; standard calc puts ovulation around June 18.
+  // NFP says ovulation on July 25, fertile July 20-26 – but confidence is "low".
+  // Calendar must NOT mark July 25 as ovulation or July 20-26 as fertile.
+
+  function makeHassNfp(confidence) {
+    return {
+      locale: { language: 'en' },
+      callService: async () => {},
+      states: {
+        'sensor.menstruation': {
+          state: 'fertile',
+          attributes: {
+            entry_id: 'entry-1',
+            profile: 'default',
+            history: ['2026-06-05', '2026-06-06'],
+            grouped_starts: ['2026-06-05'],
+            fertile_window_start: '2026-07-20',
+            fertile_window_end: '2026-07-26',
+            ovulation_day: '2026-07-25',
+            avg_cycle_length: 28,
+            nfp_analysis: {
+              confidence_level: confidence,
+              fertile_window: { start: '2026-07-20', end: '2026-07-26' },
+              ovulation_day: '2026-07-25',
+              ovulation_detected: true,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  // --- low confidence: sensor fallback must be suppressed ---
+  const cardLow = new CardClass();
+  cardLow.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true, show_ovulation_marker: true });
+  cardLow.hass = makeHassNfp('low');
+  cardLow._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  const modelLow = cardLow._buildModel();
+  const stLow25 = cardLow._statusForDay('2026-07-25', modelLow);
+  const stLow22 = cardLow._statusForDay('2026-07-22', modelLow);
+
+  assert.ok(!stLow25.isOvulation, 'low-confidence NFP: July 25 must NOT be marked as ovulation');
+  assert.ok(!stLow22.isFertile, 'low-confidence NFP: July 22 must NOT be marked as fertile');
+
+  // --- medium confidence: sensor fallback must still be used ---
+  const cardMed = new CardClass();
+  cardMed.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true, show_ovulation_marker: true });
+  cardMed.hass = makeHassNfp('medium');
+  cardMed._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  const modelMed = cardMed._buildModel();
+  const stMed25 = cardMed._statusForDay('2026-07-25', modelMed);
+  const stMed22 = cardMed._statusForDay('2026-07-22', modelMed);
+
+  assert.ok(stMed25.isOvulation, 'medium-confidence NFP: July 25 must be marked as ovulation');
+  assert.ok(stMed22.isFertile, 'medium-confidence NFP: July 22 must be marked as fertile');
+
+  console.log('  ✓ NFP low-confidence: sensor fallback ignored; medium/high confidence respected');
+}
+
 let failed = 0;
 [
   testRegistration,
@@ -274,6 +329,7 @@ let failed = 0;
   testPredictedLegendEntry,
   testPredictedLegendHidden,
   testEditorHasPredictedOptions,
+  testNfpLowConfidenceIgnoredInCalendar,
 ].forEach((fn) => {
   try {
     fn();
