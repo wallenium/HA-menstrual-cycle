@@ -31,7 +31,8 @@
           "family_menarche_age": "Menarche-Alter in der Familie (8–20, optional)",
           "menopause_enabled": "Menopause-Modus aktivieren",
           "menopause_start_date": "Menopause-Startdatum (JJJJ-MM-TT)",
-          "cycle_length_override": "Zyklus-Länge überschreiben (Tage, 0 = automatisch)"
+          "cycle_length_override": "Zyklus-Länge überschreiben (Tage, 0 = automatisch)",
+          "nfp_analysis_mode": "NFP-Analysemodus"
         },
         "data_description": {
           "period_duration_days": "Typische Anzahl der Periodentage (1–14).",
@@ -42,7 +43,8 @@
           "family_menarche_age": "Menarche-Alter in der Familie (Mutter/Schwester) zur Schätzung des erwarteten Alters.",
           "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus.",
           "menopause_start_date": "Datum des Menopause-Beginns (JJJJ-MM-TT). Leer lassen, falls unbekannt.",
-          "cycle_length_override": "Überschreibt die automatisch berechnete durchschnittliche Zykluslänge. 0 = automatisch aus dem Verlauf berechnen (empfohlen). 20–38 = feste Zykluslänge für Fruchtbarkeitsfenster und Eisprung-Berechnungen."
+          "cycle_length_override": "Überschreibt die automatisch berechnete durchschnittliche Zykluslänge. 0 = automatisch aus dem Verlauf berechnen (empfohlen). 20–38 = feste Zykluslänge für Fruchtbarkeitsfenster und Eisprung-Berechnungen.",
+          "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde."
         }
       }
     },
