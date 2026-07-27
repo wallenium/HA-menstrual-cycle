@@ -995,9 +995,10 @@ class MenstruationGaugeCard extends HTMLElement {
       // Helper: center angle of day d
       const dayCenterAngle = (d) => startAngle60 + ((d - 0.5) / total) * spanDeg;
 
-      // Tick marks (one per day)
+      // Tick marks (one per day) — only within the visible 300° arc
       const baseTicks = model.series60.map((_, i) => {
         const angle = dayStartAngle(i + 1);
+        if (angle <= startAngle60 || angle >= startAngle60 + spanDeg) return '';
         return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${(rInner + baseTick).toFixed(1)}" width="2.6" height="${baseTick.toFixed(1)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
       }).join('');
 
@@ -1116,8 +1117,8 @@ class MenstruationGaugeCard extends HTMLElement {
       }
 
       // Triangle marker at 12 o'clock (fixed, outside rotating group) — indicates today's position
-      const triTipY = cy - rInner - extraBar - 2;  // pointing toward gauge
-      const triBaseY = cy - rInner - extraBar - 14; // wide base, away from gauge
+      const triTipY = cy - rInner - extraBar + 4;  // pointing into the arc
+      const triBaseY = cy - rInner - extraBar - 4; // wide base, clearly below month text
       const triW = 7;
       const triangleMarker = `<polygon points="${cx},${triTipY.toFixed(1)} ${(cx - triW).toFixed(1)},${triBaseY.toFixed(1)} ${(cx + triW).toFixed(1)},${triBaseY.toFixed(1)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
 
@@ -1125,7 +1126,7 @@ class MenstruationGaugeCard extends HTMLElement {
       const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date());
 
       return `
-        <svg class="gauge" viewBox="0 0 420 420" role="img" aria-label="Menstruation gauge 60 days">
+        <svg class="gauge" viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label="Menstruation gauge 60 days">
           <g class="gauge-content" style="transform-origin: ${cx}px ${cy}px; transform: rotate(${rotation}deg);">
             ${dayLabels}
             ${baseTicks}
@@ -1281,7 +1282,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const monthLabel = new Intl.DateTimeFormat(this._hass?.locale?.language || 'de', { month: 'long' }).format(this._viewDate);
 
     return `
-      <svg class="gauge" viewBox="0 0 420 420" role="img" aria-label="Menstruation gauge">
+      <svg class="gauge" viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label="Menstruation gauge">
         <text x="${cx}" y="44" class="month">${monthLabel}</text>
         ${dayLabels}
         ${baseTicks}
