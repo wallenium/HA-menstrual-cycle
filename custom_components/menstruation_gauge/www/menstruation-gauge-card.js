@@ -35,6 +35,8 @@ class MenstruationGaugeCard extends HTMLElement {
     this._viewDate = new Date();
     this._editorOpen = false;
     this._lastRenderKey = null;
+    this._gaugeRotation = 0;
+    this._timelineMonth = null;
     this._render();
   }
 
@@ -96,6 +98,7 @@ class MenstruationGaugeCard extends HTMLElement {
         period_toggle: 'Periode',
         period_start: 'Periode Start',
         log_today: 'Heute loggen',
+        today: 'Heute',
         save: 'Speichern',
         cancel: 'Abbrechen',
         basal_temp_label: 'Basaltemperatur (°C)',
@@ -223,6 +226,7 @@ class MenstruationGaugeCard extends HTMLElement {
         period_toggle: 'Period',
         period_start: 'Period Start',
         log_today: 'Log Today',
+        today: 'Today',
         save: 'Save',
         cancel: 'Cancel',
         basal_temp_label: 'Basal Temperature (°C)',
@@ -371,6 +375,9 @@ class MenstruationGaugeCard extends HTMLElement {
     if (!d) return null;
     return this._isoFromDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 12, 0, 0, 0));
   }
+
+  // Returns the current date. Extracted so tests can override it with a fixed date.
+  _todayDate() { return new Date(); }
 
   _fertileWindowForCycle(cycleStart, nextCycleStart, avgCycleLength) {
     if (!cycleStart) return null;
@@ -645,6 +652,67 @@ class MenstruationGaugeCard extends HTMLElement {
       });
     }
 
+    // Build 60-day window series centered on today (30 days past + today + 29 days future)
+    // This series is always today-centric and is used by the gauge for the 60-day view.
+    const today60 = this._todayDate();
+    const todayIso60 = this._isoFromDate(today60);
+    const series60 = [];
+    for (let dayIdx = 0; dayIdx < 60; dayIdx++) {
+      const dt60 = new Date(today60.getFullYear(), today60.getMonth(), today60.getDate() - 30 + dayIdx, 12, 0, 0, 0);
+      const iso60 = this._isoFromDate(dt60);
+      const day60 = dayIdx + 1;
+
+      let dayFertile60 = false;
+      let dayOvulation60 = false;
+
+      if (!hasNfpData && cycleStarts.length > 0) {
+        let cycleStartForDay60 = null;
+        let nextCycleStartForDay60 = null;
+        for (let i = cycleStarts.length - 1; i >= 0; i--) {
+          if (cycleStarts[i] <= iso60) {
+            cycleStartForDay60 = cycleStarts[i];
+            nextCycleStartForDay60 = cycleStarts[i + 1] || null;
+            break;
+          }
+        }
+        if (cycleStartForDay60) {
+          const fw60 = this._fertileWindowForCycle(cycleStartForDay60, nextCycleStartForDay60, effectiveAvgCycle);
+          if (fw60) {
+            dayFertile60 = fw60.fertileStart && fw60.fertileEnd
+              ? (this._dayDiff(iso60, fw60.fertileStart) >= 0 && this._dayDiff(fw60.fertileEnd, iso60) >= 0)
+              : false;
+            dayOvulation60 = fw60.ovulationDay ? iso60 === fw60.ovulationDay : false;
+          }
+        }
+        if (!dayOvulation60 && ovulationDay && iso60 === ovulationDay && shouldUseSensorFallback) {
+          dayOvulation60 = true;
+        }
+        if (!dayFertile60 && shouldUseSensorFallback && fertileStart && fertileEnd
+            && this._dayDiff(iso60, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso60) >= 0) {
+          dayFertile60 = true;
+        }
+      } else {
+        if (shouldUseSensorFallback) {
+          dayFertile60 = fertileStart && fertileEnd
+            ? (this._dayDiff(iso60, fertileStart) >= 0 && this._dayDiff(fertileEnd, iso60) >= 0)
+            : false;
+          dayOvulation60 = ovulationDay ? iso60 === ovulationDay : false;
+        }
+      }
+
+      series60.push({
+        day: day60,
+        iso: iso60,
+        confirmed: confirmedSet.has(iso60),
+        fertile: dayFertile60,
+        ovulation: dayOvulation60,
+        isToday: iso60 === todayIso60,
+        isMonthStart: dt60.getDate() === 1,
+      });
+    }
+    const windowStartIso = series60[0]?.iso || '';
+    const windowEndIso = series60[59]?.iso || '';
+
     return {
       entityId,
       stateObj,
@@ -664,7 +732,10 @@ class MenstruationGaugeCard extends HTMLElement {
       currentBleedingBlock,
       daysInMonth,
       series,
-      todayIso: this._isoFromDate(new Date()),
+      series60,
+      windowStartIso,
+      windowEndIso,
+      todayIso: todayIso60,
       nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
     };
   }
@@ -902,10 +973,180 @@ class MenstruationGaugeCard extends HTMLElement {
     const rInner = 126;
     const baseTick = 4.2;
     const extraBar = 26;
-    const total = model.daysInMonth || 30;
     const safePeriodDuration = Number.isFinite(Number(model.periodDuration))
       ? Math.max(1, Math.min(14, Math.round(Number(model.periodDuration))))
       : 5;
+    const showFertile = this._config?.show_fertile_period !== false;
+    const showPredictedCycles = this._config?.show_predicted_cycles !== false;
+    const maxPredictedCycles = Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6)));
+
+    // --- 60-day view (when series60 is present in model) ---
+    if (model.series60) {
+      const total = 60;
+      const spanDeg = 300; // 300° span: day 1 at ~7 o'clock, today at 12, day 60 at ~5 o'clock
+      const startAngle60 = -90 - (30 / total) * spanDeg; // = -240°; puts today (day 31) at -90° (top)
+      const degPerDay = spanDeg / total; // 5°/day
+      const edgeOff = 0.4; // degree inset for bar edges
+      const locale = this._hass?.locale?.language || 'de';
+      const rotation = this._gaugeRotation || 0;
+
+      // Helper: start angle of day d (1-indexed) in the 60-day arc
+      const dayStartAngle = (d) => startAngle60 + ((d - 1) / total) * spanDeg;
+      // Helper: center angle of day d
+      const dayCenterAngle = (d) => startAngle60 + ((d - 0.5) / total) * spanDeg;
+
+      // Tick marks (one per day)
+      const baseTicks = model.series60.map((_, i) => {
+        const angle = dayStartAngle(i + 1);
+        return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${(rInner + baseTick).toFixed(1)}" width="2.6" height="${baseTick.toFixed(1)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
+      }).join('');
+
+      // Day labels: show day-of-month at month starts and every 5th calendar day
+      const dayLabels = model.series60.map((step) => {
+        const dayOfMonth = Number(step.iso.slice(8));
+        if (!step.isMonthStart && dayOfMonth % 5 !== 0) return '';
+        const angle = dayCenterAngle(step.day);
+        const pos = this._polar(cx, cy, 178, angle);
+        return `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" fill="${palette.dayLabel}" font-size="10" text-anchor="middle" dominant-baseline="middle">${dayOfMonth}</text>`;
+      }).join('');
+
+      // Month separators: dezent gray lines + short month name at each month start
+      const monthSeparators = model.series60.map((step) => {
+        if (!step.isMonthStart) return '';
+        const angle = dayStartAngle(step.day);
+        const pInner = this._polar(cx, cy, rInner - 6, angle);
+        const pOuter = this._polar(cx, cy, rInner + extraBar + 10, angle);
+        const pLabel = this._polar(cx, cy, rInner + extraBar + 22, angle);
+        const dt = this._parseISO(step.iso);
+        const mName = dt ? new Intl.DateTimeFormat(locale, { month: 'short' }).format(dt) : step.iso.slice(5, 7);
+        return `<line x1="${pInner.x.toFixed(1)}" y1="${pInner.y.toFixed(1)}" x2="${pOuter.x.toFixed(1)}" y2="${pOuter.y.toFixed(1)}" stroke="${palette.tick}" stroke-width="1.2" opacity="0.6"></line><text x="${pLabel.x.toFixed(1)}" y="${pLabel.y.toFixed(1)}" fill="${palette.dayLabel}" font-size="9" text-anchor="middle" dominant-baseline="middle" opacity="0.75">${mName}</text>`;
+      }).join('');
+
+      // Confirmed ranges and bars
+      const confirmedRanges60 = this._confirmedRanges(model.series60);
+
+      const periodWindowBars = confirmedRanges60.map((range) => {
+        const windowEnd = Math.min(total, range.start + safePeriodDuration - 1);
+        const sa = dayStartAngle(range.start) + edgeOff;
+        const ea = dayStartAngle(windowEnd + 1) - edgeOff;
+        if (sa >= ea) return '';
+        const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.74, sa, ea);
+        return `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="9" stroke-linecap="round" stroke-opacity="0.24"></path>`;
+      }).join('');
+
+      const confirmedBars = confirmedRanges60.map((range) => {
+        const sa = dayStartAngle(range.start) + edgeOff;
+        const ea = dayStartAngle(range.end + 1) - edgeOff;
+        if (sa >= ea) return '';
+        const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.74, sa, ea);
+        return `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="9" stroke-linecap="round" stroke-opacity="0.78"></path>`;
+      }).join('');
+
+      const fertileBars = model.series60.map((step) => {
+        if (!showFertile || !step.fertile) return '';
+        const sa = dayStartAngle(step.day) + edgeOff;
+        const ea = dayStartAngle(step.day + 1) - edgeOff;
+        const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.46, sa, ea);
+        return `<path d="${dPath}" fill="none" stroke="${palette.fertile}" stroke-width="6" stroke-linecap="round" stroke-opacity=".62"></path>`;
+      }).join('');
+
+      let ovulationMarkers = '';
+      if (showFertile) {
+        const ovSteps = model.series60.filter((s) => s.ovulation);
+        ovSteps.forEach((step) => {
+          const angle = dayCenterAngle(step.day);
+          const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
+          ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+        });
+        // Fallback: ovulationDay on model (not yet in series60)
+        if (!ovSteps.length && model.ovulationDay) {
+          const ovIso = this._normalizeISO(model.ovulationDay);
+          if (ovIso && ovIso >= (model.windowStartIso || '') && ovIso <= (model.windowEndIso || '')) {
+            const ovStep = model.series60.find((s) => s.iso === ovIso);
+            if (ovStep) {
+              const angle = dayCenterAngle(ovStep.day);
+              const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
+              ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+            }
+          }
+        }
+      }
+
+      // NFP method label
+      let nfpMethodLabel = '';
+      if (showFertile && model.ovulationDay) {
+        const nfp = model.nfpAnalysis;
+        const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
+        const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+        nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
+      }
+
+      // Predicted bars and markers (filtered to 60-day window)
+      let predictedMarker = '';
+      let predictedBars = '';
+      if (showPredictedCycles) {
+        const wStart = model.windowStartIso || '';
+        const wEnd = model.windowEndIso || '';
+        (model.predictedStarts || []).slice(0, maxPredictedCycles).forEach((isoRaw, predictedIndex) => {
+          const predIso = this._normalizeISO(isoRaw);
+          if (!predIso || predIso < wStart || predIso > wEnd) return;
+          const predStep = model.series60.find((s) => s.iso === predIso);
+          if (!predStep) return;
+          const pDay = predStep.day;
+          const marker = (offset, fill, radius) => {
+            const d = pDay + offset;
+            if (d < 1 || d > total) return '';
+            const angle = dayCenterAngle(d);
+            const pos = this._polar(cx, cy, rInner + extraBar + 3, angle);
+            return `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="${radius}" fill="${fill}" stroke="${palette.markerStroke}" stroke-width="2"></circle>`;
+          };
+          predictedMarker += `${marker(-1, '#fb7185', '4.6')}${marker(0, palette.confirmed, '5.5')}${marker(1, '#fb7185', '4.6')}`;
+          Array.from({ length: safePeriodDuration }).forEach((_, idx) => {
+            const d = pDay + idx;
+            if (d < 1 || d > total) return;
+            const sa = dayStartAngle(d) + edgeOff * 0.75;
+            const ea = dayStartAngle(d + 1) - edgeOff * 0.75;
+            if (sa >= ea) return;
+            const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.74, sa, ea);
+            const alpha = idx === 0 ? Math.max(0.22, 0.60 - (predictedIndex * 0.08)) : Math.max(0.16, 0.38 - (predictedIndex * 0.05));
+            const sw = idx === 0 ? 8.6 : 7.2;
+            predictedBars += `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="${sw}" stroke-linecap="round" stroke-opacity="${alpha.toFixed(2)}"></path>`;
+          });
+        });
+      }
+
+      // Triangle marker at 12 o'clock (fixed, outside rotating group) — indicates today's position
+      const triTipY = cy - rInner - extraBar - 2;  // pointing toward gauge
+      const triBaseY = cy - rInner - extraBar - 14; // wide base, away from gauge
+      const triW = 7;
+      const triangleMarker = `<polygon points="${cx},${triTipY.toFixed(1)} ${(cx - triW).toFixed(1)},${triBaseY.toFixed(1)} ${(cx + triW).toFixed(1)},${triBaseY.toFixed(1)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
+
+      // Month label (static, shows today's context)
+      const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date());
+
+      return `
+        <svg class="gauge" viewBox="0 0 420 420" role="img" aria-label="Menstruation gauge 60 days">
+          <g class="gauge-content" style="transform-origin: ${cx}px ${cy}px; transform: rotate(${rotation}deg);">
+            ${dayLabels}
+            ${baseTicks}
+            ${monthSeparators}
+            ${fertileBars}
+            ${ovulationMarkers}
+            ${nfpMethodLabel}
+            ${periodWindowBars}
+            ${confirmedBars}
+            ${predictedBars}
+            ${predictedMarker}
+            <circle cx="${cx}" cy="${cy}" r="106" fill="none" stroke="${palette.ring}" stroke-width="1"></circle>
+          </g>
+          <text x="${cx}" y="44" class="month">${monthLabel60}</text>
+          ${triangleMarker}
+        </svg>
+      `;
+    }
+
+    // --- Legacy monthly view (fallback for backward-compat when series60 absent) ---
+    const total = model.daysInMonth || 30;
     const gaugeWidth = Number(this._lastCardWidth || 0);
     let labelStep = 1;
     if (gaugeWidth > 0 && gaugeWidth < 320) labelStep = 5;
@@ -957,7 +1198,6 @@ class MenstruationGaugeCard extends HTMLElement {
       return `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="9" stroke-linecap="round" stroke-opacity="0.78"></path>`;
     }).join('');
 
-    const showFertile = this._config?.show_fertile_period !== false;
     const fertileBars = model.series.map((step) => {
       if (!showFertile) return '';
       if (!step.fertile) return '';
@@ -1004,8 +1244,6 @@ class MenstruationGaugeCard extends HTMLElement {
 
     let predictedMarker = '';
     let predictedBars = '';
-    const showPredictedCycles = this._config?.show_predicted_cycles !== false;
-    const maxPredictedCycles = Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6)));
     const predictedInView = showPredictedCycles
       ? (model.predictedStarts || [])
         .slice(0, maxPredictedCycles)
@@ -1086,6 +1324,80 @@ class MenstruationGaugeCard extends HTMLElement {
         <div class="center-primary">${this._t('week')} ${pregnancyInfo.week}</div>
         <div class="center-secondary">${secondaryParts.join(' · ')}</div>
       </button>
+    `;
+  }
+
+  _renderTimeline(model, palette, locale) {
+    // Determine which 3 months to show. _timelineMonth holds the centre month.
+    const tmBase = this._timelineMonth || new Date();
+    const months = [
+      new Date(tmBase.getFullYear(), tmBase.getMonth() - 1, 1),
+      new Date(tmBase.getFullYear(), tmBase.getMonth(), 1),
+      new Date(tmBase.getFullYear(), tmBase.getMonth() + 1, 1),
+    ];
+
+    const todayIso = model.todayIso || this._isoFromDate(new Date());
+    const windowStart = model.windowStartIso || '';
+    const windowEnd = model.windowEndIso || '';
+    const confirmedSet = model.confirmedSet || new Set();
+    const series60 = model.series60 || [];
+    const fertileSet = new Set(series60.filter((s) => s.fertile).map((s) => s.iso));
+    const ovulationSet = new Set(series60.filter((s) => s.ovulation).map((s) => s.iso));
+
+    const dows = this._weekdayLabels(locale);
+
+    const renderMonth = (monthDt) => {
+      const y = monthDt.getFullYear();
+      const m = monthDt.getMonth();
+      const dayCount = new Date(y, m + 1, 0).getDate();
+      const firstDowMon0 = (new Date(y, m, 1, 12).getDay() + 6) % 7;
+      const totalCells = Math.ceil((firstDowMon0 + dayCount) / 7) * 7;
+      const monthName = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(monthDt);
+
+      const dowHtml = dows.map((d) => `<div class="tl-dow">${d}</div>`).join('');
+      let cellsHtml = '';
+      for (let i = 0; i < totalCells; i++) {
+        const dayNum = i - firstDowMon0 + 1;
+        if (dayNum < 1 || dayNum > dayCount) {
+          cellsHtml += '<div class="tl-day tl-empty"></div>';
+          continue;
+        }
+        const iso = this._isoFromDate(new Date(y, m, dayNum, 12, 0, 0, 0));
+        const isToday = iso === todayIso;
+        const inWindow = iso >= windowStart && iso <= windowEnd;
+        const isPeriod = confirmedSet.has(iso);
+        const isFertile = fertileSet.has(iso);
+        const isOvulation = ovulationSet.has(iso);
+        const classes = [
+          'tl-day',
+          isToday ? 'tl-today' : '',
+          inWindow ? 'tl-in-window' : 'tl-out-window',
+          isPeriod ? 'tl-period' : '',
+          isFertile && !isPeriod ? 'tl-fertile' : '',
+          isOvulation ? 'tl-ovulation' : '',
+        ].filter(Boolean).join(' ');
+        cellsHtml += `<button type="button" class="${classes}" data-timeline-iso="${iso}" title="${iso}">${dayNum}</button>`;
+      }
+
+      return `
+        <div class="tl-month-col">
+          <div class="tl-month-name">${monthName}</div>
+          <div class="tl-dow-row">${dowHtml}</div>
+          <div class="tl-days-grid">${cellsHtml}</div>
+        </div>
+      `;
+    };
+
+    return `
+      <div class="timeline">
+        <div class="tl-nav-row">
+          <button type="button" class="btn tl-nav-btn" data-tl-nav="prev" title="◀">◀</button>
+          <div class="tl-months-wrap">
+            ${months.map(renderMonth).join('')}
+          </div>
+          <button type="button" class="btn tl-nav-btn" data-tl-nav="next" title="▶">▶</button>
+        </div>
+      </div>
     `;
   }
 
@@ -1514,13 +1826,64 @@ class MenstruationGaugeCard extends HTMLElement {
 
     // Single delegated click listener on shadowRoot — survives innerHTML replacements
     this.shadowRoot.addEventListener('click', (ev) => {
-      // Navigation: previous month
+      // Today button: reset gauge rotation to today at top
+      if (ev.target?.closest('[data-action="gauge-today"]')) {
+        this._gaugeRotation = 0;
+        const gaugeContent = this.shadowRoot?.querySelector('.gauge-content');
+        if (gaugeContent) {
+          gaugeContent.style.transition = 'transform 0.8s ease-in-out';
+          gaugeContent.style.transform = 'rotate(0deg)';
+          setTimeout(() => { if (gaugeContent) gaugeContent.style.transition = ''; }, 820);
+        }
+        return;
+      }
+      // Timeline navigation: previous month group
+      if (ev.target?.closest('[data-tl-nav="prev"]')) {
+        if (!this._timelineMonth) this._timelineMonth = new Date();
+        this._timelineMonth = new Date(this._timelineMonth.getFullYear(), this._timelineMonth.getMonth() - 1, 1);
+        this._lastRenderKey = null;
+        this._render();
+        return;
+      }
+      // Timeline navigation: next month group
+      if (ev.target?.closest('[data-tl-nav="next"]')) {
+        if (!this._timelineMonth) this._timelineMonth = new Date();
+        this._timelineMonth = new Date(this._timelineMonth.getFullYear(), this._timelineMonth.getMonth() + 1, 1);
+        this._lastRenderKey = null;
+        this._render();
+        return;
+      }
+      // Timeline day click: rotate gauge so clicked day is at top
+      const tlDay = ev.target?.closest('[data-timeline-iso]');
+      if (tlDay) {
+        const iso = tlDay.getAttribute('data-timeline-iso');
+        if (iso) {
+          const todayIso = this._isoFromDate(new Date());
+          const diffDays = this._dayDiff(iso, todayIso);
+          const dayIn60 = 31 + diffDays; // day 31 = today, range 1-60
+          if (dayIn60 >= 1 && dayIn60 <= 60) {
+            const spanDeg = 300;
+            const startAngle60 = -90 - (30 / 60) * spanDeg; // -240
+            const dayAngle = startAngle60 + ((dayIn60 - 1) / 60) * spanDeg;
+            const targetRotation = -(dayAngle + 90);
+            this._gaugeRotation = targetRotation;
+            const gaugeContent = this.shadowRoot?.querySelector('.gauge-content');
+            if (gaugeContent) {
+              gaugeContent.style.transition = 'transform 0.8s ease-in-out';
+              gaugeContent.style.transform = `rotate(${targetRotation}deg)`;
+              setTimeout(() => { if (gaugeContent) gaugeContent.style.transition = ''; }, 820);
+            }
+          }
+        }
+        return;
+      }
+      // Navigation: previous month (calendar)
       if (ev.target?.closest('[data-nav="prev"]')) {
         this._viewDate = new Date(this._viewDate.getFullYear(), this._viewDate.getMonth() - 1, 1);
         this._render();
         return;
       }
-      // Navigation: next month
+      // Navigation: next month (calendar)
       if (ev.target?.closest('[data-nav="next"]')) {
         this._viewDate = new Date(this._viewDate.getFullYear(), this._viewDate.getMonth() + 1, 1);
         this._render();
@@ -1634,6 +1997,7 @@ class MenstruationGaugeCard extends HTMLElement {
       cardTitle,
       friendlyName,
       Object.keys(model.symptomByDate || {}).sort().join(','),
+      this._timelineMonth ? `${this._timelineMonth.getFullYear()}-${this._timelineMonth.getMonth()}` : '',
     ].join('|');
   }
 
@@ -1646,6 +2010,10 @@ class MenstruationGaugeCard extends HTMLElement {
     // Use width from ResizeObserver; fall back to a direct measurement only if not yet available.
     if (!this._lastCardWidth) {
       this._lastCardWidth = this.getBoundingClientRect()?.width || 0;
+    }
+    // Initialize timeline month to today's month if not yet set
+    if (!this._timelineMonth) {
+      this._timelineMonth = new Date();
     }
     const locale = this._hass?.locale?.language || 'de';
     const monthYear = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(this._viewDate);
@@ -1721,6 +2089,9 @@ class MenstruationGaugeCard extends HTMLElement {
         .center-days { font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
         .center-primary { font-size: 1rem; font-weight: 700; line-height: 1.2; }
         .center-secondary { font-size: .76rem; line-height: 1.25; opacity: .84; }
+        /* Today button in gauge-wrap top-right */
+        .today-btn { position: absolute; top: 8px; right: 8px; z-index: 10; border: 1px solid ${palette.buttonBorder}; border-radius: 8px; background: ${palette.buttonBg}; color: ${palette.buttonColor}; padding: 3px 8px; cursor: pointer; font-size: .72rem; font-weight: 600; opacity: .85; pointer-events: auto; }
+        .today-btn:hover { opacity: 1; }
         .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .title { font-weight: 700; }
         .nav { display: inline-flex; gap: 6px; }
@@ -1735,6 +2106,24 @@ class MenstruationGaugeCard extends HTMLElement {
         .day.other { opacity: .3; }
         .day.has-symptoms { box-shadow: 0 0 0 2px ${palette.fertile} inset; }
         .day.active.has-symptoms { box-shadow: 0 0 0 2px ${palette.fertile} inset, 0 0 0 4px ${palette.confirmedInset} inset; }
+        /* 60-day timeline */
+        .timeline { border-top: 1px solid ${palette.border}; padding-top: 8px; }
+        .tl-nav-row { display: flex; align-items: flex-start; gap: 4px; }
+        .tl-nav-btn { flex-shrink: 0; align-self: center; padding: 4px 6px; font-size: .8rem; }
+        .tl-months-wrap { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow: hidden; }
+        .tl-month-col { display: flex; flex-direction: column; gap: 2px; }
+        .tl-month-name { font-size: .72rem; font-weight: 700; color: ${palette.monthText}; text-align: center; padding-bottom: 2px; }
+        .tl-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+        .tl-dow { font-size: .6rem; text-align: center; opacity: .65; }
+        .tl-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+        .tl-day { min-height: 18px; min-width: 18px; border: none; border-radius: 3px; background: transparent; color: ${palette.dayColor}; cursor: pointer; font-size: .65rem; text-align: center; padding: 0; line-height: 18px; display: block; }
+        .tl-empty { background: transparent; cursor: default; pointer-events: none; }
+        .tl-out-window { opacity: .35; }
+        .tl-in-window { opacity: .85; }
+        .tl-today { background: #3b82f6; color: #fff; border-radius: 50%; font-weight: 700; }
+        .tl-period { background: ${palette.confirmed}; color: #fff; border-radius: 3px; }
+        .tl-fertile:not(.tl-period) { background: ${palette.fertile}; color: #000; border-radius: 3px; opacity: .85; }
+        .tl-ovulation { outline: 2px solid ${palette.ovulation}; outline-offset: -2px; }
         /* Symptom modal */
         .sym-overlay { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; border-radius: 16px; overflow: hidden; }
         .sym-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
@@ -1804,6 +2193,7 @@ class MenstruationGaugeCard extends HTMLElement {
             </div>` : ''}
             <div class="gauge-wrap">
               ${this._renderGauge(model, palette)}
+              <button type="button" class="today-btn" data-action="gauge-today" title="${this._t('today')}">${this._t('today')}</button>
               <div class="center">${this._renderCenterContent(model, palette, canEdit, isOverdueSoon, countdown)}</div>
             </div>
             ${model.state === 'pre_menarche' ? `
@@ -1812,6 +2202,7 @@ class MenstruationGaugeCard extends HTMLElement {
                 🩸 ${this._t('log_first_period')}
               </button>
             </div>` : ''}
+            ${model.series60 ? this._renderTimeline(model, palette, locale) : ''}
             ${this._config.show_editor && canEdit ? `
             <div class="editor">
               <div class="toolbar">
