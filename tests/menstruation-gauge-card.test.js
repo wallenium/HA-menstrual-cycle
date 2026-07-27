@@ -899,6 +899,69 @@ function testNfpLowConfidenceIgnored() {
 }
 
 // ---------------------------------------------------------------------------
+// D5) Predicted cycle starts must drive later viewed months and the marker should
+//     prefer the viewed month's effective ovulation day when multiple cycles overlap.
+// ---------------------------------------------------------------------------
+
+function testPredictedCycleSelectionForViewedMonth() {
+  const sharedAttributes = {
+    grouped_starts: ['2026-01-08', '2026-02-04', '2026-03-03', '2026-03-27', '2026-04-25', '2026-05-23', '2026-06-19', '2026-07-16'],
+    next_predicted_start: '2026-08-13',
+    predicted_cycle_starts: ['2026-08-13', '2026-09-10', '2026-10-08', '2026-11-05', '2026-12-03', '2026-12-31'],
+    avg_cycle_length: 28,
+    fertile_window_start: '2026-07-24',
+    fertile_window_end: '2026-07-30',
+    ovulation_day: '2026-07-29',
+    nfp_analysis: {
+      confidence_level: 'low',
+      fertile_window: { start: null, end: null },
+      ovulation_day: null,
+      ovulation_detected: false,
+    },
+  };
+
+  const julyCard = makeCard();
+  julyCard.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  julyCard._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+  julyCard._hass = makeHass({ state: 'fertile', attributes: sharedAttributes });
+
+  const julyModel = julyCard._buildModel();
+  assert.strictEqual(julyModel.ovulationDay, '2026-07-29', 'July view must keep the July cycle ovulation day');
+  assert.strictEqual(julyModel.fertileStart, '2026-07-24', 'July view must keep the July cycle fertile start');
+  assert.strictEqual(julyModel.fertileEnd, '2026-07-30', 'July view must keep the July cycle fertile end');
+  assert.deepStrictEqual(
+    julyModel.series.filter((step) => step.ovulation).map((step) => step.iso),
+    ['2026-07-01', '2026-07-29'],
+    'July series may contain the prior cycle overlap and the active cycle ovulation',
+  );
+
+  const julyHtml = julyCard._renderGauge(julyModel, julyCard._palette('fertile'));
+  const julyAngle = -90 + ((((29 - 1) + 0.5) / 31) * 360);
+  const julyPos = julyCard._polar(210, 210, 126 + 26 * 0.46, julyAngle);
+  assert.ok(
+    julyHtml.includes(`cx="${julyPos.x.toFixed(1)}" cy="${julyPos.y.toFixed(1)}"`),
+    'July marker must prefer the viewed month ovulation day instead of the first overlapping ovulation in the series',
+  );
+
+  const augustCard = makeCard();
+  augustCard.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  augustCard._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+  augustCard._hass = makeHass({ state: 'fertile', attributes: sharedAttributes });
+
+  const augustModel = augustCard._buildModel();
+  assert.strictEqual(augustModel.fertileStart, '2026-08-21', 'August view must use the predicted August cycle fertile start');
+  assert.strictEqual(augustModel.fertileEnd, '2026-08-27', 'August view must use the predicted August cycle fertile end');
+  assert.strictEqual(augustModel.ovulationDay, '2026-08-26', 'August view must use the predicted August cycle ovulation day');
+  assert.ok(augustModel.series.find((step) => step.iso === '2026-08-21')?.fertile, 'Aug 21 must be fertile for the August cycle');
+  assert.ok(augustModel.series.find((step) => step.iso === '2026-08-26')?.ovulation, 'Aug 26 must be the August ovulation day');
+  assert.ok(augustModel.series.find((step) => step.iso === '2026-08-27')?.fertile, 'Aug 27 must remain fertile for the August cycle');
+  assert.ok(!augustModel.series.find((step) => step.iso === '2026-08-20')?.fertile, 'Aug 20 must stay outside the August fertile window');
+  assert.ok(!augustModel.series.find((step) => step.iso === '2026-08-28')?.fertile, 'Aug 28 must stay outside the August fertile window');
+
+  console.log('  ✓ predicted cycle selection uses the viewed month and marker prefers effective ovulation');
+}
+
+// ---------------------------------------------------------------------------
 // D5) Month-boundary fertile/ovulation: when the fertile window or ovulation
 //     crosses from the previous month into day 1 of the viewed month, it must
 //     be correctly marked in the series.
@@ -1134,6 +1197,7 @@ const tests = [
   ['historical-cycle-fertile-ovulation', testHistoricalCycleFertileOvulation],
   ['ovulation-fallback-current-cycle-not-in-grouped-starts', testOvulationFallbackCurrentCycleNotInGroupedStarts],
   ['nfp-low-confidence-ignored', testNfpLowConfidenceIgnored],
+  ['predicted-cycle-selection-viewed-month', testPredictedCycleSelectionForViewedMonth],
   ['month-boundary-fertile-ovulation', testMonthBoundaryFertileOvulation],
   ['ovulation-marker-fallback-iso-day-extraction', testOvulationMarkerFallbackUsesIsoDayExtraction],
   ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],

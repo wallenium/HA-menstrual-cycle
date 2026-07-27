@@ -535,6 +535,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const groupedStarts = Array.isArray(attrs.grouped_starts)
       ? attrs.grouped_starts.map((s) => this._normalizeISO(s)).filter(Boolean).sort()
       : [];
+    const cycleStarts = Array.from(new Set([...groupedStarts, ...predictedStarts])).sort();
     const rawAvgCycle = Number(attrs.avg_cycle_length);
     const rawOverride = Number(attrs.cycle_length_override);
     const effectiveAvgCycle = (rawOverride >= 20 && rawOverride <= 38)
@@ -556,15 +557,13 @@ class MenstruationGaugeCard extends HTMLElement {
     // acceptable or there is no NFP data at all.  Low-confidence NFP should not leak into the gauge.
     const shouldUseSensorFallback = !nfpAnalysisAttrs || nfpAnalysisAttrs.confidence_level !== 'low';
 
-    if (!hasNfpData && groupedStarts.length > 0) {
+    if (!hasNfpData && cycleStarts.length > 0) {
       const viewLastDayDt = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0, 12);
       const viewLastIso = this._isoFromDate(viewLastDayDt);
-      const viewCycleStartIso = groupedStarts.filter((d) => d <= viewLastIso).pop() || null;
+      const viewCycleStartIso = cycleStarts.filter((d) => d <= viewLastIso).pop() || null;
       if (viewCycleStartIso) {
-        const viewCycleIdx = groupedStarts.indexOf(viewCycleStartIso);
-        const viewNextCycleIso = groupedStarts[viewCycleIdx + 1]
-          || predictedStarts.find((iso) => iso > viewCycleStartIso)
-          || null;
+        const viewCycleIdx = cycleStarts.indexOf(viewCycleStartIso);
+        const viewNextCycleIso = cycleStarts[viewCycleIdx + 1] || null;
         const fw = this._fertileWindowForCycle(viewCycleStartIso, viewNextCycleIso, effectiveAvgCycle);
         if (fw) {
           effectiveFertileStart = fw.fertileStart;
@@ -584,16 +583,14 @@ class MenstruationGaugeCard extends HTMLElement {
       let dayFertile = false;
       let dayOvulation = false;
 
-      if (!hasNfpData && groupedStarts.length > 0) {
+      if (!hasNfpData && cycleStarts.length > 0) {
         // Find which cycle this day belongs to (latest cycle start on or before this date)
         let cycleStartForDay = null;
         let nextCycleStartForDay = null;
-        for (let i = groupedStarts.length - 1; i >= 0; i--) {
-          if (groupedStarts[i] <= iso) {
-            cycleStartForDay = groupedStarts[i];
-            nextCycleStartForDay = groupedStarts[i + 1]
-              || predictedStarts.find((predictedIso) => predictedIso > groupedStarts[i])
-              || null;
+        for (let i = cycleStarts.length - 1; i >= 0; i--) {
+          if (cycleStarts[i] <= iso) {
+            cycleStartForDay = cycleStarts[i];
+            nextCycleStartForDay = cycleStarts[i + 1] || null;
             break;
           }
         }
@@ -973,11 +970,8 @@ class MenstruationGaugeCard extends HTMLElement {
 
     let ovulationMarker = '';
     if (showFertile) {
-      const ovulationStep = model.series.find((s) => s.ovulation);
-      let oDay = ovulationStep ? ovulationStep.day : null;
-      // Fallback: if no series entry has ovulation flagged but model.ovulationDay falls in the
-      // viewed month, render the marker directly (e.g. series computation missed it).
-      if (oDay === null && model.ovulationDay) {
+      let oDay = null;
+      if (model.ovulationDay) {
         const ovIso = this._normalizeISO(model.ovulationDay);
         if (ovIso) {
           const [ovYear, ovMonth, ovDay] = ovIso.split('-').map((x) => Number(x));
@@ -985,6 +979,10 @@ class MenstruationGaugeCard extends HTMLElement {
             oDay = ovDay;
           }
         }
+      }
+      if (oDay === null) {
+        const ovulationStep = model.series.find((s) => s.ovulation);
+        oDay = ovulationStep ? ovulationStep.day : null;
       }
       if (oDay !== null && oDay >= 1 && oDay <= total) {
         const angle = -90 + ((((oDay - 1) + 0.5) / total) * 360);
