@@ -968,26 +968,28 @@ class MenstruationGaugeCard extends HTMLElement {
       return `<path d="${dPath}" fill="none" stroke="${palette.fertile}" stroke-width="6" stroke-linecap="round" stroke-opacity=".62"></path>`;
     }).join('');
 
-    let ovulationMarker = '';
+    let ovulationMarkers = '';
     if (showFertile) {
-      let oDay = null;
-      if (model.ovulationDay) {
+      const ovulationSteps = model.series.filter((s) => s.ovulation);
+      ovulationSteps.forEach((step) => {
+        if (step.day >= 1 && step.day <= total) {
+          const angle = -90 + ((((step.day - 1) + 0.5) / total) * 360);
+          const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
+          ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+        }
+      });
+      if (!ovulationSteps.length && model.ovulationDay) {
         const ovIso = this._normalizeISO(model.ovulationDay);
         if (ovIso) {
           const [ovYear, ovMonth, ovDay] = ovIso.split('-').map((x) => Number(x));
           if (ovYear === this._viewDate.getFullYear() && (ovMonth - 1) === this._viewDate.getMonth()) {
-            oDay = ovDay;
+            if (ovDay >= 1 && ovDay <= total) {
+              const angle = -90 + ((((ovDay - 1) + 0.5) / total) * 360);
+              const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
+              ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+            }
           }
         }
-      }
-      if (oDay === null) {
-        const ovulationStep = model.series.find((s) => s.ovulation);
-        oDay = ovulationStep ? ovulationStep.day : null;
-      }
-      if (oDay !== null && oDay >= 1 && oDay <= total) {
-        const angle = -90 + ((((oDay - 1) + 0.5) / total) * 360);
-        const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
-        ovulationMarker = `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
       }
     }
 
@@ -1046,7 +1048,7 @@ class MenstruationGaugeCard extends HTMLElement {
         ${dayLabels}
         ${baseTicks}
         ${fertileBars}
-        ${ovulationMarker}
+        ${ovulationMarkers}
         ${nfpMethodLabel}
         ${currentMonthPeriodWindowBars}
         ${confirmedBars}

@@ -1103,6 +1103,52 @@ function testMonthBoundaryFertileOvulation() {
   console.log('  ✓ month boundary: fertile/ovulation correctly shown on day 1 when window crosses from previous month');
 }
 
+function testTwoOvulationsInSameMonthBothMarkersRendered() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
+  card._hass = makeHass();
+  card._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0); // July 2026
+
+  const total = 31;
+  // Two ovulation days in July: day 2 (old cycle) and day 29 (new cycle)
+  const series = Array.from({ length: total }, (_, idx) => ({
+    day: idx + 1,
+    iso: `2026-07-${String(idx + 1).padStart(2, '0')}`,
+    fertile: idx >= 8 && idx <= 17,
+    ovulation: idx + 1 === 2 || idx + 1 === 29,
+    confirmed: false,
+  }));
+  const model = {
+    daysInMonth: total,
+    periodDuration: 5,
+    ovulationDay: null,
+    nfpAnalysis: null,
+    predictedStarts: [],
+    todayIso: '2026-07-27',
+    series,
+  };
+  const palette = card._palette('neutral');
+
+  const html = card._renderGauge(model, palette);
+
+  // Both ovulation days must produce a marker
+  const expectedAngle2 = -90 + ((((2 - 1) + 0.5) / total) * 360);
+  const expectedPos2 = card._polar(210, 210, 126 + 26 * 0.46, expectedAngle2);
+  const expectedAngle29 = -90 + ((((29 - 1) + 0.5) / total) * 360);
+  const expectedPos29 = card._polar(210, 210, 126 + 26 * 0.46, expectedAngle29);
+
+  assert.ok(
+    html.includes(`cx="${expectedPos2.x.toFixed(1)}" cy="${expectedPos2.y.toFixed(1)}"`),
+    'first ovulation marker (day 2) must be rendered when two ovulations occur in same month',
+  );
+  assert.ok(
+    html.includes(`cx="${expectedPos29.x.toFixed(1)}" cy="${expectedPos29.y.toFixed(1)}"`),
+    'second ovulation marker (day 29) must be rendered when two ovulations occur in same month',
+  );
+
+  console.log('  ✓ two ovulations in same month: both markers rendered');
+}
+
 function testOvulationMarkerFallbackUsesIsoDayExtraction() {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', show_fertile_period: true });
@@ -1200,6 +1246,7 @@ const tests = [
   ['predicted-cycle-selection-viewed-month', testPredictedCycleSelectionForViewedMonth],
   ['month-boundary-fertile-ovulation', testMonthBoundaryFertileOvulation],
   ['ovulation-marker-fallback-iso-day-extraction', testOvulationMarkerFallbackUsesIsoDayExtraction],
+  ['two-ovulations-same-month-both-markers', testTwoOvulationsInSameMonthBothMarkersRendered],
   ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
