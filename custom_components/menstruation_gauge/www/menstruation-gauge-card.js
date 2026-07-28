@@ -2117,7 +2117,7 @@ class MenstruationGaugeCard extends HTMLElement {
         .tl-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .tl-dow { font-size: .6rem; text-align: center; opacity: .65; }
         .tl-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-        .tl-day { min-height: 18px; min-width: 18px; border: none; border-radius: 3px; background: transparent; color: ${palette.dayColor}; cursor: pointer; font-size: .65rem; text-align: center; padding: 0; line-height: 18px; display: block; }
+        .tl-day { min-height: 12px; min-width: 12px; border: none; border-radius: 3px; background: transparent; color: ${palette.dayColor}; cursor: pointer; font-size: .65rem; text-align: center; padding: 0; line-height: 12px; display: block; }
         .tl-empty { background: transparent; cursor: default; pointer-events: none; }
         .tl-out-window { opacity: .35; }
         .tl-in-window { opacity: .85; }
