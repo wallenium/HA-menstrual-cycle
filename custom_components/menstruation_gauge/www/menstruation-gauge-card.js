@@ -998,7 +998,7 @@ class MenstruationGaugeCard extends HTMLElement {
       // Tick marks (one per day) — only within the visible 300° arc
       const baseTicks = model.series60.map((_, i) => {
         const angle = dayStartAngle(i + 1);
-        if (angle <= startAngle60 || angle >= startAngle60 + spanDeg) return '';
+        //if (angle <= startAngle60 || angle >= startAngle60 + spanDeg) return '';
         return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${(rInner + baseTick).toFixed(1)}" width="2.6" height="${baseTick.toFixed(1)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
       }).join('');
 
