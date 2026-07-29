@@ -158,7 +158,7 @@ function getPregnancyIcon(monthOrWeeks, size = 'default') {
   const pregnancyInfo = resolvePregnancyInfo(monthOrWeeks);
   const assetFilename = PREGNANCY_ASSET_FILENAMES[pregnancyInfo.month] || PREGNANCY_ASSET_FILENAMES[1];
   const src = `${ASSET_BASE_URL}/pregnancy/${assetFilename}`;
-  return buildMaskedAssetIcon(src, size);
+  return buildImageAssetIcon(src, size);
 }
 
 function getStateAssetUrl(statusKey) {
