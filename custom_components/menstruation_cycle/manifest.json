@@ -1,0 +1,11 @@
+{
+  "domain": "menstruation_cycle",
+  "name": "Menstruation Cycle",
+  "codeowners": ["@wallenium"],
+  "config_flow": true,
+  "dependencies": ["lovelace"],
+  "documentation": "https://github.com/wallenium/HA-menstrual-cycle/wiki",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/wallenium/HA-menstrual-cycle/issues",
+  "version": "1.5.0b2"
+}

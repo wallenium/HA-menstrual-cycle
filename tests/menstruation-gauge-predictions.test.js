@@ -22,21 +22,21 @@ const defined = {};
 global.customElements = { define: (name, cls) => { defined[name] = cls; }, get: () => undefined };
 
 const iconsSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(iconsSrc);
 
 const gaugeSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-gauge-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(gaugeSrc);
 
-const GaugeCard = defined['menstruation-gauge-card'];
-if (!GaugeCard) throw new Error('MenstruationGaugeCard was not registered');
+const GaugeCard = defined['menstruation-cycle-card'] || defined['menstruation-gauge-card'];
+if (!GaugeCard) throw new Error('MenstruationCycleCard was not registered');
 
 function makeCard(config = {}) {
   const shadow = new FakeShadowRoot();

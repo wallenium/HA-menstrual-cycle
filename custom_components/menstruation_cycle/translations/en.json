@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Gauge",
+        "title": "Menstruation Cycle",
         "description": "Create a profile (username + friendly name) for cycle tracking.",
         "data": {
           "profile": "Username/Profile",
@@ -18,7 +18,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Gauge Settings",
+        "title": "Menstruation Cycle Settings",
         "description": "Adjust cycle tracking settings. Changes are saved immediately.",
         "data": {
           "friendly_name": "Display name",
@@ -32,7 +32,7 @@
           "menopause_enabled": "Enable menopause mode",
           "menopause_start_date": "Menopause start date (YYYY-MM-DD)",
           "cycle_length_override": "Cycle length override (days, 0 = auto)",
-          "num_predictions": "Number of future cycle predictions"
+          "nfp_analysis_mode": "NFP analysis mode"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -44,7 +44,7 @@
           "menopause_enabled": "Activates menopause tracking mode.",
           "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",
           "cycle_length_override": "Override the automatically calculated average cycle length. Set to 0 to use the auto-calculated value from your history (recommended). Set to 20–38 to manually fix the cycle length used for fertile window and ovulation calculations.",
-          "num_predictions": "How many future cycle starts to generate (1–12). Default is 6."
+          "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle."
         }
       }
     },

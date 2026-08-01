@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Gauge",
+        "title": "Menstruation Cycle",
         "description": "Erstelle ein Profil (Benutzername + Anzeigename) zur Zyklusverfolgung.",
         "data": {
           "profile": "Benutzername/Profil",
@@ -18,7 +18,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Gauge Einstellungen",
+        "title": "Menstruation Cycle Einstellungen",
         "description": "Einstellungen zur Zyklusverfolgung anpassen. Änderungen werden sofort gespeichert.",
         "data": {
           "friendly_name": "Anzeigename",
@@ -51,6 +51,22 @@
     "error": {
       "invalid_date": "Ungültiges Datumsformat. Bitte JJJJ-MM-TT verwenden.",
       "invalid_menarche_age": "Das Alter muss eine Zahl zwischen 8 und 20 sein."
+    }
+  },
+  "issues": {
+    "migrate_config_entry": {
+      "title": "Menstruation Cycle: Integration Migration erforderlich",
+      "description": "Die Integration **{old_domain}** wurde in **{new_domain}** umbenannt.\n\nProfil: **{entry_title}**\n\nDeine Sensordaten und der Zyklus-Verlauf bleiben nach der Migration vollständig erhalten. Klicke auf **Reparieren**, um die Migration abzuschließen.\n\n**Betroffene Sensoren:**\n- Haupt-Zyklussensor (Entity-ID bleibt unverändert)\n- Periodenprodukt-Sensor (Entity-ID bleibt unverändert)"
+    }
+  },
+  "repairs": {
+    "migrate_config_entry": {
+      "step": {
+        "confirm": {
+          "title": "Integration migrieren",
+          "description": "Hiermit wird der **{old_domain}** Konfigurationseintrag **{entry_title}** zu **{new_domain}** migriert.\n\nDeine Sensordaten, der Zyklus-Verlauf und alle Einstellungen bleiben vollständig erhalten. Die Entity-IDs der Sensoren ändern sich nicht.\n\nKlicke auf **Senden**, um die Migration zu starten."
+        }
+      }
     }
   },
   "services": {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import json
 import sys
 import types
 import unittest
@@ -10,7 +11,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_gauge"
+COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
 
 
 def _install_homeassistant_stubs() -> None:
@@ -581,6 +582,15 @@ class _FakeLovelaceCollection:
             self._items.append({"url": payload["url"]})
             raise RuntimeError("create failed after write")
         self._items.append({"url": payload["url"]})
+
+
+class ManifestMetadataTests(unittest.TestCase):
+    def test_manifest_omits_frontend_extra_module_url_and_matches_resource_version(self) -> None:
+        with (COMPONENT_ROOT / "manifest.json").open(encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+
+        self.assertNotIn("frontend_extra_module_url", manifest)
+        self.assertEqual(integration.RESOURCE_VERSION, manifest["version"])
 
 
 class LovelaceResourceRegistrationTests(unittest.TestCase):

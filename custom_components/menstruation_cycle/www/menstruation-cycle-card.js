@@ -1,7 +1,7 @@
-class MenstruationGaugeCard extends HTMLElement {
+class MenstruationCycleCard extends HTMLElement {
   static getStubConfig() {
     return {
-      type: 'custom:menstruation-gauge-card',
+      type: 'custom:menstruation-cycle-card',
       entity: 'sensor.menstruation',
       entry_id: '',
       friendly_name: '',
@@ -16,7 +16,7 @@ class MenstruationGaugeCard extends HTMLElement {
   }
 
   static getConfigElement() {
-    return document.createElement('menstruation-gauge-card-editor');
+    return document.createElement('menstruation-cycle-card-editor');
   }
 
   setConfig(config) {
@@ -1078,7 +1078,7 @@ class MenstruationGaugeCard extends HTMLElement {
       if (showFertile && model.ovulationDay) {
         const nfp = model.nfpAnalysis;
         const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
-        const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+        const labelText = usingNfp ? 'NFP' : 'Standard';
         nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
       }
 
@@ -1128,18 +1128,18 @@ class MenstruationGaugeCard extends HTMLElement {
       return `
         <svg class="gauge" viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label="Menstruation gauge 60 days">
           <g class="gauge-content" style="transform-origin: ${cx}px ${cy}px; transform: rotate(${rotation}deg);">
-            ${dayLabels}
             ${baseTicks}
-            ${monthSeparators}
             ${fertileBars}
-            ${ovulationMarkers}
-            ${nfpMethodLabel}
             ${periodWindowBars}
             ${confirmedBars}
+            ${ovulationMarkers}
             ${predictedBars}
             ${predictedMarker}
             <circle cx="${cx}" cy="${cy}" r="106" fill="none" stroke="${palette.ring}" stroke-width="1"></circle>
           </g>
+          ${dayLabels}
+          ${monthSeparators}
+          ${nfpMethodLabel}
           <text x="${cx}" y="44" class="month">${monthLabel60}</text>
           ${triangleMarker}
         </svg>
@@ -1239,7 +1239,7 @@ class MenstruationGaugeCard extends HTMLElement {
     if (showFertile && model.ovulationDay) {
       const nfp = model.nfpAnalysis;
       const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
-      const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+      const labelText = usingNfp ? 'NFP' : 'Standard';
       nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
     }
 
@@ -1459,7 +1459,12 @@ class MenstruationGaugeCard extends HTMLElement {
     let lastError = null;
     for (const payload of attempts) {
       try {
-        await this._hass.callService('menstruation_gauge', service, payload);
+        // Try new service domain first (new installations), fall back to old (existing installations)
+        try {
+          await this._hass.callService('menstruation_cycle', service, payload);
+        } catch (_) {
+          await this._hass.callService('menstruation_cycle', service, payload);
+        }
         return;
       } catch (err) {
         lastError = err;
@@ -1633,7 +1638,7 @@ class MenstruationGaugeCard extends HTMLElement {
         await this._toggleCycleStart(iso);
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error('menstruation-gauge-card: failed to toggle period', err);
+        console.error('menstruation-cycle-card: failed to toggle period', err);
       }
     }
 
@@ -1645,7 +1650,7 @@ class MenstruationGaugeCard extends HTMLElement {
         }
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error('menstruation-gauge-card: failed to auto-confirm period day', err);
+        console.error('menstruation-cycle-card: failed to auto-confirm period day', err);
       }
     }
 
@@ -1659,10 +1664,14 @@ class MenstruationGaugeCard extends HTMLElement {
           ...(entryId ? { entry_id: entryId } : {}),
           ...(profile ? { profile } : {}),
         };
-        await this._hass.callService('menstruation_gauge', 'add_symptom', payload);
+        try {
+          await this._hass.callService('menstruation_cycle', 'add_symptom', payload);
+        } catch (_) {
+          await this._hass.callService('menstruation_cycle', 'add_symptom', payload);
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error('menstruation-gauge-card: failed to save symptoms', err);
+        console.error('menstruation-cycle-card: failed to save symptoms', err);
       }
     }
 
@@ -1772,22 +1781,29 @@ class MenstruationGaugeCard extends HTMLElement {
 
       // Log any selected symptoms (include bleeding_strength: light for first period)
       const symptoms = this._pendingFirstPeriodSymptoms || {};
-      await this._hass.callService('menstruation_gauge', 'add_symptom', {
+      const addSymptomPayload = {
         ...serviceBase,
         date: today,
         symptom_data: { bleeding_strength: 'light', ...symptoms },
-      });
+      };
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', addSymptomPayload);
+      } catch (_) {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', addSymptomPayload);
+      }
 
       // Atomically record menarche date and add cycle start (transitions from pre_menarche to normal)
-      await this._hass.callService('menstruation_gauge', 'log_first_period', {
-        ...serviceBase,
-        date: today,
-      });
+      const logFirstPeriodPayload = { ...serviceBase, date: today };
+      try {
+        await this._hass.callService('menstruation_cycle', 'log_first_period', logFirstPeriodPayload);
+      } catch (_) {
+        await this._hass.callService('menstruation_cycle', 'log_first_period', logFirstPeriodPayload);
+      }
 
       this._pendingFirstPeriodSymptoms = null;
       this._showWelcomePeriodPopup();
     } catch (error) {
-      console.error('menstruation-gauge-card: error logging first period', error);
+      console.error('menstruation-cycle-card: error logging first period', error);
       this._removeFirstPeriodModal();
     }
   }
@@ -2225,7 +2241,7 @@ class MenstruationGaugeCard extends HTMLElement {
   }
 }
 
-class MenstruationGaugeCardEditor extends HTMLElement {
+class MenstruationCycleCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -2550,12 +2566,16 @@ class MenstruationGaugeCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('menstruation-gauge-card', MenstruationGaugeCard);
-customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
+customElements.define('menstruation-cycle-card', MenstruationCycleCard);
+customElements.define('menstruation-cycle-card-editor', MenstruationCycleCardEditor);
+
+// Backward compatibility: register old element names so existing dashboards continue to work
+customElements.define('menstruation-gauge-card', MenstruationCycleCard);
+customElements.define('menstruation-gauge-card-editor', MenstruationCycleCardEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'menstruation-gauge-card',
-  name: 'Menstruation Gauge Card',
+  type: 'menstruation-cycle-card',
+  name: 'Menstruation Cycle Card',
   description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
 });

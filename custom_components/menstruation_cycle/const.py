@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-DOMAIN = "menstruation_gauge"
+DOMAIN = "menstruation_cycle"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1
-STORAGE_KEY = "menstruation_gauge.history"
+STORAGE_KEY = "menstruation_cycle.history"
+STORAGE_KEY_LEGACY = "menstruation_gauge.history"
 
 CONF_NAME = "name"
 CONF_PROFILE = "profile"
@@ -117,7 +118,7 @@ SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
 SERVICE_FIELD_INCLUDE_CHARTS = "include_charts"
 
-SIGNAL_HISTORY_UPDATED = "menstruation_gauge_history_updated"
+SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"

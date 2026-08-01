@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import voluptuous as vol
 
+from homeassistant import config_entries as ce
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_TYPE, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -101,6 +102,7 @@ from .const import (
     SERVICE_UPDATE_PREGNANCY_DATE,
     SIGNAL_HISTORY_UPDATED,
     STORAGE_KEY,
+    STORAGE_KEY_LEGACY,
     STORAGE_VERSION,
     SYMPTOM_BASAL_TEMP,
     SYMPTOM_CLOTS,
@@ -125,6 +127,9 @@ _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
 
+# Domain that was used before the rename to menstruation_cycle
+OLD_DOMAIN = "menstruation_gauge"
+
 
 def _load_manifest_version() -> str:
     """Read the integration version from manifest.json for cache busting."""
@@ -147,7 +152,7 @@ def _build_card_resource_url(filename: str) -> str:
 
 
 RESOURCE_VERSION = _load_manifest_version()
-CARD_STATIC_URL = _build_card_static_url("menstruation-gauge-card.js")
+CARD_STATIC_URL = _build_card_static_url("menstruation-cycle-card.js")
 HEATMAP_STATIC_URL = _build_card_static_url("menstruation-cycle-heatmap-card.js")
 CALENDAR_STATIC_URL = _build_card_static_url("menstruation-calendar-card.js")
 PRODUCT_ICONS_STATIC_URL = _build_card_static_url("product-icons.js")
@@ -157,7 +162,7 @@ COMPACT_CARD_STATIC_URL = _build_card_static_url("menstruation-cycle-card-compac
 HISTORY_ROW_STATIC_URL = _build_card_static_url("menstruation-cycle-history-card-row.js")
 COMPACT_STATUS_STATIC_URL = _build_card_static_url("menstruation-cycle-compact-status-card.js")
 STATISTICS_CARD_STATIC_URL = _build_card_static_url("menstruation-statistics-card.js")
-CARD_RESOURCE_URL = _build_card_resource_url("menstruation-gauge-card.js")
+CARD_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-card.js")
 HEATMAP_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-heatmap-card.js")
 CALENDAR_RESOURCE_URL = _build_card_resource_url("menstruation-calendar-card.js")
 PRODUCT_ICONS_RESOURCE_URL = _build_card_resource_url("menstruation-icons.js")
@@ -168,9 +173,9 @@ HISTORY_ROW_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-history-
 COMPACT_STATUS_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-compact-status-card.js")
 STATISTICS_CARD_RESOURCE_URL = _build_card_resource_url("menstruation-statistics-card.js")
 CARD_RESOURCE_TYPE = "module"
-EXPORT_DIR_NAME = "menstruation_gauge_exports"
+EXPORT_DIR_NAME = "menstruation_cycle_exports"
 LOVELACE_RESOURCES = (
-    (CARD_RESOURCE_URL, CARD_STATIC_URL, "menstruation-gauge-card.js"),
+    (CARD_RESOURCE_URL, CARD_STATIC_URL, "menstruation-cycle-card.js"),
     (PRODUCT_ICONS_RESOURCE_URL, PRODUCT_ICONS_STATIC_URL, "menstruation-icons.js"),
     (HEATMAP_RESOURCE_URL, HEATMAP_STATIC_URL, "menstruation-cycle-heatmap-card.js"),
     (CALENDAR_RESOURCE_URL, CALENDAR_STATIC_URL, "menstruation-calendar-card.js"),
@@ -624,7 +629,7 @@ def _normalize_date_or_raise(value: str) -> str:
 def _runtime_by_profile(hass: HomeAssistant, profile: str) -> MenstruationRuntime:
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
-        raise HomeAssistantError("No menstruation_gauge config entry loaded")
+        raise HomeAssistantError("No menstruation_cycle config entry loaded")
 
     wanted = slugify(str(profile)).strip("_")
     for runtime in domain_data.values():
@@ -636,7 +641,7 @@ def _runtime_by_profile(hass: HomeAssistant, profile: str) -> MenstruationRuntim
 def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRuntime:
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
-        raise HomeAssistantError("No menstruation_gauge config entry loaded")
+        raise HomeAssistantError("No menstruation_cycle config entry loaded")
 
     profile = call.data.get(SERVICE_FIELD_PROFILE)
     if profile is not None and str(profile).strip():
@@ -650,7 +655,7 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
         runtime_entry_id = state_obj.attributes.get("entry_id")
         if runtime_entry_id and runtime_entry_id in domain_data:
             return domain_data[runtime_entry_id]
-        raise HomeAssistantError(f"Entity '{entity_id}' is not a menstruation_gauge sensor.")
+        raise HomeAssistantError(f"Entity '{entity_id}' is not a menstruation_cycle sensor.")
 
     entry_id = call.data.get(SERVICE_FIELD_ENTRY_ID)
     if entry_id is not None and str(entry_id).strip():
@@ -1046,7 +1051,99 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up integration from YAML (not used, config-entry only)."""
     hass.data.setdefault(DOMAIN, {})
     _register_domain_services(hass)
+    # Migrate any config entries still registered under the old domain.
+    _async_schedule_old_domain_migration(hass)
     return True
+
+
+def _async_schedule_old_domain_migration(hass: HomeAssistant) -> None:
+    """Detect old menstruation_gauge entries and create repair issues for each.
+
+    Instead of migrating silently in the background, a repair issue is raised
+    in *Settings → System → Repairs* so the user can review the sensor mapping
+    and confirm the migration by clicking *Fix*.
+    """
+    from .repairs import async_create_migration_issue
+
+    old_entries = hass.config_entries.async_entries(OLD_DOMAIN)
+    if not old_entries:
+        return
+    for old_entry in old_entries:
+        _LOGGER.warning(
+            "Detected config entry '%s' under old domain '%s' – "
+            "a repair issue has been created. "
+            "Please go to Settings → System → Repairs to complete the migration to '%s'.",
+            old_entry.title,
+            OLD_DOMAIN,
+            DOMAIN,
+        )
+        async_create_migration_issue(hass, old_entry.entry_id, old_entry.title)
+
+
+async def _async_migrate_old_domain_entry(hass: HomeAssistant, old_entry: ConfigEntry) -> None:
+    """Migrate a single menstruation_gauge config entry to menstruation_cycle."""
+    from .repairs import async_delete_migration_issue
+
+    try:
+        # If a menstruation_cycle entry with the same unique_id already exists,
+        # the migration already ran; just clean up the leftover old entry.
+        existing = next(
+            (
+                e
+                for e in hass.config_entries.async_entries(DOMAIN)
+                if e.unique_id == old_entry.unique_id
+            ),
+            None,
+        )
+        if existing is not None:
+            _LOGGER.info(
+                "Entry '%s' already migrated to '%s'. Removing leftover '%s' entry.",
+                old_entry.title,
+                DOMAIN,
+                OLD_DOMAIN,
+            )
+            await hass.config_entries.async_remove(old_entry.entry_id)
+            async_delete_migration_issue(hass, old_entry.entry_id)
+            return
+
+        # Initiate an import flow that creates a new menstruation_cycle entry.
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": ce.SOURCE_IMPORT},
+            data={**old_entry.data, "unique_id": old_entry.unique_id},
+        )
+
+        result_type = result.get("type", "")
+        if result_type in ("create_entry", "abort"):
+            _LOGGER.info(
+                "Successfully migrated '%s' from '%s' to '%s' (result: %s).",
+                old_entry.title,
+                OLD_DOMAIN,
+                DOMAIN,
+                result_type,
+            )
+        else:
+            _LOGGER.warning(
+                "Unexpected result '%s' while migrating '%s' from '%s' to '%s'.",
+                result_type,
+                old_entry.title,
+                OLD_DOMAIN,
+                DOMAIN,
+            )
+
+        # Remove the old entry regardless of result so it does not block HA startup.
+        await hass.config_entries.async_remove(old_entry.entry_id)
+
+        # Delete the repair issue now that migration is complete.
+        async_delete_migration_issue(hass, old_entry.entry_id)
+
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Unexpected error while migrating '%s' from '%s' to '%s'.",
+            old_entry.title,
+            OLD_DOMAIN,
+            DOMAIN,
+        )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -1077,7 +1174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     storage = MenstruationStorage(
         hass,
         key=f"{STORAGE_KEY}.{profile}",
-        legacy_key=STORAGE_KEY if profile == "default" else None,
+        legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
     )
     stored = await storage.async_load()
 
@@ -1179,7 +1276,7 @@ async def _async_load_timer_state(hass: HomeAssistant, profile: str) -> None:
     timer_state = await store.async_load()
     if isinstance(timer_state, dict):
         hass.states.async_set(
-            f"menstruation_gauge_timer.{profile}",
+            f"menstruation_cycle_timer.{profile}",
             "active" if timer_state.get("is_running") else "idle",
             timer_state,
         )
@@ -1209,7 +1306,7 @@ async def _async_handle_save_timer_state(hass: HomeAssistant, call: ServiceCall)
     await store.async_save(timer_state)
 
     hass.states.async_set(
-        f"menstruation_gauge_timer.{profile}",
+        f"menstruation_cycle_timer.{profile}",
         "active" if is_running else "idle",
         timer_state,
     )

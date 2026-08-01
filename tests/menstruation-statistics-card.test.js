@@ -55,7 +55,7 @@ global.customElements = {
 };
 
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-statistics-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-statistics-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval

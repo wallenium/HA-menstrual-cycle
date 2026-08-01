@@ -69,11 +69,11 @@ global.window = {
 };
 
 const src = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/period-countdown-timer.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-countdown-timer.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
-eval(`${src}\n;global.__ProductFillAnimator = ProductFillAnimator; global.__PeriodCountdownTimer = PeriodCountdownTimer;`);
+eval(`${src}\n;global.__ProductFillAnimator = ProductFillAnimator; global.__PeriodCountdownTimer = MenstruationCountdownTimer;`);
 
 const ProductFillAnimator = global.__ProductFillAnimator;
 const PeriodCountdownTimer = global.__PeriodCountdownTimer;
