@@ -14,7 +14,7 @@ This repository contains:
 
 
 # How to setup:  Sorry, so many steps because of 2 parts: A) Integration + B) custom cards;
-- Open HACS, add Custom repositories: git: /nremey/HA-menstrual-gauge-v2
+- Open HACS, add Custom repositories: git: /wallenium/HA-menstrual-cycle
 - add in 'integration and services' new integration, search for "menstruation cycle"
 - add user/friendly name and icon.
     -may add more users if more bleeding persons are in the household.
@@ -144,7 +144,7 @@ Guardrails:
 - Mutual consent: in shared households, use automations only with explicit mutual agreement.
 
 ## step without HACS (manually) - tested , similar to HACS
-- copy the folder /menstruation_gauge/ from github.com/nremey/HA-menstrual-gauge-v2/custom_components to /config/custom_components in HA.
+- copy the folder /menstruation_gauge/ from github.com/wallenium/HA-menstrual-cycle/custom_components to /config/custom_components in HA.
 - Add the customcards under `Settings -> Devices & Services` (...)-Menu "Add ressouces
     - `/menstruation_gauge/menstruation-cycle-card.js`
     - `/menstruation_gauge/menstruation-cycle-heatmap-card.js`

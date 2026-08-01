@@ -1806,7 +1806,7 @@ window.customCards.push({
   name: 'Menstruation Statistics Card',
   description: 'Displays menstrual cycle statistics and generates a doctor report.',
   preview: false,
-  documentationURL: 'https://github.com/wallenium/HA-menstrual-gauge-v2',
+  documentationURL: 'https://github.com/wallenium/HA-menstrual-cycle',
 });
 
 // Expose hygiene helpers for testing (no external dependency on shared module)
