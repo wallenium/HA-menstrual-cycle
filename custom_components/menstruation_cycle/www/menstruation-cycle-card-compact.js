@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class MenstruationCycleCard extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
@@ -117,25 +132,7 @@ class MenstruationCycleCard extends HTMLElement {
   }
 
   _t(key) {
-    const translations = {
-      de: {
-        cycle_day: "Zyklustag",
-        period: "Periode",
-        fertile: "Fruchtbar",
-        pms: "PMS",
-        neutral: "Neutral",
-      },
-      en: {
-        cycle_day: "Cycle Day",
-        period: "Period",
-        fertile: "Fertile",
-        pms: "PMS",
-        neutral: "Neutral",
-      },
-    };
-
-    const lang = this._hass?.language || 'de';
-    return translations[lang]?.[key] || translations['en'][key];
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_card_compact', key) || key;
   }
 
   _getStyles() {

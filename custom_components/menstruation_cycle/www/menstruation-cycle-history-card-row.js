@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class MenstruationCycleHistoryCardRow extends HTMLElement {
   static getConfigElement() {
     return document.createElement('menstruation-cycle-history-card-row-editor');
@@ -56,49 +71,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'unbekannt',
-        title: 'Zyklus History',
-        cycle: 'Zyklus',
-        start_date: 'Startdatum',
-        end_date: 'Enddatum',
-        length: 'Länge',
-        days: 'Tage',
-        status: 'Status',
-        fertile_window: 'Fruchtbar (dynamisch berechnet)',
-        ovulation: 'Eisprung (dynamisch berechnet)',
-        pregnant: 'Schwanger',
-        pre_menarche: 'Vor Menarche',
-        menarche: 'Menarche',
-        actual_period: 'Tatsächliche Periode',
-        predicted: 'Vorhergesagt',
-        current_cycle: 'Aktueller Zyklus',
-        previous_cycles: 'Vorherige Zyklen',
-      },
-      en: {
-        entity_not_found: 'Entity not found',
-        unknown: 'unknown',
-        title: 'Cycle History',
-        cycle: 'Cycle',
-        start_date: 'Start Date',
-        end_date: 'End Date',
-        length: 'Length',
-        days: 'Days',
-        status: 'Status',
-        fertile_window: 'Fertile (dynamically calculated)',
-        ovulation: 'Ovulation (dynamically calculated)',
-        pregnant: 'Pregnant',
-        pre_menarche: 'Pre-Menarche',
-        menarche: 'Menarche',
-        actual_period: 'Actual Period',
-        predicted: 'Predicted',
-        current_cycle: 'Current Cycle',
-        previous_cycles: 'Previous Cycles',
-      },
-    };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_history_card_row', key) || key;
   }
 
   _resolveEntityId() {
@@ -295,55 +268,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity: 'Entität',
-        entry_id: 'Eintrags-ID (optional)',
-        display: 'Anzeige',
-        title: 'Titel',
-        max_rows: 'Max. Zeilen',
-        features: 'Funktionen',
-        show_fertile_window: 'Fruchtbarkeitsfenster anzeigen',
-        preview: 'Vorschau',
-        preview_note: 'Vorschau zeigt Beispieldaten.',
-        fallback_note: 'HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.',
-        sensor_search: 'Sensor suchen…',
-        no_sensors: 'Keine Sensoren gefunden.',
-        col_cycle: 'Zyklus',
-        col_start: 'Start',
-        col_end: 'Ende',
-        col_length: 'Länge',
-        col_status: 'Status',
-        status_actual: 'Vergangen',
-        status_current: 'Aktuell',
-        status_predicted: 'Vorhergesagt',
-        days: 'T',
-      },
-      en: {
-        entity: 'Entity',
-        entry_id: 'Entry ID (optional)',
-        display: 'Display',
-        title: 'Title',
-        max_rows: 'Max Rows',
-        features: 'Features',
-        show_fertile_window: 'Show fertile window',
-        preview: 'Preview',
-        preview_note: 'Preview uses sample data.',
-        fallback_note: 'HA entity picker unavailable, fallback dropdown active.',
-        sensor_search: 'Search sensor…',
-        no_sensors: 'No sensors found.',
-        col_cycle: 'Cycle',
-        col_start: 'Start',
-        col_end: 'End',
-        col_length: 'Length',
-        col_status: 'Status',
-        status_actual: 'Past',
-        status_current: 'Current',
-        status_predicted: 'Predicted',
-        days: 'd',
-      },
-    };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_history_card_row', key) || key;
   }
 
   _emit(nextConfig) {

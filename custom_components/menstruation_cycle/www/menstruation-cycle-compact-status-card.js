@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class MenstruationCycleCompactStatusCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -46,107 +61,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'Unbekannt',
-        title: 'Zyklus Status',
-        cycle_day: 'Zyklustag',
-        period: 'Periode',
-        fertile: 'Fruchtbar',
-        ovulation: 'Eisprung',
-        pms: 'PMS',
-        neutral: 'Neutral',
-        pre_menarche: 'Vor Menarche',
-        pregnant: 'Schwangerschaft',
-        postpartum: 'Wochenbett',
-        menarche: 'Menarche',
-        menopause: 'Menopause',
-        in_menopause: 'In Menopause',
-        week: 'Woche',
-        day: 'Tag',
-        of: 'von',
-        due_date: 'Geburtstermin',
-        estimated_date: 'Geschätzter Termin',
-        days_until: 'Tage bis Menarche',
-        progress: 'Fortschritt',
-        postpartum_end: 'Ende Wochenbett',
-        since: 'seit',
-        years: 'Jahren',
-        months: 'Monaten',
-        phase_period: 'Blutung',
-        phase_fertile: 'Fruchtbar',
-        phase_ovulation: 'Eisprung',
-        phase_pms: 'PMS',
-        phase_neutral: 'Neutral',
-        tt_product_usage: 'Produktverbrauch',
-        tt_symptoms: 'Symptome',
-        tt_no_data: 'Keine Zusatzdaten',
-        tt_status_icon: 'Status-Icon',
-        tt_tampon: 'Tampon',
-        tt_pad: 'Binde',
-        tt_cup: 'Menstruationstasse',
-        tt_liner: 'Slipeinlage',
-        tt_underwear: 'Periodenunterwäsche',
-        tt_bleeding: 'Blutung',
-        tt_mood: 'Stimmung',
-        tt_pain: 'Schmerzen',
-        tt_spotting: 'Schmierblutung',
-        tt_cervical_mucus: 'Zervixschleim',
-        tt_intercourse: 'Geschlechtsverkehr',
-        tt_hygiene: 'Hygiene',
-      },
-      en: {
-        entity_not_found: 'Entity not found',
-        unknown: 'Unknown',
-        title: 'Cycle Status',
-        cycle_day: 'Cycle Day',
-        period: 'Period',
-        fertile: 'Fertile',
-        ovulation: 'Ovulation',
-        pms: 'PMS',
-        neutral: 'Neutral',
-        pre_menarche: 'Pre-Menarche',
-        pregnant: 'Pregnancy',
-        postpartum: 'Postpartum',
-        menarche: 'Menarche',
-        menopause: 'Menopause',
-        in_menopause: 'In Menopause',
-        week: 'Week',
-        day: 'Day',
-        of: 'of',
-        due_date: 'Due Date',
-        estimated_date: 'Estimated Date',
-        days_until: 'Days until Menarche',
-        progress: 'Progress',
-        postpartum_end: 'Postpartum End',
-        since: 'since',
-        years: 'years',
-        months: 'months',
-        phase_period: 'Bleeding',
-        phase_fertile: 'Fertile',
-        phase_ovulation: 'Ovulation',
-        phase_pms: 'PMS',
-        phase_neutral: 'Neutral',
-        tt_product_usage: 'Product Usage',
-        tt_symptoms: 'Symptoms',
-        tt_no_data: 'No additional data',
-        tt_status_icon: 'Status icon',
-        tt_tampon: 'Tampon',
-        tt_pad: 'Pad',
-        tt_cup: 'Menstrual Cup',
-        tt_liner: 'Liner',
-        tt_underwear: 'Period Underwear',
-        tt_bleeding: 'Bleeding',
-        tt_mood: 'Mood',
-        tt_pain: 'Pain',
-        tt_spotting: 'Spotting',
-        tt_cervical_mucus: 'Cervical Mucus',
-        tt_intercourse: 'Intercourse',
-        tt_hygiene: 'Hygiene',
-      },
-    };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_compact_status_card', key) || key;
   }
 
   _resolveEntityId() {
@@ -784,19 +699,7 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity: 'Entität',
-        title: 'Titel',
-        show_title: 'Titel anzeigen',
-      },
-      en: {
-        entity: 'Entity',
-        title: 'Title',
-        show_title: 'Show title',
-      },
-    };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_compact_status_card', key) || key;
   }
 
   _emit(nextConfig) {

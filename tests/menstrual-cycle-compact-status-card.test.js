@@ -17,6 +17,8 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
+const enTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/en.json'), 'utf8'));
+const deTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/de.json'), 'utf8'));
 
 // ---------------------------------------------------------------------------
 // Minimal browser / DOM stubs
@@ -72,8 +74,30 @@ function makeCard() {
   return el;
 }
 
+function withTranslations(hass) {
+  hass.data = {
+    ...(hass.data || {}),
+    menstruation_cycle: {
+      translations: {
+        en: { lovelace: enTranslations.lovelace || {} },
+        de: { lovelace: deTranslations.lovelace || {} },
+      },
+    },
+  };
+  hass.localize = (translationKey) => {
+    const langCode = String(hass?.locale?.language || hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const source = langCode === 'de' ? deTranslations : enTranslations;
+    const parts = String(translationKey || '').split('.');
+    if (parts[0] !== 'component' || parts[1] !== 'menstruation_cycle') return translationKey;
+    let value = source;
+    for (const part of parts.slice(2)) value = value?.[part];
+    return typeof value === 'string' ? value : translationKey;
+  };
+  return hass;
+}
+
 function buildHass(state, attrs = {}) {
-  return {
+  return withTranslations({
     locale: { language: 'en' },
     states: {
       'sensor.menstruation': {
@@ -86,7 +110,7 @@ function buildHass(state, attrs = {}) {
         },
       },
     },
-  };
+  });
 }
 
 function renderCard(state, attrs = {}) {
@@ -247,7 +271,7 @@ test('tooltip shows both products and symptoms sections together', () => {
 test('tooltip DE locale: shows German labels', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation' });
-  card._hass = {
+  card._hass = withTranslations({
     locale: { language: 'de' },
     states: {
       'sensor.menstruation': {
@@ -260,7 +284,7 @@ test('tooltip DE locale: shows German labels', () => {
         },
       },
     },
-  };
+  });
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(html.includes('Produktverbrauch'), 'German product heading missing');
@@ -386,7 +410,7 @@ console.log('\nRegression: error states');
 test('missing entity: shows entity_not_found message', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.nonexistent' });
-  card._hass = { locale: { language: 'en' }, states: {} };
+  card._hass = withTranslations({ locale: { language: 'en' }, states: {} });
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(html.includes('Entity not found'), 'should show error for missing entity');

@@ -9,6 +9,8 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
+const enTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/en.json'), 'utf8'));
+const deTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/de.json'), 'utf8'));
 
 class MockNode {
   constructor(tagName) {
@@ -77,6 +79,28 @@ eval(`${src}\n;global.__ProductFillAnimator = ProductFillAnimator; global.__Peri
 
 const ProductFillAnimator = global.__ProductFillAnimator;
 const PeriodCountdownTimer = global.__PeriodCountdownTimer;
+
+function withTranslations(hass) {
+  hass.data = {
+    ...(hass.data || {}),
+    menstruation_cycle: {
+      translations: {
+        en: { lovelace: enTranslations.lovelace || {} },
+        de: { lovelace: deTranslations.lovelace || {} },
+      },
+    },
+  };
+  hass.localize = (translationKey) => {
+    const langCode = String(hass?.locale?.language || hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const source = langCode === 'de' ? deTranslations : enTranslations;
+    const parts = String(translationKey || '').split('.');
+    if (parts[0] !== 'component' || parts[1] !== 'menstruation_cycle') return translationKey;
+    let value = source;
+    for (const part of parts.slice(2)) value = value?.[part];
+    return typeof value === 'string' ? value : translationKey;
+  };
+  return hass;
+}
 
 function testProductFillAnimatorUpdates() {
   const cupSvg = { querySelector: () => new MockNode('rect') };
@@ -191,10 +215,10 @@ function testTimerProductConfigIconSize() {
 
 function testDischargeTranslations() {
   const timer = new PeriodCountdownTimer();
-  timer._hass = { locale: { language: 'de' } };
+  timer._hass = withTranslations({ locale: { language: 'de' } });
   assert.strictEqual(timer._t('discharge'), 'Ausfluss', 'German discharge translation should exist');
 
-  timer._hass = { locale: { language: 'en' } };
+  timer._hass = withTranslations({ locale: { language: 'en' } });
   assert.strictEqual(timer._t('discharge'), 'Discharge', 'English discharge translation should exist');
 
   console.log('  ✓ period timer discharge translations');

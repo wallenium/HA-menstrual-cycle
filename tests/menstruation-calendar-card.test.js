@@ -9,6 +9,8 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const enTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/en.json'), 'utf8'));
+const deTranslations = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/translations/de.json'), 'utf8'));
 
 global.window = { customCards: [] };
 const defined = {};
@@ -54,8 +56,30 @@ eval(cardSrc);
 const CardClass = defined['menstruation-calendar-card'];
 const EditorClass = defined['menstruation-calendar-card-editor'];
 
+function withTranslations(hass) {
+  hass.data = {
+    ...(hass.data || {}),
+    menstruation_cycle: {
+      translations: {
+        en: { lovelace: enTranslations.lovelace || {} },
+        de: { lovelace: deTranslations.lovelace || {} },
+      },
+    },
+  };
+  hass.localize = (translationKey) => {
+    const langCode = String(hass?.locale?.language || hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const source = langCode === 'de' ? deTranslations : enTranslations;
+    const parts = String(translationKey || '').split('.');
+    if (parts[0] !== 'component' || parts[1] !== 'menstruation_cycle') return translationKey;
+    let value = source;
+    for (const part of parts.slice(2)) value = value?.[part];
+    return typeof value === 'string' ? value : translationKey;
+  };
+  return hass;
+}
+
 function makeHass() {
-  return {
+  return withTranslations({
     locale: { language: 'en' },
     callService: async () => {},
     states: {
@@ -76,11 +100,11 @@ function makeHass() {
         },
       },
     },
-  };
+  });
 }
 
 function makeHassWithPredictions() {
-  return {
+  return withTranslations({
     locale: { language: 'en' },
     callService: async () => {},
     states: {
@@ -101,7 +125,7 @@ function makeHassWithPredictions() {
         },
       },
     },
-  };
+  });
 }
 
 function testRegistration() {

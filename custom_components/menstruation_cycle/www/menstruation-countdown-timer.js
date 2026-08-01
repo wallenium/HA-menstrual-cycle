@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class ProductFillAnimator {
   constructor(svgElement, productKey, totalSeconds, mode) {
     this.svg = svgElement;
@@ -1583,169 +1598,7 @@ class MenstruationCountdownTimer extends HTMLElement {
   }
 
   _t(key) {
-    const translations = {
-      de: {
-        // Status labels
-        period: "Periode",
-        fertile: "Fruchtbar",
-        pms: "PMS",
-        neutral: "Neutral",
-        pre_menarche: "Pre-Menarche",
-        pregnant: "Schwanger",
-        postpartum: "Wochenbett",
-        menopause: "Menopause",
-        // Product names
-        tampon: "Tampon",
-        pad: "Binde",
-        cup: "Menstruationstasse",
-        liner: "Slipeinlage",
-        underwear: "Periodenunterwäsche",
-        // Symptom fields
-        bleeding_strength: "Blutungsstärke",
-        pain: "Schmerz",
-        discharge: "Ausfluss",
-        cervical_mucus: "Zervixschleim",
-        basal_temp: "Basaltemperatur",
-        mood: "Stimmung",
-        energy: "Energie",
-        notes: "Notizen",
-        // Cycle info
-        pre_menarche_desc: "Pubertät - Zyklus noch nicht begonnen",
-        neutral_title: "Keine Periode",
-        neutral_products_message: "Keine Periode - keine Produkte nötig",
-        preparation_tips: "Vorbereitungstipps",
-        learn_about_cycle: "Lerne über den Zyklus",
-        hygiene_products: "Hygiene-Produkte",
-        talk_to_parent: "Sprich mit Eltern",
-        use_app_tracking: "Nutze App zum Tracking",
-        enable_reminder: "Benachrichtigungen aktivieren",
-        week: "Woche",
-        trimester: "Trimester",
-        due_date: "Geburtstermin",
-        pregnancy_week: "Schwangerschaftswoche",
-        milestones_trimester: "Meilensteine",
-        trimester_checklist: "Checkliste",
-        symptoms: "Symptome",
-        days_since_birth: "Tage seit Geburt",
-        weeks_postpartum: "Wochen Wochenbett",
-        days_postpartum: "Tage Wochenbett",
-        recovery_tracker: "Genesungs-Tracker",
-        bleeding_monitor: "Blutungs-Monitor",
-        postpartum_checklist: "Wochenbett-Checkliste",
-        menopause_symptoms: "Menopause-Symptome",
-        mood_tracker: "Stimmungs-Tracker",
-        wellness_tips: "Wellness-Tipps",
-        menopause_desc: "Menopause-Phase",
-        log_used: "✓ Verbraucht",
-        log_cup_emptied: "🔄 Geleert",
-        select_product_first: "Bitte zuerst ein Produkt auswählen.",
-        cup_empty_only: "Cup-Leerung ist nur für die Menstruationstasse verfügbar.",
-        usage_logged_used: "Produktverbrauch gespeichert.",
-        usage_logged_emptied: "Cup-Leerung gespeichert.",
-        usage_logged_error: "Produktverbrauch konnte nicht gespeichert werden.",
-        card_title: "Menstruations-Countdown",
-        pregnancy_card_title: "Schwangerschaft",
-        symptom_saved: "Symptome gespeichert.",
-        symptom_save_error: "Symptome konnten nicht gespeichert werden.",
-        // First Period (Pre-Menarche) flow
-        log_first_period: "Erste Periode loggen",
-        log_first_period_symptoms: "Erste Periode - Symptome loggen",
-        first_period_description: "Wähle deine heutigen Symptome aus und bestätige den Start deiner ersten Periode.",
-        leave_pre_menarche_title: "Willst du den Pre-Menarche Modus verlassen?",
-        leave_pre_menarche_message: "Deine erste Periode wird für heute geloggt und der Zyklus-Tracking-Modus wird aktiviert.",
-        welcome_period_title: "Willkommen zur Periode! 🎉",
-        welcome_period_cycle_tracking: "Zyklus-Tracking startet jetzt",
-        welcome_period_features: "Neue Features: Zyklus-Vorhersage, Statistiken, ...",
-        welcome_period_contraception: "Du bist jetzt fruchtbar - denke an Verhütung, wenn nötig!",
-        welcome_period_return: "Du kannst jederzeit in den Einstellungen zum Pre-Menarche Modus zurückwechseln",
-        yes: "Ja",
-        no: "Nein",
-        cancel: "Abbrechen",
-        continue: "Weiter"
-      },
-      en: {
-        // Status labels
-        period: "Period",
-        fertile: "Fertile",
-        pms: "PMS",
-        neutral: "Neutral",
-        pre_menarche: "Pre-Menarche",
-        pregnant: "Pregnant",
-        postpartum: "Postpartum",
-        menopause: "Menopause",
-        // Product names
-        tampon: "Tampon",
-        pad: "Pad",
-        cup: "Menstrual Cup",
-        liner: "Liner",
-        underwear: "Period Underwear",
-        // Symptom fields
-        bleeding_strength: "Bleeding Strength",
-        pain: "Pain",
-        discharge: "Discharge",
-        cervical_mucus: "Cervical Mucus",
-        basal_temp: "Basal Temperature",
-        mood: "Mood",
-        energy: "Energy",
-        notes: "Notes",
-        // Cycle info
-        pre_menarche_desc: "Puberty - cycle not yet started",
-        neutral_title: "No period",
-        neutral_products_message: "No period - no products needed",
-        preparation_tips: "Preparation Tips",
-        learn_about_cycle: "Learn about your cycle",
-        hygiene_products: "Hygiene products",
-        talk_to_parent: "Talk to parents",
-        use_app_tracking: "Use app to track",
-        enable_reminder: "Enable notifications",
-        week: "Week",
-        trimester: "Trimester",
-        due_date: "Due date",
-        pregnancy_week: "Pregnancy week",
-        milestones_trimester: "Milestones",
-        trimester_checklist: "Checklist",
-        symptoms: "Symptoms",
-        days_since_birth: "Days since birth",
-        weeks_postpartum: "Weeks postpartum",
-        days_postpartum: "Days postpartum",
-        recovery_tracker: "Recovery tracker",
-        bleeding_monitor: "Bleeding monitor",
-        postpartum_checklist: "Postpartum checklist",
-        menopause_symptoms: "Menopause symptoms",
-        mood_tracker: "Mood tracker",
-        wellness_tips: "Wellness tips",
-        menopause_desc: "Menopause phase",
-        log_used: "✓ Used",
-        log_cup_emptied: "🔄 Emptied",
-        select_product_first: "Please select a product first.",
-        cup_empty_only: "Cup emptying is only available for the menstrual cup.",
-        usage_logged_used: "Product usage saved.",
-        usage_logged_emptied: "Cup emptying saved.",
-        usage_logged_error: "Could not save product usage.",
-        card_title: "Menstrual Countdown",
-        pregnancy_card_title: "Pregnancy",
-        symptom_saved: "Symptoms saved.",
-        symptom_save_error: "Could not save symptoms.",
-        // First Period (Pre-Menarche) flow
-        log_first_period: "Log First Period",
-        log_first_period_symptoms: "First Period - Log Symptoms",
-        first_period_description: "Select your symptoms for today and confirm the start of your first period.",
-        leave_pre_menarche_title: "Do you want to leave Pre-Menarche mode?",
-        leave_pre_menarche_message: "Your first period will be logged for today and cycle tracking mode will be activated.",
-        welcome_period_title: "Welcome to your period! 🎉",
-        welcome_period_cycle_tracking: "Cycle tracking starts now",
-        welcome_period_features: "New features: cycle prediction, statistics, ...",
-        welcome_period_contraception: "You are now fertile - think about contraception if needed!",
-        welcome_period_return: "You can always return to Pre-Menarche mode in Settings",
-        yes: "Yes",
-        no: "No",
-        cancel: "Cancel",
-        continue: "Continue"
-      },
-    };
-
-    const lang = this._hass?.locale?.language || 'de';
-    return translations[lang]?.[key] || translations['en'][key];
+    return resolveCardTranslation(this._hass, 'menstruation_countdown_timer', key) || key;
   }
 
   getStyles() {
@@ -2610,57 +2463,7 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity: "Entität",
-        entity_help: "Wähle die Sensor-Entität mit dem Menstruationsstatus.",
-        animations: "Animationen",
-        product_animations: "Produktanimationen aktivieren",
-        product_animations_help: "Zeigt eine visuelle Füllanimation während des Countdowns.",
-        animation_style: "Animationsstil",
-        animation_style_help: "Wähle die Farb-/Darstellungsart für die Animation.",
-        realistic: "Realistisch",
-        avoid_blood: "Blutarm (blau)",
-        durations: "Dauern (Stunden)",
-        durations_help: "Standard-Countdown pro Produkttyp in Stunden.",
-        tampon_duration: "Tampon",
-        pad_duration: "Binde",
-        cup_duration: "Menstruationstasse",
-        underwear_duration: "Periodenunterwäsche",
-        liner_duration: "Slipeinlage",
-        preview: "Vorschau / Aktuelle Konfiguration",
-        preview_note: "Diese Übersicht zeigt die aktuell gesetzten Werte.",
-        fallback_note: "HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.",
-        sensor_search: "Sensor suchen…",
-        no_sensors: "Keine Sensoren gefunden.",
-        hours_suffix: "h",
-      },
-      en: {
-        entity: "Entity",
-        entity_help: "Select the sensor entity containing menstruation status.",
-        animations: "Animations",
-        product_animations: "Enable product animations",
-        product_animations_help: "Shows a visual fill animation during countdown.",
-        animation_style: "Animation style",
-        animation_style_help: "Choose the color/visual style for animations.",
-        realistic: "Realistic",
-        avoid_blood: "Avoid blood (blue)",
-        durations: "Durations (hours)",
-        durations_help: "Default countdown duration per product type in hours.",
-        tampon_duration: "Tampon",
-        pad_duration: "Pad",
-        cup_duration: "Menstrual Cup",
-        underwear_duration: "Period Underwear",
-        liner_duration: "Liner",
-        preview: "Preview / Current configuration",
-        preview_note: "This summary reflects the currently configured values.",
-        fallback_note: "HA entity picker unavailable, fallback dropdown active.",
-        sensor_search: "Search sensor…",
-        no_sensors: "No sensors found.",
-        hours_suffix: "h",
-      },
-    };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    return resolveCardTranslation(this._hass, 'menstruation_countdown_timer', key) || key;
   }
 
   _emit(nextConfig) {

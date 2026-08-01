@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class MenstruationCycleHeatmapCard extends HTMLElement {
   constructor() {
     super();
@@ -80,121 +95,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'unbekannt',
-        too_little_history: 'Zu wenig Verlaufsdaten in',
-        cycle_start: 'Start',
-        day: 'Tag',
-        end: 'Ende',
-        days_before_end: 'Tage vor Ende',
-        symptoms: 'Symptome',
-        legend_actual_period: 'Tatsächliche Periode',
-        legend_period_window: 'Periodenfenster',
-        legend_fertile: 'Fruchtbar (hohe Wahrscheinlichkeit, Standard-Days/Kalendermethode 8-19)',
-        legend_ovulation: 'Ovulation (hohe Wahrscheinlichkeit um Tag 14)',
-        legend_alignment_bottom: 'Ausrichtung: Zyklusende (E/-Tage)',
-        legend_alignment_top: 'Ausrichtung: Zyklusstart (Tag 1..X)',
-        scroll: 'scroll',
-        // Symptom category labels
-        cat_bleeding_strength: 'Blutungsstärke',
-        cat_spotting: 'Schmierblutung',
-        cat_intercourse: 'Geschlechtsverkehr',
-        cat_pain: 'Schmerzen',
-        cat_hygiene: 'Hygiene',
-        cat_test: 'Test',
-        cat_cervical_mucus: 'Zervixschleim',
-        cat_basal_temp: 'Basaltemperatur',
-        // Symptom option labels
-        opt_light: 'Gering',
-        opt_medium: 'Mittel',
-        opt_heavy: 'Stark',
-        opt_very_heavy: 'Sehr stark',
-        opt_red: 'Rot',
-        opt_brown: 'Braun',
-        opt_protected: 'Geschützt',
-        opt_unprotected: 'Ungeschützt',
-        opt_mittelschmerz: 'Mittelschmerz',
-        opt_cramps: 'Krämpfe',
-        opt_tender_breasts: 'Brustspannung',
-        opt_headache: 'Kopfschmerz',
-        opt_migraine: 'Migräne',
-        opt_lower_back: 'Rückenschmerzen',
-        opt_vulva: 'Vulvaschmerz',
-        opt_pad: 'Binde',
-        opt_liner: 'Slipeinlage',
-        opt_tampon: 'Tampon',
-        opt_cup: 'Menstruationstasse',
-        opt_period_underwear: 'Periodenunterwäsche',
-        opt_positive_ovulation: 'LH positiv',
-        opt_negative_ovulation: 'LH negativ',
-        opt_positive_pregnancy: 'Schwangerschaft +',
-        opt_negative_pregnancy: 'Schwangerschaft -',
-        opt_keinen: 'Keinen',
-        opt_klebrig: 'Klebrig',
-        opt_cremig: 'Cremig',
-        opt_fadenziehend: 'Fadenziehend',
-        opt_untypisch: 'Untypisch',
-      },
-      en: {
-        entity_not_found: 'Entity not found',
-        unknown: 'unknown',
-        too_little_history: 'Not enough history data in',
-        cycle_start: 'Start',
-        day: 'Day',
-        end: 'End',
-        days_before_end: 'days before end',
-        symptoms: 'Symptoms',
-        legend_actual_period: 'Actual period',
-        legend_period_window: 'Period window',
-        legend_fertile: 'Fertile (high probability, Standard Days/calendar method 8-19)',
-        legend_ovulation: 'Ovulation (high probability around day 14)',
-        legend_alignment_bottom: 'Alignment: cycle end (E/-days)',
-        legend_alignment_top: 'Alignment: cycle start (day 1..X)',
-        scroll: 'scroll',
-        // Symptom category labels
-        cat_bleeding_strength: 'Bleeding',
-        cat_spotting: 'Spotting',
-        cat_intercourse: 'Intercourse',
-        cat_pain: 'Pain',
-        cat_hygiene: 'Hygiene',
-        cat_test: 'Test',
-        cat_cervical_mucus: 'Cervical Mucus',
-        cat_basal_temp: 'Basal Temp.',
-        // Symptom option labels
-        opt_light: 'Light',
-        opt_medium: 'Medium',
-        opt_heavy: 'Heavy',
-        opt_very_heavy: 'Very Heavy',
-        opt_red: 'Red',
-        opt_brown: 'Brown',
-        opt_protected: 'Protected',
-        opt_unprotected: 'Unprotected',
-        opt_mittelschmerz: 'Mittelschmerz',
-        opt_cramps: 'Cramps',
-        opt_tender_breasts: 'Tender Breasts',
-        opt_headache: 'Headache',
-        opt_migraine: 'Migraine',
-        opt_lower_back: 'Lower Back Pain',
-        opt_vulva: 'Vulva Pain',
-        opt_pad: 'Pad',
-        opt_liner: 'Liner',
-        opt_tampon: 'Tampon',
-        opt_cup: 'Cup',
-        opt_period_underwear: 'Period Underwear',
-        opt_positive_ovulation: 'LH Positive',
-        opt_negative_ovulation: 'LH Negative',
-        opt_positive_pregnancy: 'Pregnancy +',
-        opt_negative_pregnancy: 'Pregnancy -',
-        opt_keinen: 'None',
-        opt_klebrig: 'Sticky',
-        opt_cremig: 'Creamy',
-        opt_fadenziehend: 'Stretchy',
-        opt_untypisch: 'Atypical',
-      },
-    };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_heatmap_card', key) || key;
   }
 
   _resolveEntityId() {
@@ -996,53 +897,7 @@ class MenstruationCycleHeatmapCardEditor extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        entity: 'Entität',
-        entry_id: 'Eintrags-ID (optional)',
-        display: 'Anzeige',
-        title: 'Titel',
-        max_cycles: 'Max. Zyklen',
-        features: 'Funktionen',
-        show_fertile_period: 'Fruchtbare Phase anzeigen',
-        alignment: 'Ausrichtung',
-        align_top: 'Oben (Tag 1..X)',
-        align_bottom: 'Unten (E/-Tage)',
-        symptom_entities: 'Symptom-Entitäten',
-        symptom_entities_hint: 'Wähle Sensor-Entitäten aus, die als Symptome angezeigt werden.',
-        preview: 'Vorschau',
-        preview_note: 'Vorschau zeigt Beispieldaten.',
-        fallback_note: 'HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.',
-        sensor_search: 'Sensor suchen…',
-        no_sensors: 'Keine Sensoren gefunden.',
-        day: 'T',
-        period: 'P',
-        fertile: 'F',
-      },
-      en: {
-        entity: 'Entity',
-        entry_id: 'Entry ID (optional)',
-        display: 'Display',
-        title: 'Title',
-        max_cycles: 'Max Cycles',
-        features: 'Features',
-        show_fertile_period: 'Show fertile period',
-        alignment: 'Alignment',
-        align_top: 'Top (Day 1..X)',
-        align_bottom: 'Bottom (E/-days)',
-        symptom_entities: 'Symptom Entities',
-        symptom_entities_hint: 'Select sensor entities to track as symptoms on the heatmap.',
-        preview: 'Preview',
-        preview_note: 'Preview uses sample data.',
-        fallback_note: 'HA entity picker unavailable, fallback dropdown active.',
-        sensor_search: 'Search sensor…',
-        no_sensors: 'No sensors found.',
-        day: 'D',
-        period: 'P',
-        fertile: 'F',
-      },
-    };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    return resolveCardTranslation(this._hass, 'menstruation_cycle_heatmap_card', key) || key;
   }
 
   _emit(nextConfig) {

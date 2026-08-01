@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 class MenstruationProductInventoryCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -57,85 +72,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        title: "Haushaltsvorrat",
-        entity_not_found: "Inventar-Entity nicht gefunden",
-        members: "Haushaltsmitglieder",
-        member: "Mitglied",
-        all_members: "Alle",
-        last_usage: "Zuletzt genutzt",
-        no_usage: "Noch kein Verbrauch erfasst",
-        product: "Produkt",
-        stock: "Bestand",
-        actions: "Aktionen",
-        quantity: "Menge",
-        consume: "Verbrauch",
-        use: "Verwenden",
-        emptied_dried: "Geleert/Trocken",
-        refill: "Auffüllen",
-        washed: "Gereinigt",
-        wash_needed: "Dringend waschen!",
-        available: "Verfügbar",
-        in_use: "In Nutzung",
-        buy_recommendation: "Kaufempfehlung",
-        add_to_shopping: "Zur Einkaufsliste",
-        recent_usage: "Letzte Verbräuche",
-        no_logs: "Keine Verbrauchseinträge",
-        status_good: "Gut",
-        status_warning: "Warnung",
-        status_critical: "Kritisch",
-        pregnancy: "Schwangerschaft",
-        week: "Woche",
-        trimester: "Trimester",
-        unknown_member: "Unbekannt",
-        error_prefix: "Fehler",
-        tampon: "Tampons",
-        pad: "Binden",
-        cup: "Menstruationstassen",
-        liner: "Slipeinlagen",
-        underwear: "Periodenunterwäsche",
-      },
-      en: {
-        title: "Household inventory",
-        entity_not_found: "Inventory entity not found",
-        members: "Household members",
-        member: "Member",
-        all_members: "All",
-        last_usage: "Last usage",
-        no_usage: "No usage logged yet",
-        product: "Product",
-        stock: "Stock",
-        actions: "Actions",
-        quantity: "Qty",
-        consume: "Consume",
-        use: "Use",
-        emptied_dried: "Emptied/Dried",
-        refill: "Refill",
-        washed: "Washed",
-        wash_needed: "Washing needed urgently!",
-        available: "Available",
-        in_use: "In use",
-        buy_recommendation: "Buy recommendation",
-        add_to_shopping: "Add to shopping list",
-        recent_usage: "Recent usage",
-        no_logs: "No consumption logs",
-        status_good: "Good",
-        status_warning: "Warning",
-        status_critical: "Critical",
-        pregnancy: "Pregnancy",
-        week: "Week",
-        trimester: "Trimester",
-        unknown_member: "Unknown",
-        error_prefix: "Error",
-        tampon: "Tampons",
-        pad: "Pads",
-        cup: "Menstrual cups",
-        liner: "Liners",
-        underwear: "Period underwear",
-      },
-    };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_product_inventory_card', key) || key;
   }
 
   _products(pregnancyInfo = null) {
@@ -631,42 +568,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        visible_products: "Sichtbare Produkte",
-        product_order: "Produktreihenfolge (Ziehen zum Sortieren)",
-        thresholds: "Schwellenwerte",
-        underwear_settings: "Unterwäsche Einstellungen",
-        total_owned: "Gesamt besessen",
-        washing_threshold: "Wasch-Schwelle",
-        warning: "Warnung",
-        critical: "Kritisch",
-        options: "Optionen",
-        tampon: "Tampons",
-        pad: "Binden",
-        cup: "Menstruationstassen",
-        liner: "Slipeinlagen",
-        underwear: "Periodenunterwäsche",
-      },
-      en: {
-        visible_products: "Visible Products",
-        product_order: "Product Order (Drag to reorder)",
-        thresholds: "Thresholds",
-        underwear_settings: "Underwear Settings",
-        total_owned: "Total Owned",
-        washing_threshold: "Washing Threshold",
-        warning: "Warning",
-        critical: "Critical",
-        options: "Options",
-        tampon: "Tampons",
-        pad: "Pads",
-        cup: "Menstrual Cups",
-        liner: "Liners",
-        underwear: "Period Underwear",
-      },
-    };
-    const lang = this._lang();
-    return (i18n[lang] && i18n[lang][key]) || (i18n.en[key] || key);
+    return resolveCardTranslation(this._hass, 'menstruation_product_inventory_card', key) || key;
   }
 
   _escapeHtml(value) {

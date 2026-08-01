@@ -1,3 +1,18 @@
+function loadCardTranslations(hass) {
+  const lang = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
+  const langCode = lang.startsWith('de') ? 'de' : 'en';
+  return hass?.data?.menstruation_cycle?.translations?.[langCode]?.lovelace || {};
+}
+
+function resolveCardTranslation(hass, section, key) {
+  const fromData = loadCardTranslations(hass)?.[section]?.[key];
+  if (typeof fromData === 'string' && fromData) return fromData;
+  const path = `component.menstruation_cycle.lovelace.${section}.${key}`;
+  const localized = hass?.localize?.(path);
+  if (typeof localized === 'string' && localized !== path) return localized;
+  return undefined;
+}
+
 /**
  * Menstrual Statistics Card
  * Displays cycle statistics, hygiene statistics and a doctor report.
@@ -22,75 +37,6 @@ const DEFAULT_CONFIG = {
   target_wash_days: 7,
 };
 
-const HYGIENE_TRANSLATIONS = {
-  de: {
-    title: 'Produktverbrauch',
-    usage_section: 'Verbrauch',
-    planning_section: 'Planung',
-    sustainability_section: 'Nachhaltigkeit',
-    timeline_section: 'Letzte 30 Tage',
-    tampons_per_cycle: 'Tampons / Periode',
-    pads_per_cycle: 'Binden / Periode',
-    cup_empties_per_day: 'Cup-Leerungen / Tag',
-    liners_per_cycle: 'Slipeinlagen / Periode',
-    underwear_per_cycle: 'Periodenunterwäsche / Periode',
-    planning_days: 'Planungstage',
-    days: 'Tage',
-    last_cycle: 'Letzte Periode',
-    last_cycles: ({ count }) => `${count || 0} Zyklen`,
-    last_30_days: 'Letzte 30 Tage',
-    no_usage_last_30_days: 'In den letzten 30 Tagen wurden keine Produkte geloggt.',
-    wash_every_x_days: 'Wasche alle X Tage',
-    buy_x_more_underwear: 'Kaufe X mehr Slips',
-    based_on_daily_usage: ({ value }) => `bei ~${value || 0} pro Tag`,
-    for_wash_goal: ({ days }) => `für alle ${days || 0} Tage Waschrhythmus`,
-    add_to_shopping_list: 'Zur Einkaufsliste',
-    cup_cost_savings: 'Cup Kostenersparnis',
-    cup_co2_savings: 'Cup CO2-Ersparnis',
-    annual_projection: 'Jahres-Prognose',
-    source: 'Quelle',
-    tampon: 'Tampon',
-    pad: 'Binde',
-    cup: 'Cup',
-    cup_empty: 'Cup geleert',
-    liner: 'Slipeinlage',
-    underwear: 'Periodenunterwäsche',
-  },
-  en: {
-    title: 'Product usage',
-    usage_section: 'Usage',
-    planning_section: 'Planning',
-    sustainability_section: 'Sustainability',
-    timeline_section: 'Last 30 days',
-    tampons_per_cycle: 'Tampons / period',
-    pads_per_cycle: 'Pads / period',
-    cup_empties_per_day: 'Cup empties / day',
-    liners_per_cycle: 'Liners / period',
-    underwear_per_cycle: 'Period underwear / period',
-    planning_days: 'Planning days',
-    days: 'days',
-    last_cycle: 'Last period',
-    last_cycles: ({ count }) => `${count || 0} cycles`,
-    last_30_days: 'Last 30 days',
-    no_usage_last_30_days: 'No products were logged in the last 30 days.',
-    wash_every_x_days: 'Wash every X days',
-    buy_x_more_underwear: 'Buy X more underwear',
-    based_on_daily_usage: ({ value }) => `based on ~${value || 0}/day`,
-    for_wash_goal: ({ days }) => `for a ${days || 0}-day wash routine`,
-    add_to_shopping_list: 'Add to shopping list',
-    cup_cost_savings: 'Cup cost savings',
-    cup_co2_savings: 'Cup CO2 savings',
-    annual_projection: 'Annual projection',
-    source: 'Source',
-    tampon: 'Tampon',
-    pad: 'Pad',
-    cup: 'Cup',
-    cup_empty: 'Cup emptied',
-    liner: 'Liner',
-    underwear: 'Period underwear',
-  },
-};
-
 function mergeConfig(config) {
   return { ...DEFAULT_CONFIG, ...(config || {}) };
 }
@@ -101,11 +47,11 @@ function getLang(hass) {
 }
 
 function translate(hass, key, placeholders = {}) {
-  const lang = getLang(hass);
-  const dict = HYGIENE_TRANSLATIONS[lang] || HYGIENE_TRANSLATIONS.en;
-  const value = dict[key];
-  if (typeof value === 'function') return value(placeholders);
-  return value ?? HYGIENE_TRANSLATIONS.en[key] ?? key;
+  const template = resolveCardTranslation(hass, 'menstruation_statistics_card', `hygiene_${key}`) || key;
+  return String(template).replace(/\{(\w+)\}/g, (_match, token) => {
+    const value = placeholders?.[token];
+    return value === undefined || value === null ? '' : String(value);
+  });
 }
 
 function escapeHtml(value) {
@@ -728,170 +674,7 @@ class MenstruationStatisticsCard extends HTMLElement {
   }
 
   _t(key) {
-    const i18n = {
-      de: {
-        title: 'Statistiken',
-        tab_period: 'Periode',
-        tab_hygiene: 'Hygiene',
-        tab_nfp: 'NFP',
-        tab_doctor: 'Arzt-Bericht',
-        filter: 'Filter',
-        filter_aria: 'Statistik-Filter öffnen',
-        no_data: 'Keine Daten vorhanden',
-        entity_not_found: 'Entity nicht gefunden',
-        cycle_length: 'Zykluslänge',
-        bleeding_duration: 'Blutungsdauer',
-        bleeding_strength: 'Blutungsstärke',
-        regularity: 'Regelmäßigkeit',
-        top_symptoms: 'Häufigste Symptome',
-        pain_trend: 'Schmerztage-Trend',
-        avg: 'Ø',
-        min: 'Min',
-        max: 'Max',
-        std_dev: 'Stabw.',
-        days: 'Tage',
-        cycles_analyzed: 'Analysierte Zyklen',
-        very_regular: 'Sehr regelmäßig',
-        regular: 'Regelmäßig',
-        irregular: 'Unregelmäßig',
-        bleeding_none: 'Keine',
-        bleeding_light: 'Leicht',
-        bleeding_medium: 'Normal',
-        bleeding_heavy: 'Stark',
-        bleeding_very_heavy: 'Sehr stark',
-        period: 'Zeitraum',
-        months_3: '3 Monate',
-        months_6: '6 Monate',
-        months_12: '12 Monate',
-        custom: 'Benutzerdefiniert',
-        doctor_report_title: 'Arzt-Bericht',
-        doctor_report_desc: 'Erstellt einen professionellen HTML-Bericht für den Arzttermin. Speichert die Datei im Export-Verzeichnis von Home Assistant.',
-        patient_name: 'Patientenname (optional)',
-        patient_birthdate: 'Geburtsdatum (optional, JJJJ-MM-TT)',
-        export_language: 'Berichtssprache',
-        export_btn: 'Als HTML für Arzt exportieren',
-        export_ok: '✅ Bericht exportiert!',
-        export_err: '❌ Fehler beim Exportieren',
-        exporting: '⏳ Wird exportiert…',
-        print_btn: 'Seite drucken / Als PDF speichern',
-        settings_title: 'Einstellungen',
-        days_back_label: 'Anzahl Tage zurück',
-        cycle_start: 'Zyklusbeginn',
-        pain_days: 'Schmerztage',
-        avg_pain_days: 'Ø Schmerztage/Zyklus',
-        of: 'von',
-        last_n_days: (n) => `Letzte ${n} Tage`,
-        no_symptom_data: 'Keine Symptomdaten',
-        no_cycle_data: 'Keine Zyklusdaten',
-        nfp_title: 'NFP-Analyse (Symptothermalmethode)',
-        nfp_no_data: 'Keine NFP-Daten vorhanden. Messung der Basaltemperatur aktivieren, um NFP-Analyse zu nutzen.',
-        nfp_confidence: 'Konfidenz',
-        nfp_confidence_high: 'Hoch',
-        nfp_confidence_medium: 'Mittel',
-        nfp_confidence_low: 'Niedrig',
-        nfp_temp_rise: 'Temperaturanstieg',
-        nfp_mucus_peak: 'Zervixschleim-Peak',
-        nfp_cervix_peak: 'Zervixposition-Peak',
-        nfp_ovulation: 'Geschätzter Eisprung',
-        nfp_fertile_window: 'Fruchtbares Fenster',
-        nfp_score: 'NFP-Score',
-        nfp_method: 'Methode',
-        nfp_method_nfp: 'NFP',
-        nfp_method_standard: 'Standard',
-        nfp_temp_chart: 'Basaltemperaturkurve',
-        nfp_baseline: 'Basislinie',
-        nfp_threshold: 'Schwelle (+0,2°C)',
-        nfp_day: 'Tag',
-        nfp_temp_unit: '°C',
-        nfp_not_detected: 'Nicht erkannt',
-        nfp_day_label: (n) => `Tag ${n}`,
-        nfp_cycle_day: 'Zyklustag',
-        nfp_temperature: 'Temperatur (°C)',
-      },
-      en: {
-        title: 'Statistics',
-        tab_period: 'Period',
-        tab_hygiene: 'Hygiene',
-        tab_nfp: 'NFP',
-        tab_doctor: 'Doctor Report',
-        filter: 'Filter',
-        filter_aria: 'Open statistics filters',
-        no_data: 'No data available',
-        entity_not_found: 'Entity not found',
-        cycle_length: 'Cycle Length',
-        bleeding_duration: 'Bleeding Duration',
-        bleeding_strength: 'Bleeding Strength',
-        regularity: 'Regularity',
-        top_symptoms: 'Top Symptoms',
-        pain_trend: 'Pain Days Trend',
-        avg: 'Avg',
-        min: 'Min',
-        max: 'Max',
-        std_dev: 'Std Dev',
-        days: 'days',
-        cycles_analyzed: 'Cycles analyzed',
-        very_regular: 'Very regular',
-        regular: 'Regular',
-        irregular: 'Irregular',
-        bleeding_none: 'None',
-        bleeding_light: 'Light',
-        bleeding_medium: 'Medium',
-        bleeding_heavy: 'Heavy',
-        bleeding_very_heavy: 'Very heavy',
-        period: 'Period',
-        months_3: '3 months',
-        months_6: '6 months',
-        months_12: '12 months',
-        custom: 'Custom',
-        doctor_report_title: 'Doctor Report',
-        doctor_report_desc: 'Generates a professional HTML report for doctor appointments. Saves the file to the Home Assistant export directory.',
-        patient_name: 'Patient name (optional)',
-        patient_birthdate: 'Date of birth (optional, YYYY-MM-DD)',
-        export_language: 'Report language',
-        export_btn: 'Export HTML for Doctor',
-        export_ok: '✅ Report exported!',
-        export_err: '❌ Export failed',
-        exporting: '⏳ Exporting…',
-        print_btn: 'Print page / Save as PDF',
-        settings_title: 'Settings',
-        days_back_label: 'Days back',
-        cycle_start: 'Cycle start',
-        pain_days: 'Pain days',
-        avg_pain_days: 'Avg pain days/cycle',
-        of: 'of',
-        last_n_days: (n) => `Last ${n} days`,
-        no_symptom_data: 'No symptom data',
-        no_cycle_data: 'No cycle data',
-        nfp_title: 'NFP Analysis (Symptothermal Method)',
-        nfp_no_data: 'No NFP data available. Log basal temperatures to enable NFP analysis.',
-        nfp_confidence: 'Confidence',
-        nfp_confidence_high: 'High',
-        nfp_confidence_medium: 'Medium',
-        nfp_confidence_low: 'Low',
-        nfp_temp_rise: 'Temperature Rise',
-        nfp_mucus_peak: 'Cervical Mucus Peak',
-        nfp_cervix_peak: 'Cervix Position Peak',
-        nfp_ovulation: 'Estimated Ovulation',
-        nfp_fertile_window: 'Fertile Window',
-        nfp_score: 'NFP Score',
-        nfp_method: 'Method',
-        nfp_method_nfp: 'NFP',
-        nfp_method_standard: 'Standard',
-        nfp_temp_chart: 'Basal Temperature Curve',
-        nfp_baseline: 'Baseline',
-        nfp_threshold: 'Threshold (+0.2°C)',
-        nfp_day: 'Day',
-        nfp_temp_unit: '°C',
-        nfp_not_detected: 'Not detected',
-        nfp_day_label: (n) => `Day ${n}`,
-        nfp_cycle_day: 'Cycle Day',
-        nfp_temperature: 'Temperature (°C)',
-      },
-    };
-    const lang = this._lang();
-    const dict = i18n[lang] || i18n.en;
-    const val = dict[key];
-    return val !== undefined ? val : (i18n.en[key] ?? key);
+    return resolveCardTranslation(this._hass, 'menstruation_statistics_card', key) || key;
   }
 
   _getAttrs() {
