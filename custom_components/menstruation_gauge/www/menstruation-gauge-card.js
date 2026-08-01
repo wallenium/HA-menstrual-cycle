@@ -1128,18 +1128,18 @@ class MenstruationGaugeCard extends HTMLElement {
       return `
         <svg class="gauge" viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label="Menstruation gauge 60 days">
           <g class="gauge-content" style="transform-origin: ${cx}px ${cy}px; transform: rotate(${rotation}deg);">
-            ${dayLabels}
             ${baseTicks}
-            ${monthSeparators}
             ${fertileBars}
-            ${ovulationMarkers}
-            ${nfpMethodLabel}
             ${periodWindowBars}
             ${confirmedBars}
+            ${ovulationMarkers}
             ${predictedBars}
             ${predictedMarker}
             <circle cx="${cx}" cy="${cy}" r="106" fill="none" stroke="${palette.ring}" stroke-width="1"></circle>
           </g>
+          ${dayLabels}
+          ${monthSeparators}
+          ${nfpMethodLabel}
           <text x="${cx}" y="44" class="month">${monthLabel60}</text>
           ${triangleMarker}
         </svg>
