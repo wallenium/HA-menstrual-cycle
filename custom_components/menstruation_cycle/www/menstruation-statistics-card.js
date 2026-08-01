@@ -796,8 +796,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_fertile_window: 'Fruchtbares Fenster',
         nfp_score: 'NFP-Score',
         nfp_method: 'Methode',
-        nfp_method_nfp: '📊 NFP',
-        nfp_method_standard: '📈 Standard',
+        nfp_method_nfp: 'NFP',
+        nfp_method_standard: 'Standard',
         nfp_temp_chart: 'Basaltemperaturkurve',
         nfp_baseline: 'Basislinie',
         nfp_threshold: 'Schwelle (+0,2°C)',
@@ -875,8 +875,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_fertile_window: 'Fertile Window',
         nfp_score: 'NFP Score',
         nfp_method: 'Method',
-        nfp_method_nfp: '📊 NFP',
-        nfp_method_standard: '📈 Standard',
+        nfp_method_nfp: 'NFP',
+        nfp_method_standard: 'Standard',
         nfp_temp_chart: 'Basal Temperature Curve',
         nfp_baseline: 'Baseline',
         nfp_threshold: 'Threshold (+0.2°C)',
@@ -1185,7 +1185,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     if (!this._hasNfpData(attrs)) {
       return `<div class="section">
-        <div class="section-header"><span class="section-icon">📊</span><span>${esc(t('nfp_title'))}</span></div>
+        <div class="section-header"><span class="section-icon"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP" class="section-icon-img" /></span><span>${esc(t('nfp_title'))}</span></div>
         <p class="no-data">${esc(t('nfp_no_data'))}</p>
       </div>`;
     }
@@ -1223,7 +1223,8 @@ class MenstruationStatisticsCard extends HTMLElement {
       : esc(t('nfp_not_detected'));
 
     const methodLabel = (nfp.ovulation_detected && confidence !== 'low')
-      ? esc(t('nfp_method_nfp')) : esc(t('nfp_method_standard'));
+      ? `<img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP Method" class="method-icon" />${esc(t('nfp_method_nfp'))}`
+      : `<img src="/menstruation_cycle/assets/state/hybrid.svg" alt="Standard Method" class="method-icon" />${esc(t('nfp_method_standard'))}`;
 
     // Build temperature chart from symptom history
     const chartHtml = this._renderNfpTempChart(attrs, nfp);
@@ -1231,13 +1232,13 @@ class MenstruationStatisticsCard extends HTMLElement {
     return `
       <div class="section">
         <div class="section-header">
-          <span class="section-icon">📊</span>
+          <span class="section-icon"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP" class="section-icon-img" /></span>
           <span>${esc(t('nfp_title'))}</span>
           <span class="nfp-confidence-badge ${confidenceClass}">${esc(confidenceLabel)}</span>
         </div>
         <div class="nfp-info-box">
           <div class="nfp-info-row">
-            <span class="nfp-info-icon">📊</span>
+            <span class="nfp-info-icon"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP" class="nfp-info-icon-img" /></span>
             <span class="nfp-info-label">${esc(t('nfp_temp_rise'))}</span>
             <span class="nfp-info-value">${dayLabel(nfp.temperature_rise_day)}</span>
           </div>
@@ -1529,6 +1530,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         .section-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: var(--primary-text-color); }
         .section-header.compact { margin-bottom: 10px; }
         .section-icon { font-size: 16px; }
+        .section-icon-img { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+        .method-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px; }
         .section-meta { font-size: 11px; color: var(--secondary-text-color, #888); margin-bottom: 8px; }
         .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 8px; }
         .stat-box { background: var(--secondary-background-color, #f5f5f5); border-radius: 8px; padding: 8px; text-align: center; border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.18)); }
@@ -1568,6 +1571,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         .nfp-info-row:last-child { border-bottom: none; }
         .nfp-info-row.nfp-info-highlight { font-weight: 600; color: var(--success-color, #16a34a); }
         .nfp-info-icon { flex: 0 0 18px; }
+        .nfp-info-icon-img { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
         .nfp-info-label { flex: 0 0 140px; color: var(--secondary-text-color, #888); }
         .nfp-info-value { flex: 1; color: var(--primary-text-color); }
         .nfp-chart-wrap { width: 100%; overflow: hidden; }
