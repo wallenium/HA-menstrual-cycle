@@ -2,7 +2,7 @@
  * Shared product icon definitions for all menstrual cards.
  */
 
-const ASSET_BASE_URL = '/menstruation_gauge/assets';
+const ASSET_BASE_URL = '/menstruation_cycle/assets';
 
 const PRODUCT_ASSET_FILENAMES = {
   tampon: 'tampon.svg',

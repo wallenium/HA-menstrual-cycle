@@ -21,7 +21,7 @@ global.HTMLElement = class HTMLElement {
 };
 
 const src = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-cycle-heatmap-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-heatmap-card.js'),
   'utf8',
 );
 

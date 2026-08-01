@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_gauge"
+COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
 
 
 def _install_homeassistant_stubs() -> None:

@@ -142,7 +142,7 @@ export_history:
   name: Export cycle history
   description: |
     Exports the current history to a local file.
-    Files are written to `<config>/menstruation_gauge_exports/`.
+    Files are written to `<config>/menstruation_cycle_exports/`.
     Supported formats: `csv`, `txt`.
   fields:
     entity_id:
@@ -784,7 +784,7 @@ export_doctor_report:
   name: Export doctor report (HTML)
   description: |
     Generates a professional HTML medical report from the cycle history and symptom data.
-    The file is saved to `<config>/menstruation_gauge_exports/`.
+    The file is saved to `<config>/menstruation_cycle_exports/`.
     Open the file in a browser and use "Print to PDF" to create a PDF.
   fields:
     entity_id:

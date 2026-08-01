@@ -59,7 +59,7 @@ global.ResizeObserver = class { observe() {} disconnect() {} };
 
 // Stub window with minimal ProductIcons so status icons resolve.
 const productIconsSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
   'utf8',
 );
 global.window = { customCards: [] };
@@ -75,7 +75,7 @@ eval(productIconsSrc);
 
 // Now load the gauge card code.
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-cycle-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval

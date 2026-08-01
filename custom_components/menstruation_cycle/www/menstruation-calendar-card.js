@@ -866,7 +866,7 @@ class MenstruationCalendarCard extends HTMLElement {
 
     if (Object.keys(symptomData).length > 0) {
       try {
-        await this._hass.callService('menstruation_gauge', 'add_symptom', {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
           date: iso,
           symptom_data: symptomData,
           ...(entityId ? { entity_id: entityId } : {}),
@@ -900,7 +900,7 @@ class MenstruationCalendarCard extends HTMLElement {
     let lastError = null;
     for (const payload of attempts) {
       try {
-        await this._hass.callService('menstruation_gauge', service, payload);
+        await this._hass.callService('menstruation_cycle', service, payload);
         return;
       } catch (err) {
         lastError = err;

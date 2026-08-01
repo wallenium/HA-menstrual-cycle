@@ -1646,7 +1646,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       btn.addEventListener('click', async () => {
         if (!this._hass) return;
         const quantity = Math.max(1, Number(btn.dataset.quantity || 1));
-        await this._hass.callService('menstruation_gauge', 'manage_household_inventory', {
+        await this._hass.callService('menstruation_cycle', 'manage_household_inventory', {
           inventory_action: 'add_to_shopping_list',
           product: 'underwear',
           quantity,
@@ -1688,7 +1688,7 @@ class MenstruationStatisticsCard extends HTMLElement {
           if (bd) serviceData.patient_birthdate = bd;
           serviceData.language = lang;
 
-          await this._hass.callService('menstruation_gauge', 'export_doctor_report', serviceData);
+          await this._hass.callService('menstruation_cycle', 'export_doctor_report', serviceData);
           this._exportStatus = 'ok';
         } catch (err) {
           console.error('export_doctor_report failed', err);

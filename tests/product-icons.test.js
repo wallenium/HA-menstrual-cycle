@@ -1,5 +1,5 @@
 /**
- * Tests for product-icons.js – pregnancy icon mapping.
+ * Tests for menstruation-icons.js – pregnancy icon mapping.
  *
  * Run with:  node tests/product-icons.test.js
  */
@@ -15,7 +15,7 @@ global.window = {};
 global.document = undefined;
 
 const src = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/product-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
@@ -33,8 +33,8 @@ const {
   createAnimatedSvgElement,
 } = global.window.ProductIcons;
 
-const ASSET_BASE = '/menstruation_gauge/assets/pregnancy';
-const STATE_ASSET_BASE = '/menstruation_gauge/assets/state';
+const ASSET_BASE = '/menstruation_cycle/assets/pregnancy';
+const STATE_ASSET_BASE = '/menstruation_cycle/assets/state';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -259,7 +259,7 @@ function testCreateAnimatedSvgElementUsesAssets() {
     const svg = createAnimatedSvgElement(product, 'large');
     assert.ok(svg, `${product}: svg is created`);
     assert.ok(
-      svg.dataset.assetSrc.endsWith(`/menstruation_gauge/assets/period/${filename}`),
+      svg.dataset.assetSrc.endsWith(`/menstruation_cycle/assets/period/${filename}`),
       `${product}: asset URL points to new period asset`,
     );
     assert.ok(
@@ -272,7 +272,7 @@ function testCreateAnimatedSvgElementUsesAssets() {
     ));
     const href = image && (image.attributes.href || image.attributes['xlink:href']);
     assert.ok(
-      String(href || '').endsWith(`/menstruation_gauge/assets/period/${filename}`),
+      String(href || '').endsWith(`/menstruation_cycle/assets/period/${filename}`),
       `${product}: animated svg references expected asset image`,
     );
   });

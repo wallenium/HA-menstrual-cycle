@@ -101,6 +101,7 @@ from .const import (
     SERVICE_UPDATE_PREGNANCY_DATE,
     SIGNAL_HISTORY_UPDATED,
     STORAGE_KEY,
+    STORAGE_KEY_LEGACY,
     STORAGE_VERSION,
     SYMPTOM_BASAL_TEMP,
     SYMPTOM_CLOTS,
@@ -168,7 +169,7 @@ HISTORY_ROW_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-history-
 COMPACT_STATUS_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-compact-status-card.js")
 STATISTICS_CARD_RESOURCE_URL = _build_card_resource_url("menstruation-statistics-card.js")
 CARD_RESOURCE_TYPE = "module"
-EXPORT_DIR_NAME = "menstruation_gauge_exports"
+EXPORT_DIR_NAME = "menstruation_cycle_exports"
 LOVELACE_RESOURCES = (
     (CARD_RESOURCE_URL, CARD_STATIC_URL, "menstruation-cycle-card.js"),
     (PRODUCT_ICONS_RESOURCE_URL, PRODUCT_ICONS_STATIC_URL, "menstruation-icons.js"),
@@ -624,7 +625,7 @@ def _normalize_date_or_raise(value: str) -> str:
 def _runtime_by_profile(hass: HomeAssistant, profile: str) -> MenstruationRuntime:
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
-        raise HomeAssistantError("No menstruation_gauge config entry loaded")
+        raise HomeAssistantError("No menstruation_cycle config entry loaded")
 
     wanted = slugify(str(profile)).strip("_")
     for runtime in domain_data.values():
@@ -636,7 +637,7 @@ def _runtime_by_profile(hass: HomeAssistant, profile: str) -> MenstruationRuntim
 def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRuntime:
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
-        raise HomeAssistantError("No menstruation_gauge config entry loaded")
+        raise HomeAssistantError("No menstruation_cycle config entry loaded")
 
     profile = call.data.get(SERVICE_FIELD_PROFILE)
     if profile is not None and str(profile).strip():
@@ -650,7 +651,7 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
         runtime_entry_id = state_obj.attributes.get("entry_id")
         if runtime_entry_id and runtime_entry_id in domain_data:
             return domain_data[runtime_entry_id]
-        raise HomeAssistantError(f"Entity '{entity_id}' is not a menstruation_gauge sensor.")
+        raise HomeAssistantError(f"Entity '{entity_id}' is not a menstruation_cycle sensor.")
 
     entry_id = call.data.get(SERVICE_FIELD_ENTRY_ID)
     if entry_id is not None and str(entry_id).strip():
@@ -1077,7 +1078,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     storage = MenstruationStorage(
         hass,
         key=f"{STORAGE_KEY}.{profile}",
-        legacy_key=STORAGE_KEY if profile == "default" else None,
+        legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
     )
     stored = await storage.async_load()
 
@@ -1179,7 +1180,7 @@ async def _async_load_timer_state(hass: HomeAssistant, profile: str) -> None:
     timer_state = await store.async_load()
     if isinstance(timer_state, dict):
         hass.states.async_set(
-            f"menstruation_gauge_timer.{profile}",
+            f"menstruation_cycle_timer.{profile}",
             "active" if timer_state.get("is_running") else "idle",
             timer_state,
         )
@@ -1209,7 +1210,7 @@ async def _async_handle_save_timer_state(hass: HomeAssistant, call: ServiceCall)
     await store.async_save(timer_state)
 
     hass.states.async_set(
-        f"menstruation_gauge_timer.{profile}",
+        f"menstruation_cycle_timer.{profile}",
         "active" if is_running else "idle",
         timer_state,
     )
