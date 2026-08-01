@@ -6,18 +6,18 @@
   "dependencies": ["lovelace"],
   "documentation": "https://github.com/wallenium/HA-menstrual-cycle/wiki",
   "frontend_extra_module_url": [
-    "/menstruation_cycle/menstruation-cycle-card.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-icons.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-cycle-heatmap-card.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-calendar-card.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-countdown-timer.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-product-inventory-card.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-cycle-card-compact.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-cycle-compact-status-card.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-cycle-history-card-row.js?v=1.5.0b1",
-    "/menstruation_cycle/menstruation-statistics-card.js?v=1.5.0b1"
+    "/menstruation_cycle/menstruation-cycle-card.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-icons.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-cycle-heatmap-card.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-calendar-card.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-countdown-timer.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-product-inventory-card.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-cycle-card-compact.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-cycle-compact-status-card.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-cycle-history-card-row.js?v=1.5.0b2",
+    "/menstruation_cycle/menstruation-statistics-card.js?v=1.5.0b2"
   ],
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/wallenium/HA-menstrual-cycle/issues",
-  "version": "1.5.0b1"
+  "version": "1.5.0b2"
 }

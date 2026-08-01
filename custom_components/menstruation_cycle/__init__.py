@@ -1057,24 +1057,33 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 def _async_schedule_old_domain_migration(hass: HomeAssistant) -> None:
-    """Detect old menstruation_gauge entries and schedule their migration."""
+    """Detect old menstruation_gauge entries and create repair issues for each.
+
+    Instead of migrating silently in the background, a repair issue is raised
+    in *Settings → System → Repairs* so the user can review the sensor mapping
+    and confirm the migration by clicking *Fix*.
+    """
+    from .repairs import async_create_migration_issue
+
     old_entries = hass.config_entries.async_entries(OLD_DOMAIN)
     if not old_entries:
         return
     for old_entry in old_entries:
-        _LOGGER.info(
-            "Detected config entry '%s' under old domain '%s'. Scheduling migration to '%s'.",
+        _LOGGER.warning(
+            "Detected config entry '%s' under old domain '%s' – "
+            "a repair issue has been created. "
+            "Please go to Settings → System → Repairs to complete the migration to '%s'.",
             old_entry.title,
             OLD_DOMAIN,
             DOMAIN,
         )
-        hass.async_create_task(
-            _async_migrate_old_domain_entry(hass, old_entry),
-        )
+        async_create_migration_issue(hass, old_entry.entry_id, old_entry.title)
 
 
 async def _async_migrate_old_domain_entry(hass: HomeAssistant, old_entry: ConfigEntry) -> None:
     """Migrate a single menstruation_gauge config entry to menstruation_cycle."""
+    from .repairs import async_delete_migration_issue
+
     try:
         # If a menstruation_cycle entry with the same unique_id already exists,
         # the migration already ran; just clean up the leftover old entry.
@@ -1094,6 +1103,7 @@ async def _async_migrate_old_domain_entry(hass: HomeAssistant, old_entry: Config
                 OLD_DOMAIN,
             )
             await hass.config_entries.async_remove(old_entry.entry_id)
+            async_delete_migration_issue(hass, old_entry.entry_id)
             return
 
         # Initiate an import flow that creates a new menstruation_cycle entry.
@@ -1123,6 +1133,9 @@ async def _async_migrate_old_domain_entry(hass: HomeAssistant, old_entry: Config
 
         # Remove the old entry regardless of result so it does not block HA startup.
         await hass.config_entries.async_remove(old_entry.entry_id)
+
+        # Delete the repair issue now that migration is complete.
+        async_delete_migration_issue(hass, old_entry.entry_id)
 
     except Exception:  # noqa: BLE001
         _LOGGER.exception(
