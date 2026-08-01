@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Gauge",
+        "title": "Menstruation Cycle",
         "description": "Erstelle ein Profil (Benutzername + Anzeigename) zur Zyklusverfolgung.",
         "data": {
           "profile": "Benutzername/Profil",
@@ -18,7 +18,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Gauge Einstellungen",
+        "title": "Menstruation Cycle Einstellungen",
         "description": "Einstellungen zur Zyklusverfolgung anpassen. Änderungen werden sofort gespeichert.",
         "data": {
           "friendly_name": "Anzeigename",

@@ -1,5 +1,5 @@
 /**
- * Tests for menstruation-gauge-card.js
+ * Tests for menstruation-cycle-card.js
  *
  * Covers:
  *  A) Render-stability: consecutive hass updates without state change must not
@@ -75,15 +75,15 @@ eval(productIconsSrc);
 
 // Now load the gauge card code.
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-gauge-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-cycle-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(cardSrc);
 
 // Capture the card class registered via customElements.define.
-const GaugeCard = _definedElements['menstruation-gauge-card'];
-if (!GaugeCard) throw new Error('MenstruationGaugeCard was not registered via customElements.define');
+const GaugeCard = _definedElements['menstruation-cycle-card'] || _definedElements['menstruation-gauge-card'];
+if (!GaugeCard) throw new Error('MenstruationCycleCard was not registered via customElements.define');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -559,7 +559,7 @@ function testPregnancyModeSymptomSave() {
 
   // Return promise so any async errors propagate (optional await in runner).
   return savePromise.then(() => {
-    const symptomCall = savedCalls.find((c) => c.domain === 'menstruation_gauge' && c.service === 'add_symptom');
+    const symptomCall = savedCalls.find((c) => (c.domain === 'menstruation_cycle' || c.domain === 'menstruation_gauge') && c.service === 'add_symptom');
     assert.ok(symptomCall, 'add_symptom service must be called');
     assert.deepStrictEqual(
       symptomCall.payload.symptom_data.pregnancy_symptoms,
@@ -722,7 +722,7 @@ async function testClotSizeDependencyOnSave() {
 
   await card._handleModalSave();
 
-  const symptomCall = savedCalls.find((c) => c.domain === 'menstruation_gauge' && c.service === 'add_symptom');
+  const symptomCall = savedCalls.find((c) => (c.domain === 'menstruation_cycle' || c.domain === 'menstruation_gauge') && c.service === 'add_symptom');
   assert.ok(symptomCall, 'add_symptom service must be called');
   assert.strictEqual(symptomCall.payload.symptom_data.clots, 'no', 'clots must be saved');
   assert.ok(!('clot_size' in symptomCall.payload.symptom_data), 'clot_size must be omitted when clots is no');
