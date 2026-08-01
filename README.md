@@ -7,7 +7,7 @@ Text was drafted with AI support (mostly translation and structure), because Eng
 # HA Menstruation Cycle (HACS-ready) - development stage - testing only
 
 This repository contains:
-- a Home Assistant integration `menstruation_gauge` with multiple profiles/sensors
+- a Home Assistant integration `menstruation_cycle` with multiple profiles/sensors
 - services for cycle data management
 - Lovelace custom cards for visualization and interaction
 
@@ -25,7 +25,7 @@ This repository contains:
 
 - for daily recalculation of the remaining days, the user has to manually create an
   automation in Home Assistant that calls the service
-  `menstruation_gauge.refresh_cycle_model` (example YAML is provided in `examples/`)
+  `menstruation_cycle.refresh_cycle_model` (example YAML is provided in `examples/`)
 
 <img width="1016" height="431" alt="grafik" src="https://github.com/user-attachments/assets/6c516de7-4b1e-4c1c-aa3d-2e9d753a8987" />
 
@@ -37,7 +37,7 @@ This repository contains:
 ## Target Structure (GitHub)
 
 ```text
-HA-menstruation-gauge-v2/
+HA-menstrual-cycle/
 ├── .github
 │   ├── hacs.yml
 │   └── hassfest.yml
@@ -47,7 +47,7 @@ HA-menstruation-gauge-v2/
 ├── examples
 │   └── daily_recalculate_days_until_next_start.yaml
 └── custom_components/
-    └── menstruation_gauge/
+    └── menstruation_cycle/
         ├── __init__.py
         ├── config_flow.py
         ├── const.py
@@ -62,14 +62,20 @@ HA-menstruation-gauge-v2/
         │   └── en.json
         └── www/
             ├── menstruation-cycle-card.js
+            ├── menstruation-cycle-card-compact.js
+            ├── menstruation-cycle-compact-status-card.js
+            ├── menstruation-cycle-history-card-row.js
             ├── menstruation-cycle-heatmap-card.js
-            ├── period-countdown-timer.js
-            └── menstruation-statistics-card.js
+            ├── menstruation-calendar-card.js
+            ├── menstruation-countdown-timer.js
+            ├── menstruation-product-inventory-card.js
+            ├── menstruation-statistics-card.js
+            └── menstruation-icons.js
 ```
 
 ## Why This Structure Is Required - Notes to myself to understand HACS requirements better.
 
-1. `custom_components/menstruation_gauge/manifest.json`
+1. `custom_components/menstruation_cycle/manifest.json`
 - Required by Home Assistant so the integration domain can load.
 - Without `manifest.json`, initialization fails.
 
@@ -92,7 +98,7 @@ HA-menstruation-gauge-v2/
 
 6. `www/*.js`
 - Lovelace cards are JavaScript resources.
-- Integration serves these files under `/menstruation_gauge/...`.
+- Integration serves these files under `/menstruation_cycle/...`.
 
 7. `services.yaml`
 - Documents services in Home Assistant UI.
@@ -116,14 +122,14 @@ HA-menstruation-gauge-v2/
   - `period_duration_learned_avg_days`
 
 ### Services
-- `menstruation_gauge.add_cycle_start`
-- `menstruation_gauge.remove_cycle_start`
-- `menstruation_gauge.set_cycle_history`
-- `menstruation_gauge.set_period_duration`
-- `menstruation_gauge.erase_all_history` (destructive, requires `erase_all: true` and explicit `entity_id`)
-- `menstruation_gauge.export_history` (export as `csv` or `txt`)
-- `menstruation_gauge.refresh_cycle_model`
-- `menstruation_gauge.log_product_usage`
+- `menstruation_cycle.add_cycle_start`
+- `menstruation_cycle.remove_cycle_start`
+- `menstruation_cycle.set_cycle_history`
+- `menstruation_cycle.set_period_duration`
+- `menstruation_cycle.erase_all_history` (destructive, requires `erase_all: true` and explicit `entity_id`)
+- `menstruation_cycle.export_history` (export as `csv` or `txt`)
+- `menstruation_cycle.refresh_cycle_model`
+- `menstruation_cycle.log_product_usage`
 
 For multi-profile setups, target by `entity_id` (recommended).
 
@@ -144,11 +150,18 @@ Guardrails:
 - Mutual consent: in shared households, use automations only with explicit mutual agreement.
 
 ## step without HACS (manually) - tested , similar to HACS
-- copy the folder /menstruation_gauge/ from github.com/wallenium/HA-menstrual-cycle/custom_components to /config/custom_components in HA.
+- copy the folder /menstruation_cycle/ from github.com/wallenium/HA-menstrual-cycle/custom_components to /config/custom_components in HA.
 - Add the customcards under `Settings -> Devices & Services` (...)-Menu "Add ressouces
-    - `/menstruation_gauge/menstruation-cycle-card.js`
-    - `/menstruation_gauge/menstruation-cycle-heatmap-card.js`
-    - `/menstruation_gauge/period-countdown-timer.js`
+    - `/menstruation_cycle/menstruation-cycle-card.js`
+    - `/menstruation_cycle/menstruation-cycle-card-compact.js`
+    - `/menstruation_cycle/menstruation-cycle-compact-status-card.js`
+    - `/menstruation_cycle/menstruation-cycle-history-card-row.js`
+    - `/menstruation_cycle/menstruation-cycle-heatmap-card.js`
+    - `/menstruation_cycle/menstruation-calendar-card.js`
+    - `/menstruation_cycle/menstruation-countdown-timer.js`
+    - `/menstruation_cycle/menstruation-product-inventory-card.js`
+    - `/menstruation_cycle/menstruation-statistics-card.js`
+    - Optional helper: `/menstruation_cycle/menstruation-icons.js`
 - Type: `JavaScript module`
   
 - restart HA
@@ -163,7 +176,9 @@ Guardrails:
 
 ## Card Configuration Examples
 
-### Cycle Card
+### 1) Main Cycle Card (`menstruation-cycle-card`)
+
+Main interactive card for cycle input, status, and editing.
 
 ```yaml
 type: custom:menstruation-cycle-card
@@ -183,7 +198,52 @@ calendar_edit_enabled: true
 - number `1..14`
 - `learnt` (fallbacks to sensor values if learned value is unavailable)
 
-### Heatmap Card - little hint for the future:
+Use case: primary day-to-day card per profile.
+
+### 2) Compact Cycle Card (`menstruation-cycle-card-compact.js`)
+
+Space-efficient version of the cycle display (compact resource variant).
+
+```yaml
+type: custom:menstruation-cycle-card
+entity: sensor.anna
+title: "Anna (Compact Area)"
+show_editor: false
+show_fertile_period: true
+```
+
+Use case: small dashboard sections where you still want cycle status/day info.
+
+### 3) Compact Status Card (`menstruation-cycle-compact-status-card`)
+
+Minimal status card with compact phase/day indicator.
+
+```yaml
+type: custom:menstruation-cycle-compact-status
+entity: sensor.anna
+title: "Status"
+show_title: false
+```
+
+Use case: glanceable status in header rows, sidebars, or phone dashboards.
+
+### 4) History Row Card (`menstruation-cycle-history-card-row`)
+
+Timeline/table style view for historical and predicted cycles.
+
+```yaml
+type: custom:menstruation-cycle-history-card-row
+entity: sensor.anna
+title: "Cycle History"
+max_rows: 12
+show_fertile_window: true
+show_predicted_cycles: true
+num_predicted_cycles: 6
+```
+
+Use case: reviewing trends and comparing recent cycle lengths quickly.
+
+### 5) Heatmap Card (`menstruation-cycle-heatmap-card`) - little hint for the future:
 
 <img width="1000" height="592" alt="menstruation-cycle-heatmap-card.js" src="https://github.com/user-attachments/assets/9b5759bd-f343-4640-b7cb-f79e4c6b0847" />
 
@@ -219,16 +279,36 @@ Sidenote: `symptom_entities` reflects the intended future direction of the
 heatmap card. The card is prepared for it, but the related symptom data
 sources are not yet implemented as part of this project.
 
-### Product Countdown Timer
+Use case: long-term pattern visualization across many cycles.
+
+### 6) Calendar Card (`menstruation-calendar-card`)
+
+Month grid view with period/fertile overlays and day details.
+
+```yaml
+type: custom:menstruation-calendar-card
+entity: sensor.anna
+title: "Cycle Calendar"
+show_fertile_period: true
+show_ovulation_marker: true
+show_cycle_day_numbers: false
+week_start: monday
+show_predicted_cycles: true
+num_predicted_cycles: 6
+```
+
+Use case: monthly planning and date-focused review.
+
+### 7) Countdown Timer Card (`menstruation-countdown-timer`)
 
 The timer card now supports direct product-consumption logging through the
-`menstruation_gauge.log_product_usage` service. When the cycle state is
+`menstruation_cycle.log_product_usage` service. When the cycle state is
 `neutral`, the timer is hidden and replaced with a "no products needed"
 message. During `period`, `fertile`, and `pms`, users can log product usage
 with one tap and restart the timer from the selected product duration.
 
 ```yaml
-type: custom:period-countdown-timer
+type: custom:menstruation-countdown-timer
 entity: sensor.anna
 tampon_duration: 4
 pad_duration: 4
@@ -237,7 +317,28 @@ underwear_duration: 6
 liner_duration: 8
 ```
 
-### Product Usage Statistics (Hygiene Tab)
+Use case: active product replacement reminders during sensitive phases.
+
+### 8) Product Inventory Card (`menstruation-product-inventory-card`)
+
+Household-level stock overview and quick consume/refill actions.
+
+```yaml
+type: custom:menstruation-product-inventory-card
+inventory_entity: sensor.household_product_stock
+title: "Household inventory"
+member: ""
+visible_products:
+  - tampon
+  - pad
+  - cup
+  - liner
+  - underwear
+```
+
+Use case: shared household inventory planning and shopping support.
+
+### 9) Statistics Card (`menstruation-statistics-card`, includes Hygiene tab)
 
 Product usage statistics are now integrated directly into the **menstruation-statistics-card**
 as the "Hygiene" tab. The tab shows:
@@ -253,13 +354,43 @@ entity: sensor.anna
 title: Statistics
 ```
 
+Use case: summary analytics, planning, and recent usage overview.
+
+### 10) Shared Icons Helper (`menstruation-icons.js`)
+
+`menstruation-icons.js` provides shared icon assets/helpers used by multiple cards
+(status icons, product icons, and pregnancy state icons). It is not a standalone
+user-facing card type, but it is part of the frontend card stack.
+
 The repository also includes a combined dashboard example:
 `examples/product_usage_dashboard.yaml`
+
+## Card Selection Guide
+
+- **Can be used independently**
+  - `custom:menstruation-cycle-card`
+  - `custom:menstruation-cycle-compact-status`
+  - `custom:menstruation-calendar-card`
+  - `custom:menstruation-cycle-history-card-row`
+  - `custom:menstruation-cycle-heatmap-card`
+  - `custom:menstruation-countdown-timer`
+  - `custom:menstruation-product-inventory-card`
+  - `custom:menstruation-statistics-card`
+
+- **Works best in combination**
+  - Main + compact status: detailed view + quick glance
+  - Calendar + history row + heatmap: date view + trend view + long-term pattern view
+  - Countdown + inventory + statistics: live usage + stock management + analytics
+
+- **Layout recommendations**
+  - **Phone/compact UI:** compact status + countdown + calendar
+  - **Desktop daily UI:** main cycle card + calendar + countdown
+  - **Analytics UI:** heatmap + history row + statistics + inventory
 
 ## History Import Example
 
 ```yaml
-service: menstruation_gauge.set_cycle_history
+service: menstruation_cycle.set_cycle_history
 data:
   entity_id: sensor.anna
   dates:
@@ -270,7 +401,7 @@ data:
 ## Safe History Deletion Example
 
 ```yaml
-service: menstruation_gauge.erase_all_history
+service: menstruation_cycle.erase_all_history
 data:
   entity_id: sensor.anna
   erase_all: true
@@ -284,20 +415,20 @@ Notes:
 ## Export Example
 
 ```yaml
-service: menstruation_gauge.export_history
+service: menstruation_cycle.export_history
 data:
   entity_id: sensor.anna
   format: csv
   filename: cycle_backup
 ```
 
-Target directory: `<config>/menstruation_gauge_exports/` 
+Target directory: `<config>/menstruation_cycle_exports/` 
 - status: tested in browser (works), not tested yet within HA Companion app (needed to be checked).
 
 ## Product Usage Logging Example
 
 ```yaml
-service: menstruation_gauge.log_product_usage
+service: menstruation_cycle.log_product_usage
 data:
   entity_id: sensor.anna
   product: tampon
