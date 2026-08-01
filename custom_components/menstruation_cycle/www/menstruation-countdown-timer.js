@@ -619,7 +619,7 @@ class MenstruationCountdownTimer extends HTMLElement {
               ? { pregnancy_symptoms: checked }
               : { pregnancy_symptoms: [] },
           };
-          await this.callService("menstruation_gauge", "add_symptom", serviceData);
+          await this.callService("menstruation_cycle", "add_symptom", serviceData);
 
           if (feedback) {
             feedback.hidden = false;
@@ -849,14 +849,14 @@ class MenstruationCountdownTimer extends HTMLElement {
 
       // Log any selected symptoms (include bleeding_strength: light for first period)
       const symptoms = this._pendingFirstPeriodSymptoms || {};
-      await this.callService("menstruation_gauge", "add_symptom", {
+      await this.callService("menstruation_cycle", "add_symptom", {
         ...serviceBase,
         date: today,
         symptom_data: { bleeding_strength: 'light', ...symptoms },
       });
 
       // Atomically record menarche date and add cycle start (transitions from pre_menarche to normal)
-      await this.callService("menstruation_gauge", "log_first_period", {
+      await this.callService("menstruation_cycle", "log_first_period", {
         ...serviceBase,
         date: today,
       });
@@ -1201,7 +1201,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         return;
       }
 
-      await this.callService("menstruation_gauge", "log_product_usage", {
+      await this.callService("menstruation_cycle", "log_product_usage", {
         entity_id: this.config?.entity,
         profile: this.config?.profile,
         entry_id: this.config?.entry_id,
@@ -1394,7 +1394,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       if (this.timerState.selectedProduct) {
         serviceData.selected_product = this.timerState.selectedProduct;
       }
-      this.callService("menstruation_gauge", "save_timer_state", serviceData)
+      this.callService("menstruation_cycle", "save_timer_state", serviceData)
         .catch(err => console.warn("Failed to save timer state:", err));
     } catch (error) {
       console.error("Error saving timer state:", error);
@@ -1415,7 +1415,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       const profile = stateObj.attributes?.profile;
       if (!profile) return;
 
-      const timerStateObj = this._hass.states[`menstruation_gauge_timer.${profile}`];
+      const timerStateObj = this._hass.states[`menstruation_cycle_timer.${profile}`];
       if (!timerStateObj?.attributes) return;
 
       const attrs = timerStateObj.attributes;

@@ -1,5 +1,5 @@
 /**
- * Tests for menstrual-cycle-compact-status-card.js
+ * Tests for menstruation-cycle-compact-status-card.js
  *
  * Covers:
  *  A) Layout: right icon-right-wrap container present and positioned after .info
@@ -42,7 +42,7 @@ global.customElements = {
 
 // Load product-icons so ProductIcons is available on window
 const productIconsSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/product-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
@@ -50,13 +50,13 @@ eval(productIconsSrc);
 
 // Load the compact-status card
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstrual-cycle-compact-status-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-compact-status-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(cardSrc);
 
-const CardClass = _definedElements['menstrual-cycle-compact-status'];
+const CardClass = _definedElements['menstruation-cycle-compact-status'];
 
 // ---------------------------------------------------------------------------
 // Helpers

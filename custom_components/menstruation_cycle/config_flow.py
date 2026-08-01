@@ -38,6 +38,7 @@ from .const import (
     NFP_ANALYSIS_MODES,
     SIGNAL_HISTORY_UPDATED,
     STORAGE_KEY,
+    STORAGE_KEY_LEGACY,
     MAX_NUM_PREDICTIONS,
 )
 
@@ -131,7 +132,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             storage = MenstruationStorage(
                 self.hass,
                 key=f"{STORAGE_KEY}.{profile}",
-                legacy_key=STORAGE_KEY if profile == "default" else None,
+                legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
             )
             stored = await storage.async_load()
             current_period_duration = stored.get("period_duration_days", DEFAULT_PERIOD_DURATION_DAYS)
@@ -257,7 +258,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     fallback_storage = MenstruationStorage(
                         self.hass,
                         key=f"{STORAGE_KEY}.{profile}",
-                        legacy_key=STORAGE_KEY if profile == "default" else None,
+                        legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
                     )
                     stored_full = await fallback_storage.async_load()
                     await fallback_storage.async_save(

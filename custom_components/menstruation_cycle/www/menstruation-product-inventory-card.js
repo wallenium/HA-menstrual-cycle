@@ -222,7 +222,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
     }
 
     try {
-      await this._hass.callService("menstruation_gauge", "manage_household_inventory", serviceData);
+      await this._hass.callService("menstruation_cycle", "manage_household_inventory", serviceData);
       this._setError("");
     } catch (error) {
       this._setError(`${this._t("error_prefix")}: ${error?.message || error}`);

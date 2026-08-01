@@ -1463,7 +1463,7 @@ class MenstruationCycleCard extends HTMLElement {
         try {
           await this._hass.callService('menstruation_cycle', service, payload);
         } catch (_) {
-          await this._hass.callService('menstruation_gauge', service, payload);
+          await this._hass.callService('menstruation_cycle', service, payload);
         }
         return;
       } catch (err) {
@@ -1667,7 +1667,7 @@ class MenstruationCycleCard extends HTMLElement {
         try {
           await this._hass.callService('menstruation_cycle', 'add_symptom', payload);
         } catch (_) {
-          await this._hass.callService('menstruation_gauge', 'add_symptom', payload);
+          await this._hass.callService('menstruation_cycle', 'add_symptom', payload);
         }
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -1789,7 +1789,7 @@ class MenstruationCycleCard extends HTMLElement {
       try {
         await this._hass.callService('menstruation_cycle', 'add_symptom', addSymptomPayload);
       } catch (_) {
-        await this._hass.callService('menstruation_gauge', 'add_symptom', addSymptomPayload);
+        await this._hass.callService('menstruation_cycle', 'add_symptom', addSymptomPayload);
       }
 
       // Atomically record menarche date and add cycle start (transitions from pre_menarche to normal)
@@ -1797,7 +1797,7 @@ class MenstruationCycleCard extends HTMLElement {
       try {
         await this._hass.callService('menstruation_cycle', 'log_first_period', logFirstPeriodPayload);
       } catch (_) {
-        await this._hass.callService('menstruation_gauge', 'log_first_period', logFirstPeriodPayload);
+        await this._hass.callService('menstruation_cycle', 'log_first_period', logFirstPeriodPayload);
       }
 
       this._pendingFirstPeriodSymptoms = null;

@@ -45,7 +45,7 @@ global.HTMLElement = class HTMLElement {
 };
 
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_gauge/www/menstruation-calendar-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-calendar-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
