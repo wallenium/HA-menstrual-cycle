@@ -101,6 +101,37 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
+    async def async_step_import(self, import_data: dict) -> FlowResult:
+        """Handle import from old menstruation_gauge domain.
+
+        This is called automatically when migrating config entries from the old
+        ``menstruation_gauge`` domain to ``menstruation_cycle``.
+        """
+        # Resolve the profile identifier from the imported data.
+        # Entries created by config-flow version 2 already have CONF_PROFILE;
+        # older version-1 entries stored the display name under CONF_NAME.
+        profile = str(import_data.get(CONF_PROFILE, "")).strip()
+        if not profile:
+            old_name = str(import_data.get("name", DEFAULT_NAME)).strip() or DEFAULT_NAME
+            profile = slugify(old_name).strip("_") or "default"
+
+        friendly_name = str(import_data.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
+        icon = str(import_data.get(CONF_ICON, "")).strip()
+
+        # Use the original unique_id when available so that entity IDs are preserved.
+        unique_id = str(import_data.get("unique_id", profile)).strip() or profile
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+
+        return self.async_create_entry(
+            title=friendly_name,
+            data={
+                CONF_PROFILE: profile,
+                CONF_FRIENDLY_NAME: friendly_name,
+                CONF_ICON: icon,
+            },
+        )
+
 
 class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
     """Handle options for menstruation gauge."""

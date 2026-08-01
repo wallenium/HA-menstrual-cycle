@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import voluptuous as vol
 
+from homeassistant import config_entries as ce
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_TYPE, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -125,6 +126,9 @@ _ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "s
 _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
+
+# Domain that was used before the rename to menstruation_cycle
+OLD_DOMAIN = "menstruation_gauge"
 
 
 def _load_manifest_version() -> str:
@@ -1047,7 +1051,86 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up integration from YAML (not used, config-entry only)."""
     hass.data.setdefault(DOMAIN, {})
     _register_domain_services(hass)
+    # Migrate any config entries still registered under the old domain.
+    _async_schedule_old_domain_migration(hass)
     return True
+
+
+def _async_schedule_old_domain_migration(hass: HomeAssistant) -> None:
+    """Detect old menstruation_gauge entries and schedule their migration."""
+    old_entries = hass.config_entries.async_entries(OLD_DOMAIN)
+    if not old_entries:
+        return
+    for old_entry in old_entries:
+        _LOGGER.info(
+            "Detected config entry '%s' under old domain '%s'. Scheduling migration to '%s'.",
+            old_entry.title,
+            OLD_DOMAIN,
+            DOMAIN,
+        )
+        hass.async_create_task(
+            _async_migrate_old_domain_entry(hass, old_entry),
+        )
+
+
+async def _async_migrate_old_domain_entry(hass: HomeAssistant, old_entry: ConfigEntry) -> None:
+    """Migrate a single menstruation_gauge config entry to menstruation_cycle."""
+    try:
+        # If a menstruation_cycle entry with the same unique_id already exists,
+        # the migration already ran; just clean up the leftover old entry.
+        existing = next(
+            (
+                e
+                for e in hass.config_entries.async_entries(DOMAIN)
+                if e.unique_id == old_entry.unique_id
+            ),
+            None,
+        )
+        if existing is not None:
+            _LOGGER.info(
+                "Entry '%s' already migrated to '%s'. Removing leftover '%s' entry.",
+                old_entry.title,
+                DOMAIN,
+                OLD_DOMAIN,
+            )
+            await hass.config_entries.async_remove(old_entry.entry_id)
+            return
+
+        # Initiate an import flow that creates a new menstruation_cycle entry.
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": ce.SOURCE_IMPORT},
+            data={**old_entry.data, "unique_id": old_entry.unique_id},
+        )
+
+        result_type = result.get("type", "")
+        if result_type in ("create_entry", "abort"):
+            _LOGGER.info(
+                "Successfully migrated '%s' from '%s' to '%s' (result: %s).",
+                old_entry.title,
+                OLD_DOMAIN,
+                DOMAIN,
+                result_type,
+            )
+        else:
+            _LOGGER.warning(
+                "Unexpected result '%s' while migrating '%s' from '%s' to '%s'.",
+                result_type,
+                old_entry.title,
+                OLD_DOMAIN,
+                DOMAIN,
+            )
+
+        # Remove the old entry regardless of result so it does not block HA startup.
+        await hass.config_entries.async_remove(old_entry.entry_id)
+
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Unexpected error while migrating '%s' from '%s' to '%s'.",
+            old_entry.title,
+            OLD_DOMAIN,
+            DOMAIN,
+        )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
