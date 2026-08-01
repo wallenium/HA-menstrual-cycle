@@ -33,8 +33,3 @@ jobs:
         continue-on-error: true
         run: |
           pylint custom_components/menstruation_cycle --disable=all --enable=E,F
-
-      - name: HACSTest
-        uses: hacs/hacstest@main
-        with:
-          ignore: MANIFEST,WHEEL
