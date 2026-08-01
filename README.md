@@ -31,14 +31,14 @@ For manual installation, extra cards, service examples, and troubleshooting, use
 
 ## 📚 Full documentation
 
-**Start here:** [Documentation Hub](./wiki/Home.md)
+**Start here:** [Documentation Hub](https://github.com/wallenium/HA-menstrual-cycle/wiki)
 
 Detailed guides:
-- [Installation](./wiki/Installation.md)
-- [Cards & Configuration](./wiki/Cards-Documentation.md)
-- [Services & Automations](./wiki/Services-&-Automations.md)
-- [FAQ & Troubleshooting](./wiki/FAQ-&-Troubleshooting.md)
-- [Developer Guide](./wiki/Developer-Guide.md)
+- [Installation](https://github.com/wallenium/HA-menstrual-cycle/wiki/Installation)
+- [Cards & Configuration](https://github.com/wallenium/HA-menstrual-cycle/wiki/Cards-Documentation)
+- [Services & Automations](https://github.com/wallenium/HA-menstrual-cycle/wiki/Services-&-Automations)
+- [FAQ & Troubleshooting](https://github.com/wallenium/HA-menstrual-cycle/wiki/FAQ-&-Troubleshooting)
+- [Developer Guide](https://github.com/wallenium/HA-menstrual-cycle/wiki/Developer-Guide)
 
 ## Disclaimer summary
 
@@ -49,7 +49,7 @@ Before using it in a shared household or for sensitive automations:
 - use automations only with explicit agreement from the affected people
 - keep health, privacy, and backup considerations in mind
 
-Read the full disclaimer in [`/DISCLAIMER.md`](./DISCLAIMER.md).
+Read the full disclaimer in [`/DISCLAIMER.md`](https://github.com/wallenium/HA-menstrual-cycle/wiki/DISCLAIMER).
 
 ## Contributing and feedback
 
