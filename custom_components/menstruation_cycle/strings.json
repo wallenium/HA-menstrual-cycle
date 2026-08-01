@@ -53,22 +53,6 @@
       "invalid_menarche_age": "Age must be a number between 8 and 20."
     }
   },
-  "issues": {
-    "migrate_config_entry": {
-      "title": "Menstruation Cycle: Integration Migration Required",
-      "description": "The **{old_domain}** integration has been renamed to **{new_domain}**.\n\nProfile: **{entry_title}**\n\nYour sensor data and history will be preserved after migration. Click **Fix** to complete the migration.\n\n**Sensors affected:**\n- Main cycle sensor (entity ID unchanged)\n- Period products sensor (entity ID unchanged)"
-    }
-  },
-  "repairs": {
-    "migrate_config_entry": {
-      "step": {
-        "confirm": {
-          "title": "Migrate Integration",
-          "description": "This will migrate the **{old_domain}** configuration entry **{entry_title}** to **{new_domain}**.\n\nYour sensor data, cycle history, and all settings will be fully preserved. Sensor entity IDs will remain the same.\n\nClick **Submit** to start the migration."
-        }
-      }
-    }
-  },
   "services": {
     "log_product_usage": {
       "name": "Log product usage",

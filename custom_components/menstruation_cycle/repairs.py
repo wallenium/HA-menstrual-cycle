@@ -38,6 +38,13 @@ def async_create_migration_issue(
         DOMAIN,
     )
 
+    description = (
+        f"The **{OLD_DOMAIN}** integration has been renamed to **{DOMAIN}**.\n\n"
+        f"Profile: **{entry_title}**\n\n"
+        "Your sensor data and history will be preserved after migration. "
+        "Click **Fix** to complete the migration."
+    )
+
     async_create_issue(
         hass,
         DOMAIN,
@@ -45,12 +52,8 @@ def async_create_migration_issue(
         issue_domain=DOMAIN,
         is_fixable=True,
         severity=IssueSeverity.WARNING,
-        translation_key="migrate_config_entry",
-        translation_placeholders={
-            "entry_title": entry_title,
-            "old_domain": OLD_DOMAIN,
-            "new_domain": DOMAIN,
-        },
+        title="Menstruation Cycle: Integration Migration Required",
+        description=description,
         learn_more_url="https://github.com/wallenium/HA-menstrual-cycle/wiki/Migration",
     )
 
