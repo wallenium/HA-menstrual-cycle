@@ -1,3 +1,5 @@
+const _mcCompactCardI18n = { cache: {}, loading: {} };
+
 class MenstruationCycleCard extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
@@ -18,6 +20,7 @@ class MenstruationCycleCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this.render();
   }
 
@@ -116,7 +119,20 @@ class MenstruationCycleCard extends HTMLElement {
     return statusMap[state] || statusMap.neutral;
   }
 
+  _loadTranslations() {
+    const lang = (this._hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    if (lang in _mcCompactCardI18n.cache || _mcCompactCardI18n.loading[lang]) return;
+    _mcCompactCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCompactCardI18n.cache[lang] = data; delete _mcCompactCardI18n.loading[lang]; this.render(); })
+      .catch(() => { _mcCompactCardI18n.cache[lang] = {}; delete _mcCompactCardI18n.loading[lang]; });
+  }
+
   _t(key) {
+    const lang = (this._hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const loaded = _mcCompactCardI18n.cache[lang] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const translations = {
       de: {
         cycle_day: "Zyklustag",
@@ -134,7 +150,6 @@ class MenstruationCycleCard extends HTMLElement {
       },
     };
 
-    const lang = this._hass?.language || 'de';
     return translations[lang]?.[key] || translations['en'][key];
   }
 

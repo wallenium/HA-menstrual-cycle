@@ -669,6 +669,8 @@ function getHygieneStyles(options = {}) {
 // MenstruationStatisticsCard – card class
 // ---------------------------------------------------------------------------
 
+const _mcStatisticsCardI18n = { cache: {}, loading: {} };
+
 class MenstruationStatisticsCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -709,6 +711,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this._render();
   }
 
@@ -720,6 +723,16 @@ class MenstruationStatisticsCard extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcStatisticsCardI18n.cache || _mcStatisticsCardI18n.loading[lang]) return;
+    _mcStatisticsCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcStatisticsCardI18n.cache[lang] = data; delete _mcStatisticsCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcStatisticsCardI18n.cache[lang] = {}; delete _mcStatisticsCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const cfg = String(this._config?.language || 'auto').toLowerCase();
     if (cfg !== 'auto') return cfg.startsWith('de') ? 'de' : 'en';
@@ -728,6 +741,8 @@ class MenstruationStatisticsCard extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcStatisticsCardI18n.cache[this._lang()] || {};
+    if (typeof loaded[key] === 'string') return loaded[key];
     const i18n = {
       de: {
         title: 'Statistiken',

@@ -1,3 +1,5 @@
+const _mcCycleCardI18n = { cache: {}, loading: {} };
+
 class MenstruationCycleCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -42,6 +44,7 @@ class MenstruationCycleCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Don't re-render while the symptom modal or first period modal is open to preserve user input.
     if (this._modalIso || this._pmModalOpen) return;
     this._render();
@@ -74,12 +77,24 @@ class MenstruationCycleCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         card_name: 'Menstruation Gauge Karte',
@@ -2268,6 +2283,7 @@ class MenstruationCycleCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Avoid stealing focus while user is typing in the editor.
     if (this.shadowRoot?.activeElement) return;
     this._render();
@@ -2277,12 +2293,24 @@ class MenstruationCycleCardEditor extends HTMLElement {
     this._detachHandlers();
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         entity: 'Entität',

@@ -1895,13 +1895,34 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             headers={"Cache-Control": "public, max-age=86400, s-maxage=86400"},
         )
 
+    async def _serve_translation_file(request):  # type: ignore[no-untyped-def]
+        from aiohttp.web import HTTPBadRequest, HTTPNotFound, Response
+
+        filename = request.match_info["filename"]
+        if "/" in filename or "\\" in filename or filename.startswith(".") or not filename.endswith(".json"):
+            raise HTTPBadRequest()
+
+        file_path = WWW_DIR / "translations" / filename
+        if not file_path.is_file():
+            _LOGGER.debug("Translation file not found: %s", file_path)
+            raise HTTPNotFound()
+
+        content = await hass.async_add_executor_job(file_path.read_bytes)
+        return Response(
+            body=content,
+            content_type="application/json",
+            headers={"Cache-Control": "public, max-age=3600, s-maxage=3600"},
+        )
+
     try:
+        hass.http.app.router.add_get(f"/{DOMAIN}/translations/{{filename}}", _serve_translation_file)
         hass.http.app.router.add_get(f"/{DOMAIN}/assets/{{subfolder}}/{{filename}}", _serve_asset_file)
         hass.http.app.router.add_get(f"/{DOMAIN}/{{filename}}", _serve_card_file)
         hass.data[_HTTP_ROUTES_REGISTERED_KEY] = True
         for _resource_url, _static_url, filename in LOVELACE_RESOURCES:
             _LOGGER.info("Registered HTTP route: /%s/%s", DOMAIN, filename)
         _LOGGER.info("Registered HTTP route: /%s/assets/{subfolder}/{filename}", DOMAIN)
+        _LOGGER.info("Registered HTTP route: /%s/translations/{filename}", DOMAIN)
     except Exception as err:
         _LOGGER.warning("Failed to register HTTP routes for card files: %s", err)
 

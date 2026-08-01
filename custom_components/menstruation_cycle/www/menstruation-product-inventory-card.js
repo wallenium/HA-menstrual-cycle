@@ -1,3 +1,5 @@
+const _mcInventoryCardI18n = { cache: {}, loading: {} };
+
 class MenstruationProductInventoryCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -32,6 +34,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Only re-render when the inventory entity state actually changes to avoid
     // destroying the DOM (and losing input focus) on every HA poll cycle.
     const entityId = this.config?.inventory_entity || "sensor.household_product_stock";
@@ -51,12 +54,24 @@ class MenstruationProductInventoryCard extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcInventoryCardI18n.cache || _mcInventoryCardI18n.loading[lang]) return;
+    _mcInventoryCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcInventoryCardI18n.cache[lang] = data; delete _mcInventoryCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcInventoryCardI18n.cache[lang] = {}; delete _mcInventoryCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || "en").toLowerCase();
     return language.startsWith("de") ? "de" : "en";
   }
 
   _t(key) {
+    const loaded = _mcInventoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         title: "Haushaltsvorrat",
@@ -631,6 +646,8 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcInventoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         visible_products: "Sichtbare Produkte",

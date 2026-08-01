@@ -1,3 +1,5 @@
+const _mcHistoryCardI18n = { cache: {}, loading: {} };
+
 class MenstruationCycleHistoryCardRow extends HTMLElement {
   static getConfigElement() {
     return document.createElement('menstruation-cycle-history-card-row-editor');
@@ -37,6 +39,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this._render();
   }
 
@@ -50,12 +53,24 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcHistoryCardI18n.cache || _mcHistoryCardI18n.loading[lang]) return;
+    _mcHistoryCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcHistoryCardI18n.cache[lang] = data; delete _mcHistoryCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcHistoryCardI18n.cache[lang] = {}; delete _mcHistoryCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcHistoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         entity_not_found: 'Entity nicht gefunden',
@@ -285,8 +300,19 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     if (this.shadowRoot?.activeElement) return;
     this._render();
+  }
+
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcHistoryCardI18n.cache || _mcHistoryCardI18n.loading[lang]) return;
+    _mcHistoryCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcHistoryCardI18n.cache[lang] = data; delete _mcHistoryCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcHistoryCardI18n.cache[lang] = {}; delete _mcHistoryCardI18n.loading[lang]; });
   }
 
   _lang() {
@@ -295,6 +321,8 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcHistoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       de: {
         entity: 'Entität',
