@@ -1078,7 +1078,7 @@ class MenstruationCycleCard extends HTMLElement {
       if (showFertile && model.ovulationDay) {
         const nfp = model.nfpAnalysis;
         const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
-        const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+        const labelText = usingNfp ? 'NFP' : 'Standard';
         nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
       }
 
@@ -1239,7 +1239,7 @@ class MenstruationCycleCard extends HTMLElement {
     if (showFertile && model.ovulationDay) {
       const nfp = model.nfpAnalysis;
       const usingNfp = nfp && nfp.ovulation_detected && nfp.confidence_level !== 'low';
-      const labelText = usingNfp ? '📊 NFP' : '📈 Standard';
+      const labelText = usingNfp ? 'NFP' : 'Standard';
       nfpMethodLabel = `<text x="${cx}" y="${cy + 84}" text-anchor="middle" font-size="10" fill="${usingNfp ? 'var(--success-color, #16a34a)' : 'var(--secondary-text-color, #888)'}" opacity="0.85">${labelText}</text>`;
     }
 
