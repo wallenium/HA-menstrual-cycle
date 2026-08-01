@@ -4,7 +4,7 @@ AI also generated or improved some shell commands (mainly to save time).
 The core idea and design were created by me (a human).
 Text was drafted with AI support (mostly translation and structure), because English is not my native language and health-related wording is sensitive.
 
-# HA Menstruation Gauge (HACS-ready) - development stage - testing only
+# HA Menstruation Cycle (HACS-ready) - development stage - testing only
 
 This repository contains:
 - a Home Assistant integration `menstruation_gauge` with multiple profiles/sensors
@@ -15,12 +15,13 @@ This repository contains:
 
 # How to setup:  Sorry, so many steps because of 2 parts: A) Integration + B) custom cards;
 - Open HACS, add Custom repositories: git: /nremey/HA-menstrual-gauge-v2
-- add in 'integration and services' new integration, search for "menstruation gauge"
+- add in 'integration and services' new integration, search for "menstruation cycle"
 - add user/friendly name and icon.
     -may add more users if more bleeding persons are in the household.
 - restart HA; the integration registers its custom card resources automatically
 - if a browser still shows an old frontend after an upgrade, refresh the browser cache once
-- ready to add the custom card per user: with the menstruation-gauge-card 
+- ready to add the custom card per user: with the `menstruation-cycle-card`
+  (the old `menstruation-gauge-card` type continues to work for backward compatibility)
 
 - for daily recalculation of the remaining days, the user has to manually create an
   automation in Home Assistant that calls the service
@@ -60,7 +61,7 @@ HA-menstruation-gauge-v2/
         │   ├── de.json
         │   └── en.json
         └── www/
-            ├── menstruation-gauge-card.js
+            ├── menstruation-cycle-card.js
             ├── menstruation-cycle-heatmap-card.js
             ├── period-countdown-timer.js
             └── menstruation-statistics-card.js
@@ -145,26 +146,27 @@ Guardrails:
 ## step without HACS (manually) - tested , similar to HACS
 - copy the folder /menstruation_gauge/ from github.com/nremey/HA-menstrual-gauge-v2/custom_components to /config/custom_components in HA.
 - Add the customcards under `Settings -> Devices & Services` (...)-Menu "Add ressouces
-    - `/menstruation_gauge/menstruation-gauge-card.js`
+    - `/menstruation_gauge/menstruation-cycle-card.js`
     - `/menstruation_gauge/menstruation-cycle-heatmap-card.js`
     - `/menstruation_gauge/period-countdown-timer.js`
 - Type: `JavaScript module`
   
 - restart HA
 - clear cache
-- Go to devices & integration -> add "Menstruation cauge", and than add a sensor per user.
+- Go to devices & integration -> add "Menstruation Cycle", and than add a sensor per user.
 - add a card: 
-  - for interactive GUI and Input, use: custom:menstruation-gauge-card,
+  - for interactive GUI and Input, use: `custom:menstruation-cycle-card`
+    (the old `custom:menstruation-gauge-card` type still works for backward compatibility)
   - add Menstruation days (it is a click-interactive card, if allow new entries through calender is true)
   - if at least one cycle is added, maybe display menstrual-cycle-data with: custom:menstruation-cycle-heatmap-card (not interactive so far)
 
 
 ## Card Configuration Examples
 
-### Gauge Card
+### Cycle Card
 
 ```yaml
-type: custom:menstruation-gauge-card
+type: custom:menstruation-cycle-card
 entity: sensor.anna
 friendly_name: "Anna"
 title: "Cycle of Anna"
@@ -174,6 +176,8 @@ theme_mode: auto
 show_fertile_period: true
 calendar_edit_enabled: true
 ```
+
+> **Note:** The old card type `custom:menstruation-gauge-card` continues to work unchanged for backward compatibility.
 
 `period_duration_days` supports:
 - number `1..14`

@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Gauge",
+        "title": "Menstruation Cycle",
         "description": "Create a profile (username + friendly name) for cycle tracking.",
         "data": {
           "profile": "Username/Profile",
@@ -18,7 +18,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Gauge Settings",
+        "title": "Menstruation Cycle Settings",
         "description": "Adjust cycle tracking settings. Changes are saved immediately.",
         "data": {
           "friendly_name": "Display name",

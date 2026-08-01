@@ -1,12 +1,12 @@
 {
   "domain": "menstruation_gauge",
-  "name": "Menstruation Gauge",
+  "name": "Menstruation Cycle",
   "codeowners": ["@nremey"],
   "config_flow": true,
   "dependencies": ["lovelace"],
   "documentation": "https://github.com/wallenium/HA-repo-test-menstrual-gauge/wiki",
   "frontend_extra_module_url": [
-    "/menstruation_gauge/menstruation-gauge-card.js?v=1.5.0b1",
+    "/menstruation_gauge/menstruation-cycle-card.js?v=1.5.0b1",
     "/menstruation_gauge/menstruation-icons.js?v=1.5.0b1",
     "/menstruation_gauge/menstruation-cycle-heatmap-card.js?v=1.5.0b1",
     "/menstruation_gauge/menstruation-calendar-card.js?v=1.5.0b1",
