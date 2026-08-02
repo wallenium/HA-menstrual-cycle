@@ -51,6 +51,18 @@ Before using it in a shared household or for sensitive automations:
 
 Read the full disclaimer in [`/DISCLAIMER.md`](https://github.com/wallenium/HA-menstrual-cycle/wiki/DISCLAIMER).
 
+## Translations
+
+| Language | Status |
+|----------|--------|
+| 🇬🇧 English | ✅ 100% |
+| 🇩🇪 German | ✅ 100% |
+| 🇸🇪 Swedish | 🟡 0% – Seeking volunteers |
+| 🇫🇷 French | 🟡 0% – Seeking volunteers |
+| 🇪🇸 Spanish | 🟡 0% – Seeking volunteers |
+
+Template files for Swedish, French, and Spanish are already in place. See [TRANSLATORS.md](./TRANSLATORS.md) for instructions on how to contribute a translation.
+
 ## Contributing and feedback
 
 Feedback, ideas, bug reports, edge cases, and pull requests are welcome. If you want to improve documentation, add cards, refine services, or help with testing, please open an issue or PR.
