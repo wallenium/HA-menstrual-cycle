@@ -1,4 +1,41 @@
-const _mcCycleCardI18n = { cache: {}, loading: {} };
+const _mcCycleCardI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {
+  cache: {},
+  loading: {},
+  fallback: { en: {} },
+});
+
+if (typeof _mcCycleCardI18n.normalizeLang !== 'function') {
+  _mcCycleCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+}
+
+if (!_mcCycleCardI18n.baseUrl && typeof document !== 'undefined') {
+  const scripts = Array.from(document.scripts || []);
+  _mcCycleCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-gauge-card.js'))?.src;
+}
+
+if (typeof _mcCycleCardI18n.load !== 'function') {
+  _mcCycleCardI18n.load = (language, baseUrl) => {
+    const lang = _mcCycleCardI18n.normalizeLang(language);
+    if (_mcCycleCardI18n.cache[lang]) return Promise.resolve(_mcCycleCardI18n.cache[lang]);
+    if (_mcCycleCardI18n.loading[lang]) return _mcCycleCardI18n.loading[lang];
+
+    const relativePath = `./translations/${lang}.json`;
+    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
+    _mcCycleCardI18n.loading[lang] = fetch(url)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+      .then((data) => {
+        _mcCycleCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCycleCardI18n.fallback?.en || {}), ...data } : (data || {});
+        return _mcCycleCardI18n.cache[lang];
+      })
+      .finally(() => {
+        delete _mcCycleCardI18n.loading[lang];
+      });
+
+    return _mcCycleCardI18n.loading[lang];
+  };
+}
+
 
 class MenstruationGaugeCard extends HTMLElement {
   static getStubConfig() {
@@ -80,21 +117,17 @@ class MenstruationGaugeCard extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
-    _mcCycleCardI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+    if (_mcCycleCardI18n.cache[lang] || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.load(lang, _mcCycleCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCycleCardI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {
@@ -2179,21 +2212,17 @@ class MenstruationGaugeCardEditor extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
-    _mcCycleCardI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+    if (_mcCycleCardI18n.cache[lang] || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.load(lang, _mcCycleCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCycleCardI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {

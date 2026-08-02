@@ -1,4 +1,41 @@
-const _mcCalendarCardI18n = { cache: {}, loading: {} };
+const _mcCalendarCardI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {
+  cache: {},
+  loading: {},
+  fallback: { en: {} },
+});
+
+if (typeof _mcCalendarCardI18n.normalizeLang !== 'function') {
+  _mcCalendarCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+}
+
+if (!_mcCalendarCardI18n.baseUrl && typeof document !== 'undefined') {
+  const scripts = Array.from(document.scripts || []);
+  _mcCalendarCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-calendar-card.js'))?.src;
+}
+
+if (typeof _mcCalendarCardI18n.load !== 'function') {
+  _mcCalendarCardI18n.load = (language, baseUrl) => {
+    const lang = _mcCalendarCardI18n.normalizeLang(language);
+    if (_mcCalendarCardI18n.cache[lang]) return Promise.resolve(_mcCalendarCardI18n.cache[lang]);
+    if (_mcCalendarCardI18n.loading[lang]) return _mcCalendarCardI18n.loading[lang];
+
+    const relativePath = `./translations/${lang}.json`;
+    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
+    _mcCalendarCardI18n.loading[lang] = fetch(url)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+      .then((data) => {
+        _mcCalendarCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCalendarCardI18n.fallback?.en || {}), ...data } : (data || {});
+        return _mcCalendarCardI18n.cache[lang];
+      })
+      .finally(() => {
+        delete _mcCalendarCardI18n.loading[lang];
+      });
+
+    return _mcCalendarCardI18n.loading[lang];
+  };
+}
+
 
 class MenstruationCalendarCard extends HTMLElement {
   constructor() {
@@ -59,21 +96,17 @@ class MenstruationCalendarCard extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
-    _mcCalendarCardI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });
+    if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
+    _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCalendarCardI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCalendarCardI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {
@@ -1188,21 +1221,17 @@ class MenstruationCalendarCardEditor extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
-    _mcCalendarCardI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });
+    if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
+    _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCalendarCardI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCalendarCardI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {
