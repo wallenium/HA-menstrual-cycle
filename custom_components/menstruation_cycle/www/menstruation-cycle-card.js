@@ -37,6 +37,7 @@ class MenstruationCycleCard extends HTMLElement {
     this._viewDate = new Date();
     this._editorOpen = false;
     this._lastRenderKey = null;
+    this._iconCache = {};
     this._gaugeRotation = 0;
     this._timelineMonth = null;
     this._render();
@@ -1189,7 +1190,12 @@ class MenstruationCycleCard extends HTMLElement {
 
   _renderCenterContent(model, palette, canEdit, isOverdueSoon, countdown) {
     if (!model.pregnancyInfo?.isPregnant) {
-      const statusIconMarkup = window.ProductIcons?.getStatusIcon?.(model.state, 64) || '';
+      if (!this._iconCache) this._iconCache = {};
+      const statusIconCacheKey = `status-${model.state}-64`;
+      if (!(statusIconCacheKey in this._iconCache)) {
+        this._iconCache[statusIconCacheKey] = window.ProductIcons?.getStatusIcon?.(model.state, 64) || '';
+      }
+      const statusIconMarkup = this._iconCache[statusIconCacheKey];
       return `
         <button type="button" class="center-panel ${isOverdueSoon ? 'overdue-soon' : ''} ${canEdit ? '' : 'passive'}" data-action="toggle-editor">
           ${statusIconMarkup ? `<div class="center-icon" aria-hidden="true">${statusIconMarkup}</div>` : ''}
@@ -1199,9 +1205,14 @@ class MenstruationCycleCard extends HTMLElement {
     }
 
     const pregnancyInfo = model.pregnancyInfo;
-    const iconMarkup = window.ProductIcons?.getPregnancyIcon?.(pregnancyInfo, 56)
-      || window.ProductIcons?.getStatusAnimatedIcon?.('pregnant', pregnancyInfo, 56)
-      || '';
+    if (!this._iconCache) this._iconCache = {};
+    const pregIconCacheKey = `pregnant-m${pregnancyInfo.month}-56`;
+    if (!(pregIconCacheKey in this._iconCache)) {
+      this._iconCache[pregIconCacheKey] = window.ProductIcons?.getPregnancyIcon?.(pregnancyInfo, 56)
+        || window.ProductIcons?.getStatusAnimatedIcon?.('pregnant', pregnancyInfo, 56)
+        || '';
+    }
+    const iconMarkup = this._iconCache[pregIconCacheKey];
     const secondaryParts = [`${this._t('month')} ${pregnancyInfo.month}`];
     if (Number.isFinite(Number(pregnancyInfo.trimester))) {
       secondaryParts.push(`${this._t('trimester')} ${pregnancyInfo.trimester}`);

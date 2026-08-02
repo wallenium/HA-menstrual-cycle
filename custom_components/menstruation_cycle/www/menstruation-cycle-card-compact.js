@@ -2,6 +2,7 @@ const _mcCompactCardI18n = { cache: {}, loading: {} };
 
 class MenstruationCycleCard extends HTMLElement {
   connectedCallback() {
+    this._iconCache = {};
     this.innerHTML = `
       <ha-card>
         <div class="card-content">
@@ -16,6 +17,7 @@ class MenstruationCycleCard extends HTMLElement {
 
   setConfig(config) {
     this.config = config;
+    this._iconCache = {};
   }
 
   set hass(hass) {
@@ -81,34 +83,41 @@ class MenstruationCycleCard extends HTMLElement {
   }
 
   _getStatusInfo(state, attrs = {}) {
-    const animatedIcon = (statusKey) => window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, 'large')
-      || window.ProductIcons?.getStatusIcon?.(statusKey, 'large')
-      || '';
+    if (!this._iconCache) this._iconCache = {};
+    const getCachedIcon = (statusKey) => {
+      const cacheKey = `${statusKey}-large`;
+      if (!(cacheKey in this._iconCache)) {
+        this._iconCache[cacheKey] = window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, 'large')
+          || window.ProductIcons?.getStatusIcon?.(statusKey, 'large')
+          || '';
+      }
+      return this._iconCache[cacheKey];
+    };
 
     const statusMap = {
       period: {
-        icon: animatedIcon('period'),
+        icon: getCachedIcon('period'),
         color: "var(--error-color, #e74c3c)",
         badgeBg: "rgba(231, 76, 60, 0.14)",
         badgeGlow: "rgba(231, 76, 60, 0.30)",
         label: this._t('period'),
       },
       fertile: {
-        icon: animatedIcon('fertile'),
+        icon: getCachedIcon('fertile'),
         color: "var(--success-color, #27ae60)",
         badgeBg: "rgba(39, 174, 96, 0.14)",
         badgeGlow: "rgba(39, 174, 96, 0.30)",
         label: this._t('fertile'),
       },
       pms: {
-        icon: animatedIcon('pms'),
+        icon: getCachedIcon('pms'),
         color: "var(--warning-color, #f39c12)",
         badgeBg: "rgba(243, 156, 18, 0.14)",
         badgeGlow: "rgba(243, 156, 18, 0.30)",
         label: this._t('pms'),
       },
       neutral: {
-        icon: animatedIcon('neutral'),
+        icon: getCachedIcon('neutral'),
         color: "var(--secondary-text-color, #95a5a6)",
         badgeBg: "rgba(149, 165, 166, 0.14)",
         badgeGlow: "rgba(149, 165, 166, 0.30)",

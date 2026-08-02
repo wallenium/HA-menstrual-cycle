@@ -23,6 +23,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
       show_title: false,
       ...config,
     };
+    this._iconCache = {};
     this._ensureRoot();
     this._render();
   }
@@ -206,12 +207,21 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     return map[statusKey] || map.neutral;
   }
 
-  _statusIcon(statusKey, color, attrs, size = 'default') {
-    const iconMarkup = window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, size);
-    if (!iconMarkup) {
-      return '<svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  _getCachedIcon(cacheKey, iconFn) {
+    if (!this._iconCache) this._iconCache = {};
+    if (!(cacheKey in this._iconCache)) {
+      this._iconCache[cacheKey] = iconFn();
     }
-    return iconMarkup;
+    return this._iconCache[cacheKey];
+  }
+
+  _statusIcon(statusKey, color, attrs, size = 'default') {
+    const cacheKey = `${statusKey}-${size}`;
+    return this._getCachedIcon(cacheKey, () => {
+      const iconMarkup = window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, size);
+      return iconMarkup
+        || '<svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    });
   }
 
   _escapeHtml(str) {
@@ -378,7 +388,9 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     if (statusKey === 'pregnant') {
       const weeksRaw = attrs.weeks_pregnant !== undefined ? attrs.weeks_pregnant : attrs.pregnancy_week;
       const weeksPregnant = Math.max(0, parseInt(String(weeksRaw || '0'), 10) || 0);
-      iconMarkup = window.ProductIcons?.getPregnancyIcon?.(weeksPregnant, 'default') || this._statusIcon(statusKey, status.color, attrs);
+      iconMarkup = this._getCachedIcon(`pregnant-w${weeksPregnant}-default`, () =>
+        window.ProductIcons?.getPregnancyIcon?.(weeksPregnant, 'default') || this._statusIcon(statusKey, status.color, attrs)
+      );
       const totalWeeks = 40;
       progressPercent = Math.min(100, Math.round((weeksPregnant / totalWeeks) * 100));
       titleText = `${this._t('pregnant')} – ${this._t('week')} ${weeksPregnant}/${totalWeeks}`;
@@ -391,7 +403,9 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         subtitleText = `${this._t('due_date')}: ${dueDateNorm}`;
       }
     } else if (statusKey === 'pre_menarche') {
-      iconMarkup = window.ProductIcons?.getStateIcon?.('pre_menarche', 'default') || this._statusIcon(statusKey, status.color, attrs);
+      iconMarkup = this._getCachedIcon('pre_menarche-default', () =>
+        window.ProductIcons?.getStateIcon?.('pre_menarche', 'default') || this._statusIcon(statusKey, status.color, attrs)
+      );
       const menarcheData = attrs.menarche_data || {};
       const daysUntil = attrs.days_until_menarche !== undefined ? parseInt(String(attrs.days_until_menarche || '0'), 10) : null;
       const estimatedDate = this._normalizeISO(menarcheData.estimated_date || attrs.estimated_menarche_date);
@@ -422,7 +436,9 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
       progressLabel = `${progressPercent}%`;
       progressColor = 'var(--primary-color, #9b59b6)';
     } else if (statusKey === 'postpartum') {
-      iconMarkup = window.ProductIcons?.getPostpartumIcon?.('default') || this._statusIcon(statusKey, status.color, attrs);
+      iconMarkup = this._getCachedIcon('postpartum-default', () =>
+        window.ProductIcons?.getPostpartumIcon?.('default') || this._statusIcon(statusKey, status.color, attrs)
+      );
       const birthDateNorm = this._normalizeISO(attrs.birth_date);
       const postpartumDuration = Math.max(1, parseInt(String(attrs.postpartum_duration || '42'), 10) || 42);
 
@@ -479,8 +495,10 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
 
   // Build simple icon + text layout for menarche, menopause
   _buildIconTextLayout(statusKey, status, attrs) {
-    const iconMarkup = window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, 'default')
-      || this._statusIcon(statusKey, status.color, attrs);
+    const iconMarkup = this._getCachedIcon(`${statusKey}-default`, () =>
+      window.ProductIcons?.getStatusAnimatedIcon?.(statusKey, attrs, 'default')
+        || this._statusIcon(statusKey, status.color, attrs)
+    );
 
     let extraInfo = '';
     if (statusKey === 'menopause') {
