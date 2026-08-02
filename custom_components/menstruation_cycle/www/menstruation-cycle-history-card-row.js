@@ -13,36 +13,6 @@ if (!_mcHistoryCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcHistoryCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-history-card-row.js'))?.src;
 }
 
-if (typeof _mcHistoryCardI18n.load !== 'function') {
-  _mcHistoryCardI18n.load = (language, baseUrl) => {
-    const lang = _mcHistoryCardI18n.normalizeLang(language);
-    if (_mcHistoryCardI18n.cache[lang]) return Promise.resolve(_mcHistoryCardI18n.cache[lang]);
-    if (_mcHistoryCardI18n.loading[lang]) return _mcHistoryCardI18n.loading[lang];
-
-    const urls = [];
-    if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
-    if (_mcHistoryCardI18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, _mcHistoryCardI18n.baseUrl).href);
-    urls.push(`./translations/${lang}.json`);
-    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json`);
-    const uniqueUrls = [...new Set(urls)];
-
-    _mcHistoryCardI18n.loading[lang] = (async () => {
-      for (const url of uniqueUrls) {
-        try {
-          const r = await fetch(url);
-          if (!r.ok) continue;
-          const data = await r.json();
-          _mcHistoryCardI18n.cache[lang] = lang === 'en' ? { ...(_mcHistoryCardI18n.fallback?.en || {}), ...data } : (data || {});
-          return _mcHistoryCardI18n.cache[lang];
-        } catch (_) {}
-      }
-      _mcHistoryCardI18n.cache[lang] = lang === 'en' ? { ...(_mcHistoryCardI18n.fallback?.en || {}) } : {};
-      return _mcHistoryCardI18n.cache[lang];
-    })().finally(() => { delete _mcHistoryCardI18n.loading[lang]; });
-
-    return _mcHistoryCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleHistoryCardRow extends HTMLElement {
@@ -101,6 +71,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
+    if (typeof _mcHistoryCardI18n.load !== 'function') return;
     _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -330,6 +301,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
+    if (typeof _mcHistoryCardI18n.load !== 'function') return;
     _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

@@ -13,36 +13,6 @@ if (!_mcCompactStatusI18n.baseUrl && typeof document !== 'undefined') {
   _mcCompactStatusI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-compact-status-card.js'))?.src;
 }
 
-if (typeof _mcCompactStatusI18n.load !== 'function') {
-  _mcCompactStatusI18n.load = (language, baseUrl) => {
-    const lang = _mcCompactStatusI18n.normalizeLang(language);
-    if (_mcCompactStatusI18n.cache[lang]) return Promise.resolve(_mcCompactStatusI18n.cache[lang]);
-    if (_mcCompactStatusI18n.loading[lang]) return _mcCompactStatusI18n.loading[lang];
-
-    const urls = [];
-    if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
-    if (_mcCompactStatusI18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, _mcCompactStatusI18n.baseUrl).href);
-    urls.push(`./translations/${lang}.json`);
-    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json`);
-    const uniqueUrls = [...new Set(urls)];
-
-    _mcCompactStatusI18n.loading[lang] = (async () => {
-      for (const url of uniqueUrls) {
-        try {
-          const r = await fetch(url);
-          if (!r.ok) continue;
-          const data = await r.json();
-          _mcCompactStatusI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactStatusI18n.fallback?.en || {}), ...data } : (data || {});
-          return _mcCompactStatusI18n.cache[lang];
-        } catch (_) {}
-      }
-      _mcCompactStatusI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactStatusI18n.fallback?.en || {}) } : {};
-      return _mcCompactStatusI18n.cache[lang];
-    })().finally(() => { delete _mcCompactStatusI18n.loading[lang]; });
-
-    return _mcCompactStatusI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleCompactStatusCard extends HTMLElement {
@@ -92,6 +62,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    if (typeof _mcCompactStatusI18n.load !== 'function') return;
     _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -808,6 +779,7 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    if (typeof _mcCompactStatusI18n.load !== 'function') return;
     _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

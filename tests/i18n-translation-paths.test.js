@@ -21,28 +21,33 @@ for (const relativeFile of files) {
   const content = fs.readFileSync(absoluteFile, 'utf8');
 
   assert.ok(
-    !content.includes('/menstruation_cycle/translations/${lang}.json'),
-    `${relativeFile} still contains legacy /menstruation_cycle translation path`
-  );
-
-  assert.ok(
-    content.includes('./translations/${lang}.json'),
-    `${relativeFile} does not contain expected relative translation path`
-  );
-
-  assert.ok(
     content.includes('window.menstruationCycleI18n'),
-    `${relativeFile} does not use centralized window.menstruationCycleI18n`
+    `${relativeFile} does not use shared window.menstruationCycleI18n state`
   );
 
   assert.ok(
-    content.includes('/hacsfiles/menstruation-cycle-card/translations/'),
-    `${relativeFile} does not contain hacsfiles translation fallback URL`
+    content.includes('.load(lang,'),
+    `${relativeFile} does not call shared i18n load(lang, baseUrl)`
   );
 
   assert.ok(
-    !content.includes('const relativePath ='),
-    `${relativeFile} still uses legacy single-URL relativePath pattern`
+    content.includes('window.menstruationCycleI18n?.cache?.'),
+    `${relativeFile} does not read translations from shared cache`
+  );
+
+  assert.ok(
+    !/if\s*\(typeof\s+_mc\w*I18n\.load\s*!==\s*['"]function['"]\)\s*\{/.test(content),
+    `${relativeFile} still defines a per-card i18n load implementation`
+  );
+
+  assert.ok(
+    !content.includes('./translations/${lang}.json'),
+    `${relativeFile} still contains duplicated relative translation URL fallback logic`
+  );
+
+  assert.ok(
+    !content.includes('/hacsfiles/menstruation-cycle-card/translations/'),
+    `${relativeFile} still contains duplicated hacsfiles translation URL fallback logic`
   );
 }
 

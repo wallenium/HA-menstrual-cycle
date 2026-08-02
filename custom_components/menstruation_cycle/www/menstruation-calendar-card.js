@@ -13,36 +13,6 @@ if (!_mcCalendarCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcCalendarCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-calendar-card.js'))?.src;
 }
 
-if (typeof _mcCalendarCardI18n.load !== 'function') {
-  _mcCalendarCardI18n.load = (language, baseUrl) => {
-    const lang = _mcCalendarCardI18n.normalizeLang(language);
-    if (_mcCalendarCardI18n.cache[lang]) return Promise.resolve(_mcCalendarCardI18n.cache[lang]);
-    if (_mcCalendarCardI18n.loading[lang]) return _mcCalendarCardI18n.loading[lang];
-
-    const urls = [];
-    if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
-    if (_mcCalendarCardI18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, _mcCalendarCardI18n.baseUrl).href);
-    urls.push(`./translations/${lang}.json`);
-    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json`);
-    const uniqueUrls = [...new Set(urls)];
-
-    _mcCalendarCardI18n.loading[lang] = (async () => {
-      for (const url of uniqueUrls) {
-        try {
-          const r = await fetch(url);
-          if (!r.ok) continue;
-          const data = await r.json();
-          _mcCalendarCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCalendarCardI18n.fallback?.en || {}), ...data } : (data || {});
-          return _mcCalendarCardI18n.cache[lang];
-        } catch (_) {}
-      }
-      _mcCalendarCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCalendarCardI18n.fallback?.en || {}) } : {};
-      return _mcCalendarCardI18n.cache[lang];
-    })().finally(() => { delete _mcCalendarCardI18n.loading[lang]; });
-
-    return _mcCalendarCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCalendarCard extends HTMLElement {
@@ -105,6 +75,7 @@ class MenstruationCalendarCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
+    if (typeof _mcCalendarCardI18n.load !== 'function') return;
     _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -1230,6 +1201,7 @@ class MenstruationCalendarCardEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
+    if (typeof _mcCalendarCardI18n.load !== 'function') return;
     _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

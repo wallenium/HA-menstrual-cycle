@@ -13,36 +13,6 @@ if (!_mcCompactCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcCompactCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-card-compact.js'))?.src;
 }
 
-if (typeof _mcCompactCardI18n.load !== 'function') {
-  _mcCompactCardI18n.load = (language, baseUrl) => {
-    const lang = _mcCompactCardI18n.normalizeLang(language);
-    if (_mcCompactCardI18n.cache[lang]) return Promise.resolve(_mcCompactCardI18n.cache[lang]);
-    if (_mcCompactCardI18n.loading[lang]) return _mcCompactCardI18n.loading[lang];
-
-    const urls = [];
-    if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
-    if (_mcCompactCardI18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, _mcCompactCardI18n.baseUrl).href);
-    urls.push(`./translations/${lang}.json`);
-    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json`);
-    const uniqueUrls = [...new Set(urls)];
-
-    _mcCompactCardI18n.loading[lang] = (async () => {
-      for (const url of uniqueUrls) {
-        try {
-          const r = await fetch(url);
-          if (!r.ok) continue;
-          const data = await r.json();
-          _mcCompactCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactCardI18n.fallback?.en || {}), ...data } : (data || {});
-          return _mcCompactCardI18n.cache[lang];
-        } catch (_) {}
-      }
-      _mcCompactCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactCardI18n.fallback?.en || {}) } : {};
-      return _mcCompactCardI18n.cache[lang];
-    })().finally(() => { delete _mcCompactCardI18n.loading[lang]; });
-
-    return _mcCompactCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleCard extends HTMLElement {
@@ -176,6 +146,7 @@ class MenstruationCycleCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactCardI18n.cache[lang] || _mcCompactCardI18n.loading[lang]) return;
+    if (typeof _mcCompactCardI18n.load !== 'function') return;
     _mcCompactCardI18n.load(lang, _mcCompactCardI18n.baseUrl).then(() => this.render()).catch(() => {});
   }
 
