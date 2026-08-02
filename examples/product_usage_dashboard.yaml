@@ -1,6 +1,6 @@
 type: vertical-stack
 cards:
-  - type: custom:menstruation-cycle-card
+  - type: custom:menstruation-gauge-card
     entity: sensor.anna
     title: Cycle Overview
     show_editor: true

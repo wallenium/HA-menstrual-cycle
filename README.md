@@ -20,10 +20,14 @@ It combines a Home Assistant integration, per-profile sensors, local data storag
 
 1. Open HACS and add the custom repository `git: /wallenium/HA-menstrual-cycle`.
 2. Install **Menstruation Cycle**, then add the integration under **Settings → Devices & Services**.
-3. Create a profile with a friendly name, restart Home Assistant, and add `custom:menstruation-cycle-card` to a dashboard.
+3. Create a profile with a friendly name, restart Home Assistant, and add `custom:menstruation-gauge-card` to a dashboard.
 4. Optional but recommended: import or recreate the daily refresh automation from [`/examples/daily_recalculate_days_until_next_start.yaml`](./examples/daily_recalculate_days_until_next_start.yaml).
 
 For manual installation, extra cards, service examples, and troubleshooting, use the wiki pages below.
+
+### Migration note
+
+`custom:menstruation-cycle-card` has been removed. Update existing Lovelace YAML dashboards to use `custom:menstruation-gauge-card` instead.
 
 ## Screenshot
 

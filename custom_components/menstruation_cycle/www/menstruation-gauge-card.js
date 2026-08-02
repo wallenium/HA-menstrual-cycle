@@ -2493,10 +2493,6 @@ class MenstruationGaugeCardEditor extends HTMLElement {
 customElements.define('menstruation-gauge-card', MenstruationGaugeCard);
 customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
 
-// Backward compatibility: register old element names so existing dashboards continue to work
-customElements.define('menstruation-cycle-card', MenstruationGaugeCard);
-customElements.define('menstruation-cycle-card-editor', MenstruationGaugeCardEditor);
-
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-gauge-card',
