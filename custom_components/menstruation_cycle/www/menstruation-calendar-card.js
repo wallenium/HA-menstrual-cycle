@@ -61,7 +61,7 @@ class MenstruationCalendarCard extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
     _mcCalendarCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });
@@ -1190,7 +1190,7 @@ class MenstruationCalendarCardEditor extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
     _mcCalendarCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });

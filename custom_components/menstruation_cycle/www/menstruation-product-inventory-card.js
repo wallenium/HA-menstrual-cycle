@@ -58,7 +58,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcInventoryCardI18n.cache || _mcInventoryCardI18n.loading[lang]) return;
     _mcInventoryCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcInventoryCardI18n.cache[lang] = data; delete _mcInventoryCardI18n.loading[lang]; this._render(); })
       .catch(() => { _mcInventoryCardI18n.cache[lang] = {}; delete _mcInventoryCardI18n.loading[lang]; });
