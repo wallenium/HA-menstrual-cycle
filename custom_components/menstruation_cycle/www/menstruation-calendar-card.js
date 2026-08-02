@@ -1,3 +1,5 @@
+const _mcCalendarCardI18n = { cache: {}, loading: {} };
+
 class MenstruationCalendarCard extends HTMLElement {
   constructor() {
     super();
@@ -44,6 +46,7 @@ class MenstruationCalendarCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     if (!this._config) return;
     // Don't re-render while the symptom modal is open to preserve user input.
     if (this._modalIso) return;
@@ -54,131 +57,25 @@ class MenstruationCalendarCard extends HTMLElement {
     return 5;
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
+    _mcCalendarCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCalendarCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        title: 'Zykluskalender',
-        today: 'Heute',
-        previous_month: 'Vorheriger Monat',
-        next_month: 'Nächster Monat',
-        cycle_day: 'Zyklustag',
-        day_of_cycle: 'Tag',
-        of_cycle: 'des Zyklus',
-        no_data: 'Keine Daten',
-        edit_symptoms: 'Symptome bearbeiten',
-        save: 'Speichern',
-        close: 'Schließen',
-        fertile: 'Fruchtbar',
-        period: 'Periode',
-        ovulation: 'Eisprung',
-        bleeding_strength: 'Blutungsstärke',
-        spotting: 'Schmierblutung',
-        pain: 'Schmerzen',
-        none: 'Kein',
-        predicted: 'Vorhergesagt',
-        predicted_period: 'Vorhergesagte Periode',
-        modal_edit_day: 'Tag bearbeiten',
-        period_toggle: 'Periode',
-        period_start: 'Periode Start',
-        log_today: 'Heute loggen',
-        cancel: 'Abbrechen',
-        basal_temp_label: 'Basaltemperatur (°C)',
-        cat_bleeding_strength: 'Blutungsstärke',
-        cat_spotting: 'Schmierblutung',
-        cat_discharge: 'Ausfluss',
-        cat_intercourse: 'Geschlechtsverkehr',
-        cat_pain: 'Schmerzen',
-        cat_hygiene: 'Hygiene',
-        cat_test: 'Test',
-        cat_cervical_mucus: 'Zervixschleim',
-        cat_smell: 'Geruch',
-        cat_clots: 'Klumpen',
-        cat_clot_size: 'Klumpengröße',
-        cat_bleeding_type: 'Blutungstyp',
-        cat_cervix_position: 'Zervixposition',
-        cat_cervix_texture: 'Zervixbeschaffenheit',
-        cat_libido: 'Libido',
-        cat_training_intensity: 'Trainingsintensität',
-        cat_pregnancy_symptoms: 'Schwangerschaft',
-        opt_light: 'Gering',
-        opt_medium: 'Mittel',
-        opt_heavy: 'Stark',
-        opt_very_heavy: 'Sehr stark',
-        opt_none: 'Keine',
-        opt_red: 'Rot',
-        opt_brown: 'Braun',
-        opt_reddish: 'Rötlich',
-        opt_white: 'Weiß',
-        opt_clear: 'Klar',
-        opt_other: 'Sonstiges',
-        opt_protected: 'Geschützt',
-        opt_unprotected: 'Ungeschützt',
-        opt_mittelschmerz: 'Mittelschmerz',
-        opt_cramps: 'Krämpfe',
-        opt_tender_breasts: 'Brustspannung',
-        opt_headache: 'Kopfschmerz',
-        opt_migraine: 'Migräne',
-        opt_lower_back: 'Rückenschmerzen',
-        opt_vulva: 'Vulvaschmerz',
-        opt_pad: 'Binde',
-        opt_liner: 'Slipeinlage',
-        opt_tampon: 'Tampon',
-        opt_cup: 'Menstruationstasse',
-        opt_period_underwear: 'Periodenunterwäsche',
-        opt_positive_ovulation: 'LH positiv',
-        opt_negative_ovulation: 'LH negativ',
-        opt_positive_pregnancy: 'Schwangerschaft +',
-        opt_negative_pregnancy: 'Schwangerschaft -',
-        opt_keinen: 'Keinen',
-        opt_klebrig: 'Klebrig',
-        opt_cremig: 'Cremig',
-        opt_fadenziehend: 'Fadenziehend',
-        opt_untypisch: 'Untypisch',
-        opt_normal: 'Normal',
-        opt_inconspicuous: 'Unauffällig',
-        opt_unpleasant: 'Unangenehm',
-        opt_fishy: 'Fischartig',
-        opt_yes: 'Ja',
-        opt_no: 'Nein',
-        opt_small: 'Klein',
-        opt_large: 'Groß',
-        opt_continuous: 'Kontinuierlich',
-        opt_intermittent: 'Intermittierend',
-        opt_drops: 'Tropfen',
-        opt_cervix_high: 'Oben',
-        opt_cervix_mid: 'Mitte',
-        opt_cervix_low: 'Unten',
-        opt_firm: 'Hart',
-        opt_soft: 'Weich',
-        opt_open: 'Offen',
-        opt_libido_low: 'Niedrig',
-        opt_libido_high: 'Erhöht',
-        opt_training_light: 'Leicht',
-        opt_training_moderate: 'Moderat',
-        opt_training_intense: 'Intensiv',
-        opt_nausea: 'Übelkeit',
-        opt_fatigue: 'Müdigkeit',
-        opt_heartburn: 'Sodbrennen',
-        opt_swelling: 'Schwellungen',
-        opt_back_pain: 'Rückenschmerz',
-        opt_preg_nausea: 'Übelkeit',
-        opt_preg_fatigue: 'Erschöpfung',
-        opt_preg_heartburn: 'Sodbrennen',
-        opt_preg_swelling: 'Schwellungen',
-        opt_preg_mood_swings: 'Stimmungsschwankungen',
-        opt_preg_frequent_urination: 'Häufiges Wasserlassen',
-        opt_preg_braxton_hicks: 'Braxton-Hicks',
-        opt_preg_back_pain: 'Rückenschmerzen',
-        discharge: 'Ausfluss',
-        yes: 'Ja',
-        no: 'Nein',
-        continue: 'Weiter',
-      },
       en: {
         title: 'Cycle Calendar',
         today: 'Today',
@@ -298,7 +195,8 @@ class MenstruationCalendarCard extends HTMLElement {
         continue: 'Continue',
       },
     };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _normalizeISO(value) {
@@ -1283,8 +1181,19 @@ class MenstruationCalendarCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     if (this.shadowRoot?.activeElement) return;
     this._render();
+  }
+
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCalendarCardI18n.cache || _mcCalendarCardI18n.loading[lang]) return;
+    _mcCalendarCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCalendarCardI18n.cache[lang] = data; delete _mcCalendarCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCalendarCardI18n.cache[lang] = {}; delete _mcCalendarCardI18n.loading[lang]; });
   }
 
   _lang() {
@@ -1293,21 +1202,9 @@ class MenstruationCalendarCardEditor extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcCalendarCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: 'Entität',
-        entry_id: 'Eintrags-ID (optional)',
-        title: 'Titel',
-        options: 'Optionen',
-        show_fertile_period: 'Fruchtbare Phase anzeigen',
-        show_ovulation_marker: 'Ovulationsmarker anzeigen',
-        show_cycle_day_numbers: 'Zyklustagnummern anzeigen',
-        week_start: 'Wochenstart',
-        monday: 'Montag',
-        sunday: 'Sonntag',
-        show_predicted_cycles: 'Vorhergesagte Zyklen anzeigen',
-        num_predicted_cycles: 'Anzahl Vorhersagen (1–12)',
-      },
       en: {
         entity: 'Entity',
         entry_id: 'Entry ID (optional)',
@@ -1323,7 +1220,8 @@ class MenstruationCalendarCardEditor extends HTMLElement {
         num_predicted_cycles: 'Number of predictions (1–12)',
       },
     };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _emit(nextConfig) {

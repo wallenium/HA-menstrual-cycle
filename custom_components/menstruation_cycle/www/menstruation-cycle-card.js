@@ -1,3 +1,5 @@
+const _mcCycleCardI18n = { cache: {}, loading: {} };
+
 class MenstruationCycleCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -42,6 +44,7 @@ class MenstruationCycleCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Don't re-render while the symptom modal or first period modal is open to preserve user input.
     if (this._modalIso || this._pmModalOpen) return;
     this._render();
@@ -74,141 +77,25 @@ class MenstruationCycleCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        card_name: 'Menstruation Gauge Karte',
-        card_description: 'Eine Karte zur Visualisierung des weiblichen Menstruationszyklus, des fruchtbaren Tage, des Eisprungs und damit verbundener Symptome.',
-        days_unit: 'Tage',
-        days_unknown: '-- Tage',
-        days_until_menarche: 'Tage bis Menarche',
-        menarche_expected_in: 'Menarche erwartet in {days} Tagen',
-        menarche_overdue: 'Menarche {days} Tage überfällig',
-        pregnancy: 'Schwangerschaft',
-        week: 'Woche',
-        month: 'Monat',
-        trimester: 'Trimester',
-        // Modal UI
-        modal_edit_day: 'Tag bearbeiten',
-        period_toggle: 'Periode',
-        period_start: 'Periode Start',
-        log_today: 'Heute loggen',
-        today: 'Heute',
-        save: 'Speichern',
-        cancel: 'Abbrechen',
-        basal_temp_label: 'Basaltemperatur (°C)',
-        // Symptom category labels
-        cat_bleeding_strength: 'Blutungsstärke',
-        cat_spotting: 'Schmierblutung',
-        cat_discharge: 'Ausfluss',
-        cat_intercourse: 'Geschlechtsverkehr',
-        cat_pain: 'Schmerzen',
-        cat_hygiene: 'Hygiene',
-        cat_test: 'Test',
-        cat_cervical_mucus: 'Zervixschleim',
-        cat_smell: 'Geruch',
-        cat_clots: 'Klumpen',
-        cat_clot_size: 'Klumpengröße',
-        cat_bleeding_type: 'Blutungstyp',
-        cat_cervix_position: 'Zervixposition',
-        cat_cervix_texture: 'Zervixbeschaffenheit',
-        cat_libido: 'Libido',
-        cat_training_intensity: 'Trainingsintensität',
-        cat_pregnancy_symptoms: 'Schwangerschaft',
-        // Symptom option labels
-        opt_light: 'Gering',
-        opt_medium: 'Mittel',
-        opt_heavy: 'Stark',
-        opt_very_heavy: 'Sehr stark',
-        opt_none: 'Keine',
-        opt_red: 'Rot',
-        opt_brown: 'Braun',
-        opt_reddish: 'Rötlich',
-        opt_white: 'Weiß',
-        opt_clear: 'Klar',
-        opt_other: 'Sonstiges',
-        opt_protected: 'Geschützt',
-        opt_unprotected: 'Ungeschützt',
-        opt_mittelschmerz: 'Mittelschmerz',
-        opt_cramps: 'Krämpfe',
-        opt_tender_breasts: 'Brustspannung',
-        opt_headache: 'Kopfschmerz',
-        opt_migraine: 'Migräne',
-        opt_lower_back: 'Rückenschmerzen',
-        opt_vulva: 'Vulvaschmerz',
-        opt_pad: 'Binde',
-        opt_liner: 'Slipeinlage',
-        opt_tampon: 'Tampon',
-        opt_cup: 'Menstruationstasse',
-        opt_period_underwear: 'Periodenunterwäsche',
-        opt_positive_ovulation: 'LH positiv',
-        opt_negative_ovulation: 'LH negativ',
-        opt_positive_pregnancy: 'Schwangerschaft +',
-        opt_negative_pregnancy: 'Schwangerschaft -',
-        opt_keinen: 'Keinen',
-        opt_klebrig: 'Klebrig',
-        opt_cremig: 'Cremig',
-        opt_fadenziehend: 'Fadenziehend',
-        opt_untypisch: 'Untypisch',
-        opt_normal: 'Normal',
-        opt_inconspicuous: 'Unauffällig',
-        opt_unpleasant: 'Unangenehm',
-        opt_fishy: 'Fischartig',
-        opt_yes: 'Ja',
-        opt_no: 'Nein',
-        opt_small: 'Klein',
-        opt_large: 'Groß',
-        opt_continuous: 'Kontinuierlich',
-        opt_intermittent: 'Intermittierend',
-        opt_drops: 'Tropfen',
-        opt_cervix_high: 'Oben',
-        opt_cervix_mid: 'Mitte',
-        opt_cervix_low: 'Unten',
-        opt_firm: 'Hart',
-        opt_soft: 'Weich',
-        opt_open: 'Offen',
-        opt_libido_low: 'Niedrig',
-        opt_libido_high: 'Erhöht',
-        opt_training_light: 'Leicht',
-        opt_training_moderate: 'Moderat',
-        opt_training_intense: 'Intensiv',
-        // Pregnancy symptom options
-        opt_nausea: 'Übelkeit',
-        opt_fatigue: 'Müdigkeit',
-        opt_heartburn: 'Sodbrennen',
-        opt_swelling: 'Schwellungen',
-        opt_back_pain: 'Rückenschmerz',
-        opt_preg_nausea: 'Übelkeit',
-        opt_preg_fatigue: 'Erschöpfung',
-        opt_preg_heartburn: 'Sodbrennen',
-        opt_preg_swelling: 'Schwellungen',
-        opt_preg_mood_swings: 'Stimmungsschwankungen',
-        opt_preg_frequent_urination: 'Häufiges Wasserlassen',
-        opt_preg_braxton_hicks: 'Braxton-Hicks',
-        opt_preg_back_pain: 'Rückenschmerzen',
-        // First Period (Pre-Menarche) flow
-        log_first_period: 'Erste Periode loggen',
-        log_first_period_symptoms: 'Erste Periode - Symptome loggen',
-        first_period_description: 'Wähle deine heutigen Symptome aus und bestätige den Start deiner ersten Periode.',
-        leave_pre_menarche_title: 'Willst du den Pre-Menarche Modus verlassen?',
-        leave_pre_menarche_message: 'Deine erste Periode wird für heute geloggt und der Zyklus-Tracking-Modus wird aktiviert.',
-        welcome_period_title: 'Willkommen zur Periode! 🎉',
-        welcome_period_cycle_tracking: 'Zyklus-Tracking startet jetzt',
-        welcome_period_features: 'Neue Features: Zyklus-Vorhersage, Statistiken, ...',
-        welcome_period_contraception: 'Du bist jetzt fruchtbar - denke an Verhütung, wenn nötig!',
-        welcome_period_return: 'Du kannst jederzeit in den Einstellungen zum Pre-Menarche Modus zurückwechseln',
-        spotting: 'Schmierblutung',
-        discharge: 'Ausfluss',
-        pain: 'Schmerzen',
-        yes: 'Ja',
-        no: 'Nein',
-        continue: 'Weiter',
-      },
       en: {
         card_name: 'Menstruation Gauge Card',
         card_description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
@@ -338,7 +225,8 @@ class MenstruationCycleCard extends HTMLElement {
         continue: 'Continue',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _normalizeISO(value) {
@@ -2268,6 +2156,7 @@ class MenstruationCycleCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Avoid stealing focus while user is typing in the editor.
     if (this.shadowRoot?.activeElement) return;
     this._render();
@@ -2277,31 +2166,25 @@ class MenstruationCycleCardEditor extends HTMLElement {
     this._detachHandlers();
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
+    _mcCycleCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCycleCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: 'Entität',
-        fallback_note: 'HA-Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.',
-        sensor_search: 'Sensor suchen...',
-        friendly_name: 'Anzeigename (Gauge)',
-        use_sensor_name: 'Aus Sensor',
-        title: 'Titel',
-        period_duration: 'Periodendauer (Zahl 1-14 oder "learnt", leer = Sensorwert)',
-        period_placeholder: 'z. B. 5 oder "learnt"',
-        theme: 'Theme',
-        theme_auto: 'auto',
-        theme_light: 'hell',
-        theme_dark: 'dunkel',
-        show_fertile: 'Fruchtbare Phase anzeigen',
-        show_predicted: 'Prognostizierte Zyklen anzeigen',
-        num_predicted: 'Anzahl prognostizierter Zyklen (1-12)',
-        calendar_edit: 'Neue Einträge im Kalender erlauben',
-      },
       en: {
         entity: 'Entity',
         fallback_note: 'HA entity picker unavailable, fallback dropdown active.',
@@ -2321,7 +2204,8 @@ class MenstruationCycleCardEditor extends HTMLElement {
         calendar_edit: 'Allow new entries through calendar',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _sensorLabelFromEntity(entityId) {

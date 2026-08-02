@@ -37,13 +37,13 @@ const HYGIENE_TRANSLATIONS = {
     planning_days: 'Planungstage',
     days: 'Tage',
     last_cycle: 'Letzte Periode',
-    last_cycles: ({ count }) => `${count || 0} Zyklen`,
+    last_cycles: '{count} Zyklen',
     last_30_days: 'Letzte 30 Tage',
     no_usage_last_30_days: 'In den letzten 30 Tagen wurden keine Produkte geloggt.',
     wash_every_x_days: 'Wasche alle X Tage',
     buy_x_more_underwear: 'Kaufe X mehr Slips',
-    based_on_daily_usage: ({ value }) => `bei ~${value || 0} pro Tag`,
-    for_wash_goal: ({ days }) => `für alle ${days || 0} Tage Waschrhythmus`,
+    based_on_daily_usage: 'bei ~{value} pro Tag',
+    for_wash_goal: 'für alle {days} Tage Waschrhythmus',
     add_to_shopping_list: 'Zur Einkaufsliste',
     cup_cost_savings: 'Cup Kostenersparnis',
     cup_co2_savings: 'Cup CO2-Ersparnis',
@@ -70,13 +70,13 @@ const HYGIENE_TRANSLATIONS = {
     planning_days: 'Planning days',
     days: 'days',
     last_cycle: 'Last period',
-    last_cycles: ({ count }) => `${count || 0} cycles`,
+    last_cycles: '{count} cycles',
     last_30_days: 'Last 30 days',
     no_usage_last_30_days: 'No products were logged in the last 30 days.',
     wash_every_x_days: 'Wash every X days',
     buy_x_more_underwear: 'Buy X more underwear',
-    based_on_daily_usage: ({ value }) => `based on ~${value || 0}/day`,
-    for_wash_goal: ({ days }) => `for a ${days || 0}-day wash routine`,
+    based_on_daily_usage: 'based on ~{value}/day',
+    for_wash_goal: 'for a {days}-day wash routine',
     add_to_shopping_list: 'Add to shopping list',
     cup_cost_savings: 'Cup cost savings',
     cup_co2_savings: 'Cup CO2 savings',
@@ -103,9 +103,12 @@ function getLang(hass) {
 function translate(hass, key, placeholders = {}) {
   const lang = getLang(hass);
   const dict = HYGIENE_TRANSLATIONS[lang] || HYGIENE_TRANSLATIONS.en;
-  const value = dict[key];
-  if (typeof value === 'function') return value(placeholders);
-  return value ?? HYGIENE_TRANSLATIONS.en[key] ?? key;
+  const value = dict[key] ?? HYGIENE_TRANSLATIONS.en[key] ?? key;
+  if (typeof value !== 'string') return String(value);
+  return Object.entries(placeholders).reduce(
+    (s, [k, v]) => s.replace(`{${k}}`, v ?? 0),
+    value
+  );
 }
 
 function escapeHtml(value) {
@@ -669,6 +672,8 @@ function getHygieneStyles(options = {}) {
 // MenstruationStatisticsCard – card class
 // ---------------------------------------------------------------------------
 
+const _mcStatisticsCardI18n = { cache: {}, loading: {} };
+
 class MenstruationStatisticsCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -709,6 +714,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this._render();
   }
 
@@ -720,6 +726,16 @@ class MenstruationStatisticsCard extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcStatisticsCardI18n.cache || _mcStatisticsCardI18n.loading[lang]) return;
+    _mcStatisticsCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcStatisticsCardI18n.cache[lang] = data; delete _mcStatisticsCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcStatisticsCardI18n.cache[lang] = {}; delete _mcStatisticsCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const cfg = String(this._config?.language || 'auto').toLowerCase();
     if (cfg !== 'auto') return cfg.startsWith('de') ? 'de' : 'en';
@@ -728,86 +744,9 @@ class MenstruationStatisticsCard extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcStatisticsCardI18n.cache[this._lang()] || {};
+    if (typeof loaded[key] === 'string') return loaded[key];
     const i18n = {
-      de: {
-        title: 'Statistiken',
-        tab_period: 'Periode',
-        tab_hygiene: 'Hygiene',
-        tab_nfp: 'NFP',
-        tab_doctor: 'Arzt-Bericht',
-        filter: 'Filter',
-        filter_aria: 'Statistik-Filter öffnen',
-        no_data: 'Keine Daten vorhanden',
-        entity_not_found: 'Entity nicht gefunden',
-        cycle_length: 'Zykluslänge',
-        bleeding_duration: 'Blutungsdauer',
-        bleeding_strength: 'Blutungsstärke',
-        regularity: 'Regelmäßigkeit',
-        top_symptoms: 'Häufigste Symptome',
-        pain_trend: 'Schmerztage-Trend',
-        avg: 'Ø',
-        min: 'Min',
-        max: 'Max',
-        std_dev: 'Stabw.',
-        days: 'Tage',
-        cycles_analyzed: 'Analysierte Zyklen',
-        very_regular: 'Sehr regelmäßig',
-        regular: 'Regelmäßig',
-        irregular: 'Unregelmäßig',
-        bleeding_none: 'Keine',
-        bleeding_light: 'Leicht',
-        bleeding_medium: 'Normal',
-        bleeding_heavy: 'Stark',
-        bleeding_very_heavy: 'Sehr stark',
-        period: 'Zeitraum',
-        months_3: '3 Monate',
-        months_6: '6 Monate',
-        months_12: '12 Monate',
-        custom: 'Benutzerdefiniert',
-        doctor_report_title: 'Arzt-Bericht',
-        doctor_report_desc: 'Erstellt einen professionellen HTML-Bericht für den Arzttermin. Speichert die Datei im Export-Verzeichnis von Home Assistant.',
-        patient_name: 'Patientenname (optional)',
-        patient_birthdate: 'Geburtsdatum (optional, JJJJ-MM-TT)',
-        export_language: 'Berichtssprache',
-        export_btn: 'Als HTML für Arzt exportieren',
-        export_ok: '✅ Bericht exportiert!',
-        export_err: '❌ Fehler beim Exportieren',
-        exporting: '⏳ Wird exportiert…',
-        print_btn: 'Seite drucken / Als PDF speichern',
-        settings_title: 'Einstellungen',
-        days_back_label: 'Anzahl Tage zurück',
-        cycle_start: 'Zyklusbeginn',
-        pain_days: 'Schmerztage',
-        avg_pain_days: 'Ø Schmerztage/Zyklus',
-        of: 'von',
-        last_n_days: (n) => `Letzte ${n} Tage`,
-        no_symptom_data: 'Keine Symptomdaten',
-        no_cycle_data: 'Keine Zyklusdaten',
-        nfp_title: 'NFP-Analyse (Symptothermalmethode)',
-        nfp_no_data: 'Keine NFP-Daten vorhanden. Messung der Basaltemperatur aktivieren, um NFP-Analyse zu nutzen.',
-        nfp_confidence: 'Konfidenz',
-        nfp_confidence_high: 'Hoch',
-        nfp_confidence_medium: 'Mittel',
-        nfp_confidence_low: 'Niedrig',
-        nfp_temp_rise: 'Temperaturanstieg',
-        nfp_mucus_peak: 'Zervixschleim-Peak',
-        nfp_cervix_peak: 'Zervixposition-Peak',
-        nfp_ovulation: 'Geschätzter Eisprung',
-        nfp_fertile_window: 'Fruchtbares Fenster',
-        nfp_score: 'NFP-Score',
-        nfp_method: 'Methode',
-        nfp_method_nfp: 'NFP',
-        nfp_method_standard: 'Standard',
-        nfp_temp_chart: 'Basaltemperaturkurve',
-        nfp_baseline: 'Basislinie',
-        nfp_threshold: 'Schwelle (+0,2°C)',
-        nfp_day: 'Tag',
-        nfp_temp_unit: '°C',
-        nfp_not_detected: 'Nicht erkannt',
-        nfp_day_label: (n) => `Tag ${n}`,
-        nfp_cycle_day: 'Zyklustag',
-        nfp_temperature: 'Temperatur (°C)',
-      },
       en: {
         title: 'Statistics',
         tab_period: 'Period',
@@ -859,7 +798,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         pain_days: 'Pain days',
         avg_pain_days: 'Avg pain days/cycle',
         of: 'of',
-        last_n_days: (n) => `Last ${n} days`,
+        last_n_days: 'Last {n} days',
         no_symptom_data: 'No symptom data',
         no_cycle_data: 'No cycle data',
         nfp_title: 'NFP Analysis (Symptothermal Method)',
@@ -883,7 +822,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_day: 'Day',
         nfp_temp_unit: '°C',
         nfp_not_detected: 'Not detected',
-        nfp_day_label: (n) => `Day ${n}`,
+        nfp_day_label: 'Day {n}',
         nfp_cycle_day: 'Cycle Day',
         nfp_temperature: 'Temperature (°C)',
       },
@@ -1212,7 +1151,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const dayLabel = (iso) => {
       if (!iso) return esc(t('nfp_not_detected'));
       const num = toDayNum(iso);
-      return num != null ? esc(t('nfp_day_label')(num)) + ` (${esc(iso)})` : esc(iso);
+      return num != null ? esc(t('nfp_day_label').replace('{n}', num)) + ` (${esc(iso)})` : esc(iso);
     };
 
     const ovDay = nfp.ovulation_day;

@@ -1,3 +1,5 @@
+const _mcCompactStatusI18n = { cache: {}, loading: {} };
+
 class MenstruationCycleCompactStatusCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -27,6 +29,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this._render();
   }
 
@@ -40,62 +43,25 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
+    _mcCompactStatusI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase();
     return language.startsWith('de') ? 'de' : 'en';
   }
 
   _t(key) {
+    const loaded = _mcCompactStatusI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'Unbekannt',
-        title: 'Zyklus Status',
-        cycle_day: 'Zyklustag',
-        period: 'Periode',
-        fertile: 'Fruchtbar',
-        ovulation: 'Eisprung',
-        pms: 'PMS',
-        neutral: 'Neutral',
-        pre_menarche: 'Vor Menarche',
-        pregnant: 'Schwangerschaft',
-        postpartum: 'Wochenbett',
-        menarche: 'Menarche',
-        menopause: 'Menopause',
-        in_menopause: 'In Menopause',
-        week: 'Woche',
-        day: 'Tag',
-        of: 'von',
-        due_date: 'Geburtstermin',
-        estimated_date: 'Geschätzter Termin',
-        days_until: 'Tage bis Menarche',
-        progress: 'Fortschritt',
-        postpartum_end: 'Ende Wochenbett',
-        since: 'seit',
-        years: 'Jahren',
-        months: 'Monaten',
-        phase_period: 'Blutung',
-        phase_fertile: 'Fruchtbar',
-        phase_ovulation: 'Eisprung',
-        phase_pms: 'PMS',
-        phase_neutral: 'Neutral',
-        tt_product_usage: 'Produktverbrauch',
-        tt_symptoms: 'Symptome',
-        tt_no_data: 'Keine Zusatzdaten',
-        tt_status_icon: 'Status-Icon',
-        tt_tampon: 'Tampon',
-        tt_pad: 'Binde',
-        tt_cup: 'Menstruationstasse',
-        tt_liner: 'Slipeinlage',
-        tt_underwear: 'Periodenunterwäsche',
-        tt_bleeding: 'Blutung',
-        tt_mood: 'Stimmung',
-        tt_pain: 'Schmerzen',
-        tt_spotting: 'Schmierblutung',
-        tt_cervical_mucus: 'Zervixschleim',
-        tt_intercourse: 'Geschlechtsverkehr',
-        tt_hygiene: 'Hygiene',
-      },
       en: {
         entity_not_found: 'Entity not found',
         unknown: 'Unknown',
@@ -146,7 +112,8 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         tt_hygiene: 'Hygiene',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _resolveEntityId() {
@@ -775,7 +742,18 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     this._render();
+  }
+
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
+    _mcCompactStatusI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });
   }
 
   _lang() {
@@ -784,19 +762,17 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcCompactStatusI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: 'Entität',
-        title: 'Titel',
-        show_title: 'Titel anzeigen',
-      },
       en: {
         entity: 'Entity',
         title: 'Title',
         show_title: 'Show title',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _emit(nextConfig) {

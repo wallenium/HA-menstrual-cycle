@@ -1,3 +1,5 @@
+const _mcInventoryCardI18n = { cache: {}, loading: {} };
+
 class MenstruationProductInventoryCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -32,6 +34,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._loadTranslations();
     // Only re-render when the inventory entity state actually changes to avoid
     // destroying the DOM (and losing input focus) on every HA poll cycle.
     const entityId = this.config?.inventory_entity || "sensor.household_product_stock";
@@ -51,51 +54,25 @@ class MenstruationProductInventoryCard extends HTMLElement {
     }
   }
 
+  _loadTranslations() {
+    const lang = this._lang();
+    if (lang in _mcInventoryCardI18n.cache || _mcInventoryCardI18n.loading[lang]) return;
+    _mcInventoryCardI18n.loading[lang] = true;
+    fetch(`/menstruation_cycle/translations/${lang}.json`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((data) => { _mcInventoryCardI18n.cache[lang] = data; delete _mcInventoryCardI18n.loading[lang]; this._render(); })
+      .catch(() => { _mcInventoryCardI18n.cache[lang] = {}; delete _mcInventoryCardI18n.loading[lang]; });
+  }
+
   _lang() {
     const language = String(this._hass?.locale?.language || "en").toLowerCase();
     return language.startsWith("de") ? "de" : "en";
   }
 
   _t(key) {
+    const loaded = _mcInventoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        title: "Haushaltsvorrat",
-        entity_not_found: "Inventar-Entity nicht gefunden",
-        members: "Haushaltsmitglieder",
-        member: "Mitglied",
-        all_members: "Alle",
-        last_usage: "Zuletzt genutzt",
-        no_usage: "Noch kein Verbrauch erfasst",
-        product: "Produkt",
-        stock: "Bestand",
-        actions: "Aktionen",
-        quantity: "Menge",
-        consume: "Verbrauch",
-        use: "Verwenden",
-        emptied_dried: "Geleert/Trocken",
-        refill: "Auffüllen",
-        washed: "Gereinigt",
-        wash_needed: "Dringend waschen!",
-        available: "Verfügbar",
-        in_use: "In Nutzung",
-        buy_recommendation: "Kaufempfehlung",
-        add_to_shopping: "Zur Einkaufsliste",
-        recent_usage: "Letzte Verbräuche",
-        no_logs: "Keine Verbrauchseinträge",
-        status_good: "Gut",
-        status_warning: "Warnung",
-        status_critical: "Kritisch",
-        pregnancy: "Schwangerschaft",
-        week: "Woche",
-        trimester: "Trimester",
-        unknown_member: "Unbekannt",
-        error_prefix: "Fehler",
-        tampon: "Tampons",
-        pad: "Binden",
-        cup: "Menstruationstassen",
-        liner: "Slipeinlagen",
-        underwear: "Periodenunterwäsche",
-      },
       en: {
         title: "Household inventory",
         entity_not_found: "Inventory entity not found",
@@ -631,23 +608,9 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   }
 
   _t(key) {
+    const loaded = _mcInventoryCardI18n.cache[this._lang()] || {};
+    if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        visible_products: "Sichtbare Produkte",
-        product_order: "Produktreihenfolge (Ziehen zum Sortieren)",
-        thresholds: "Schwellenwerte",
-        underwear_settings: "Unterwäsche Einstellungen",
-        total_owned: "Gesamt besessen",
-        washing_threshold: "Wasch-Schwelle",
-        warning: "Warnung",
-        critical: "Kritisch",
-        options: "Optionen",
-        tampon: "Tampons",
-        pad: "Binden",
-        cup: "Menstruationstassen",
-        liner: "Slipeinlagen",
-        underwear: "Periodenunterwäsche",
-      },
       en: {
         visible_products: "Visible Products",
         product_order: "Product Order (Drag to reorder)",
@@ -665,8 +628,8 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
         underwear: "Period Underwear",
       },
     };
-    const lang = this._lang();
-    return (i18n[lang] && i18n[lang][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _escapeHtml(value) {
