@@ -34,6 +34,16 @@ for (const relativeFile of files) {
     content.includes('window.menstruationCycleI18n'),
     `${relativeFile} does not use centralized window.menstruationCycleI18n`
   );
+
+  assert.ok(
+    content.includes('/hacsfiles/menstruation-cycle-card/translations/'),
+    `${relativeFile} does not contain hacsfiles translation fallback URL`
+  );
+
+  assert.ok(
+    !content.includes('const relativePath ='),
+    `${relativeFile} still uses legacy single-URL relativePath pattern`
+  );
 }
 
 const centralContent = fs.readFileSync(path.join(repoRoot, centralI18nFile), 'utf8');
@@ -44,6 +54,10 @@ assert.ok(
 assert.ok(
   centralContent.includes('./translations/${lang}.json'),
   'Central i18n file does not load translations from expected relative path'
+);
+assert.ok(
+  centralContent.includes('/hacsfiles/menstruation-cycle-card/translations/'),
+  'Central i18n file does not contain hacsfiles translation fallback URL'
 );
 
 console.log('All i18n translation path tests passed.');

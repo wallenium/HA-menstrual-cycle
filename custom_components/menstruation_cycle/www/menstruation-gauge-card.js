@@ -19,18 +19,26 @@ if (typeof _mcCycleCardI18n.load !== 'function') {
     if (_mcCycleCardI18n.cache[lang]) return Promise.resolve(_mcCycleCardI18n.cache[lang]);
     if (_mcCycleCardI18n.loading[lang]) return _mcCycleCardI18n.loading[lang];
 
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcCycleCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcCycleCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCycleCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcCycleCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcCycleCardI18n.loading[lang];
-      });
+    const urls = [];
+    if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
+    if (_mcCycleCardI18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, _mcCycleCardI18n.baseUrl).href);
+    urls.push(`./translations/${lang}.json`);
+    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json`);
+    const uniqueUrls = [...new Set(urls)];
+
+    _mcCycleCardI18n.loading[lang] = (async () => {
+      for (const url of uniqueUrls) {
+        try {
+          const r = await fetch(url);
+          if (!r.ok) continue;
+          const data = await r.json();
+          _mcCycleCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCycleCardI18n.fallback?.en || {}), ...data } : (data || {});
+          return _mcCycleCardI18n.cache[lang];
+        } catch (_) {}
+      }
+      _mcCycleCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCycleCardI18n.fallback?.en || {}) } : {};
+      return _mcCycleCardI18n.cache[lang];
+    })().finally(() => { delete _mcCycleCardI18n.loading[lang]; });
 
     return _mcCycleCardI18n.loading[lang];
   };
