@@ -8,10 +8,6 @@ if (typeof _mcCompactStatusI18n.normalizeLang !== 'function') {
   _mcCompactStatusI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-if (!_mcCompactStatusI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcCompactStatusI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-compact-status-card.js'))?.src;
-}
 
 
 
@@ -63,7 +59,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
     if (typeof _mcCompactStatusI18n.load !== 'function') return;
-    _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCompactStatusI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
@@ -780,7 +776,7 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
     if (typeof _mcCompactStatusI18n.load !== 'function') return;
-    _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCompactStatusI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {

@@ -594,6 +594,15 @@ class ManifestMetadataTests(unittest.TestCase):
 
 
 class LovelaceResourceRegistrationTests(unittest.TestCase):
+    def test_lovelace_resources_include_shared_i18n_loader_first(self) -> None:
+        resource_urls = [resource_url for resource_url, _static_url, _filename in integration.LOVELACE_RESOURCES]
+        filenames = [filename for _resource_url, _static_url, filename in integration.LOVELACE_RESOURCES]
+
+        self.assertGreater(len(filenames), 0)
+        self.assertEqual(filenames[0], "menstruation-i18n.js")
+        self.assertIn("menstruation-i18n.js", filenames)
+        self.assertIn(f"/{integration.DOMAIN}/menstruation-i18n.js?v={integration.RESOURCE_VERSION}", resource_urls)
+
     def test_ensure_lovelace_resource_skips_existing_normalized_urls(self) -> None:
         resource_url, _, _ = integration.LOVELACE_RESOURCES[0]
         normalized_url = integration._normalize_resource_url(resource_url)

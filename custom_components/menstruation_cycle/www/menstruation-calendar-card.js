@@ -8,10 +8,6 @@ if (typeof _mcCalendarCardI18n.normalizeLang !== 'function') {
   _mcCalendarCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-if (!_mcCalendarCardI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcCalendarCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-calendar-card.js'))?.src;
-}
 
 
 
@@ -76,7 +72,7 @@ class MenstruationCalendarCard extends HTMLElement {
     const lang = this._lang();
     if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
     if (typeof _mcCalendarCardI18n.load !== 'function') return;
-    _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCalendarCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
@@ -1202,7 +1198,7 @@ class MenstruationCalendarCardEditor extends HTMLElement {
     const lang = this._lang();
     if (_mcCalendarCardI18n.cache[lang] || _mcCalendarCardI18n.loading[lang]) return;
     if (typeof _mcCalendarCardI18n.load !== 'function') return;
-    _mcCalendarCardI18n.load(lang, _mcCalendarCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCalendarCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {

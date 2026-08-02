@@ -8,10 +8,6 @@ if (typeof _mcHistoryCardI18n.normalizeLang !== 'function') {
   _mcHistoryCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-if (!_mcHistoryCardI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcHistoryCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-history-card-row.js'))?.src;
-}
 
 
 
@@ -72,7 +68,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
     if (typeof _mcHistoryCardI18n.load !== 'function') return;
-    _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcHistoryCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
@@ -302,7 +298,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
     if (typeof _mcHistoryCardI18n.load !== 'function') return;
-    _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcHistoryCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {

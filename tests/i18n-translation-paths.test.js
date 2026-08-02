@@ -26,8 +26,8 @@ for (const relativeFile of files) {
   );
 
   assert.ok(
-    content.includes('.load(lang,'),
-    `${relativeFile} does not call shared i18n load(lang, baseUrl)`
+    content.includes('.load(lang)'),
+    `${relativeFile} does not call shared i18n load(lang)`
   );
 
   assert.ok(

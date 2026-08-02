@@ -155,6 +155,7 @@ RESOURCE_VERSION = _load_manifest_version()
 CARD_RESOURCE_TYPE = "module"
 EXPORT_DIR_NAME = "menstruation_cycle_exports"
 CARD_FILES = [
+    "menstruation-i18n.js",
     "menstruation-gauge-card.js",
     "menstruation-icons.js",
     "menstruation-cycle-heatmap-card.js",

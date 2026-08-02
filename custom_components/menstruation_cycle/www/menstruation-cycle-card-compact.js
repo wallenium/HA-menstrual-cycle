@@ -8,10 +8,6 @@ if (typeof _mcCompactCardI18n.normalizeLang !== 'function') {
   _mcCompactCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-if (!_mcCompactCardI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcCompactCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-card-compact.js'))?.src;
-}
 
 
 
@@ -147,7 +143,7 @@ class MenstruationCycleCard extends HTMLElement {
     const lang = this._lang();
     if (_mcCompactCardI18n.cache[lang] || _mcCompactCardI18n.loading[lang]) return;
     if (typeof _mcCompactCardI18n.load !== 'function') return;
-    _mcCompactCardI18n.load(lang, _mcCompactCardI18n.baseUrl).then(() => this.render()).catch(() => {});
+    _mcCompactCardI18n.load(lang).then(() => this.render()).catch(() => {});
   }
 
   _lang() {
