@@ -81,7 +81,7 @@ class MenstruationCycleCard extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
     _mcCycleCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });
@@ -2170,7 +2170,7 @@ class MenstruationCycleCardEditor extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCycleCardI18n.cache || _mcCycleCardI18n.loading[lang]) return;
     _mcCycleCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCycleCardI18n.cache[lang] = data; delete _mcCycleCardI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCycleCardI18n.cache[lang] = {}; delete _mcCycleCardI18n.loading[lang]; });

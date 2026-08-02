@@ -1594,7 +1594,7 @@ class MenstruationCountdownTimer extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCountdownTimerI18n.cache || _mcCountdownTimerI18n.loading[lang]) return;
     _mcCountdownTimerI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCountdownTimerI18n.cache[lang] = data; delete _mcCountdownTimerI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCountdownTimerI18n.cache[lang] = {}; delete _mcCountdownTimerI18n.loading[lang]; });
@@ -2550,7 +2550,7 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCountdownTimerI18n.cache || _mcCountdownTimerI18n.loading[lang]) return;
     _mcCountdownTimerI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCountdownTimerI18n.cache[lang] = data; delete _mcCountdownTimerI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCountdownTimerI18n.cache[lang] = {}; delete _mcCountdownTimerI18n.loading[lang]; });

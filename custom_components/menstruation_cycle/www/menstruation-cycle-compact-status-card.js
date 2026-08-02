@@ -47,7 +47,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
     _mcCompactStatusI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });
@@ -750,7 +750,7 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
     const lang = this._lang();
     if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
     _mcCompactStatusI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
       .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });

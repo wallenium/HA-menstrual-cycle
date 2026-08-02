@@ -123,7 +123,7 @@ class MenstruationCycleCard extends HTMLElement {
     const lang = (this._hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
     if (lang in _mcCompactCardI18n.cache || _mcCompactCardI18n.loading[lang]) return;
     _mcCompactCardI18n.loading[lang] = true;
-    fetch(`/menstruation_cycle/translations/${lang}.json`)
+    fetch(`./translations/${lang}.json`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { _mcCompactCardI18n.cache[lang] = data; delete _mcCompactCardI18n.loading[lang]; this.render(); })
       .catch(() => { _mcCompactCardI18n.cache[lang] = {}; delete _mcCompactCardI18n.loading[lang]; });
