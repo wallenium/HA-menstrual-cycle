@@ -1,5 +1,5 @@
 /**
- * Tests for menstruation-cycle-card.js
+ * Tests for menstruation-gauge-card.js
  *
  * Covers:
  *  A) Render-stability: consecutive hass updates without state change must not
@@ -75,7 +75,7 @@ eval(productIconsSrc);
 
 // Now load the gauge card code.
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-gauge-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
@@ -83,7 +83,7 @@ eval(cardSrc);
 
 // Capture the card class registered via customElements.define.
 const GaugeCard = _definedElements['menstruation-cycle-card'] || _definedElements['menstruation-gauge-card'];
-if (!GaugeCard) throw new Error('MenstruationCycleCard was not registered via customElements.define');
+if (!GaugeCard) throw new Error('MenstruationGaugeCard was not registered via customElements.define');
 
 // ---------------------------------------------------------------------------
 // Helpers

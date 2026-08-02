@@ -29,14 +29,14 @@ const iconsSrc = fs.readFileSync(
 eval(iconsSrc);
 
 const gaugeSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-gauge-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(gaugeSrc);
 
 const GaugeCard = defined['menstruation-cycle-card'] || defined['menstruation-gauge-card'];
-if (!GaugeCard) throw new Error('MenstruationCycleCard was not registered');
+if (!GaugeCard) throw new Error('MenstruationGaugeCard was not registered');
 
 function makeCard(config = {}) {
   const shadow = new FakeShadowRoot();
