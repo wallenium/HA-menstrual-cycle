@@ -1,6 +1,6 @@
 const _mcCycleCardI18n = { cache: {}, loading: {} };
 
-class MenstruationCycleCard extends HTMLElement {
+class MenstruationGaugeCard extends HTMLElement {
   static getStubConfig() {
     return {
       type: 'custom:menstruation-gauge-card',
@@ -2140,7 +2140,7 @@ class MenstruationCycleCard extends HTMLElement {
   }
 }
 
-class MenstruationCycleCardEditor extends HTMLElement {
+class MenstruationGaugeCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -2461,16 +2461,16 @@ class MenstruationCycleCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('menstruation-gauge-card', MenstruationCycleCard);
-customElements.define('menstruation-gauge-card-editor', MenstruationCycleCardEditor);
+customElements.define('menstruation-gauge-card', MenstruationGaugeCard);
+customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
 
 // Backward compatibility: register old element names so existing dashboards continue to work
-customElements.define('menstruation-cycle-card', MenstruationCycleCard);
-customElements.define('menstruation-cycle-card-editor', MenstruationCycleCardEditor);
+customElements.define('menstruation-cycle-card', MenstruationGaugeCard);
+customElements.define('menstruation-cycle-card-editor', MenstruationGaugeCardEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-gauge-card',
-  name: 'Menstruation Cycle Card',
+  name: 'Menstruation Gauge Card',
   description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
 });

@@ -4,7 +4,7 @@ const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
 const files = [
-  'custom_components/menstruation_cycle/www/menstruation-cycle-card.js',
+  'custom_components/menstruation_cycle/www/menstruation-gauge-card.js',
   'custom_components/menstruation_cycle/www/menstruation-calendar-card.js',
   'custom_components/menstruation_cycle/www/menstruation-countdown-timer.js',
   'custom_components/menstruation_cycle/www/menstruation-cycle-heatmap-card.js',
