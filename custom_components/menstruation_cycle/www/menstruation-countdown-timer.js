@@ -92,10 +92,6 @@ if (typeof _mcCountdownTimerI18n.normalizeLang !== "function") {
   _mcCountdownTimerI18n.normalizeLang = (language) => String(language || "en").toLowerCase().startsWith("de") ? "de" : "en";
 }
 
-if (!_mcCountdownTimerI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcCountdownTimerI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-countdown-timer.js'))?.src;
-}
 
 
 
@@ -1609,7 +1605,7 @@ class MenstruationCountdownTimer extends HTMLElement {
     const lang = this._lang();
     if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
     if (typeof _mcCountdownTimerI18n.load !== 'function') return;
-    _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCountdownTimerI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _t(key) {
@@ -2562,7 +2558,7 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
     const lang = this._lang();
     if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
     if (typeof _mcCountdownTimerI18n.load !== 'function') return;
-    _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcCountdownTimerI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {

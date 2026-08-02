@@ -682,10 +682,6 @@ if (typeof _mcStatisticsCardI18n.normalizeLang !== 'function') {
   _mcStatisticsCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-if (!_mcStatisticsCardI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcStatisticsCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-statistics-card.js'))?.src;
-}
 
 
 
@@ -745,7 +741,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const lang = this._lang();
     if (_mcStatisticsCardI18n.cache[lang] || _mcStatisticsCardI18n.loading[lang]) return;
     if (typeof _mcStatisticsCardI18n.load !== 'function') return;
-    _mcStatisticsCardI18n.load(lang, _mcStatisticsCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcStatisticsCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {

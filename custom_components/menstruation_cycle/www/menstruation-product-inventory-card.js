@@ -8,10 +8,6 @@ if (typeof _mcInventoryCardI18n.normalizeLang !== "function") {
   _mcInventoryCardI18n.normalizeLang = (language) => String(language || "en").toLowerCase().startsWith("de") ? "de" : "en";
 }
 
-if (!_mcInventoryCardI18n.baseUrl && typeof document !== 'undefined') {
-  const scripts = Array.from(document.scripts || []);
-  _mcInventoryCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-product-inventory-card.js'))?.src;
-}
 
 
 
@@ -73,7 +69,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
     const lang = this._lang();
     if (_mcInventoryCardI18n.cache[lang] || _mcInventoryCardI18n.loading[lang]) return;
     if (typeof _mcInventoryCardI18n.load !== 'function') return;
-    _mcInventoryCardI18n.load(lang, _mcInventoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
+    _mcInventoryCardI18n.load(lang).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
