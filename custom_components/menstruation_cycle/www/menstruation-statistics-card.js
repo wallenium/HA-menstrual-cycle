@@ -672,7 +672,44 @@ function getHygieneStyles(options = {}) {
 // MenstruationStatisticsCard – card class
 // ---------------------------------------------------------------------------
 
-const _mcStatisticsCardI18n = { cache: {}, loading: {} };
+const _mcStatisticsCardI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {
+  cache: {},
+  loading: {},
+  fallback: { en: {} },
+});
+
+if (typeof _mcStatisticsCardI18n.normalizeLang !== 'function') {
+  _mcStatisticsCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+}
+
+if (!_mcStatisticsCardI18n.baseUrl && typeof document !== 'undefined') {
+  const scripts = Array.from(document.scripts || []);
+  _mcStatisticsCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-statistics-card.js'))?.src;
+}
+
+if (typeof _mcStatisticsCardI18n.load !== 'function') {
+  _mcStatisticsCardI18n.load = (language, baseUrl) => {
+    const lang = _mcStatisticsCardI18n.normalizeLang(language);
+    if (_mcStatisticsCardI18n.cache[lang]) return Promise.resolve(_mcStatisticsCardI18n.cache[lang]);
+    if (_mcStatisticsCardI18n.loading[lang]) return _mcStatisticsCardI18n.loading[lang];
+
+    const relativePath = `./translations/${lang}.json`;
+    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
+    _mcStatisticsCardI18n.loading[lang] = fetch(url)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+      .then((data) => {
+        _mcStatisticsCardI18n.cache[lang] = lang === 'en' ? { ...(_mcStatisticsCardI18n.fallback?.en || {}), ...data } : (data || {});
+        return _mcStatisticsCardI18n.cache[lang];
+      })
+      .finally(() => {
+        delete _mcStatisticsCardI18n.loading[lang];
+      });
+
+    return _mcStatisticsCardI18n.loading[lang];
+  };
+}
+
 
 class MenstruationStatisticsCard extends HTMLElement {
   static getStubConfig() {
@@ -728,23 +765,19 @@ class MenstruationStatisticsCard extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcStatisticsCardI18n.cache || _mcStatisticsCardI18n.loading[lang]) return;
-    _mcStatisticsCardI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcStatisticsCardI18n.cache[lang] = data; delete _mcStatisticsCardI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcStatisticsCardI18n.cache[lang] = {}; delete _mcStatisticsCardI18n.loading[lang]; });
+    if (_mcStatisticsCardI18n.cache[lang] || _mcStatisticsCardI18n.loading[lang]) return;
+    _mcStatisticsCardI18n.load(lang, _mcStatisticsCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
     const cfg = String(this._config?.language || 'auto').toLowerCase();
-    if (cfg !== 'auto') return cfg.startsWith('de') ? 'de' : 'en';
-    const locale = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase();
-    return locale.startsWith('de') ? 'de' : 'en';
+    if (cfg !== 'auto') return _mcStatisticsCardI18n.normalizeLang(cfg);
+    const locale = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcStatisticsCardI18n.normalizeLang(locale);
   }
 
   _t(key) {
-    const loaded = _mcStatisticsCardI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (typeof loaded[key] === 'string') return loaded[key];
     const i18n = {
       en: {

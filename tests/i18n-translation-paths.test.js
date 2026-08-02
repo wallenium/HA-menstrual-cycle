@@ -14,6 +14,7 @@ const files = [
   'custom_components/menstruation_cycle/www/menstruation-product-inventory-card.js',
   'custom_components/menstruation_cycle/www/menstruation-cycle-history-card-row.js',
 ];
+const centralI18nFile = 'custom_components/menstruation_cycle/www/menstruation-i18n.js';
 
 for (const relativeFile of files) {
   const absoluteFile = path.join(repoRoot, relativeFile);
@@ -28,6 +29,21 @@ for (const relativeFile of files) {
     content.includes('./translations/${lang}.json'),
     `${relativeFile} does not contain expected relative translation path`
   );
+
+  assert.ok(
+    content.includes('window.menstruationCycleI18n'),
+    `${relativeFile} does not use centralized window.menstruationCycleI18n`
+  );
 }
+
+const centralContent = fs.readFileSync(path.join(repoRoot, centralI18nFile), 'utf8');
+assert.ok(
+  centralContent.includes('window.menstruationCycleI18n'),
+  'Central i18n file does not initialize window.menstruationCycleI18n'
+);
+assert.ok(
+  centralContent.includes('./translations/${lang}.json'),
+  'Central i18n file does not load translations from expected relative path'
+);
 
 console.log('All i18n translation path tests passed.');

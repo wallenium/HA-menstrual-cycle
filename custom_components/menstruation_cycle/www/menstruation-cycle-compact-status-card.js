@@ -1,4 +1,41 @@
-const _mcCompactStatusI18n = { cache: {}, loading: {} };
+const _mcCompactStatusI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {
+  cache: {},
+  loading: {},
+  fallback: { en: {} },
+});
+
+if (typeof _mcCompactStatusI18n.normalizeLang !== 'function') {
+  _mcCompactStatusI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+}
+
+if (!_mcCompactStatusI18n.baseUrl && typeof document !== 'undefined') {
+  const scripts = Array.from(document.scripts || []);
+  _mcCompactStatusI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-compact-status-card.js'))?.src;
+}
+
+if (typeof _mcCompactStatusI18n.load !== 'function') {
+  _mcCompactStatusI18n.load = (language, baseUrl) => {
+    const lang = _mcCompactStatusI18n.normalizeLang(language);
+    if (_mcCompactStatusI18n.cache[lang]) return Promise.resolve(_mcCompactStatusI18n.cache[lang]);
+    if (_mcCompactStatusI18n.loading[lang]) return _mcCompactStatusI18n.loading[lang];
+
+    const relativePath = `./translations/${lang}.json`;
+    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
+    _mcCompactStatusI18n.loading[lang] = fetch(url)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+      .then((data) => {
+        _mcCompactStatusI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactStatusI18n.fallback?.en || {}), ...data } : (data || {});
+        return _mcCompactStatusI18n.cache[lang];
+      })
+      .finally(() => {
+        delete _mcCompactStatusI18n.loading[lang];
+      });
+
+    return _mcCompactStatusI18n.loading[lang];
+  };
+}
+
 
 class MenstruationCycleCompactStatusCard extends HTMLElement {
   static getStubConfig() {
@@ -46,21 +83,17 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
-    _mcCompactStatusI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });
+    if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCompactStatusI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCompactStatusI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {
@@ -766,21 +799,17 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCompactStatusI18n.cache || _mcCompactStatusI18n.loading[lang]) return;
-    _mcCompactStatusI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCompactStatusI18n.cache[lang] = data; delete _mcCompactStatusI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCompactStatusI18n.cache[lang] = {}; delete _mcCompactStatusI18n.loading[lang]; });
+    if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
+    return _mcCompactStatusI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCompactStatusI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {

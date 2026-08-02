@@ -82,7 +82,44 @@ class ProductFillAnimator {
   }
 }
 
-const _mcCountdownTimerI18n = { cache: {}, loading: {} };
+const _mcCountdownTimerI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {
+  cache: {},
+  loading: {},
+  fallback: { en: {} },
+});
+
+if (typeof _mcCountdownTimerI18n.normalizeLang !== "function") {
+  _mcCountdownTimerI18n.normalizeLang = (language) => String(language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+}
+
+if (!_mcCountdownTimerI18n.baseUrl && typeof document !== 'undefined') {
+  const scripts = Array.from(document.scripts || []);
+  _mcCountdownTimerI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-countdown-timer.js'))?.src;
+}
+
+if (typeof _mcCountdownTimerI18n.load !== "function") {
+  _mcCountdownTimerI18n.load = (language, baseUrl) => {
+    const lang = _mcCountdownTimerI18n.normalizeLang(language);
+    if (_mcCountdownTimerI18n.cache[lang]) return Promise.resolve(_mcCountdownTimerI18n.cache[lang]);
+    if (_mcCountdownTimerI18n.loading[lang]) return _mcCountdownTimerI18n.loading[lang];
+
+    const relativePath = `./translations/${lang}.json`;
+    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
+    _mcCountdownTimerI18n.loading[lang] = fetch(url)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+      .then((data) => {
+        _mcCountdownTimerI18n.cache[lang] = lang === 'en' ? { ...(_mcCountdownTimerI18n.fallback?.en || {}), ...data } : (data || {});
+        return _mcCountdownTimerI18n.cache[lang];
+      })
+      .finally(() => {
+        delete _mcCountdownTimerI18n.loading[lang];
+      });
+
+    return _mcCountdownTimerI18n.loading[lang];
+  };
+}
+
 
 class MenstruationCountdownTimer extends HTMLElement {
   constructor() {
@@ -1586,22 +1623,18 @@ class MenstruationCountdownTimer extends HTMLElement {
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || 'en').toLowerCase();
-    return language.startsWith('de') ? 'de' : 'en';
+    const language = this._hass?.locale?.language || this._hass?.language || "en";
+    return _mcCountdownTimerI18n.normalizeLang(language);
   }
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCountdownTimerI18n.cache || _mcCountdownTimerI18n.loading[lang]) return;
-    _mcCountdownTimerI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCountdownTimerI18n.cache[lang] = data; delete _mcCountdownTimerI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCountdownTimerI18n.cache[lang] = {}; delete _mcCountdownTimerI18n.loading[lang]; });
+    if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
+    _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _t(key) {
-    const loaded = _mcCountdownTimerI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const translations = {
       en: {
@@ -2548,21 +2581,17 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
 
   _loadTranslations() {
     const lang = this._lang();
-    if (lang in _mcCountdownTimerI18n.cache || _mcCountdownTimerI18n.loading[lang]) return;
-    _mcCountdownTimerI18n.loading[lang] = true;
-    fetch(`./translations/${lang}.json`)
-      .then((r) => r.ok ? r.json() : {})
-      .then((data) => { _mcCountdownTimerI18n.cache[lang] = data; delete _mcCountdownTimerI18n.loading[lang]; this._render(); })
-      .catch(() => { _mcCountdownTimerI18n.cache[lang] = {}; delete _mcCountdownTimerI18n.loading[lang]; });
+    if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
+    _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
   _lang() {
-    const language = String(this._hass?.locale?.language || "en").toLowerCase();
-    return language.startsWith("de") ? "de" : "en";
+    const language = this._hass?.locale?.language || this._hass?.language || "en";
+    return _mcCountdownTimerI18n.normalizeLang(language);
   }
 
   _t(key) {
-    const loaded = _mcCountdownTimerI18n.cache[this._lang()] || {};
+    const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
       en: {
