@@ -13,28 +13,6 @@ if (!_mcCycleCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcCycleCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-gauge-card.js'))?.src;
 }
 
-if (typeof _mcCycleCardI18n.load !== 'function') {
-  _mcCycleCardI18n.load = (language, baseUrl) => {
-    const lang = _mcCycleCardI18n.normalizeLang(language);
-    if (_mcCycleCardI18n.cache[lang]) return Promise.resolve(_mcCycleCardI18n.cache[lang]);
-    if (_mcCycleCardI18n.loading[lang]) return _mcCycleCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcCycleCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcCycleCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCycleCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcCycleCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcCycleCardI18n.loading[lang];
-      });
-
-    return _mcCycleCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationGaugeCard extends HTMLElement {
@@ -118,6 +96,7 @@ class MenstruationGaugeCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCycleCardI18n.cache[lang] || _mcCycleCardI18n.loading[lang]) return;
+    if (typeof _mcCycleCardI18n.load !== 'function') return;
     _mcCycleCardI18n.load(lang, _mcCycleCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -2213,6 +2192,7 @@ class MenstruationGaugeCardEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCycleCardI18n.cache[lang] || _mcCycleCardI18n.loading[lang]) return;
+    if (typeof _mcCycleCardI18n.load !== 'function') return;
     _mcCycleCardI18n.load(lang, _mcCycleCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

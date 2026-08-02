@@ -13,28 +13,6 @@ if (!_mcCompactStatusI18n.baseUrl && typeof document !== 'undefined') {
   _mcCompactStatusI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-compact-status-card.js'))?.src;
 }
 
-if (typeof _mcCompactStatusI18n.load !== 'function') {
-  _mcCompactStatusI18n.load = (language, baseUrl) => {
-    const lang = _mcCompactStatusI18n.normalizeLang(language);
-    if (_mcCompactStatusI18n.cache[lang]) return Promise.resolve(_mcCompactStatusI18n.cache[lang]);
-    if (_mcCompactStatusI18n.loading[lang]) return _mcCompactStatusI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcCompactStatusI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcCompactStatusI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactStatusI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcCompactStatusI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcCompactStatusI18n.loading[lang];
-      });
-
-    return _mcCompactStatusI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleCompactStatusCard extends HTMLElement {
@@ -84,6 +62,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    if (typeof _mcCompactStatusI18n.load !== 'function') return;
     _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -800,6 +779,7 @@ class MenstruationCycleCompactStatusEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactStatusI18n.cache[lang] || _mcCompactStatusI18n.loading[lang]) return;
+    if (typeof _mcCompactStatusI18n.load !== 'function') return;
     _mcCompactStatusI18n.load(lang, _mcCompactStatusI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

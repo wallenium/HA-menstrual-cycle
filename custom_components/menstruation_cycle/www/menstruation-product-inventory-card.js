@@ -13,28 +13,6 @@ if (!_mcInventoryCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcInventoryCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-product-inventory-card.js'))?.src;
 }
 
-if (typeof _mcInventoryCardI18n.load !== "function") {
-  _mcInventoryCardI18n.load = (language, baseUrl) => {
-    const lang = _mcInventoryCardI18n.normalizeLang(language);
-    if (_mcInventoryCardI18n.cache[lang]) return Promise.resolve(_mcInventoryCardI18n.cache[lang]);
-    if (_mcInventoryCardI18n.loading[lang]) return _mcInventoryCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcInventoryCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcInventoryCardI18n.cache[lang] = lang === 'en' ? { ...(_mcInventoryCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcInventoryCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcInventoryCardI18n.loading[lang];
-      });
-
-    return _mcInventoryCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationProductInventoryCard extends HTMLElement {
@@ -94,6 +72,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcInventoryCardI18n.cache[lang] || _mcInventoryCardI18n.loading[lang]) return;
+    if (typeof _mcInventoryCardI18n.load !== 'function') return;
     _mcInventoryCardI18n.load(lang, _mcInventoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

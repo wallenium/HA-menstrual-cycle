@@ -97,28 +97,6 @@ if (!_mcCountdownTimerI18n.baseUrl && typeof document !== 'undefined') {
   _mcCountdownTimerI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-countdown-timer.js'))?.src;
 }
 
-if (typeof _mcCountdownTimerI18n.load !== "function") {
-  _mcCountdownTimerI18n.load = (language, baseUrl) => {
-    const lang = _mcCountdownTimerI18n.normalizeLang(language);
-    if (_mcCountdownTimerI18n.cache[lang]) return Promise.resolve(_mcCountdownTimerI18n.cache[lang]);
-    if (_mcCountdownTimerI18n.loading[lang]) return _mcCountdownTimerI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcCountdownTimerI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcCountdownTimerI18n.cache[lang] = lang === 'en' ? { ...(_mcCountdownTimerI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcCountdownTimerI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcCountdownTimerI18n.loading[lang];
-      });
-
-    return _mcCountdownTimerI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCountdownTimer extends HTMLElement {
@@ -1630,6 +1608,7 @@ class MenstruationCountdownTimer extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
+    if (typeof _mcCountdownTimerI18n.load !== 'function') return;
     _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -2582,6 +2561,7 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCountdownTimerI18n.cache[lang] || _mcCountdownTimerI18n.loading[lang]) return;
+    if (typeof _mcCountdownTimerI18n.load !== 'function') return;
     _mcCountdownTimerI18n.load(lang, _mcCountdownTimerI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

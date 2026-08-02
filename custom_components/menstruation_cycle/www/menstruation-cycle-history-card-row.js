@@ -13,28 +13,6 @@ if (!_mcHistoryCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcHistoryCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-history-card-row.js'))?.src;
 }
 
-if (typeof _mcHistoryCardI18n.load !== 'function') {
-  _mcHistoryCardI18n.load = (language, baseUrl) => {
-    const lang = _mcHistoryCardI18n.normalizeLang(language);
-    if (_mcHistoryCardI18n.cache[lang]) return Promise.resolve(_mcHistoryCardI18n.cache[lang]);
-    if (_mcHistoryCardI18n.loading[lang]) return _mcHistoryCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcHistoryCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcHistoryCardI18n.cache[lang] = lang === 'en' ? { ...(_mcHistoryCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcHistoryCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcHistoryCardI18n.loading[lang];
-      });
-
-    return _mcHistoryCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleHistoryCardRow extends HTMLElement {
@@ -93,6 +71,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
+    if (typeof _mcHistoryCardI18n.load !== 'function') return;
     _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -322,6 +301,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHistoryCardI18n.cache[lang] || _mcHistoryCardI18n.loading[lang]) return;
+    if (typeof _mcHistoryCardI18n.load !== 'function') return;
     _mcHistoryCardI18n.load(lang, _mcHistoryCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

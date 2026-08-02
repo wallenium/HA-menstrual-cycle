@@ -687,28 +687,6 @@ if (!_mcStatisticsCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcStatisticsCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-statistics-card.js'))?.src;
 }
 
-if (typeof _mcStatisticsCardI18n.load !== 'function') {
-  _mcStatisticsCardI18n.load = (language, baseUrl) => {
-    const lang = _mcStatisticsCardI18n.normalizeLang(language);
-    if (_mcStatisticsCardI18n.cache[lang]) return Promise.resolve(_mcStatisticsCardI18n.cache[lang]);
-    if (_mcStatisticsCardI18n.loading[lang]) return _mcStatisticsCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcStatisticsCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcStatisticsCardI18n.cache[lang] = lang === 'en' ? { ...(_mcStatisticsCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcStatisticsCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcStatisticsCardI18n.loading[lang];
-      });
-
-    return _mcStatisticsCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationStatisticsCard extends HTMLElement {
@@ -766,6 +744,7 @@ class MenstruationStatisticsCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcStatisticsCardI18n.cache[lang] || _mcStatisticsCardI18n.loading[lang]) return;
+    if (typeof _mcStatisticsCardI18n.load !== 'function') return;
     _mcStatisticsCardI18n.load(lang, _mcStatisticsCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 

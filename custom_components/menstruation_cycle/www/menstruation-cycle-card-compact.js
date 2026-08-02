@@ -13,28 +13,6 @@ if (!_mcCompactCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcCompactCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-card-compact.js'))?.src;
 }
 
-if (typeof _mcCompactCardI18n.load !== 'function') {
-  _mcCompactCardI18n.load = (language, baseUrl) => {
-    const lang = _mcCompactCardI18n.normalizeLang(language);
-    if (_mcCompactCardI18n.cache[lang]) return Promise.resolve(_mcCompactCardI18n.cache[lang]);
-    if (_mcCompactCardI18n.loading[lang]) return _mcCompactCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcCompactCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcCompactCardI18n.cache[lang] = lang === 'en' ? { ...(_mcCompactCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcCompactCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcCompactCardI18n.loading[lang];
-      });
-
-    return _mcCompactCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleCard extends HTMLElement {
@@ -168,6 +146,7 @@ class MenstruationCycleCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactCardI18n.cache[lang] || _mcCompactCardI18n.loading[lang]) return;
+    if (typeof _mcCompactCardI18n.load !== 'function') return;
     _mcCompactCardI18n.load(lang, _mcCompactCardI18n.baseUrl).then(() => this.render()).catch(() => {});
   }
 

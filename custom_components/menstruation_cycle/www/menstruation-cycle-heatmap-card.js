@@ -13,28 +13,6 @@ if (!_mcHeatmapCardI18n.baseUrl && typeof document !== 'undefined') {
   _mcHeatmapCardI18n.baseUrl = scripts.find((script) => script?.src?.includes('menstruation-cycle-heatmap-card.js'))?.src;
 }
 
-if (typeof _mcHeatmapCardI18n.load !== 'function') {
-  _mcHeatmapCardI18n.load = (language, baseUrl) => {
-    const lang = _mcHeatmapCardI18n.normalizeLang(language);
-    if (_mcHeatmapCardI18n.cache[lang]) return Promise.resolve(_mcHeatmapCardI18n.cache[lang]);
-    if (_mcHeatmapCardI18n.loading[lang]) return _mcHeatmapCardI18n.loading[lang];
-
-    const relativePath = `./translations/${lang}.json`;
-    const url = baseUrl ? new URL(relativePath, baseUrl).href : relativePath;
-    _mcHeatmapCardI18n.loading[lang] = fetch(url)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((data) => {
-        _mcHeatmapCardI18n.cache[lang] = lang === 'en' ? { ...(_mcHeatmapCardI18n.fallback?.en || {}), ...data } : (data || {});
-        return _mcHeatmapCardI18n.cache[lang];
-      })
-      .finally(() => {
-        delete _mcHeatmapCardI18n.loading[lang];
-      });
-
-    return _mcHeatmapCardI18n.loading[lang];
-  };
-}
 
 
 class MenstruationCycleHeatmapCard extends HTMLElement {
@@ -117,6 +95,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHeatmapCardI18n.cache[lang] || _mcHeatmapCardI18n.loading[lang]) return;
+    if (typeof _mcHeatmapCardI18n.load !== 'function') return;
     _mcHeatmapCardI18n.load(lang, _mcHeatmapCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
@@ -987,6 +966,7 @@ class MenstruationCycleHeatmapCardEditor extends HTMLElement {
   _loadTranslations() {
     const lang = this._lang();
     if (_mcHeatmapCardI18n.cache[lang] || _mcHeatmapCardI18n.loading[lang]) return;
+    if (typeof _mcHeatmapCardI18n.load !== 'function') return;
     _mcHeatmapCardI18n.load(lang, _mcHeatmapCardI18n.baseUrl).then(() => this._render()).catch(() => {});
   }
 
