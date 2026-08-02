@@ -3,7 +3,7 @@ const _mcCycleCardI18n = { cache: {}, loading: {} };
 class MenstruationCycleCard extends HTMLElement {
   static getStubConfig() {
     return {
-      type: 'custom:menstruation-cycle-card',
+      type: 'custom:menstruation-gauge-card',
       entity: 'sensor.menstruation',
       entry_id: '',
       friendly_name: '',
@@ -18,7 +18,7 @@ class MenstruationCycleCard extends HTMLElement {
   }
 
   static getConfigElement() {
-    return document.createElement('menstruation-cycle-card-editor');
+    return document.createElement('menstruation-gauge-card-editor');
   }
 
   setConfig(config) {
@@ -2461,16 +2461,16 @@ class MenstruationCycleCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('menstruation-cycle-card', MenstruationCycleCard);
-customElements.define('menstruation-cycle-card-editor', MenstruationCycleCardEditor);
-
-// Backward compatibility: register old element names so existing dashboards continue to work
 customElements.define('menstruation-gauge-card', MenstruationCycleCard);
 customElements.define('menstruation-gauge-card-editor', MenstruationCycleCardEditor);
 
+// Backward compatibility: register old element names so existing dashboards continue to work
+customElements.define('menstruation-cycle-card', MenstruationCycleCard);
+customElements.define('menstruation-cycle-card-editor', MenstruationCycleCardEditor);
+
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'menstruation-cycle-card',
+  type: 'menstruation-gauge-card',
   name: 'Menstruation Cycle Card',
   description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
 });
