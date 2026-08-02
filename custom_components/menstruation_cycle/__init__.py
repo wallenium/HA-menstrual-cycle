@@ -152,40 +152,28 @@ def _build_card_resource_url(filename: str) -> str:
 
 
 RESOURCE_VERSION = _load_manifest_version()
-CARD_STATIC_URL = _build_card_static_url("menstruation-cycle-card.js")
-HEATMAP_STATIC_URL = _build_card_static_url("menstruation-cycle-heatmap-card.js")
-CALENDAR_STATIC_URL = _build_card_static_url("menstruation-calendar-card.js")
-PRODUCT_ICONS_STATIC_URL = _build_card_static_url("product-icons.js")
-TIMER_STATIC_URL = _build_card_static_url("menstruation-countdown-timer.js")
-PRODUCT_INVENTORY_STATIC_URL = _build_card_static_url("menstruation-product-inventory-card.js")
-COMPACT_CARD_STATIC_URL = _build_card_static_url("menstruation-cycle-card-compact.js")
-HISTORY_ROW_STATIC_URL = _build_card_static_url("menstruation-cycle-history-card-row.js")
-COMPACT_STATUS_STATIC_URL = _build_card_static_url("menstruation-cycle-compact-status-card.js")
-STATISTICS_CARD_STATIC_URL = _build_card_static_url("menstruation-statistics-card.js")
-CARD_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-card.js")
-HEATMAP_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-heatmap-card.js")
-CALENDAR_RESOURCE_URL = _build_card_resource_url("menstruation-calendar-card.js")
-PRODUCT_ICONS_RESOURCE_URL = _build_card_resource_url("menstruation-icons.js")
-TIMER_RESOURCE_URL = _build_card_resource_url("menstruation-countdown-timer.js")
-PRODUCT_INVENTORY_RESOURCE_URL = _build_card_resource_url("menstruation-product-inventory-card.js")
-COMPACT_CARD_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-card-compact.js")
-HISTORY_ROW_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-history-card-row.js")
-COMPACT_STATUS_RESOURCE_URL = _build_card_resource_url("menstruation-cycle-compact-status-card.js")
-STATISTICS_CARD_RESOURCE_URL = _build_card_resource_url("menstruation-statistics-card.js")
 CARD_RESOURCE_TYPE = "module"
 EXPORT_DIR_NAME = "menstruation_cycle_exports"
-LOVELACE_RESOURCES = (
-    (CARD_RESOURCE_URL, CARD_STATIC_URL, "menstruation-cycle-card.js"),
-    (PRODUCT_ICONS_RESOURCE_URL, PRODUCT_ICONS_STATIC_URL, "menstruation-icons.js"),
-    (HEATMAP_RESOURCE_URL, HEATMAP_STATIC_URL, "menstruation-cycle-heatmap-card.js"),
-    (CALENDAR_RESOURCE_URL, CALENDAR_STATIC_URL, "menstruation-calendar-card.js"),
-    (TIMER_RESOURCE_URL, TIMER_STATIC_URL, "menstruation-countdown-timer.js"),
-    (PRODUCT_INVENTORY_RESOURCE_URL, PRODUCT_INVENTORY_STATIC_URL, "menstruation-product-inventory-card.js"),
-    (COMPACT_CARD_RESOURCE_URL, COMPACT_CARD_STATIC_URL, "menstruation-cycle-card-compact.js"),
-    (COMPACT_STATUS_RESOURCE_URL, COMPACT_STATUS_STATIC_URL, "menstruation-cycle-compact-status-card.js"),
-    (HISTORY_ROW_RESOURCE_URL, HISTORY_ROW_STATIC_URL, "menstruation-cycle-history-card-row.js"),
-    (STATISTICS_CARD_RESOURCE_URL, STATISTICS_CARD_STATIC_URL, "menstruation-statistics-card.js"),
-)
+CARD_FILES = [
+    "menstruation-cycle-card.js",
+    "menstruation-icons.js",
+    "menstruation-cycle-heatmap-card.js",
+    "menstruation-calendar-card.js",
+    "menstruation-countdown-timer.js",
+    "menstruation-product-inventory-card.js",
+    "menstruation-cycle-card-compact.js",
+    "menstruation-cycle-compact-status-card.js",
+    "menstruation-cycle-history-card-row.js",
+    "menstruation-statistics-card.js",
+]
+LOVELACE_RESOURCES = [
+    (
+        _build_card_resource_url(filename),
+        _build_card_static_url(filename),
+        filename,
+    )
+    for filename in CARD_FILES
+]
 VALID_PRODUCT_USAGE_PRODUCTS = {"tampon", "pad", "cup", "underwear", "liner"}
 VALID_PRODUCT_USAGE_ACTIONS = {"used", "emptied"}
 HOUSEHOLD_INVENTORY_STATE_ENTITY_ID = "sensor.household_product_stock"
@@ -2032,7 +2020,9 @@ async def _async_get_lovelace_resource_collection(hass: HomeAssistant) -> tuple[
         from homeassistant.components.lovelace.dashboard import LovelaceStorage
         from homeassistant.components.lovelace.resources import ResourceStorageCollection
 
-        return ResourceStorageCollection(hass, LovelaceStorage(hass, None)), MODE_STORAGE
+        collection = ResourceStorageCollection(hass, LovelaceStorage(hass, None))
+        await collection.async_load()
+        return collection, MODE_STORAGE
     except Exception as err:
         _LOGGER.warning("Failed to create Lovelace resource storage collection: %s", err)
         return None, resource_mode
@@ -2042,6 +2032,8 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
     """Auto-register Lovelace JS resources for storage dashboards."""
     if hass.data.get(_LOVELACE_RESOURCES_ENSURED_KEY):
         return
+    # Set guard early to prevent concurrent calls from all passing the initial check.
+    hass.data[_LOVELACE_RESOURCES_ENSURED_KEY] = True
 
     collection, resource_mode = await _async_get_lovelace_resource_collection(hass)
     if collection is None:
@@ -2139,7 +2131,6 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
             return
 
         await _async_cleanup_old_lovelace_resources(hass, RESOURCE_VERSION)
-        hass.data[_LOVELACE_RESOURCES_ENSURED_KEY] = True
         _LOGGER.info("Lovelace resource registration complete; %s new resources added", added_count)
     except Exception as err:
         _LOGGER.exception("Auto-registration of Lovelace resources failed: %s", err)
