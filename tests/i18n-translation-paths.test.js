@@ -64,5 +64,24 @@ assert.ok(
   centralContent.includes('/hacsfiles/menstruation-cycle-card/translations/'),
   'Central i18n file does not contain hacsfiles translation fallback URL'
 );
+assert.ok(
+  centralContent.includes('/menstruation_cycle/translations/'),
+  'Central i18n file does not contain the correct HA domain translation path'
+);
+
+// Verify the stable HA path is tried before script-relative paths (the primary fix).
+const stableDomainPathIdx = centralContent.indexOf('/menstruation_cycle/translations/');
+const scriptRelativePathIdx = centralContent.indexOf('./translations/${lang}.json');
+assert.ok(
+  stableDomainPathIdx < scriptRelativePathIdx,
+  'Central i18n file does not prefer the stable HA domain translation path before script-relative paths'
+);
+
+// Verify the stable HA path is tried before the hacsfiles fallback.
+const hacsfilesPathIdx = centralContent.indexOf('/hacsfiles/menstruation-cycle-card/translations/');
+assert.ok(
+  stableDomainPathIdx < hacsfilesPathIdx,
+  'Central i18n file does not try the stable HA domain path before the hacsfiles fallback'
+);
 
 console.log('All i18n translation path tests passed.');
