@@ -1604,85 +1604,6 @@ class MenstruationCountdownTimer extends HTMLElement {
     const loaded = _mcCountdownTimerI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const translations = {
-      de: {
-        // Status labels
-        period: "Periode",
-        fertile: "Fruchtbar",
-        pms: "PMS",
-        neutral: "Neutral",
-        pre_menarche: "Pre-Menarche",
-        pregnant: "Schwanger",
-        postpartum: "Wochenbett",
-        menopause: "Menopause",
-        // Product names
-        tampon: "Tampon",
-        pad: "Binde",
-        cup: "Menstruationstasse",
-        liner: "Slipeinlage",
-        underwear: "Periodenunterwäsche",
-        // Symptom fields
-        bleeding_strength: "Blutungsstärke",
-        pain: "Schmerz",
-        discharge: "Ausfluss",
-        cervical_mucus: "Zervixschleim",
-        basal_temp: "Basaltemperatur",
-        mood: "Stimmung",
-        energy: "Energie",
-        notes: "Notizen",
-        // Cycle info
-        pre_menarche_desc: "Pubertät - Zyklus noch nicht begonnen",
-        neutral_title: "Keine Periode",
-        neutral_products_message: "Keine Periode - keine Produkte nötig",
-        preparation_tips: "Vorbereitungstipps",
-        learn_about_cycle: "Lerne über den Zyklus",
-        hygiene_products: "Hygiene-Produkte",
-        talk_to_parent: "Sprich mit Eltern",
-        use_app_tracking: "Nutze App zum Tracking",
-        enable_reminder: "Benachrichtigungen aktivieren",
-        week: "Woche",
-        trimester: "Trimester",
-        due_date: "Geburtstermin",
-        pregnancy_week: "Schwangerschaftswoche",
-        milestones_trimester: "Meilensteine",
-        trimester_checklist: "Checkliste",
-        symptoms: "Symptome",
-        days_since_birth: "Tage seit Geburt",
-        weeks_postpartum: "Wochen Wochenbett",
-        days_postpartum: "Tage Wochenbett",
-        recovery_tracker: "Genesungs-Tracker",
-        bleeding_monitor: "Blutungs-Monitor",
-        postpartum_checklist: "Wochenbett-Checkliste",
-        menopause_symptoms: "Menopause-Symptome",
-        mood_tracker: "Stimmungs-Tracker",
-        wellness_tips: "Wellness-Tipps",
-        menopause_desc: "Menopause-Phase",
-        log_used: "✓ Verbraucht",
-        log_cup_emptied: "🔄 Geleert",
-        select_product_first: "Bitte zuerst ein Produkt auswählen.",
-        cup_empty_only: "Cup-Leerung ist nur für die Menstruationstasse verfügbar.",
-        usage_logged_used: "Produktverbrauch gespeichert.",
-        usage_logged_emptied: "Cup-Leerung gespeichert.",
-        usage_logged_error: "Produktverbrauch konnte nicht gespeichert werden.",
-        card_title: "Menstruations-Countdown",
-        pregnancy_card_title: "Schwangerschaft",
-        symptom_saved: "Symptome gespeichert.",
-        symptom_save_error: "Symptome konnten nicht gespeichert werden.",
-        // First Period (Pre-Menarche) flow
-        log_first_period: "Erste Periode loggen",
-        log_first_period_symptoms: "Erste Periode - Symptome loggen",
-        first_period_description: "Wähle deine heutigen Symptome aus und bestätige den Start deiner ersten Periode.",
-        leave_pre_menarche_title: "Willst du den Pre-Menarche Modus verlassen?",
-        leave_pre_menarche_message: "Deine erste Periode wird für heute geloggt und der Zyklus-Tracking-Modus wird aktiviert.",
-        welcome_period_title: "Willkommen zur Periode! 🎉",
-        welcome_period_cycle_tracking: "Zyklus-Tracking startet jetzt",
-        welcome_period_features: "Neue Features: Zyklus-Vorhersage, Statistiken, ...",
-        welcome_period_contraception: "Du bist jetzt fruchtbar - denke an Verhütung, wenn nötig!",
-        welcome_period_return: "Du kannst jederzeit in den Einstellungen zum Pre-Menarche Modus zurückwechseln",
-        yes: "Ja",
-        no: "Nein",
-        cancel: "Abbrechen",
-        continue: "Weiter"
-      },
       en: {
         // Status labels
         period: "Period",
@@ -2644,30 +2565,6 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
     const loaded = _mcCountdownTimerI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: "Entität",
-        entity_help: "Wähle die Sensor-Entität mit dem Menstruationsstatus.",
-        animations: "Animationen",
-        product_animations: "Produktanimationen aktivieren",
-        product_animations_help: "Zeigt eine visuelle Füllanimation während des Countdowns.",
-        animation_style: "Animationsstil",
-        animation_style_help: "Wähle die Farb-/Darstellungsart für die Animation.",
-        realistic: "Realistisch",
-        avoid_blood: "Blutarm (blau)",
-        durations: "Dauern (Stunden)",
-        durations_help: "Standard-Countdown pro Produkttyp in Stunden.",
-        tampon_duration: "Tampon",
-        pad_duration: "Binde",
-        cup_duration: "Menstruationstasse",
-        underwear_duration: "Periodenunterwäsche",
-        liner_duration: "Slipeinlage",
-        preview: "Vorschau / Aktuelle Konfiguration",
-        preview_note: "Diese Übersicht zeigt die aktuell gesetzten Werte.",
-        fallback_note: "HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.",
-        sensor_search: "Sensor suchen…",
-        no_sensors: "Keine Sensoren gefunden.",
-        hours_suffix: "h",
-      },
       en: {
         entity: "Entity",
         entity_help: "Select the sensor entity containing menstruation status.",
@@ -2693,7 +2590,8 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
         hours_suffix: "h",
       },
     };
-    return (i18n[this._lang()]?.[key]) ?? (i18n.en[key] ?? key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _emit(nextConfig) {

@@ -72,26 +72,6 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     const loaded = _mcHistoryCardI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'unbekannt',
-        title: 'Zyklus History',
-        cycle: 'Zyklus',
-        start_date: 'Startdatum',
-        end_date: 'Enddatum',
-        length: 'Länge',
-        days: 'Tage',
-        status: 'Status',
-        fertile_window: 'Fruchtbar (dynamisch berechnet)',
-        ovulation: 'Eisprung (dynamisch berechnet)',
-        pregnant: 'Schwanger',
-        pre_menarche: 'Vor Menarche',
-        menarche: 'Menarche',
-        actual_period: 'Tatsächliche Periode',
-        predicted: 'Vorhergesagt',
-        current_cycle: 'Aktueller Zyklus',
-        previous_cycles: 'Vorherige Zyklen',
-      },
       en: {
         entity_not_found: 'Entity not found',
         unknown: 'unknown',
@@ -113,7 +93,8 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
         previous_cycles: 'Previous Cycles',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _resolveEntityId() {
@@ -324,29 +305,6 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
     const loaded = _mcHistoryCardI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: 'Entität',
-        entry_id: 'Eintrags-ID (optional)',
-        display: 'Anzeige',
-        title: 'Titel',
-        max_rows: 'Max. Zeilen',
-        features: 'Funktionen',
-        show_fertile_window: 'Fruchtbarkeitsfenster anzeigen',
-        preview: 'Vorschau',
-        preview_note: 'Vorschau zeigt Beispieldaten.',
-        fallback_note: 'HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.',
-        sensor_search: 'Sensor suchen…',
-        no_sensors: 'Keine Sensoren gefunden.',
-        col_cycle: 'Zyklus',
-        col_start: 'Start',
-        col_end: 'Ende',
-        col_length: 'Länge',
-        col_status: 'Status',
-        status_actual: 'Vergangen',
-        status_current: 'Aktuell',
-        status_predicted: 'Vorhergesagt',
-        days: 'T',
-      },
       en: {
         entity: 'Entity',
         entry_id: 'Entry ID (optional)',

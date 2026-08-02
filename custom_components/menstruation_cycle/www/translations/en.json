@@ -419,5 +419,11 @@
   "washing_threshold": "Washing Threshold",
   "warning": "Warning",
   "critical": "Critical",
-  "options": "Options"
+  "options": "Options",
+
+  "last_n_days": "Last {n} days",
+  "nfp_day_label": "Day {n}",
+  "last_cycles": "{count} cycles",
+  "based_on_daily_usage": "based on ~{value}/day",
+  "for_wash_goal": "for a {days}-day wash routine"
 }

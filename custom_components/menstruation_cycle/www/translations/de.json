@@ -419,5 +419,11 @@
   "washing_threshold": "Wasch-Schwelle",
   "warning": "Warnung",
   "critical": "Kritisch",
-  "options": "Optionen"
+  "options": "Optionen",
+
+  "last_n_days": "Letzte {n} Tage",
+  "nfp_day_label": "Tag {n}",
+  "last_cycles": "{count} Zyklen",
+  "based_on_daily_usage": "bei ~{value} pro Tag",
+  "for_wash_goal": "für alle {days} Tage Waschrhythmus"
 }

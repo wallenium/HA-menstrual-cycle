@@ -134,13 +134,6 @@ class MenstruationCycleCard extends HTMLElement {
     const loaded = _mcCompactCardI18n.cache[lang] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const translations = {
-      de: {
-        cycle_day: "Zyklustag",
-        period: "Periode",
-        fertile: "Fruchtbar",
-        pms: "PMS",
-        neutral: "Neutral",
-      },
       en: {
         cycle_day: "Cycle Day",
         period: "Period",
@@ -149,8 +142,8 @@ class MenstruationCycleCard extends HTMLElement {
         neutral: "Neutral",
       },
     };
-
-    return translations[lang]?.[key] || translations['en'][key];
+    const val = translations.en[key];
+    return val !== undefined ? val : (translations.en[key] ?? key);
   }
 
   _getStyles() {

@@ -96,62 +96,6 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     const loaded = _mcHeatmapCardI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity_not_found: 'Entity nicht gefunden',
-        unknown: 'unbekannt',
-        too_little_history: 'Zu wenig Verlaufsdaten in',
-        cycle_start: 'Start',
-        day: 'Tag',
-        end: 'Ende',
-        days_before_end: 'Tage vor Ende',
-        symptoms: 'Symptome',
-        legend_actual_period: 'Tatsächliche Periode',
-        legend_period_window: 'Periodenfenster',
-        legend_fertile: 'Fruchtbar (hohe Wahrscheinlichkeit, Standard-Days/Kalendermethode 8-19)',
-        legend_ovulation: 'Ovulation (hohe Wahrscheinlichkeit um Tag 14)',
-        legend_alignment_bottom: 'Ausrichtung: Zyklusende (E/-Tage)',
-        legend_alignment_top: 'Ausrichtung: Zyklusstart (Tag 1..X)',
-        scroll: 'scroll',
-        // Symptom category labels
-        cat_bleeding_strength: 'Blutungsstärke',
-        cat_spotting: 'Schmierblutung',
-        cat_intercourse: 'Geschlechtsverkehr',
-        cat_pain: 'Schmerzen',
-        cat_hygiene: 'Hygiene',
-        cat_test: 'Test',
-        cat_cervical_mucus: 'Zervixschleim',
-        cat_basal_temp: 'Basaltemperatur',
-        // Symptom option labels
-        opt_light: 'Gering',
-        opt_medium: 'Mittel',
-        opt_heavy: 'Stark',
-        opt_very_heavy: 'Sehr stark',
-        opt_red: 'Rot',
-        opt_brown: 'Braun',
-        opt_protected: 'Geschützt',
-        opt_unprotected: 'Ungeschützt',
-        opt_mittelschmerz: 'Mittelschmerz',
-        opt_cramps: 'Krämpfe',
-        opt_tender_breasts: 'Brustspannung',
-        opt_headache: 'Kopfschmerz',
-        opt_migraine: 'Migräne',
-        opt_lower_back: 'Rückenschmerzen',
-        opt_vulva: 'Vulvaschmerz',
-        opt_pad: 'Binde',
-        opt_liner: 'Slipeinlage',
-        opt_tampon: 'Tampon',
-        opt_cup: 'Menstruationstasse',
-        opt_period_underwear: 'Periodenunterwäsche',
-        opt_positive_ovulation: 'LH positiv',
-        opt_negative_ovulation: 'LH negativ',
-        opt_positive_pregnancy: 'Schwangerschaft +',
-        opt_negative_pregnancy: 'Schwangerschaft -',
-        opt_keinen: 'Keinen',
-        opt_klebrig: 'Klebrig',
-        opt_cremig: 'Cremig',
-        opt_fadenziehend: 'Fadenziehend',
-        opt_untypisch: 'Untypisch',
-      },
       en: {
         entity_not_found: 'Entity not found',
         unknown: 'unknown',
@@ -209,7 +153,8 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
         opt_untypisch: 'Atypical',
       },
     };
-    return (i18n[this._lang()] && i18n[this._lang()][key]) || (i18n.en[key] || key);
+    const val = i18n.en[key];
+    return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
   _resolveEntityId() {
@@ -1025,28 +970,6 @@ class MenstruationCycleHeatmapCardEditor extends HTMLElement {
     const loaded = _mcHeatmapCardI18n.cache[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = {
-      de: {
-        entity: 'Entität',
-        entry_id: 'Eintrags-ID (optional)',
-        display: 'Anzeige',
-        title: 'Titel',
-        max_cycles: 'Max. Zyklen',
-        features: 'Funktionen',
-        show_fertile_period: 'Fruchtbare Phase anzeigen',
-        alignment: 'Ausrichtung',
-        align_top: 'Oben (Tag 1..X)',
-        align_bottom: 'Unten (E/-Tage)',
-        symptom_entities: 'Symptom-Entitäten',
-        symptom_entities_hint: 'Wähle Sensor-Entitäten aus, die als Symptome angezeigt werden.',
-        preview: 'Vorschau',
-        preview_note: 'Vorschau zeigt Beispieldaten.',
-        fallback_note: 'HA Entity-Picker nicht verfügbar, Fallback-Dropdown aktiv.',
-        sensor_search: 'Sensor suchen…',
-        no_sensors: 'Keine Sensoren gefunden.',
-        day: 'T',
-        period: 'P',
-        fertile: 'F',
-      },
       en: {
         entity: 'Entity',
         entry_id: 'Entry ID (optional)',
