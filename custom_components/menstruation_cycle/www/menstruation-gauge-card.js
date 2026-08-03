@@ -896,7 +896,7 @@ class MenstruationGaugeCard extends HTMLElement {
       const baseTicks = model.series60.map((_, i) => {
         const angle = dayStartAngle(i + 1);
         //if (angle <= startAngle60 || angle >= startAngle60 + spanDeg) return '';
-        return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${(rInner + baseTick).toFixed(1)}" width="2.6" height="${baseTick.toFixed(1)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
+        return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${Math.round(rInner + baseTick)}" width="2.6" height="${Math.round(baseTick)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
       }).join('');
 
       // Day labels: show day-of-month at month starts and every 5th calendar day
@@ -905,7 +905,7 @@ class MenstruationGaugeCard extends HTMLElement {
         if (!step.isMonthStart && dayOfMonth % 5 !== 0) return '';
         const angle = dayCenterAngle(step.day);
         const pos = this._polar(cx, cy, 178, angle);
-        return `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" fill="${palette.dayLabel}" font-size="10" text-anchor="middle" dominant-baseline="middle">${dayOfMonth}</text>`;
+        return `<text x="${Math.round(pos.x)}" y="${Math.round(pos.y)}" fill="${palette.dayLabel}" font-size="10" text-anchor="middle" dominant-baseline="middle">${dayOfMonth}</text>`;
       }).join('');
 
       // Month separators: dezent gray lines + short month name at each month start
@@ -917,7 +917,7 @@ class MenstruationGaugeCard extends HTMLElement {
         const pLabel = this._polar(cx, cy, rInner + extraBar + 22, angle);
         const dt = this._parseISO(step.iso);
         const mName = dt ? new Intl.DateTimeFormat(locale, { month: 'short' }).format(dt) : step.iso.slice(5, 7);
-        return `<line x1="${pInner.x.toFixed(1)}" y1="${pInner.y.toFixed(1)}" x2="${pOuter.x.toFixed(1)}" y2="${pOuter.y.toFixed(1)}" stroke="${palette.tick}" stroke-width="1.2" opacity="0.6"></line><text x="${pLabel.x.toFixed(1)}" y="${pLabel.y.toFixed(1)}" fill="${palette.dayLabel}" font-size="9" text-anchor="middle" dominant-baseline="middle" opacity="0.75">${mName}</text>`;
+        return `<line x1="${Math.round(pInner.x)}" y1="${Math.round(pInner.y)}" x2="${Math.round(pOuter.x)}" y2="${Math.round(pOuter.y)}" stroke="${palette.tick}" stroke-width="1.2" opacity="0.6"></line><text x="${Math.round(pLabel.x)}" y="${Math.round(pLabel.y)}" fill="${palette.dayLabel}" font-size="9" text-anchor="middle" dominant-baseline="middle" opacity="0.75">${mName}</text>`;
       }).join('');
 
       // Confirmed ranges and bars
@@ -954,7 +954,7 @@ class MenstruationGaugeCard extends HTMLElement {
         ovSteps.forEach((step) => {
           const angle = dayCenterAngle(step.day);
           const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
-          ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+          ovulationMarkers += `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
         });
         // Fallback: ovulationDay on model (not yet in series60)
         if (!ovSteps.length && model.ovulationDay) {
@@ -964,7 +964,7 @@ class MenstruationGaugeCard extends HTMLElement {
             if (ovStep) {
               const angle = dayCenterAngle(ovStep.day);
               const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
-              ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+              ovulationMarkers += `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
             }
           }
         }
@@ -996,7 +996,7 @@ class MenstruationGaugeCard extends HTMLElement {
             if (d < 1 || d > total) return '';
             const angle = dayCenterAngle(d);
             const pos = this._polar(cx, cy, rInner + extraBar + 3, angle);
-            return `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="${radius}" fill="${fill}" stroke="${palette.markerStroke}" stroke-width="2"></circle>`;
+            return `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="${radius}" fill="${fill}" stroke="${palette.markerStroke}" stroke-width="2"></circle>`;
           };
           predictedMarker += `${marker(-1, '#fb7185', '4.6')}${marker(0, palette.confirmed, '5.5')}${marker(1, '#fb7185', '4.6')}`;
           Array.from({ length: safePeriodDuration }).forEach((_, idx) => {
@@ -1008,7 +1008,7 @@ class MenstruationGaugeCard extends HTMLElement {
             const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.74, sa, ea);
             const alpha = idx === 0 ? Math.max(0.22, 0.60 - (predictedIndex * 0.08)) : Math.max(0.16, 0.38 - (predictedIndex * 0.05));
             const sw = idx === 0 ? 8.6 : 7.2;
-            predictedBars += `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="${sw}" stroke-linecap="round" stroke-opacity="${alpha.toFixed(2)}"></path>`;
+            predictedBars += `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="${sw}" stroke-linecap="round" stroke-opacity="${alpha.toFixed(1)}"></path>`;
           });
         });
       }
@@ -1017,7 +1017,7 @@ class MenstruationGaugeCard extends HTMLElement {
       const triTipY = cy - rInner - extraBar + 4;  // pointing into the arc
       const triBaseY = cy - rInner - extraBar - 4; // wide base, clearly below month text
       const triW = 7;
-      const triangleMarker = `<polygon points="${cx},${triTipY.toFixed(1)} ${(cx - triW).toFixed(1)},${triBaseY.toFixed(1)} ${(cx + triW).toFixed(1)},${triBaseY.toFixed(1)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
+      const triangleMarker = `<polygon points="${cx},${Math.round(triTipY)} ${cx - triW},${Math.round(triBaseY)} ${cx + triW},${Math.round(triBaseY)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
 
       // Month label (static, shows today's context)
       const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date());
@@ -1065,7 +1065,7 @@ class MenstruationGaugeCard extends HTMLElement {
 
     const baseTicks = model.series.map((_, i) => {
       const angle = -90 + ((i / total) * 360);
-      return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${(rInner + baseTick).toFixed(1)}" width="2.6" height="${baseTick.toFixed(1)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
+      return `<g transform="translate(${cx} ${cy}) rotate(${angle})"><rect x="-1.3" y="-${Math.round(rInner + baseTick)}" width="2.6" height="${Math.round(baseTick)}" rx="1.2" fill="${palette.tick}"></rect></g>`;
     }).join('');
 
     const dayLabels = model.series.map((step, i) => {
@@ -1074,7 +1074,7 @@ class MenstruationGaugeCard extends HTMLElement {
       if (!isFirst && !isLast && (step.day % labelStep !== 0)) return '';
       const angle = -90 + ((((i + 0.5) / total) * 360));
       const pos = this._polar(cx, cy, 178, angle);
-      return `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" fill="${palette.dayLabel}" font-size="10" text-anchor="middle" dominant-baseline="middle">${step.day}</text>`;
+      return `<text x="${Math.round(pos.x)}" y="${Math.round(pos.y)}" fill="${palette.dayLabel}" font-size="10" text-anchor="middle" dominant-baseline="middle">${step.day}</text>`;
     }).join('');
 
     const confirmedRanges = this._confirmedRanges(model.series);
@@ -1113,7 +1113,7 @@ class MenstruationGaugeCard extends HTMLElement {
         if (step.day >= 1 && step.day <= total) {
           const angle = -90 + ((((step.day - 1) + 0.5) / total) * 360);
           const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
-          ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+          ovulationMarkers += `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
         }
       });
       if (!ovulationSteps.length && model.ovulationDay) {
@@ -1124,7 +1124,7 @@ class MenstruationGaugeCard extends HTMLElement {
             if (ovDay >= 1 && ovDay <= total) {
               const angle = -90 + ((((ovDay - 1) + 0.5) / total) * 360);
               const pos = this._polar(cx, cy, rInner + extraBar * 0.46, angle);
-              ovulationMarkers += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
+              ovulationMarkers += `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="5" fill="${palette.ovulation}" stroke="${palette.markerStroke}" stroke-width="1.5" opacity="0.90"></circle>`;
             }
           }
         }
@@ -1157,7 +1157,7 @@ class MenstruationGaugeCard extends HTMLElement {
         if (d < 1 || d > total) return '';
         const angle = -90 + ((((d - 1) + 0.5) / total) * 360);
         const pos = this._polar(cx, cy, rInner + extraBar + 3, angle);
-        return `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="${radius}" fill="${fill}" stroke="${palette.markerStroke}" stroke-width="2"></circle>`;
+        return `<circle cx="${Math.round(pos.x)}" cy="${Math.round(pos.y)}" r="${radius}" fill="${fill}" stroke="${palette.markerStroke}" stroke-width="2"></circle>`;
       };
       predictedMarker += `${marker(-1, '#fb7185', '4.6')}${marker(0, palette.confirmed, '5.5')}${marker(1, '#fb7185', '4.6')}`;
       predictedBars += Array.from({ length: safePeriodDuration }).map((_, idx) => {
@@ -1170,7 +1170,7 @@ class MenstruationGaugeCard extends HTMLElement {
         const dPath = this._arcPath(cx, cy, rInner + extraBar * 0.74, startAngle, endAngle);
         const alpha = idx === 0 ? Math.max(0.22, 0.60 - (predictedIndex * 0.08)) : Math.max(0.16, 0.38 - (predictedIndex * 0.05));
         const sw = idx === 0 ? 8.6 : 7.2;
-        return `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="${sw}" stroke-linecap="round" stroke-opacity="${alpha.toFixed(2)}"></path>`;
+        return `<path d="${dPath}" fill="none" stroke="${palette.confirmed}" stroke-width="${sw}" stroke-linecap="round" stroke-opacity="${alpha.toFixed(1)}"></path>`;
       }).join('');
     });
 
@@ -1190,7 +1190,7 @@ class MenstruationGaugeCard extends HTMLElement {
         ${confirmedBars}
         ${predictedBars}
         ${predictedMarker}
-        ${isCurrentViewMonth ? `<line x1="${handA.x.toFixed(1)}" y1="${handA.y.toFixed(1)}" x2="${handB.x.toFixed(1)}" y2="${handB.y.toFixed(1)}" stroke="${palette.hand}" stroke-width="1.9" stroke-linecap="round"></line>` : ''}
+        ${isCurrentViewMonth ? `<line x1="${Math.round(handA.x)}" y1="${Math.round(handA.y)}" x2="${Math.round(handB.x)}" y2="${Math.round(handB.y)}" stroke="${palette.hand}" stroke-width="1.9" stroke-linecap="round"></line>` : ''}
         <circle cx="${cx}" cy="${cy}" r="106" fill="none" stroke="${palette.ring}" stroke-width="1"></circle>
       </svg>
     `;
