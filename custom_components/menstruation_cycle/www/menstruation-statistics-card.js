@@ -833,6 +833,36 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_day_label: 'Day {n}',
         nfp_cycle_day: 'Cycle Day',
         nfp_temperature: 'Temperature (°C)',
+        correlations_title: 'Symptom Correlations',
+        correlations_subtitle: 'Patterns from last 3–6 cycles',
+        correlations_no_data: 'Not enough data for correlation analysis (need ≥ 3 cycles).',
+        correlation_high: 'High',
+        correlation_medium: 'Medium',
+        correlation_low: 'Low',
+        phase_menstruation: 'menstruation',
+        phase_follicular: 'follicular',
+        phase_ovulation: 'ovulation',
+        phase_luteal: 'luteal',
+        anomalies_title: 'Alerts & Insights',
+        anomalies_no_data: 'Not enough data for anomaly detection (need ≥ 3 cycles).',
+        anomaly_cycle_short: 'Current cycle is shorter than average',
+        anomaly_cycle_long: 'Current cycle is longer than average',
+        anomaly_bleed_short: 'Bleeding duration unusually short',
+        anomaly_bleed_long: 'Bleeding duration unusually long',
+        anomaly_bleed_heavy: 'Unusually heavy period',
+        anomaly_bleed_light: 'Unusually light period',
+        anomaly_pain_high: 'More pain days than usual',
+        anomaly_pain_low: 'Fewer pain days than usual',
+        anomaly_pain_increasing: 'Pain days increasing over time',
+        anomaly_pain_decreasing: 'Pain days decreasing over time',
+        anomaly_current: 'Current',
+        anomaly_average: 'Average',
+        anomaly_days: 'days',
+        anomaly_consult: 'Consider discussing with your doctor.',
+        anomaly_note: 'Keep monitoring your cycle.',
+        severity_info: 'Info',
+        severity_warning: 'Warning',
+        severity_alert: 'Alert',
       },
     };
     const lang = this._lang();
@@ -960,6 +990,13 @@ class MenstruationStatisticsCard extends HTMLElement {
       return { cycleStart: startIso, painDays };
     });
 
+    const correlations = this._computeSymptomCorrelations(attrs, {
+      rawStarts, cycleLengths, cutoffIso, symptomHistory: recentSymptoms,
+    });
+    const anomalies = this._computeAnomalies(attrs, {
+      cycleLengths, avg, stdDev, avgBleed, minBleed, maxBleed, durations, bsDist, painTrend,
+    });
+
     return {
       history,
       starts,
@@ -978,7 +1015,221 @@ class MenstruationStatisticsCard extends HTMLElement {
       topSymptoms,
       painTrend,
       cyclesAnalyzed: cycleLengths.length,
+      correlations,
+      anomalies,
     };
+  }
+
+  _computeSymptomCorrelations(attrs, { rawStarts, cutoffIso, symptomHistory }) {
+    // Need at least 3 complete cycles
+    const allStarts = (Array.isArray(rawStarts) ? rawStarts : []).slice().sort();
+    const recentStarts = allStarts.filter(d => d >= cutoffIso);
+    if (recentStarts.length < 3) return null;
+
+    // Use up to last 6 cycles
+    const cycleStartsForCorr = recentStarts.slice(-6);
+    const totalCycles = cycleStartsForCorr.length;
+
+    // Build cycle windows: [cycleStart, cycleEnd)
+    const cycleWindows = cycleStartsForCorr.map((startIso, idx) => {
+      const nextStart = cycleStartsForCorr[idx + 1];
+      const endIso = nextStart
+        ? (() => { const d = new Date(nextStart); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })()
+        : new Date().toISOString().slice(0, 10);
+      return { startIso, endIso };
+    });
+
+    // Classify a cycle day into a phase
+    const getPhase = (cycleDay, cycleLen) => {
+      const len = cycleLen || 28;
+      if (cycleDay <= 5) return 'menstruation';
+      if (cycleDay <= Math.round(len * 0.43)) return 'follicular';
+      if (cycleDay <= Math.round(len * 0.57)) return 'ovulation';
+      return 'luteal';
+    };
+
+    // Symptom occurrence tracker: { symptomKey: { phase: Set<cycleIdx>, days: [] } }
+    const symData = {};
+
+    const trackSym = (key, cycleIdx, phase, cycleDay) => {
+      if (!symData[key]) symData[key] = { phases: {}, cycles: new Set(), days: [] };
+      symData[key].cycles.add(cycleIdx);
+      symData[key].days.push(cycleDay);
+      if (!symData[key].phases[phase]) symData[key].phases[phase] = new Set();
+      symData[key].phases[phase].add(cycleIdx);
+    };
+
+    symptomHistory.forEach(s => {
+      // Find which cycle window this symptom date falls into
+      const date = s.date;
+      if (!date) return;
+      for (let ci = 0; ci < cycleWindows.length; ci++) {
+        const { startIso, endIso } = cycleWindows[ci];
+        if (date >= startIso && date <= endIso) {
+          const d0 = new Date(startIso + 'T12:00:00Z');
+          const d1 = new Date(date + 'T12:00:00Z');
+          const cycleDay = Math.round((d1 - d0) / 86400000) + 1;
+          // Estimate cycle length from next window
+          const nextStart = cycleStartsForCorr[ci + 1];
+          const cycleLen = nextStart
+            ? Math.round((new Date(nextStart) - new Date(startIso)) / 86400000)
+            : 28;
+          const phase = getPhase(cycleDay, cycleLen);
+
+          const pains = Array.isArray(s.pain) ? s.pain : (s.pain ? [s.pain] : []);
+          for (const p of pains) trackSym(`pain:${p}`, ci, phase, cycleDay);
+          if (s.cervical_mucus) trackSym(`cervical_mucus:${s.cervical_mucus}`, ci, phase, cycleDay);
+          if (s.spotting) trackSym(`spotting:${s.spotting}`, ci, phase, cycleDay);
+          break;
+        }
+      }
+    });
+
+    // Build correlation entries
+    const results = [];
+    for (const [key, data] of Object.entries(symData)) {
+      const occurrencePct = Math.round((data.cycles.size / totalCycles) * 100);
+      if (occurrencePct < 20) continue; // Only show symptoms occurring in ≥20% of cycles
+
+      // Find dominant phase
+      let dominantPhase = null;
+      let dominantPhasePct = 0;
+      for (const [phase, cycleSet] of Object.entries(data.phases)) {
+        const phasePct = Math.round((cycleSet.size / totalCycles) * 100);
+        if (phasePct > dominantPhasePct) {
+          dominantPhasePct = phasePct;
+          dominantPhase = phase;
+        }
+      }
+
+      // Day range
+      const sortedDays = data.days.slice().sort((a, b) => a - b);
+      const dayMin = sortedDays[0];
+      const dayMax = sortedDays[sortedDays.length - 1];
+
+      // Correlation strength
+      const strength = occurrencePct >= 70 ? 'high' : occurrencePct >= 45 ? 'medium' : 'low';
+
+      results.push({ key, occurrencePct, dominantPhase, dominantPhasePct, dayMin, dayMax, strength });
+    }
+
+    // Sort by occurrence descending, take top 8
+    results.sort((a, b) => b.occurrencePct - a.occurrencePct);
+    return { items: results.slice(0, 8), totalCycles };
+  }
+
+  _computeAnomalies(attrs, { cycleLengths, avg, stdDev, avgBleed, durations, bsDist, painTrend }) {
+    if (!cycleLengths || cycleLengths.length < 3) return null;
+
+    const anomalies = [];
+
+    // --- Cycle length anomaly (current vs historical) ---
+    const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+    if (allStarts.length >= 2) {
+      const lastStart = allStarts[allStarts.length - 1];
+      const prevStart = allStarts[allStarts.length - 2];
+      const currentLen = Math.round((new Date(lastStart) - new Date(prevStart)) / 86400000);
+      if (currentLen > 10 && currentLen < 80 && avg !== null && stdDev !== null && stdDev > 0) {
+        const diff = currentLen - avg;
+        const absDiff = Math.abs(diff);
+        if (absDiff >= 5) {
+          const direction = diff < 0 ? 'anomaly_cycle_short' : 'anomaly_cycle_long';
+          const severity = absDiff >= 10 ? 'alert' : 'warning';
+          anomalies.push({
+            type: 'cycle_length',
+            severity,
+            messageKey: direction,
+            current: currentLen,
+            average: avg,
+            unit: 'days',
+          });
+        }
+      }
+    }
+
+    // --- Bleeding duration anomaly ---
+    if (durations && durations.length >= 3 && avgBleed !== null) {
+      const lastBleed = durations[durations.length - 1];
+      const bleedDiff = lastBleed - avgBleed;
+      const absBleedDiff = Math.abs(bleedDiff);
+      if (absBleedDiff >= 2) {
+        const direction = bleedDiff < 0 ? 'anomaly_bleed_short' : 'anomaly_bleed_long';
+        const severity = absBleedDiff >= 4 ? 'alert' : 'warning';
+        anomalies.push({
+          type: 'bleed_duration',
+          severity,
+          messageKey: direction,
+          current: lastBleed,
+          average: avgBleed,
+          unit: 'days',
+        });
+      }
+    }
+
+    // --- Bleeding strength anomaly ---
+    if (bsDist && bsDist.length > 0) {
+      const heavyEntry = bsDist.find(b => b.key === 'heavy' || b.key === 'very_heavy');
+      const lightEntry = bsDist.find(b => b.key === 'light');
+      // Historical comparison: if heavy ≥70% flag as unusual heavy; if light ≥80% flag as light
+      if (heavyEntry && heavyEntry.pct >= 70) {
+        anomalies.push({
+          type: 'bleed_strength',
+          severity: 'info',
+          messageKey: 'anomaly_bleed_heavy',
+          current: `${heavyEntry.pct}%`,
+          average: null,
+          unit: null,
+        });
+      } else if (lightEntry && lightEntry.pct >= 80) {
+        anomalies.push({
+          type: 'bleed_strength',
+          severity: 'info',
+          messageKey: 'anomaly_bleed_light',
+          current: `${lightEntry.pct}%`,
+          average: null,
+          unit: null,
+        });
+      }
+    }
+
+    // --- Pain days anomaly ---
+    if (painTrend && painTrend.length >= 3) {
+      const painCounts = painTrend.map(p => p.painDays);
+      const avgPain = painCounts.reduce((a, b) => a + b, 0) / painCounts.length;
+      const lastPain = painCounts[painCounts.length - 1];
+      const painDiff = lastPain - avgPain;
+      const absPainDiff = Math.abs(painDiff);
+      if (absPainDiff >= 2) {
+        const direction = painDiff > 0 ? 'anomaly_pain_high' : 'anomaly_pain_low';
+        anomalies.push({
+          type: 'pain_count',
+          severity: 'info',
+          messageKey: direction,
+          current: lastPain,
+          average: Math.round(avgPain * 10) / 10,
+          unit: 'days',
+        });
+      }
+
+      // Pain trend direction (last 4 cycles)
+      const recentPain = painCounts.slice(-4);
+      if (recentPain.length >= 3) {
+        let increases = 0;
+        let decreases = 0;
+        for (let i = 1; i < recentPain.length; i++) {
+          if (recentPain[i] > recentPain[i - 1]) increases++;
+          else if (recentPain[i] < recentPain[i - 1]) decreases++;
+        }
+        const trendLen = recentPain.length - 1;
+        if (increases === trendLen) {
+          anomalies.push({ type: 'pain_trend', severity: 'info', messageKey: 'anomaly_pain_increasing', current: null, average: null, unit: null });
+        } else if (decreases === trendLen) {
+          anomalies.push({ type: 'pain_trend', severity: 'info', messageKey: 'anomaly_pain_decreasing', current: null, average: null, unit: null });
+        }
+      }
+    }
+
+    return anomalies;
   }
 
   _symLabel(key) {
@@ -1059,6 +1310,59 @@ class MenstruationStatisticsCard extends HTMLElement {
       <div class="sparkline-legend">${this._t('avg_pain_days')}: <strong>${avgPain}</strong></div>`;
   }
 
+  _renderAnomalies(anomalies) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+    if (!anomalies) {
+      return `<div class="anomaly-no-data">${esc(t('anomalies_no_data'))}</div>`;
+    }
+    if (anomalies.length === 0) return '';
+
+    const severityIcon = { alert: '🚨', warning: '⚠️', info: 'ℹ️' };
+    const cards = anomalies.map(a => {
+      const icon = severityIcon[a.severity] || 'ℹ️';
+      let detail = '';
+      if (a.current !== null && a.average !== null) {
+        detail = `<span class="anomaly-detail">${esc(t('anomaly_current'))}: <strong>${esc(a.current)}${a.unit ? ' ' + esc(t('anomaly_days')) : ''}</strong> &middot; ${esc(t('anomaly_average'))}: <strong>${esc(a.average)}${a.unit ? ' ' + esc(t('anomaly_days')) : ''}</strong></span>`;
+      }
+      const suggestion = a.severity === 'alert' || a.severity === 'warning'
+        ? `<span class="anomaly-suggestion">${esc(t('anomaly_consult'))}</span>`
+        : `<span class="anomaly-suggestion">${esc(t('anomaly_note'))}</span>`;
+      return `<div class="anomaly-card anomaly-${esc(a.severity)}">
+        <span class="anomaly-icon">${icon}</span>
+        <div class="anomaly-body">
+          <span class="anomaly-msg">${esc(t(a.messageKey))}</span>
+          ${detail}
+          ${suggestion}
+        </div>
+      </div>`;
+    }).join('');
+    return cards;
+  }
+
+  _renderCorrelations(correlations) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+    if (!correlations) {
+      return `<div class="no-data">${esc(t('correlations_no_data'))}</div>`;
+    }
+    if (!correlations.items || correlations.items.length === 0) {
+      return `<div class="no-data">${esc(t('correlations_no_data'))}</div>`;
+    }
+    return correlations.items.map(c => {
+      const phaseLabel = c.dominantPhase ? esc(t(`phase_${c.dominantPhase}`)) : '';
+      const dayRange = c.dayMin != null && c.dayMax != null
+        ? (c.dayMin === c.dayMax ? `${t('nfp_day')} ${c.dayMin}` : `${t('nfp_day')}s ${c.dayMin}–${c.dayMax}`)
+        : '';
+      return `<div class="corr-card corr-${esc(c.strength)}">
+        <div class="corr-sym">${esc(this._symLabel(c.key))}</div>
+        <div class="corr-pct">${c.occurrencePct}%</div>
+        ${phaseLabel ? `<div class="corr-phase">${phaseLabel}${dayRange ? ` &middot; ${esc(dayRange)}` : ''}</div>` : ''}
+        <div class="corr-strength-badge">${esc(t(`correlation_${c.strength}`))}</div>
+      </div>`;
+    }).join('');
+  }
+
   _renderStatsTab(stats) {
     if (!stats) return `<div class="no-data">${this._t('no_cycle_data')}</div>`;
     const t = (k) => this._t(k);
@@ -1111,6 +1415,16 @@ class MenstruationStatisticsCard extends HTMLElement {
       <div class="section">
         <div class="section-header"><span class="section-icon">😣</span><span>${esc(t('pain_trend'))}</span></div>
         ${painHtml}
+      </div>
+      ${stats.anomalies && stats.anomalies.length > 0 ? `
+      <div class="section">
+        <div class="section-header"><span class="section-icon">🔔</span><span>${esc(t('anomalies_title'))}</span></div>
+        <div class="anomaly-list">${this._renderAnomalies(stats.anomalies)}</div>
+      </div>` : ''}
+      <div class="section">
+        <div class="section-header"><span class="section-icon">🔗</span><span>${esc(t('correlations_title'))}</span></div>
+        ${stats.correlations ? `<div class="section-meta">${esc(t('correlations_subtitle'))}</div>` : ''}
+        <div class="corr-list">${this._renderCorrelations(stats.correlations)}</div>
       </div>`;
   }
 
@@ -1524,6 +1838,26 @@ class MenstruationStatisticsCard extends HTMLElement {
         .nfp-chart-wrap { width: 100%; overflow: hidden; }
         .nfp-temp-chart { display: block; width: 100%; }
         .nfp-chart-axis-label { text-align: center; font-size: 10px; color: var(--secondary-text-color, #888); margin-top: 2px; }
+        .anomaly-list { display: flex; flex-direction: column; gap: 8px; }
+        .anomaly-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border-left: 4px solid; font-size: 12px; }
+        .anomaly-info { background: color-mix(in srgb, #3b82f6 10%, transparent); border-color: #3b82f6; }
+        .anomaly-warning { background: color-mix(in srgb, var(--warning-color, #f59e0b) 12%, transparent); border-color: var(--warning-color, #f59e0b); }
+        .anomaly-alert { background: color-mix(in srgb, var(--error-color, #ef4444) 12%, transparent); border-color: var(--error-color, #ef4444); }
+        .anomaly-icon { font-size: 16px; flex: 0 0 auto; margin-top: 1px; }
+        .anomaly-body { display: flex; flex-direction: column; gap: 3px; }
+        .anomaly-msg { font-weight: 600; color: var(--primary-text-color); }
+        .anomaly-detail { color: var(--secondary-text-color, #888); font-size: 11px; }
+        .anomaly-suggestion { color: var(--secondary-text-color, #888); font-size: 11px; font-style: italic; }
+        .anomaly-no-data { color: var(--secondary-text-color, #888); font-size: 12px; padding: 8px 0; }
+        .corr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+        .corr-card { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px; border-left: 3px solid; display: flex; flex-direction: column; gap: 4px; }
+        .corr-high { border-color: var(--success-color, #27ae60); }
+        .corr-medium { border-color: var(--warning-color, #f59e0b); }
+        .corr-low { border-color: var(--divider-color, #aaa); }
+        .corr-sym { font-weight: 600; font-size: 12px; color: var(--primary-text-color); }
+        .corr-pct { font-size: 20px; font-weight: 700; color: var(--primary-color, #c0392b); line-height: 1; }
+        .corr-phase { font-size: 11px; color: var(--secondary-text-color, #888); }
+        .corr-strength-badge { font-size: 10px; font-weight: 600; margin-top: 2px; color: var(--secondary-text-color, #888); text-transform: uppercase; letter-spacing: 0.5px; }
         ${productStyles}
         @media (max-width: 480px) {
           ha-card { padding: 12px; }
