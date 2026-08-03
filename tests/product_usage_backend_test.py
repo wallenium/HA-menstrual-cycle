@@ -664,5 +664,83 @@ class LovelaceResourceRegistrationTests(unittest.TestCase):
         self.assertEqual(collection.create_calls[0]["url"], resource_url)
 
 
+class HttpRouteHandlerTests(unittest.TestCase):
+    def _make_hass_with_http(self):
+        class _FakeRouter:
+            def __init__(self):
+                self.routes = {}
+
+            def add_get(self, path, handler):
+                self.routes[path] = handler
+
+        class _FakeApp:
+            def __init__(self):
+                self.router = _FakeRouter()
+
+        class _FakeHttp:
+            def __init__(self):
+                self.app = _FakeApp()
+
+        class _FakeHassWithHttp:
+            def __init__(self):
+                self.data = {}
+                self.http = _FakeHttp()
+
+            async def async_add_executor_job(self, func, *args):
+                return func(*args)
+
+        return _FakeHassWithHttp()
+
+    def test_translation_route_returns_200_with_correct_content_type(self) -> None:
+        """_serve_translation_file must not raise ValueError from duplicate Content-Type."""
+        hass = self._make_hass_with_http()
+        asyncio.run(integration._async_register_http_handlers(hass))
+
+        route_key = f"/{integration.DOMAIN}/translations/{{filename}}"
+        handler = hass.http.app.router.routes.get(route_key)
+        self.assertIsNotNone(handler, f"Route {route_key} was not registered")
+
+        class _FakeRequest:
+            match_info = {"filename": "en.json"}
+
+        response = asyncio.run(handler(_FakeRequest()))
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
+
+    def test_translation_route_returns_404_for_missing_file(self) -> None:
+        """_serve_translation_file must return 404 when the translation file does not exist."""
+        from aiohttp.web import HTTPNotFound
+
+        hass = self._make_hass_with_http()
+        asyncio.run(integration._async_register_http_handlers(hass))
+
+        route_key = f"/{integration.DOMAIN}/translations/{{filename}}"
+        handler = hass.http.app.router.routes.get(route_key)
+        self.assertIsNotNone(handler)
+
+        class _FakeRequest:
+            match_info = {"filename": "zz.json"}
+
+        with self.assertRaises(HTTPNotFound):
+            asyncio.run(handler(_FakeRequest()))
+
+    def test_translation_route_returns_400_for_path_traversal(self) -> None:
+        """_serve_translation_file must reject filenames with path separators."""
+        from aiohttp.web import HTTPBadRequest
+
+        hass = self._make_hass_with_http()
+        asyncio.run(integration._async_register_http_handlers(hass))
+
+        route_key = f"/{integration.DOMAIN}/translations/{{filename}}"
+        handler = hass.http.app.router.routes.get(route_key)
+        self.assertIsNotNone(handler)
+
+        class _FakeRequest:
+            match_info = {"filename": "../secret.json"}
+
+        with self.assertRaises(HTTPBadRequest):
+            asyncio.run(handler(_FakeRequest()))
+
+
 if __name__ == "__main__":
     unittest.main()

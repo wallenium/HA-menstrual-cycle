@@ -1900,9 +1900,9 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
         return Response(
             body=content,
             content_type="application/json",
+            charset="utf-8",
             headers={
                 "Cache-Control": "public, max-age=86400, immutable",
-                "Content-Type": "application/json; charset=utf-8",
             },
         )
 
