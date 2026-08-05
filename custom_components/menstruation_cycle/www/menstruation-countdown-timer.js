@@ -230,7 +230,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       const cardTitle = this.querySelector(".card-title");
       if (cardTitle) {
         cardTitle.textContent = status === "pregnant"
-          ? this._t('pregnancy_card_title')
+          ? this._t('pregnancy')
           : this._t('card_title');
       }
 
@@ -1672,7 +1672,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         usage_logged_emptied: "Cup emptying saved.",
         usage_logged_error: "Could not save product usage.",
         card_title: "Menstrual Countdown",
-        pregnancy_card_title: "Pregnancy",
+        pregnancy: "Pregnancy",
         symptom_saved: "Symptoms saved.",
         symptom_save_error: "Could not save symptoms.",
         // First Period (Pre-Menarche) flow

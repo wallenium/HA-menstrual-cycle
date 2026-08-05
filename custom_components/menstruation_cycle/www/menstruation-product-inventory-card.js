@@ -106,12 +106,12 @@ class MenstruationProductInventoryCard extends HTMLElement {
         recent_usage: "Recent usage",
         no_logs: "No consumption logs",
         status_good: "Good",
-        status_warning: "Warning",
-        status_critical: "Critical",
+        warning: "Warning",
+        critical: "Critical",
         pregnancy: "Pregnancy",
         week: "Week",
         trimester: "Trimester",
-        unknown_member: "Unknown",
+        unknown: "Unknown",
         error_prefix: "Error",
         tampon: "Tampons",
         pad: "Pads",
@@ -422,7 +422,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
     const title = this._escapeHtml(this.config.title || this._t("title"));
     const memberList = memberNames.length ? memberNames.map((name) => this._escapeHtml(name)).join(", ") : "-";
     const lastUsageText = lastUsage
-      ? `${this._escapeHtml(this._t(lastUsage.product))} ×${this._escapeHtml(lastUsage.quantity)} · ${this._escapeHtml(lastUsage.member || this._t("unknown_member"))} · ${this._escapeHtml(this._formatTimestamp(lastUsage.timestamp))}`
+      ? `${this._escapeHtml(this._t(lastUsage.product))} ×${this._escapeHtml(lastUsage.quantity)} · ${this._escapeHtml(lastUsage.member || this._t("unknown"))} · ${this._escapeHtml(this._formatTimestamp(lastUsage.timestamp))}`
       : this._t("no_usage");
     const pregnancyInfo = this._resolvePregnancyContext(attrs, entityId);
     const pregnancyMetaText = pregnancyInfo.isPregnant
@@ -563,7 +563,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
           <strong>${this._t("recent_usage")}</strong>
           ${recentLogs.length ? recentLogs.map((entry) => `
             <div class="log-item">
-              <span>${this._escapeHtml(this._t(entry.product))} ×${this._escapeHtml(entry.quantity)} · ${this._escapeHtml(entry.member || this._t("unknown_member"))}</span>
+              <span>${this._escapeHtml(this._t(entry.product))} ×${this._escapeHtml(entry.quantity)} · ${this._escapeHtml(entry.member || this._t("unknown"))}</span>
               <span>${this._escapeHtml(this._formatTimestamp(entry.timestamp))}</span>
             </div>
           `).join("") : `<div class="empty">${this._t("no_logs")}</div>`}

@@ -639,13 +639,13 @@ function testDischargeSymptomConfigAndOrdering() {
   );
 
   card._hass = { locale: { language: 'de' } };
-  assert.strictEqual(proto._t.call(card, 'cat_discharge'), 'Ausfluss', 'German discharge category translation should exist');
+  assert.strictEqual(proto._t.call(card, 'discharge'), 'Ausfluss', 'German discharge category translation should exist');
   assert.strictEqual(proto._t.call(card, 'opt_reddish'), 'Rötlich', 'German reddish option translation should exist');
   assert.strictEqual(proto._t.call(card, 'opt_nausea'), 'Übelkeit', 'German nausea translation should use backend key');
   assert.strictEqual(proto._t.call(card, 'opt_fatigue'), 'Müdigkeit', 'German fatigue translation should use backend key');
 
   card._hass = { locale: { language: 'en' } };
-  assert.strictEqual(proto._t.call(card, 'cat_discharge'), 'Discharge', 'English discharge category translation should exist');
+  assert.strictEqual(proto._t.call(card, 'discharge'), 'Discharge', 'English discharge category translation should exist');
   assert.strictEqual(proto._t.call(card, 'opt_reddish'), 'Reddish', 'English reddish option translation should exist');
   assert.strictEqual(proto._t.call(card, 'opt_nausea'), 'Nausea', 'English nausea translation should use backend key');
   assert.strictEqual(proto._t.call(card, 'opt_fatigue'), 'Fatigue', 'English fatigue translation should use backend key');
