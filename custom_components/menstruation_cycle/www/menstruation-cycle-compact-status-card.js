@@ -98,27 +98,27 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         since: 'since',
         years: 'years',
         months: 'months',
-        phase_period: 'Bleeding',
-        phase_fertile: 'Fertile',
+        tt_bleeding: 'Bleeding',
+        fertile: 'Fertile',
         phase_ovulation: 'Ovulation',
-        phase_pms: 'PMS',
-        phase_neutral: 'Neutral',
+        pms: 'PMS',
+        neutral: 'Neutral',
         tt_product_usage: 'Product Usage',
-        tt_symptoms: 'Symptoms',
+        symptoms: 'Symptoms',
         tt_no_data: 'No additional data',
         tt_status_icon: 'Status icon',
-        tt_tampon: 'Tampon',
-        tt_pad: 'Pad',
-        tt_cup: 'Menstrual Cup',
-        tt_liner: 'Liner',
-        tt_underwear: 'Period Underwear',
+        tampon_duration: 'Tampon',
+        pad_duration: 'Pad',
+        cup_duration: 'Menstrual Cup',
+        liner_duration: 'Liner',
+        underwear_duration: 'Period Underwear',
         tt_bleeding: 'Bleeding',
-        tt_mood: 'Mood',
-        tt_pain: 'Pain',
-        tt_spotting: 'Spotting',
-        tt_cervical_mucus: 'Cervical Mucus',
+        mood: 'Mood',
+        pain: 'Pain',
+        spotting: 'Spotting',
+        cervical_mucus: 'Cervical Mucus',
         tt_intercourse: 'Intercourse',
-        tt_hygiene: 'Hygiene',
+        tab_hygiene: 'Hygiene',
       },
     };
     const val = i18n.en[key];
@@ -259,11 +259,11 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     if (symptomData && typeof symptomData === 'object') {
       const symptomKeyMap = [
         ['bleeding_strength', 'tt_bleeding'],
-        ['mood', 'tt_mood'],
-        ['pain_types', 'tt_pain'],
-        ['spotting', 'tt_spotting'],
-        ['cervical_mucus', 'tt_cervical_mucus'],
-        ['hygiene', 'tt_hygiene'],
+        ['mood', 'mood'],
+        ['pain_types', 'pain'],
+        ['spotting', 'spotting'],
+        ['cervical_mucus', 'cervical_mucus'],
+        ['hygiene', 'tab_hygiene'],
         ['intercourse', 'tt_intercourse'],
       ];
       const rows = [];
@@ -276,7 +276,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         rows.push(`<div class="tt-row"><span class="tt-key">${this._t(i18nKey)}</span><span class="tt-val">${display}</span></div>`);
       }
       if (rows.length > 0) {
-        sections.push(`<div class="tt-section"><div class="tt-heading">${this._t('tt_symptoms')}</div>${rows.join('')}</div>`);
+        sections.push(`<div class="tt-section"><div class="tt-heading">${this._t('symptoms')}</div>${rows.join('')}</div>`);
       }
     }
 

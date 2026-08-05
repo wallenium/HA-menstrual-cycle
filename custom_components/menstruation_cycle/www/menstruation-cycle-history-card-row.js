@@ -323,14 +323,14 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
         fallback_note: 'HA entity picker unavailable, fallback dropdown active.',
         sensor_search: 'Search sensor…',
         no_sensors: 'No sensors found.',
-        col_cycle: 'Cycle',
-        col_start: 'Start',
-        col_end: 'End',
-        col_length: 'Length',
-        col_status: 'Status',
+        cycle: 'Cycle',
+        cycle_start: 'Start',
+        end: 'End',
+        length: 'Length',
+        status: 'Status',
         status_actual: 'Past',
         status_current: 'Current',
-        status_predicted: 'Predicted',
+        predicted: 'Predicted',
         days: 'd',
       },
     };
@@ -411,11 +411,11 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead>
             <tr style="border-bottom:2px solid var(--divider-color);">
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('col_cycle')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('col_start')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('col_end')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('col_length')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('col_status')}</th>
+              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle')}</th>
+              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle_start')}</th>
+              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('end')}</th>
+              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('length')}</th>
+              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('status')}</th>
               ${fertileHeader}
             </tr>
           </thead>

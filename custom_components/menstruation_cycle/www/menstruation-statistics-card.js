@@ -757,10 +757,10 @@ class MenstruationStatisticsCard extends HTMLElement {
     const i18n = {
       en: {
         title: 'Statistics',
-        tab_period: 'Period',
+        period: 'Period',
         tab_hygiene: 'Hygiene',
-        tab_nfp: 'NFP',
-        tab_doctor: 'Doctor Report',
+        nfp_method_nfp: 'NFP',
+        doctor_report_title: 'Doctor Report',
         filter: 'Filter',
         filter_aria: 'Open statistics filters',
         no_data: 'No data available',
@@ -827,18 +827,18 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_temp_chart: 'Basal Temperature Curve',
         nfp_baseline: 'Baseline',
         nfp_threshold: 'Threshold (+0.2°C)',
-        nfp_day: 'Day',
+        day: 'Day',
         nfp_temp_unit: '°C',
         nfp_not_detected: 'Not detected',
         nfp_day_label: 'Day {n}',
-        nfp_cycle_day: 'Cycle Day',
+        cycle_day: 'Cycle Day',
         nfp_temperature: 'Temperature (°C)',
         correlations_title: 'Symptom Correlations',
         correlations_subtitle: 'Patterns from last 3–6 cycles',
         correlations_no_data: 'Not enough data for correlation analysis (need ≥ 3 cycles).',
-        correlation_high: 'High',
-        correlation_medium: 'Medium',
-        correlation_low: 'Low',
+        nfp_confidence_high: 'High',
+        nfp_confidence_medium: 'Medium',
+        nfp_confidence_low: 'Low',
         phase_menstruation: 'menstruation',
         phase_follicular: 'follicular',
         phase_ovulation: 'ovulation',
@@ -855,13 +855,13 @@ class MenstruationStatisticsCard extends HTMLElement {
         anomaly_pain_low: 'Fewer pain days than usual',
         anomaly_pain_increasing: 'Pain days increasing over time',
         anomaly_pain_decreasing: 'Pain days decreasing over time',
-        anomaly_current: 'Current',
+        status_current: 'Current',
         anomaly_average: 'Average',
-        anomaly_days: 'days',
+        days_unit: 'days',
         anomaly_consult: 'Consider discussing with your doctor.',
         anomaly_note: 'Keep monitoring your cycle.',
         severity_info: 'Info',
-        severity_warning: 'Warning',
+        warning: 'Warning',
         severity_alert: 'Alert',
       },
     };
@@ -1323,7 +1323,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       const icon = severityIcon[a.severity] || 'ℹ️';
       let detail = '';
       if (a.current !== null && a.average !== null) {
-        detail = `<span class="anomaly-detail">${esc(t('anomaly_current'))}: <strong>${esc(a.current)}${a.unit ? ' ' + esc(t('anomaly_days')) : ''}</strong> &middot; ${esc(t('anomaly_average'))}: <strong>${esc(a.average)}${a.unit ? ' ' + esc(t('anomaly_days')) : ''}</strong></span>`;
+        detail = `<span class="anomaly-detail">${esc(t('status_current'))}: <strong>${esc(a.current)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong> &middot; ${esc(t('anomaly_average'))}: <strong>${esc(a.average)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong></span>`;
       }
       const suggestion = a.severity === 'alert' || a.severity === 'warning'
         ? `<span class="anomaly-suggestion">${esc(t('anomaly_consult'))}</span>`
@@ -1352,7 +1352,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     return correlations.items.map(c => {
       const phaseLabel = c.dominantPhase ? esc(t(`phase_${c.dominantPhase}`)) : '';
       const dayRange = c.dayMin != null && c.dayMax != null
-        ? (c.dayMin === c.dayMax ? `${t('nfp_day')} ${c.dayMin}` : `${t('nfp_day')}s ${c.dayMin}–${c.dayMax}`)
+        ? (c.dayMin === c.dayMax ? `${t('day')} ${c.dayMin}` : `${t('day')}s ${c.dayMin}–${c.dayMax}`)
         : '';
       return `<div class="corr-card corr-${esc(c.strength)}">
         <div class="corr-sym">${esc(this._symLabel(c.key))}</div>
@@ -1691,7 +1691,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     return `<div class="section">
       <div class="section-header"><span class="section-icon">🌡️</span><span>${esc(t('nfp_temp_chart'))}</span></div>
       <div class="nfp-chart-wrap">${svg}</div>
-      <div class="nfp-chart-axis-label">${esc(t('nfp_cycle_day'))}</div>
+      <div class="nfp-chart-axis-label">${esc(t('cycle_day'))}</div>
     </div>`;
   }
 
@@ -1874,10 +1874,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="toolbar-wrap">
           <div class="tab-toolbar">
             <div class="tabs">
-              <button class="tab-btn ${tab === 'stats' ? 'active' : ''}" data-tab="stats">${this._escHtml(t('tab_period'))}</button>
+              <button class="tab-btn ${tab === 'stats' ? 'active' : ''}" data-tab="stats">${this._escHtml(t('period'))}</button>
               <button class="tab-btn ${tab === 'hygiene' ? 'active' : ''}" data-tab="hygiene">${this._escHtml(t('tab_hygiene'))}</button>
-              ${hasNfp ? `<button class="tab-btn ${tab === 'nfp' ? 'active' : ''}" data-tab="nfp">${this._escHtml(t('tab_nfp'))}</button>` : ''}
-              <button class="tab-btn ${tab === 'doctor' ? 'active' : ''}" data-tab="doctor">${this._escHtml(t('tab_doctor'))}</button>
+              ${hasNfp ? `<button class="tab-btn ${tab === 'nfp' ? 'active' : ''}" data-tab="nfp">${this._escHtml(t('nfp_method_nfp'))}</button>` : ''}
+              <button class="tab-btn ${tab === 'doctor' ? 'active' : ''}" data-tab="doctor">${this._escHtml(t('doctor_report_title'))}</button>
             </div>
             <button class="filter-toggle" id="statistics-filter-toggle" title="${this._escHtml(`${t('filter')}: ${this._currentFilterLabel()}`)}" aria-label="${this._escHtml(t('filter_aria'))}"><span class="filter-glyph">⚙</span></button>
           </div>

@@ -230,7 +230,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       const cardTitle = this.querySelector(".card-title");
       if (cardTitle) {
         cardTitle.textContent = status === "pregnant"
-          ? this._t('pregnancy_card_title')
+          ? this._t('pregnancy')
           : this._t('card_title');
       }
 
@@ -1019,16 +1019,16 @@ class MenstruationCountdownTimer extends HTMLElement {
 
       const productConfig = {
         period: {
-          tampon: { icon: this._getSvgIcon("tampon", "large"), name: this._t("tampon"), seconds: (this.config?.tampon_duration || 4) * 3600 },
-          pad: { icon: this._getSvgIcon("pad", "large"), name: this._t("pad"), seconds: (this.config?.pad_duration || 4) * 3600 },
-          cup: { icon: this._getSvgIcon("cup", "large"), name: this._t("cup"), seconds: (this.config?.cup_duration || 7) * 3600 },
-          underwear: { icon: this._getSvgIcon("underwear", "large"), name: this._t("underwear"), seconds: (this.config?.underwear_duration || 6) * 3600 },
+          tampon: { icon: this._getSvgIcon("tampon", "large"), name: this._t("tampons"), seconds: (this.config?.tampon_duration || 4) * 3600 },
+          pad: { icon: this._getSvgIcon("pad", "large"), name: this._t("pads"), seconds: (this.config?.pad_duration || 4) * 3600 },
+          cup: { icon: this._getSvgIcon("cup", "large"), name: this._t("cups"), seconds: (this.config?.cup_duration || 7) * 3600 },
+          underwear: { icon: this._getSvgIcon("underwear", "large"), name: this._t("underwears"), seconds: (this.config?.underwear_duration || 6) * 3600 },
         },
         fertile: {
-          liner: { icon: this._getSvgIcon("liner", "large"), name: this._t("liner"), seconds: (this.config?.liner_duration || 8) * 3600 },
+          liner: { icon: this._getSvgIcon("liner", "large"), name: this._t("liners"), seconds: (this.config?.liner_duration || 8) * 3600 },
         },
         pms: {
-          liner: { icon: this._getSvgIcon("liner", "large"), name: this._t("liner"), seconds: (this.config?.liner_duration || 8) * 3600 },
+          liner: { icon: this._getSvgIcon("liner", "large"), name: this._t("liners"), seconds: (this.config?.liner_duration || 8) * 3600 },
         },
       };
 
@@ -1623,11 +1623,12 @@ class MenstruationCountdownTimer extends HTMLElement {
         postpartum: "Postpartum",
         menopause: "Menopause",
         // Product names
-        tampon: "Tampon",
-        pad: "Pad",
-        cup: "Menstrual Cup",
-        liner: "Liner",
-        underwear: "Period Underwear",
+        tampons: "Tampons",
+        pads: "Pads",
+        cups: "Menstrual Cups",
+        liners: "Liners",
+        underwears: "Period Panties",
+        
         // Symptom fields
         bleeding_strength: "Bleeding Strength",
         pain: "Pain",
@@ -1672,7 +1673,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         usage_logged_emptied: "Cup emptying saved.",
         usage_logged_error: "Could not save product usage.",
         card_title: "Menstrual Countdown",
-        pregnancy_card_title: "Pregnancy",
+        pregnancy: "Pregnancy",
         symptom_saved: "Symptoms saved.",
         symptom_save_error: "Could not save symptoms.",
         // First Period (Pre-Menarche) flow
@@ -2759,35 +2760,35 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
           <div class="help" style="margin-bottom:8px;">${this._t("durations_help")}</div>
           <div class="duration-grid">
             <div class="duration-row">
-              <span class="duration-label">${this._t("tampon_duration")}</span>
+              <span class="duration-label">${this._t("tampon")}</span>
               <div class="input-with-suffix">
                 <input id="tampon_duration" type="number" min="1" step="1" value="${tamponDuration}">
                 <span>${this._t("hours_suffix")}</span>
               </div>
             </div>
             <div class="duration-row">
-              <span class="duration-label">${this._t("pad_duration")}</span>
+              <span class="duration-label">${this._t("pad")}</span>
               <div class="input-with-suffix">
                 <input id="pad_duration" type="number" min="1" step="1" value="${padDuration}">
                 <span>${this._t("hours_suffix")}</span>
               </div>
             </div>
             <div class="duration-row">
-              <span class="duration-label">${this._t("cup_duration")}</span>
+              <span class="duration-label">${this._t("cup")}</span>
               <div class="input-with-suffix">
                 <input id="cup_duration" type="number" min="1" step="1" value="${cupDuration}">
                 <span>${this._t("hours_suffix")}</span>
               </div>
             </div>
             <div class="duration-row">
-              <span class="duration-label">${this._t("underwear_duration")}</span>
+              <span class="duration-label">${this._t("underwear")}</span>
               <div class="input-with-suffix">
                 <input id="underwear_duration" type="number" min="1" step="1" value="${underwearDuration}">
                 <span>${this._t("hours_suffix")}</span>
               </div>
             </div>
             <div class="duration-row">
-              <span class="duration-label">${this._t("liner_duration")}</span>
+              <span class="duration-label">${this._t("liner")}</span>
               <div class="input-with-suffix">
                 <input id="liner_duration" type="number" min="1" step="1" value="${linerDuration}">
                 <span>${this._t("hours_suffix")}</span>
