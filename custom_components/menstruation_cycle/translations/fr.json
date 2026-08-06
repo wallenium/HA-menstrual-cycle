@@ -2,89 +2,89 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Cycle",
-        "description": "Create a profile (username + friendly name) for cycle tracking.",
+        "title": "Cycle menstruel",
+        "description": "Créez un profil (nom d'utilisateur + nom convivial) pour le suivi du cycle.",
         "data": {
-          "profile": "Username/Profile",
-          "friendly_name": "Friendly name",
-          "icon": "Icon (optional, e.g. mdi:calendar-heart)"
+          "profile": "Nom d'utilisateur/Profil",
+          "friendly_name": "Nom convivial",
+          "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)"
         }
       }
     },
     "error": {
-      "invalid_profile": "Profile must contain letters or numbers."
+      "invalid_profile": "Le profil doit contenir des lettres ou des chiffres."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Cycle Settings",
-        "description": "Adjust cycle tracking settings. Changes are saved immediately.",
+        "title": "Paramètres du cycle menstruel",
+        "description": "Ajustez les paramètres de suivi du cycle. Les modifications sont enregistrées immédiatement.",
         "data": {
-          "friendly_name": "Display name",
-          "icon": "Icon (optional, e.g. mdi:calendar-heart)",
-          "period_duration_days": "Period duration (days)",
-          "pregnancy_enabled": "Enable pregnancy mode",
-          "pregnancy_start_date": "Pregnancy start date (YYYY-MM-DD)",
-          "pre_menarche_enabled": "Enable pre-menarche tracking",
-          "estimated_menarche_date": "Estimated menarche date (YYYY-MM-DD)",
-          "family_menarche_age": "Family menarche age (8–20, optional)",
-          "menopause_enabled": "Enable menopause mode",
-          "menopause_start_date": "Menopause start date (YYYY-MM-DD)",
-          "cycle_length_override": "Cycle length override (days, 0 = auto)",
-          "nfp_analysis_mode": "NFP analysis mode"
+          "friendly_name": "Nom d'affichage",
+          "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
+          "period_duration_days": "Durée des règles (jours)",
+          "pregnancy_enabled": "Activer le mode grossesse",
+          "pregnancy_start_date": "Date de début de grossesse (AAAA-MM-JJ)",
+          "pre_menarche_enabled": "Activer le suivi pré-ménarche",
+          "estimated_menarche_date": "Date estimée des premières règles (AAAA-MM-JJ)",
+          "family_menarche_age": "Âge des premières règles dans la famille (8–20, facultatif)",
+          "menopause_enabled": "Activer le mode ménopause",
+          "menopause_start_date": "Date de début de la ménopause (AAAA-MM-JJ)",
+          "cycle_length_override": "Forcer la durée du cycle (jours, 0 = automatique)",
+          "nfp_analysis_mode": "Mode d'analyse PFN"
         },
         "data_description": {
-          "period_duration_days": "Number of days the period typically lasts (1–14).",
-          "pregnancy_enabled": "Activates pregnancy tracking mode. The pregnancy start date is auto-filled from the last cycle start if left empty.",
-          "pregnancy_start_date": "First day of last menstruation (LMP). Leave empty to use the last recorded cycle start.",
-          "pre_menarche_enabled": "Track puberty signs before the first period (menarche).",
-          "estimated_menarche_date": "Estimated date of the first period. Used for countdown tracking.",
-          "family_menarche_age": "Age of menarche in the family (mother/sister) used to estimate the expected age.",
-          "menopause_enabled": "Activates menopause tracking mode.",
-          "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",
-          "cycle_length_override": "Override the automatically calculated average cycle length. Set to 0 to use the auto-calculated value from your history (recommended). Set to 20–38 to manually fix the cycle length used for fertile window and ovulation calculations.",
-          "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle."
+          "period_duration_days": "Nombre de jours que durent habituellement les règles (1–14).",
+          "pregnancy_enabled": "Active le mode de suivi de la grossesse. La date de début de grossesse est renseignée automatiquement à partir du dernier début de cycle si le champ est laissé vide.",
+          "pregnancy_start_date": "Premier jour des dernières règles (DDR). Laissez vide pour utiliser le dernier début de cycle enregistré.",
+          "pre_menarche_enabled": "Suivre les signes de puberté avant les premières règles (ménarche).",
+          "estimated_menarche_date": "Date estimée des premières règles. Utilisée pour le compte à rebours.",
+          "family_menarche_age": "Âge des premières règles dans la famille (mère/sœur), utilisé pour estimer l'âge attendu.",
+          "menopause_enabled": "Active le mode de suivi de la ménopause.",
+          "menopause_start_date": "Date à laquelle la ménopause a commencé (AAAA-MM-JJ). Laissez vide si inconnue.",
+          "cycle_length_override": "Remplace la durée moyenne du cycle calculée automatiquement. Mettez 0 pour utiliser la valeur calculée automatiquement à partir de votre historique (recommandé). Mettez une valeur entre 20 et 38 pour fixer manuellement la durée du cycle utilisée pour le calcul de la fenêtre fertile et de l'ovulation.",
+          "nfp_analysis_mode": "Détermine la façon dont l'ovulation et la fenêtre fertile sont calculées. Le mode « hybride » (par défaut) apprend à partir des données de température observées et se rabat sur la formule statistique si besoin. Le mode « strict » n'affiche l'ovulation et la fenêtre fertile que lorsqu'une hausse de température est confirmée dans le cycle en cours."
         }
       }
     },
     "error": {
-      "invalid_date": "Invalid date format. Please use YYYY-MM-DD.",
-      "invalid_menarche_age": "Age must be a number between 8 and 20."
+      "invalid_date": "Format de date invalide. Veuillez utiliser AAAA-MM-JJ.",
+      "invalid_menarche_age": "L'âge doit être un nombre compris entre 8 et 20."
     }
   },
   "services": {
     "log_product_usage": {
-      "name": "Log product usage",
-      "description": "Log period-product usage for timer integrations and long-term statistics.",
+      "name": "Enregistrer l'utilisation d'un produit",
+      "description": "Enregistre l'utilisation de produits d'hygiène menstruelle pour les intégrations de minuterie et les statistiques à long terme.",
       "fields": {
         "entity_id": {
-          "name": "Entity",
-          "description": "Target menstruation gauge sensor."
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
         },
         "profile": {
-          "name": "Profile",
-          "description": "Configured profile slug."
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
         },
         "entry_id": {
-          "name": "Entry ID",
-          "description": "Config entry identifier."
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
         },
         "product": {
-          "name": "Product",
-          "description": "Product type to log."
+          "name": "Produit",
+          "description": "Type de produit à enregistrer."
         },
         "action": {
           "name": "Action",
-          "description": "Usage action, for example used or emptied."
+          "description": "Action d'utilisation, par exemple utilisé ou vidé."
         },
         "quantity": {
-          "name": "Quantity",
-          "description": "How many products or emptying events to add."
+          "name": "Quantité",
+          "description": "Nombre de produits ou d'événements de vidage à ajouter."
         },
         "date": {
           "name": "Date",
-          "description": "Optional ISO date to backfill. Defaults to today."
+          "description": "Date ISO facultative pour une saisie rétroactive. Par défaut, aujourd'hui."
         }
       }
     }
