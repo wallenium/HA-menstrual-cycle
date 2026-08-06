@@ -62,8 +62,8 @@ Read the full disclaimer in [`Disclaimer`](https://github.com/wallenium/HA-menst
 | 🇬🇧 English | ✅ 100% |
 | 🇩🇪 German | ✅ 100% |
 | 🇸🇪 Swedish | ✅ 100% |
-| 🇫🇷 French | 🟡 0% – Seeking volunteers |
-| 🇪🇸 Spanish | 🟡 0% – Seeking volunteers |
+| 🇫🇷 French | 🟡 96% – Seeking volunteers |
+| 🇪🇸 Spanish | 🟡 95% – Seeking volunteers |
 
 Template files for Swedish, French, and Spanish are already in place. See [Translation Section](https://github.com/wallenium/HA-menstrual-cycle/wiki/Translation-&-l18n) for instructions on how to contribute a translation.
 
