@@ -61,7 +61,7 @@ Read the full disclaimer in [`Disclaimer`](https://github.com/wallenium/HA-menst
 |----------|--------|
 | 🇬🇧 English | ✅ 100% |
 | 🇩🇪 German | ✅ 100% |
-| 🇸🇪 Swedish | 🟡 0% – Seeking volunteers |
+| 🇸🇪 Swedish | ✅ 100% |
 | 🇫🇷 French | 🟡 0% – Seeking volunteers |
 | 🇪🇸 Spanish | 🟡 0% – Seeking volunteers |
 
