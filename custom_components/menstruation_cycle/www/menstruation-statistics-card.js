@@ -870,6 +870,23 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_likelihood_low: 'Low – post-ovulatory phase confirmed',
         nfp_likelihood_unknown: 'Insufficient data',
         nfp_likelihood_disclaimer: 'This is an estimate only, not a medical diagnosis.',
+        planning_title: 'Cycle Planning (Estimates)',
+        planning_disclaimer: 'These are statistical estimates, not medical advice.',
+        period_forecast_title: 'Next Period',
+        period_forecast_window: 'Expected window',
+        period_forecast_confidence: 'Confidence',
+        period_forecast_std: 'Cycle variability',
+        period_forecast_confidence_high: 'High (very regular)',
+        period_forecast_confidence_medium: 'Medium (somewhat regular)',
+        period_forecast_confidence_low: 'Low (irregular cycle)',
+        period_forecast_no_data: 'Not enough cycle history for a forecast.',
+        fertility_forecast_title: 'Conception Planning',
+        fertility_forecast_ovulation: 'Est. ovulation',
+        fertility_forecast_window: 'Fertile window',
+        fertility_forecast_best_days: 'Best days for conception',
+        fertility_forecast_source_nfp: 'NFP (measured)',
+        fertility_forecast_source_estimated: 'Estimated',
+        fertility_forecast_no_data: 'Not enough data for a fertility forecast.',
       },
     };
     const lang = this._lang();
@@ -1370,7 +1387,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     }).join('');
   }
 
-  _renderStatsTab(stats) {
+  _renderStatsTab(stats, attrs) {
     if (!stats) return `<div class="no-data">${this._t('no_cycle_data')}</div>`;
     const t = (k) => this._t(k);
     const esc = (s) => this._escHtml(String(s));
@@ -1432,6 +1449,89 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="section-header"><span class="section-icon">🔗</span><span>${esc(t('correlations_title'))}</span></div>
         ${stats.correlations ? `<div class="section-meta">${esc(t('correlations_subtitle'))}</div>` : ''}
         <div class="corr-list">${this._renderCorrelations(stats.correlations)}</div>
+      </div>
+      ${this._renderPlanningSection(attrs)}`;
+  }
+
+  /**
+   * Render the cycle planning section with period forecast and fertility forecast.
+   * Shows estimates derived from historical cycle data and NFP analysis.
+   *
+   * @param {object} attrs  Sensor state attributes.
+   * @returns {string}  HTML string for the planning section.
+   */
+  _renderPlanningSection(attrs) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+
+    const pf = attrs && attrs.period_forecast;
+    const ff = attrs && attrs.fertility_forecast;
+
+    if (!pf && !ff) return '';
+
+    const confClass = (c) => c === 'high' ? 'nfp-conf-high' : c === 'medium' ? 'nfp-conf-medium' : 'nfp-conf-low';
+    const confLabel = (c) => c === 'high' ? t('period_forecast_confidence_high')
+      : c === 'medium' ? t('period_forecast_confidence_medium')
+      : t('period_forecast_confidence_low');
+
+    let periodHtml = '';
+    if (pf) {
+      periodHtml = `
+        <div class="nfp-info-row nfp-info-highlight">
+          <span class="nfp-info-icon">🩸</span>
+          <span class="nfp-info-label">${esc(t('period_forecast_window'))}</span>
+          <span class="nfp-info-value">${esc(pf.predicted_start)} – ${esc(pf.predicted_end)}</span>
+        </div>
+        <div class="nfp-info-row">
+          <span class="nfp-info-icon">📊</span>
+          <span class="nfp-info-label">${esc(t('period_forecast_confidence'))}</span>
+          <span class="nfp-info-value nfp-likelihood-badge ${confClass(pf.confidence)}">${esc(confLabel(pf.confidence))}</span>
+        </div>
+        <div class="nfp-info-row">
+          <span class="nfp-info-icon">📐</span>
+          <span class="nfp-info-label">${esc(t('period_forecast_std'))}</span>
+          <span class="nfp-info-value">±${esc(String(pf.cycle_std_days))} ${esc(t('days'))}</span>
+        </div>`;
+    } else {
+      periodHtml = `<p class="no-data">${esc(t('period_forecast_no_data'))}</p>`;
+    }
+
+    let fertilityHtml = '';
+    if (ff) {
+      const sourceLabel = ff.source === 'nfp' ? t('fertility_forecast_source_nfp') : t('fertility_forecast_source_estimated');
+      fertilityHtml = `
+        <div class="nfp-info-row nfp-info-highlight">
+          <span class="nfp-info-icon">🎯</span>
+          <span class="nfp-info-label">${esc(t('fertility_forecast_ovulation'))}</span>
+          <span class="nfp-info-value">${esc(ff.ovulation_estimate)} <span class="nfp-confidence-badge ${confClass(ff.confidence)}">${esc(sourceLabel)}</span></span>
+        </div>
+        <div class="nfp-info-row">
+          <span class="nfp-info-icon">📅</span>
+          <span class="nfp-info-label">${esc(t('fertility_forecast_window'))}</span>
+          <span class="nfp-info-value">${esc(ff.fertile_window_start)} – ${esc(ff.fertile_window_end)}</span>
+        </div>
+        <div class="nfp-info-row">
+          <span class="nfp-info-icon">💚</span>
+          <span class="nfp-info-label">${esc(t('fertility_forecast_best_days'))}</span>
+          <span class="nfp-info-value">${esc(ff.best_days_start)} – ${esc(ff.best_days_end)}</span>
+        </div>`;
+    } else {
+      fertilityHtml = `<p class="no-data">${esc(t('fertility_forecast_no_data'))}</p>`;
+    }
+
+    return `
+      <div class="section planning-section">
+        <div class="section-header">
+          <span class="section-icon">🗓️</span>
+          <span>${esc(t('planning_title'))}</span>
+        </div>
+        <div class="nfp-info-box">
+          <div class="planning-subsection-title">${esc(t('period_forecast_title'))}</div>
+          ${periodHtml}
+          <div class="planning-subsection-title" style="margin-top:8px;">${esc(t('fertility_forecast_title'))}</div>
+          ${fertilityHtml}
+        </div>
+        <p class="nfp-likelihood-disclaimer">${esc(t('planning_disclaimer'))}</p>
       </div>`;
   }
 
@@ -1839,7 +1939,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const productStyles = getHygieneStyles({ embedded: true });
 
     let tabContent = '';
-    if (tab === 'stats') tabContent = this._renderStatsTab(stats);
+    if (tab === 'stats') tabContent = this._renderStatsTab(stats, attrs);
     else if (tab === 'hygiene') tabContent = this._renderHygieneTab(attrs);
     else if (tab === 'nfp') tabContent = this._renderNfpTab(attrs);
     else if (tab === 'doctor') tabContent = this._renderDoctorTab();
