@@ -238,6 +238,12 @@ class MenstruationGaugeCard extends HTMLElement {
     return val !== undefined ? val : (i18n.en[key] ?? key);
   }
 
+  _tCategory(key) {
+    const prefixedKey = `cat_${key}`;
+    const prefixedLabel = this._t(prefixedKey);
+    return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(key);
+  }
+
   _normalizeISO(value) {
     const m = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s].*)/);
     if (!m) return null;
@@ -1409,7 +1415,7 @@ class MenstruationGaugeCard extends HTMLElement {
       if (cat.hiddenInModal) {
         return '';
       }
-      const catLabel = this._t(`cat_${cat.key}`);
+      const catLabel = this._tCategory(cat.key);
       if (cat.renderAs === 'cervix-grid') {
         const positionValue = existing.cervix_position || '';
         const textureValue = existing.cervix_texture || '';
