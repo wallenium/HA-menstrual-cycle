@@ -388,5 +388,11 @@
   "nfp_day_label": "Tag {n}",
   "last_cycles": "{count} Zyklen",
   "based_on_daily_usage": "bei ~{value} pro Tag",
-  "for_wash_goal": "für alle {days} Tage Waschrhythmus"
+  "for_wash_goal": "für alle {days} Tage Waschrhythmus",
+  "nfp_pregnancy_likelihood": "Schwangerschaftswahrscheinlichkeit (Schätzung)",
+  "nfp_likelihood_high": "Hoch – fruchtbares Fenster, ungeschützter Geschlechtsverkehr",
+  "nfp_likelihood_elevated": "Erhöht – nahe am fruchtbaren Fenster",
+  "nfp_likelihood_low": "Niedrig – postovulatorische Phase bestätigt",
+  "nfp_likelihood_unknown": "Unzureichende Daten",
+  "nfp_likelihood_disclaimer": "Dies ist nur eine Schätzung, keine medizinische Diagnose."
 }

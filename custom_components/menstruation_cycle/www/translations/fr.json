@@ -365,5 +365,11 @@
   "nfp_day_label": "Jour {n}",
   "last_cycles": "{count} cycles",
   "based_on_daily_usage": "basé sur ~{value}/jour",
-  "for_wash_goal": "pour une routine de lavage de {days} jours"
+  "for_wash_goal": "pour une routine de lavage de {days} jours",
+  "nfp_pregnancy_likelihood": "Probabilité de grossesse (estimation)",
+  "nfp_likelihood_high": "Élevée – fenêtre fertile, rapports non protégés",
+  "nfp_likelihood_elevated": "Élevée – proche de la fenêtre fertile",
+  "nfp_likelihood_low": "Faible – phase post-ovulatoire confirmée",
+  "nfp_likelihood_unknown": "Données insuffisantes",
+  "nfp_likelihood_disclaimer": "Ceci est une estimation uniquement, pas un diagnostic médical."
 }

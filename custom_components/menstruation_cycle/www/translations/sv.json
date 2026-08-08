@@ -363,5 +363,11 @@
   "nfp_day_label": "Dag {n}",
   "last_cycles": "{count} cykler",
   "based_on_daily_usage": "baserat på ~{value}/dag",
-  "for_wash_goal": "för en {days}-dagars tvättrutin"
+  "for_wash_goal": "för en {days}-dagars tvättrutin",
+  "nfp_pregnancy_likelihood": "Graviditetssannolikhet (uppskattning)",
+  "nfp_likelihood_high": "Hög – fertilitetsfönster, oskyddat samlag",
+  "nfp_likelihood_elevated": "Förhöjd – nära fertilitetsfönster",
+  "nfp_likelihood_low": "Låg – post-ovulatorisk fas bekräftad",
+  "nfp_likelihood_unknown": "Otillräcklig data",
+  "nfp_likelihood_disclaimer": "Detta är endast en uppskattning, inte en medicinsk diagnos."
 }
