@@ -54,6 +54,8 @@ class CycleModel:
     nfp_analysis: dict[str, Any] | None
     learned_ovulation_offset: int | None
     nfp_mode: str
+    period_forecast: dict[str, Any] | None
+    fertility_forecast: dict[str, Any] | None
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -606,6 +608,109 @@ def analyze_nfp_cycle(
     }
 
 
+def compute_period_forecast(
+    grouped_starts: list[str],
+    next_predicted_start: str | None,
+    period_duration_days: int,
+) -> dict[str, Any] | None:
+    """Compute a period forecast with confidence based on cycle regularity.
+
+    Returns a dict with:
+        predicted_start: ISO date string of the next expected period start.
+        predicted_end: ISO date string of the expected period end.
+        cycle_std_days: Standard deviation of recent cycle lengths (int).
+        confidence: 'high' (std ≤ 2), 'medium' (std ≤ 5), or 'low'.
+
+    Returns None when fewer than 2 cycle starts are available.
+    """
+    if not next_predicted_start or len(grouped_starts) < 2:
+        return None
+
+    # Compute recent cycle lengths (up to 6 most recent)
+    recent = grouped_starts[-7:]
+    lengths: list[int] = []
+    for idx in range(1, len(recent)):
+        diff = (date.fromisoformat(recent[idx]) - date.fromisoformat(recent[idx - 1])).days
+        if 10 < diff < 80:
+            lengths.append(diff)
+
+    if not lengths:
+        return None
+
+    mean = sum(lengths) / len(lengths)
+    variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
+    std = variance ** 0.5
+
+    if std <= 2:
+        confidence = "high"
+    elif std <= 5:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    predicted_end = (
+        date.fromisoformat(next_predicted_start) + timedelta(days=period_duration_days - 1)
+    ).isoformat()
+
+    return {
+        "predicted_start": next_predicted_start,
+        "predicted_end": predicted_end,
+        "cycle_std_days": round(std, 1),
+        "confidence": confidence,
+    }
+
+
+def compute_fertility_forecast(
+    next_predicted_start: str | None,
+    avg_cycle_length: int | None,
+    fertile_window_start: str | None,
+    fertile_window_end: str | None,
+    ovulation_day: str | None,
+    nfp_analysis: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Compute a fertility / conception planning forecast.
+
+    Returns a dict with:
+        ovulation_estimate: ISO date string of the estimated ovulation day.
+        fertile_window_start: Start of the fertile window (ISO date).
+        fertile_window_end: End of the fertile window (ISO date).
+        best_days_start: Best days for conception – 2 days before ovulation (ISO date).
+        best_days_end: Best days for conception – 1 day before ovulation (ISO date).
+        source: 'nfp' when derived from confirmed NFP analysis, 'estimated' otherwise.
+        confidence: 'high', 'medium', or 'low'.
+
+    Returns None when there is insufficient data to produce an estimate.
+    """
+    if not ovulation_day or not fertile_window_start or not fertile_window_end:
+        return None
+
+    # Determine source and confidence
+    nfp_confidence = nfp_analysis.get("confidence_level") if nfp_analysis else None
+    nfp_detected = nfp_analysis.get("ovulation_detected", False) if nfp_analysis else False
+
+    if nfp_detected and nfp_confidence in ("high", "medium"):
+        source = "nfp"
+        confidence = nfp_confidence
+    else:
+        source = "estimated"
+        confidence = "low" if avg_cycle_length is None else "medium"
+
+    # Best conception days: peak fertility is ~1–2 days before ovulation
+    ov_date = date.fromisoformat(ovulation_day)
+    best_start = (ov_date - timedelta(days=2)).isoformat()
+    best_end = (ov_date - timedelta(days=1)).isoformat()
+
+    return {
+        "ovulation_estimate": ovulation_day,
+        "fertile_window_start": fertile_window_start,
+        "fertile_window_end": fertile_window_end,
+        "best_days_start": best_start,
+        "best_days_end": best_end,
+        "source": source,
+        "confidence": confidence,
+    }
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,
@@ -674,6 +779,8 @@ def build_cycle_model(
             nfp_analysis=None,
             learned_ovulation_offset=None,
             nfp_mode=nfp_mode,
+            period_forecast=None,
+            fertility_forecast=None,
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
@@ -705,6 +812,8 @@ def build_cycle_model(
             nfp_analysis=None,
             learned_ovulation_offset=None,
             nfp_mode=nfp_mode,
+            period_forecast=None,
+            fertility_forecast=None,
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -742,6 +851,8 @@ def build_cycle_model(
                     nfp_analysis=None,
                     learned_ovulation_offset=None,
                     nfp_mode=nfp_mode,
+                    period_forecast=None,
+                    fertility_forecast=None,
                 )
         except ValueError:
             pass
@@ -861,6 +972,11 @@ def build_cycle_model(
     elif next_start and abs((date.fromisoformat(next_start) - now).days) <= 1:
         state = STATE_PMS
 
+    period_forecast = compute_period_forecast(starts, next_start, effective_duration)
+    fertility_forecast = compute_fertility_forecast(
+        next_start, avg_cycle, fertile_start, fertile_end, ovulation_day_iso, nfp_result
+    )
+
     return CycleModel(
         history=normalized,
         grouped_starts=starts,
@@ -888,4 +1004,6 @@ def build_cycle_model(
         nfp_analysis=nfp_result,
         learned_ovulation_offset=learned_ov_offset,
         nfp_mode=nfp_mode,
+        period_forecast=period_forecast,
+        fertility_forecast=fertility_forecast,
     )

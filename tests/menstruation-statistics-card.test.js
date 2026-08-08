@@ -338,6 +338,101 @@ test('NFP tab shows no-data message and no pregnancy likelihood when NFP data is
   assert.ok(!html.includes('nfp-pregnancy-likelihood'), 'pregnancy likelihood section must be absent when no NFP data');
 });
 
+console.log('\nCycle planning and fertility forecast');
+
+test('stats tab renders planning section when period_forecast and fertility_forecast are present (stable cycle)', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2026-09-01',
+    predicted_end: '2026-09-05',
+    cycle_std_days: 1.2,
+    confidence: 'high',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2026-08-18',
+    fertile_window_start: '2026-08-13',
+    fertile_window_end: '2026-08-19',
+    best_days_start: '2026-08-16',
+    best_days_end: '2026-08-17',
+    source: 'estimated',
+    confidence: 'medium',
+  };
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('planning-section'), 'planning section missing from stats tab');
+  assert.ok(html.includes('2026-09-01'), 'period forecast start date missing');
+  assert.ok(html.includes('2026-09-05'), 'period forecast end date missing');
+  assert.ok(html.includes('planning_disclaimer') || html.includes('estimate') || html.includes('statistical'), 'planning disclaimer missing');
+  assert.ok(html.includes('2026-08-13'), 'fertile window start missing');
+  assert.ok(html.includes('2026-08-16'), 'best days start missing');
+});
+
+test('stats tab renders fertility forecast with NFP source label when source is nfp', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2026-09-01',
+    predicted_end: '2026-09-05',
+    cycle_std_days: 0.8,
+    confidence: 'high',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2026-08-18',
+    fertile_window_start: '2026-08-13',
+    fertile_window_end: '2026-08-19',
+    best_days_start: '2026-08-16',
+    best_days_end: '2026-08-17',
+    source: 'nfp',
+    confidence: 'high',
+  };
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('planning-section'), 'planning section missing');
+  assert.ok(html.includes('NFP (measured)'), 'NFP source label missing');
+});
+
+test('stats tab gracefully omits planning section when no forecast data', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = null;
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = null;
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(!html.includes('planning-section'), 'planning section must be absent when no forecast data');
+});
+
+test('_renderPlanningSection shows no-data messages when only partial forecast data is present', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  // Only period_forecast present, no fertility_forecast
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2026-09-01',
+    predicted_end: '2026-09-05',
+    cycle_std_days: 4.5,
+    confidence: 'low',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = null;
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('planning-section'), 'planning section missing when only period_forecast is present');
+  assert.ok(html.includes('2026-09-01'), 'period forecast date missing');
+  // fertility no-data message should be shown
+  assert.ok(html.includes('fertility_forecast_no_data') || html.includes('Not enough data for a fertility forecast'), 'fertility no-data message missing');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);
