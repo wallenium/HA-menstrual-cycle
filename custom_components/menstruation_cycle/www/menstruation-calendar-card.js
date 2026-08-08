@@ -181,6 +181,7 @@ class MenstruationCalendarCard extends HTMLElement {
         opt_open: 'Open',
         nfp_confidence_low: 'Low',
         opt_libido_high: 'High',
+        opt_libido_low: 'Low',
         bleeding_light: 'Light',
         opt_training_moderate: 'Moderate',
         opt_training_intense: 'Intense',
