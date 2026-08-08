@@ -864,6 +864,12 @@ class MenstruationStatisticsCard extends HTMLElement {
         severity_info: 'Info',
         warning: 'Warning',
         severity_alert: 'Alert',
+        nfp_pregnancy_likelihood: 'Pregnancy Likelihood (Estimate)',
+        nfp_likelihood_high: 'High – fertile window, unprotected intercourse',
+        nfp_likelihood_elevated: 'Elevated – near fertile window',
+        nfp_likelihood_low: 'Low – post-ovulatory phase confirmed',
+        nfp_likelihood_unknown: 'Insufficient data',
+        nfp_likelihood_disclaimer: 'This is an estimate only, not a medical diagnosis.',
       },
     };
     const lang = this._lang();
@@ -1433,6 +1439,52 @@ class MenstruationStatisticsCard extends HTMLElement {
     return `<div class="hygiene-tab">${renderHygieneContent(this._hass, this._config, attrs || {})}</div>`;
   }
 
+  /**
+   * Derive a pregnancy-likelihood level from NFP analysis data.
+   *
+   * Returns one of: 'high' | 'elevated' | 'low' | 'unknown'
+   *
+   * Conservative rules (not a medical diagnosis):
+   *  - 'high'     : today falls within the fertile window AND confidence is high/medium
+   *  - 'elevated' : today is within 1 day of the fertile window OR confidence is low but fertile window exists
+   *  - 'low'      : temperature rise confirmed with high/medium confidence (post-ovulatory phase)
+   *  - 'unknown'  : insufficient NFP data to determine likelihood
+   *
+   * @param {object|null} nfp  The nfp_analysis attribute object from the sensor.
+   * @param {string|null} [todayIso]  ISO date string for "today"; defaults to current date.
+   * @returns {'high'|'elevated'|'low'|'unknown'}
+   */
+  _nfpPregnancyLikelihood(nfp, todayIso) {
+    if (!nfp || typeof nfp !== 'object') return 'unknown';
+
+    const todayStr = todayIso || new Date().toISOString().slice(0, 10);
+    const today = new Date(todayStr + 'T12:00:00Z');
+    if (isNaN(today.getTime())) return 'unknown';
+
+    const confidence = nfp.confidence_level || 'low';
+    const tempRiseConfirmed = !!(nfp.details && nfp.details.temperature_rise_confirmed) || !!nfp.temperature_rise_detected;
+
+    const fwStart = nfp.fertile_window && nfp.fertile_window.start;
+    const fwEnd = nfp.fertile_window && nfp.fertile_window.end;
+
+    if (fwStart && fwEnd) {
+      const start = new Date(fwStart + 'T12:00:00Z');
+      const end = new Date(fwEnd + 'T12:00:00Z');
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const inWindow = today >= start && today <= end;
+        const nearWindow = today >= new Date(start.getTime() - 86400000) && today <= new Date(end.getTime() + 86400000);
+
+        if (inWindow && (confidence === 'high' || confidence === 'medium')) return 'high';
+        if (nearWindow) return 'elevated';
+      }
+    }
+
+    // Post-ovulatory phase: temperature rise confirmed and confidence is reliable
+    if (tempRiseConfirmed && (confidence === 'high' || confidence === 'medium')) return 'low';
+
+    return 'unknown';
+  }
+
   _hasNfpData(attrs) {
     const nfp = attrs && attrs.nfp_analysis;
     if (!nfp || typeof nfp !== 'object') return false;
@@ -1491,6 +1543,16 @@ class MenstruationStatisticsCard extends HTMLElement {
     // Build temperature chart from symptom history
     const chartHtml = this._renderNfpTempChart(attrs, nfp);
 
+    const likelihoodLevel = this._nfpPregnancyLikelihood(nfp);
+    const likelihoodLabel = likelihoodLevel === 'high' ? t('nfp_likelihood_high')
+      : likelihoodLevel === 'elevated' ? t('nfp_likelihood_elevated')
+      : likelihoodLevel === 'low' ? t('nfp_likelihood_low')
+      : t('nfp_likelihood_unknown');
+    const likelihoodClass = likelihoodLevel === 'high' ? 'nfp-likelihood-high'
+      : likelihoodLevel === 'elevated' ? 'nfp-likelihood-elevated'
+      : likelihoodLevel === 'low' ? 'nfp-likelihood-low'
+      : 'nfp-likelihood-unknown';
+
     return `
       <div class="section">
         <div class="section-header">
@@ -1529,6 +1591,12 @@ class MenstruationStatisticsCard extends HTMLElement {
             <span class="nfp-info-label">${esc(t('nfp_fertile_window'))}</span>
             <span class="nfp-info-value">${fertileText}</span>
           </div>
+          <div class="nfp-info-row nfp-info-highlight nfp-pregnancy-likelihood">
+            <span class="nfp-info-icon">🤰</span>
+            <span class="nfp-info-label">${esc(t('nfp_pregnancy_likelihood'))}</span>
+            <span class="nfp-info-value nfp-likelihood-badge ${likelihoodClass}">${esc(likelihoodLabel)}</span>
+          </div>
+          <p class="nfp-likelihood-disclaimer">${esc(t('nfp_likelihood_disclaimer'))}</p>
           <div class="nfp-info-row">
             <span class="nfp-info-icon">🔢</span>
             <span class="nfp-info-label">${esc(t('nfp_score'))}</span>
@@ -1833,6 +1901,12 @@ class MenstruationStatisticsCard extends HTMLElement {
         .nfp-conf-high { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
         .nfp-conf-medium { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #f39c12); }
         .nfp-conf-low { background: color-mix(in srgb, var(--secondary-text-color, #888) 14%, transparent); color: var(--secondary-text-color, #888); }
+        .nfp-likelihood-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .nfp-likelihood-high { background: color-mix(in srgb, var(--error-color, #ef4444) 16%, transparent); color: var(--error-color, #ef4444); }
+        .nfp-likelihood-elevated { background: color-mix(in srgb, var(--warning-color, #f59e0b) 16%, transparent); color: var(--warning-color, #f59e0b); }
+        .nfp-likelihood-low { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
+        .nfp-likelihood-unknown { background: color-mix(in srgb, var(--secondary-text-color, #888) 14%, transparent); color: var(--secondary-text-color, #888); }
+        .nfp-likelihood-disclaimer { font-size: 10px; color: var(--secondary-text-color, #888); font-style: italic; margin: 2px 0 6px 24px; padding: 0; }
         .nfp-info-box { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--divider-color, rgba(128,128,128,0.18)); }
         .nfp-info-row { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--divider-color, rgba(128,128,128,0.1)); font-size: 12px; }
         .nfp-info-row:last-child { border-bottom: none; }

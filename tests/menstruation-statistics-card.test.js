@@ -230,6 +230,114 @@ test('compact hygiene layout CSS includes responsive stat grid', () => {
   assert.ok(html.includes('min-height: 76px;'), 'compact hygiene tile height CSS missing');
 });
 
+console.log('\nNFP pregnancy likelihood');
+
+test('_nfpPregnancyLikelihood returns unknown when nfp is null', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  assert.strictEqual(card._nfpPregnancyLikelihood(null), 'unknown');
+  assert.strictEqual(card._nfpPregnancyLikelihood(undefined), 'unknown');
+  assert.strictEqual(card._nfpPregnancyLikelihood({}), 'unknown');
+});
+
+test('_nfpPregnancyLikelihood returns high when today is within fertile window with high confidence', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const today = '2026-08-05';
+  const nfp = {
+    confidence_level: 'high',
+    fertile_window: { start: '2026-08-03', end: '2026-08-07' },
+    temperature_rise_detected: false,
+    details: { temperature_rise_confirmed: false },
+  };
+  assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'high');
+});
+
+test('_nfpPregnancyLikelihood returns high when today is within fertile window with medium confidence', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const today = '2026-08-05';
+  const nfp = {
+    confidence_level: 'medium',
+    fertile_window: { start: '2026-08-03', end: '2026-08-07' },
+    temperature_rise_detected: false,
+  };
+  assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'high');
+});
+
+test('_nfpPregnancyLikelihood returns elevated when today is one day before fertile window', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const today = '2026-08-02';
+  const nfp = {
+    confidence_level: 'high',
+    fertile_window: { start: '2026-08-03', end: '2026-08-07' },
+    temperature_rise_detected: false,
+  };
+  assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'elevated');
+});
+
+test('_nfpPregnancyLikelihood returns low when temperature rise confirmed with high confidence', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const today = '2026-08-15'; // well after any fertile window
+  const nfp = {
+    confidence_level: 'high',
+    fertile_window: { start: '2026-08-03', end: '2026-08-07' },
+    temperature_rise_detected: true,
+    details: { temperature_rise_confirmed: true },
+  };
+  assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'low');
+});
+
+test('_nfpPregnancyLikelihood returns unknown when temperature rise detected but confidence is low', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const today = '2026-08-15';
+  const nfp = {
+    confidence_level: 'low',
+    fertile_window: { start: null, end: null },
+    temperature_rise_detected: true,
+    details: { temperature_rise_confirmed: true },
+  };
+  assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'unknown');
+});
+
+test('NFP tab renders pregnancy likelihood section when NFP data is present', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  const today = new Date().toISOString().slice(0, 10);
+  hass.states['sensor.menstruation'].attributes.nfp_analysis = {
+    confidence_level: 'high',
+    ovulation_day: today,
+    ovulation_detected: true,
+    temperature_rise_day: today,
+    temperature_rise_detected: true,
+    fertile_window: { start: today, end: today },
+    nfp_symptom_score: 0.8,
+    details: { temperature_rise_confirmed: true, conflicting_signals: false },
+  };
+  card._hass = hass;
+  card._tab = 'nfp';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('nfp-pregnancy-likelihood'), 'pregnancy likelihood section missing from NFP tab');
+  assert.ok(html.includes('nfp_likelihood_disclaimer') || html.includes('estimate only'), 'disclaimer missing from NFP tab');
+});
+
+test('NFP tab shows no-data message and no pregnancy likelihood when NFP data is absent', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.nfp_analysis = null;
+  card._hass = hass;
+  card._tab = 'nfp';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(!html.includes('nfp-pregnancy-likelihood'), 'pregnancy likelihood section must be absent when no NFP data');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);
