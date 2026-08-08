@@ -363,6 +363,7 @@ def analyze_nfp_cycle(
         "fertile_window": {"start": None, "end": None},
         "temperature_rise_detected": False,
         "temperature_rise_day": None,
+        "temperature_peak_day": None,
         "cervical_mucus_peak": None,
         "cervix_peak": None,
         "confidence_level": "low",
@@ -423,21 +424,60 @@ def analyze_nfp_cycle(
 
     # Roetzer rule: baseline = lowest of the 6 preceding measurements;
     # rise confirmed when 3+ consecutive readings are >= baseline + 0.2 °C.
+    # A candidate rise is only accepted when no reading within _RISE_SUSTAIN_DAYS
+    # *calendar* days after the last confirmed high reading drops back below the
+    # threshold.  This prevents a transient spike from being accepted as the true
+    # biphasic shift, while remaining robust to multi-cycle symptom histories where
+    # temperatures naturally reset after a new cycle begins far in the future.
+    # At the trailing edge of available data 2 consecutive readings suffice because
+    # the third day has simply not yet been logged.
+    _RISE_SUSTAIN_DAYS = 7
     if len(temp_data) >= 7:
         for i in range(6, len(temp_data)):
             baseline = min(t for _, t in temp_data[i - 6 : i])
             threshold = baseline + 0.2
-            # Check how many consecutive days from position i are above threshold
+            # Count consecutive readings from position i that meet the threshold.
             consecutive = 0
             for j in range(i, min(i + 3, len(temp_data))):
                 if temp_data[j][1] >= threshold:
                     consecutive += 1
                 else:
                     break
-            if consecutive >= 3:
-                temp_rise_day = temp_data[i][0]
-                temp_rise_confirmed = True
-                break
+            # Allow 2 consecutive when we are at the very end of the recorded data
+            # (the third day simply has not been logged yet).
+            at_data_end = (i + consecutive >= len(temp_data))
+            required = 2 if at_data_end else 3
+            if consecutive >= required:
+                # Determine the cutoff date for the sustain window: only readings
+                # that fall within _RISE_SUSTAIN_DAYS calendar days of the last
+                # confirmed high reading are examined, so data from a subsequent
+                # cycle (which naturally returns to lower temperatures) does not
+                # invalidate a genuine rise in the current cycle.
+                last_high_date = date.fromisoformat(temp_data[i + consecutive - 1][0])
+                cutoff_date = last_high_date + timedelta(days=_RISE_SUSTAIN_DAYS)
+                sustained = all(
+                    temp_data[k][1] >= threshold
+                    for k in range(i + consecutive, len(temp_data))
+                    if date.fromisoformat(temp_data[k][0]) <= cutoff_date
+                )
+                if sustained:
+                    temp_rise_day = temp_data[i][0]
+                    temp_rise_confirmed = True
+                    break
+
+    # -----------------------------------------------------------------------
+    # Temperature Peak Day (highest basal temperature in post-period phase)
+    # -----------------------------------------------------------------------
+    # Distinct from temperature_rise_day (which marks the *start* of the confirmed
+    # Roetzer rise); temperature_peak_day marks the single day with the highest
+    # recorded basal temperature after the period ends.
+    temperature_peak_day: str | None = None
+    if temp_data:
+        post_period_temps = [
+            (d, t) for d, t in temp_data if d >= fertility_start_iso
+        ]
+        if post_period_temps:
+            temperature_peak_day = max(post_period_temps, key=lambda x: x[1])[0]
 
     # -----------------------------------------------------------------------
     # Cervical Mucus Peak
@@ -492,6 +532,7 @@ def analyze_nfp_cycle(
             **empty_result,
             "temperature_rise_detected": temp_rise_confirmed,
             "temperature_rise_day": temp_rise_day,
+            "temperature_peak_day": temperature_peak_day,
             "cervical_mucus_peak": mucus_peak,
             "cervix_peak": cervix_peak,
             "details": {
@@ -551,6 +592,7 @@ def analyze_nfp_cycle(
         },
         "temperature_rise_detected": temp_rise_confirmed,
         "temperature_rise_day": temp_rise_day,
+        "temperature_peak_day": temperature_peak_day,
         "cervical_mucus_peak": mucus_peak,
         "cervix_peak": cervix_peak,
         "confidence_level": confidence,
