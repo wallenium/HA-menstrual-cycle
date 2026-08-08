@@ -711,6 +711,175 @@ def compute_fertility_forecast(
     }
 
 
+def _overlap_probability(
+    range_start: date,
+    range_end: date,
+    event_start: date,
+    event_end: date,
+    uncertainty_days: int,
+    confidence_weight: float,
+) -> float:
+    """Estimate overlap probability between a user range and an uncertain event window."""
+    uncertainty = max(0, min(21, int(uncertainty_days)))
+    weighted_confidence = max(0.0, min(1.0, float(confidence_weight)))
+    expanded_start = event_start - timedelta(days=uncertainty)
+    expanded_end = event_end + timedelta(days=uncertainty)
+
+    overlap_start = max(range_start, expanded_start)
+    overlap_end = min(range_end, expanded_end)
+    if overlap_start > overlap_end:
+        return 0.0
+
+    overlap_days = (overlap_end - overlap_start).days + 1
+    expanded_days = max(1, (expanded_end - expanded_start).days + 1)
+    range_days = max(1, (range_end - range_start).days + 1)
+
+    # Blend "event coverage" and "range coverage":
+    # - event coverage: how much of the likely event window is included by the user range
+    # - range coverage: how much of the selected range is covered by likely event days
+    event_coverage = overlap_days / expanded_days
+    range_coverage = overlap_days / range_days
+    base_probability = (event_coverage * 0.7) + (range_coverage * 0.3)
+    return max(0.0, min(1.0, base_probability * weighted_confidence))
+
+
+def _likelihood_label(probability: float) -> str:
+    """Map numeric probability to user-friendly likelihood labels."""
+    if probability >= 0.67:
+        return "likely"
+    if probability >= 0.34:
+        return "possible"
+    return "unlikely"
+
+
+def compute_date_range_forecast(
+    period_forecast: dict[str, Any] | None,
+    fertility_forecast: dict[str, Any] | None,
+    range_start_iso: str,
+    range_end_iso: str,
+) -> dict[str, Any] | None:
+    """Compute date-range likelihood estimates for period and fertility planning."""
+    try:
+        range_start = date.fromisoformat(str(range_start_iso))
+        range_end = date.fromisoformat(str(range_end_iso))
+    except (TypeError, ValueError):
+        return None
+    if range_start > range_end:
+        return None
+
+    period_result: dict[str, Any] | None = None
+    if (
+        period_forecast
+        and period_forecast.get("predicted_start")
+        and period_forecast.get("predicted_end")
+    ):
+        try:
+            period_start = date.fromisoformat(str(period_forecast["predicted_start"]))
+            period_end = date.fromisoformat(str(period_forecast["predicted_end"]))
+        except (TypeError, ValueError):
+            period_start = None
+            period_end = None
+
+        if period_start and period_end:
+            std_days_raw = period_forecast.get("cycle_std_days", 3)
+            try:
+                std_days = max(1, min(14, int(round(float(std_days_raw)))))
+            except (TypeError, ValueError):
+                std_days = 3
+
+            confidence = str(period_forecast.get("confidence", "low")).lower()
+            confidence_weight = 1.0 if confidence == "high" else 0.85 if confidence == "medium" else 0.65
+            probability = _overlap_probability(
+                range_start,
+                range_end,
+                period_start,
+                period_end,
+                std_days,
+                confidence_weight,
+            )
+            period_result = {
+                "probability": round(probability, 3),
+                "probability_percent": int(round(probability * 100)),
+                "likelihood": _likelihood_label(probability),
+                "confidence": confidence,
+                "uncertainty_days": std_days,
+            }
+
+    fertility_result: dict[str, Any] | None = None
+    if (
+        fertility_forecast
+        and fertility_forecast.get("fertile_window_start")
+        and fertility_forecast.get("fertile_window_end")
+        and fertility_forecast.get("ovulation_estimate")
+    ):
+        try:
+            fertile_start = date.fromisoformat(str(fertility_forecast["fertile_window_start"]))
+            fertile_end = date.fromisoformat(str(fertility_forecast["fertile_window_end"]))
+            ovulation = date.fromisoformat(str(fertility_forecast["ovulation_estimate"]))
+        except (TypeError, ValueError):
+            fertile_start = None
+            fertile_end = None
+            ovulation = None
+
+        if fertile_start and fertile_end and ovulation:
+            confidence = str(fertility_forecast.get("confidence", "low")).lower()
+            source = str(fertility_forecast.get("source", "estimated")).lower()
+            confidence_weight = 1.0 if confidence == "high" else 0.85 if confidence == "medium" else 0.6
+            if source != "nfp":
+                confidence_weight *= 0.9
+            uncertainty_days = 1 if confidence == "high" else 2 if confidence == "medium" else 4
+            if source != "nfp":
+                uncertainty_days += 1
+
+            fertile_probability = _overlap_probability(
+                range_start,
+                range_end,
+                fertile_start,
+                fertile_end,
+                uncertainty_days,
+                confidence_weight,
+            )
+            ovulation_probability = _overlap_probability(
+                range_start,
+                range_end,
+                ovulation,
+                ovulation,
+                uncertainty_days,
+                confidence_weight,
+            )
+            probability = max(0.0, min(1.0, (fertile_probability * 0.7) + (ovulation_probability * 0.3)))
+
+            best_days_overlap = False
+            best_start_raw = fertility_forecast.get("best_days_start")
+            best_end_raw = fertility_forecast.get("best_days_end")
+            try:
+                if best_start_raw and best_end_raw:
+                    best_start = date.fromisoformat(str(best_start_raw))
+                    best_end = date.fromisoformat(str(best_end_raw))
+                    best_days_overlap = not (best_end < range_start or best_start > range_end)
+            except (TypeError, ValueError):
+                best_days_overlap = False
+            if best_days_overlap:
+                probability = min(1.0, probability + 0.1)
+
+            fertility_result = {
+                "probability": round(probability, 3),
+                "probability_percent": int(round(probability * 100)),
+                "likelihood": _likelihood_label(probability),
+                "confidence": confidence,
+                "source": source,
+                "uncertainty_days": uncertainty_days,
+                "best_days_overlap": best_days_overlap,
+            }
+
+    return {
+        "range_start": range_start.isoformat(),
+        "range_end": range_end.isoformat(),
+        "period": period_result,
+        "fertility": fertility_result,
+    }
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,

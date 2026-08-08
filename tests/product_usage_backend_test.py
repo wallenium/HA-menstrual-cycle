@@ -292,6 +292,78 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(predictions[0], "2026-07-26")
         self.assertEqual(predictions[1], "2026-09-24")
 
+    def test_date_range_forecast_marks_vacation_window_as_period_likely(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast={
+                "predicted_start": "2027-08-03",
+                "predicted_end": "2027-08-07",
+                "cycle_std_days": 1.5,
+                "confidence": "high",
+            },
+            fertility_forecast=None,
+            range_start_iso="2027-08-01",
+            range_end_iso="2027-08-10",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["period"])
+        self.assertEqual(result["period"]["likelihood"], "likely")
+        self.assertGreaterEqual(result["period"]["probability_percent"], 70)
+        self.assertIsNone(result["fertility"])
+
+    def test_date_range_forecast_marks_fertility_window_as_likely(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast=None,
+            fertility_forecast={
+                "ovulation_estimate": "2027-08-06",
+                "fertile_window_start": "2027-08-01",
+                "fertile_window_end": "2027-08-07",
+                "best_days_start": "2027-08-04",
+                "best_days_end": "2027-08-05",
+                "source": "nfp",
+                "confidence": "high",
+            },
+            range_start_iso="2027-08-04",
+            range_end_iso="2027-08-08",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["fertility"])
+        self.assertEqual(result["fertility"]["likelihood"], "likely")
+        self.assertTrue(result["fertility"]["best_days_overlap"])
+        self.assertGreaterEqual(result["fertility"]["probability_percent"], 70)
+        self.assertIsNone(result["period"])
+
+    def test_date_range_forecast_degrades_gracefully_for_variable_cycle(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast={
+                "predicted_start": "2027-08-20",
+                "predicted_end": "2027-08-24",
+                "cycle_std_days": 9,
+                "confidence": "low",
+            },
+            fertility_forecast={
+                "ovulation_estimate": "2027-08-16",
+                "fertile_window_start": "2027-08-11",
+                "fertile_window_end": "2027-08-17",
+                "best_days_start": "2027-08-14",
+                "best_days_end": "2027-08-15",
+                "source": "estimated",
+                "confidence": "low",
+            },
+            range_start_iso="2027-08-01",
+            range_end_iso="2027-08-03",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result["period"]["confidence"], "low")
+        self.assertLessEqual(result["period"]["probability_percent"], 35)
+        self.assertEqual(result["fertility"]["confidence"], "low")
+        self.assertLessEqual(result["fertility"]["probability_percent"], 35)
+
     def test_learn_ovulation_pattern_returns_none_when_no_cycle_starts(self) -> None:
         result = model.learn_ovulation_pattern([], [])
         self.assertIsNone(result)
