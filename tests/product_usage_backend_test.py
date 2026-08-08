@@ -449,6 +449,133 @@ class ProductUsageBackendTests(unittest.TestCase):
             self.assertEqual(date.fromisoformat(cycle.fertile_window_start), ov - timedelta(days=5))
             self.assertEqual(date.fromisoformat(cycle.fertile_window_end), ov + timedelta(days=1))
 
+    def test_nfp_temperature_rise_detected_on_05_august_2026(self) -> None:
+        """Temperature rise must be identified on 2026-08-05 (36.1 → 36.6).
+
+        The dataset shows a flat pre-ovulatory phase around 36.1–36.2 that
+        drops back to 36.1 on 2026-08-02 and 2026-08-04, ruling out an
+        earlier rise.  The clear jump to 36.6 on 2026-08-05, sustained at
+        36.5 on 2026-08-06, is the first genuine Roetzer-compliant rise.
+        """
+        symptom_history = [
+            {"date": "2026-07-22", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-23", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-24", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-25", "basal_temp": 36.0, "bleeding_strength": "medium"},
+            {"date": "2026-07-26", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-27", "basal_temp": 36.2, "bleeding_strength": "medium"},
+            {"date": "2026-07-28", "basal_temp": 36.2},
+            {"date": "2026-07-29", "basal_temp": 36.2},
+            {"date": "2026-07-30", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-07-31", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-01", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-02", "basal_temp": 36.1, "cervical_mucus": "cremig"},
+            {"date": "2026-08-03", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-04", "basal_temp": 36.1, "cervical_mucus": "fadenziehend"},
+            {"date": "2026-08-05", "basal_temp": 36.6, "cervical_mucus": "fadenziehend"},
+            {"date": "2026-08-06", "basal_temp": 36.5},
+        ]
+
+        result = model.analyze_nfp_cycle(
+            symptom_history=symptom_history,
+            cycle_start_iso="2026-07-22",
+            period_duration_days=6,
+        )
+
+        # The Roetzer rise must start on 2026-08-05, not on an earlier day
+        # whose elevated level was subsequently invalidated by a drop to 36.1.
+        self.assertTrue(result["temperature_rise_detected"])
+        self.assertEqual(result["temperature_rise_day"], "2026-08-05")
+
+        # Mucus peak (last fertile-quality mucus) is also 2026-08-05.
+        self.assertEqual(result["cervical_mucus_peak"], "2026-08-05")
+
+        # Temperature peak day (highest post-period temperature) is 2026-08-05.
+        self.assertEqual(result["temperature_peak_day"], "2026-08-05")
+
+        # Rise day and mucus peak coincide → no conflicting signals.
+        self.assertFalse(result["details"]["conflicting_signals"])
+        self.assertTrue(result["details"]["temperature_rise_confirmed"])
+
+    def test_nfp_temperature_rise_day_does_not_match_invalidated_early_candidate(self) -> None:
+        """An early temperature rise that is later followed by a drop must not be reported.
+
+        Without mucus / cervix data the earliest reading that reaches baseline+0.2
+        comes from the flat 36.2 plateau.  Because 2026-08-02 (36.1) drops back
+        below the threshold of 36.2, that plateau must not be accepted as a rise.
+        Only the 2026-08-05 jump qualifies.
+        """
+        symptom_history = [
+            {"date": "2026-07-22", "basal_temp": 36.2},
+            {"date": "2026-07-23", "basal_temp": 36.1},
+            {"date": "2026-07-24", "basal_temp": 36.1},
+            {"date": "2026-07-25", "basal_temp": 36.0},
+            {"date": "2026-07-26", "basal_temp": 36.2},
+            {"date": "2026-07-27", "basal_temp": 36.2},
+            {"date": "2026-07-28", "basal_temp": 36.2},
+            {"date": "2026-07-29", "basal_temp": 36.2},
+            {"date": "2026-07-30", "basal_temp": 36.2},
+            {"date": "2026-07-31", "basal_temp": 36.2},
+            {"date": "2026-08-01", "basal_temp": 36.2},
+            {"date": "2026-08-02", "basal_temp": 36.1},
+            {"date": "2026-08-03", "basal_temp": 36.2},
+            {"date": "2026-08-04", "basal_temp": 36.1},
+            {"date": "2026-08-05", "basal_temp": 36.6},
+            {"date": "2026-08-06", "basal_temp": 36.5},
+        ]
+
+        result = model.analyze_nfp_cycle(
+            symptom_history=symptom_history,
+            cycle_start_iso="2026-07-22",
+            period_duration_days=6,
+        )
+
+        # temperature_rise_day must not be 2026-07-28 (invalidated by 2026-08-02 drop).
+        self.assertNotEqual(result["temperature_rise_day"], "2026-07-28")
+        # The confirmed rise starts on 2026-08-05.
+        self.assertEqual(result["temperature_rise_day"], "2026-08-05")
+        self.assertTrue(result["temperature_rise_detected"])
+
+        # Temperature peak is on 2026-08-05 (highest post-period reading).
+        self.assertEqual(result["temperature_peak_day"], "2026-08-05")
+
+    def test_nfp_temperature_peak_day_is_separate_from_rise_day(self) -> None:
+        """temperature_peak_day must reflect the highest reading, not the rise start.
+
+        When the rise begins on day X but the highest temperature is on a later
+        day Y, both fields must be present and distinct.
+        """
+        from datetime import timedelta as td
+
+        cycle_start = date(2026, 6, 1)
+        # Low phase (36.5) for 14 days, then rises: 36.8, 36.9, 37.0, 36.8, 36.8
+        entries = []
+        for i in range(14):
+            entries.append({
+                "date": (cycle_start + td(days=i)).isoformat(),
+                "basal_temp": 36.5,
+            })
+        high_temps = [36.8, 36.9, 37.0, 36.8, 36.8]
+        for j, t in enumerate(high_temps):
+            entries.append({
+                "date": (cycle_start + td(days=14 + j)).isoformat(),
+                "basal_temp": t,
+            })
+
+        result = model.analyze_nfp_cycle(
+            symptom_history=entries,
+            cycle_start_iso=cycle_start.isoformat(),
+            period_duration_days=5,
+        )
+
+        self.assertTrue(result["temperature_rise_detected"])
+        # Rise starts on day 14 (first high reading).
+        self.assertEqual(result["temperature_rise_day"], (cycle_start + td(days=14)).isoformat())
+        # Peak is on day 16 (highest reading = 37.0).
+        self.assertEqual(result["temperature_peak_day"], (cycle_start + td(days=16)).isoformat())
+        # The two fields must differ.
+        self.assertNotEqual(result["temperature_rise_day"], result["temperature_peak_day"])
+
 
 
         entries = [

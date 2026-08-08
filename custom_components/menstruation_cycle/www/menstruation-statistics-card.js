@@ -815,7 +815,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_confidence_high: 'High',
         nfp_confidence_medium: 'Medium',
         nfp_confidence_low: 'Low',
-        nfp_temp_rise: 'Temperature Rise',
+        nfp_temp_rise: 'Temperature Rise Day',
+        nfp_temp_peak: 'Temperature Peak Day',
         nfp_mucus_peak: 'Cervical Mucus Peak',
         nfp_cervix_peak: 'Cervix Position Peak',
         nfp_ovulation: 'Estimated Ovulation',
@@ -1502,6 +1503,11 @@ class MenstruationStatisticsCard extends HTMLElement {
             <span class="nfp-info-icon"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP" class="nfp-info-icon-img" /></span>
             <span class="nfp-info-label">${esc(t('nfp_temp_rise'))}</span>
             <span class="nfp-info-value">${dayLabel(nfp.temperature_rise_day)}</span>
+          </div>
+          <div class="nfp-info-row">
+            <span class="nfp-info-icon">🌡️</span>
+            <span class="nfp-info-label">${esc(t('nfp_temp_peak'))}</span>
+            <span class="nfp-info-value">${dayLabel(nfp.temperature_peak_day)}</span>
           </div>
           <div class="nfp-info-row">
             <span class="nfp-info-icon">💧</span>
