@@ -146,7 +146,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
   _toLocalDateLabel(iso) {
     const dt = this._parseISO(iso);
     if (!dt) return iso || '';
-    const language = this._hass?.locale?.language || 'de-DE';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
     return new Intl.DateTimeFormat(language, {
       year: 'numeric',
       month: '2-digit',

@@ -43,9 +43,38 @@ function testBuildCyclesWithMultiplePredictions() {
   console.log('  ✓ history row builds multiple future predicted cycles');
 }
 
+function testToLocalDateLabelFallsBackToEn() {
+  const card = new CardClass();
+  card._hass = null;
+  const label = card._toLocalDateLabel('2026-07-15');
+  // Should not throw and should return a non-empty string using 'en' locale
+  assert.ok(typeof label === 'string' && label.length > 0);
+  assert.ok(!label.includes('de-DE'), 'Should not hard-code de-DE locale');
+  console.log('  ✓ _toLocalDateLabel falls back to en when hass is null');
+}
+
+function testToLocalDateLabelUsesHassLocale() {
+  const card = new CardClass();
+  card._hass = { locale: { language: 'fr' } };
+  const label = card._toLocalDateLabel('2026-07-15');
+  assert.ok(typeof label === 'string' && label.length > 0);
+  console.log('  ✓ _toLocalDateLabel uses hass locale language when set');
+}
+
+function testToLocalDateLabelFallsBackToHassLanguage() {
+  const card = new CardClass();
+  card._hass = { language: 'es' };
+  const label = card._toLocalDateLabel('2026-07-15');
+  assert.ok(typeof label === 'string' && label.length > 0);
+  console.log('  ✓ _toLocalDateLabel falls back to hass.language when locale missing');
+}
+
 let failed = 0;
 [
   testBuildCyclesWithMultiplePredictions,
+  testToLocalDateLabelFallsBackToEn,
+  testToLocalDateLabelUsesHassLocale,
+  testToLocalDateLabelFallsBackToHassLanguage,
 ].forEach((fn) => {
   try {
     fn();

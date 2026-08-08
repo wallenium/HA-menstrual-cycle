@@ -189,6 +189,31 @@ function testBuildCyclesIncludesMultiplePredictions() {
   console.log('  ✓ builds multiple predicted cycles from predicted_cycle_starts');
 }
 
+function testHeatmapToLocalDateLabelFallsBackToEn() {
+  const card = new CardClass();
+  card._hass = null;
+  const label = card._toLocalDateLabel('2026-07-15');
+  assert.ok(typeof label === 'string' && label.length > 0);
+  assert.ok(!label.includes('de-DE'), 'Should not hard-code de-DE locale');
+  console.log('  ✓ heatmap _toLocalDateLabel falls back to en when hass is null');
+}
+
+function testHeatmapToLocalDateLabelUsesHassLocale() {
+  const card = new CardClass();
+  card._hass = { locale: { language: 'fr' } };
+  const label = card._toLocalDateLabel('2026-07-15');
+  assert.ok(typeof label === 'string' && label.length > 0);
+  console.log('  ✓ heatmap _toLocalDateLabel uses hass locale language when set');
+}
+
+function testHeatmapToLocalDateLabelFallsBackToHassLanguage() {
+  const card = new CardClass();
+  card._hass = { language: 'es' };
+  const label = card._toLocalDateLabel('2026-07-15');
+  assert.ok(typeof label === 'string' && label.length > 0);
+  console.log('  ✓ heatmap _toLocalDateLabel falls back to hass.language when locale missing');
+}
+
 let failed = 0;
 
 [
@@ -197,6 +222,9 @@ let failed = 0;
   testRerendersOnConfiguredSymptomEntityChange,
   testDarkModeActualPeriodStyleExists,
   testBuildCyclesIncludesMultiplePredictions,
+  testHeatmapToLocalDateLabelFallsBackToEn,
+  testHeatmapToLocalDateLabelUsesHassLocale,
+  testHeatmapToLocalDateLabelFallsBackToHassLanguage,
 ].forEach((fn) => {
   try {
     fn();
