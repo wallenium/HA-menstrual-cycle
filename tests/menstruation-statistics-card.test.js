@@ -433,6 +433,75 @@ test('_renderPlanningSection shows no-data messages when only partial forecast d
   assert.ok(html.includes('fertility_forecast_no_data') || html.includes('Not enough data for a fertility forecast'), 'fertility no-data message missing');
 });
 
+test('_computeDateRangeForecast marks vacation range as likely for period estimate', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const forecast = card._computeDateRangeForecast(
+    {
+      predicted_start: '2027-08-03',
+      predicted_end: '2027-08-07',
+      cycle_std_days: 1.2,
+      confidence: 'high',
+    },
+    null,
+    '2027-08-01',
+    '2027-08-10',
+  );
+  assert.ok(forecast, 'range forecast missing');
+  assert.strictEqual(forecast.period.label, 'likely');
+  assert.ok(forecast.period.percent >= 70, `expected period likelihood >= 70, got ${forecast.period.percent}`);
+});
+
+test('_computeDateRangeForecast marks fertility window as likely in selected range', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const forecast = card._computeDateRangeForecast(
+    null,
+    {
+      ovulation_estimate: '2027-08-06',
+      fertile_window_start: '2027-08-01',
+      fertile_window_end: '2027-08-07',
+      best_days_start: '2027-08-04',
+      best_days_end: '2027-08-05',
+      source: 'nfp',
+      confidence: 'high',
+    },
+    '2027-08-04',
+    '2027-08-08',
+  );
+  assert.ok(forecast, 'range forecast missing');
+  assert.strictEqual(forecast.fertility.label, 'likely');
+  assert.ok(forecast.fertility.percent >= 70, `expected fertility likelihood >= 70, got ${forecast.fertility.percent}`);
+});
+
+test('planning section shows low-confidence hint for variable cycle range forecast', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2027-08-20',
+    predicted_end: '2027-08-24',
+    cycle_std_days: 9,
+    confidence: 'low',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2027-08-16',
+    fertile_window_start: '2027-08-11',
+    fertile_window_end: '2027-08-17',
+    best_days_start: '2027-08-14',
+    best_days_end: '2027-08-15',
+    source: 'estimated',
+    confidence: 'low',
+  };
+  card._planningRangeStart = '2027-08-01';
+  card._planningRangeEnd = '2027-08-03';
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Low confidence due to high cycle variability'), 'low-confidence hint missing');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);
