@@ -254,7 +254,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
   _toLocalDateLabel(iso) {
     const dt = this._parseISO(iso);
     if (!dt) return iso || '';
-    const language = this._hass?.locale?.language || 'de-DE';
+    const language = this._hass?.locale?.language || this._hass?.language || 'en';
     return new Intl.DateTimeFormat(language, {
       day: '2-digit',
       month: '2-digit',
