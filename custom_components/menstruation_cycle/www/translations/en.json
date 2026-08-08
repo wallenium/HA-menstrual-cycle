@@ -280,6 +280,7 @@
   "nfp_confidence": "Confidence",
   "nfp_confidence_high": "High",
   "nfp_temp_rise": "Temperature Rise",
+  "nfp_temp_peak": "Temperature Peak",
   "nfp_mucus_peak": "Cervical Mucus Peak",
   "nfp_cervix_peak": "Cervix Position Peak",
   "nfp_ovulation": "Estimated Ovulation",

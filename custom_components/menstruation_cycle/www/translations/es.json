@@ -330,6 +330,7 @@
   "nfp_temp_rise": "Aumento de temperatura",
   "nfp_mucus_peak": "Pico de moco cervical",
   "nfp_cervix_peak": "Pico de posición del cuello uterino",
+  "nfp_temp_peak": "Pico de temperatura",
   "nfp_ovulation": "Ovulación estimada",
   "nfp_fertile_window": "Ventana fértil",
   "nfp_score": "Puntuación PFN",

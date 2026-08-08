@@ -282,6 +282,7 @@
   "nfp_temp_rise": "Hausse de température",
   "nfp_mucus_peak": "Pic de glaire cervicale",
   "nfp_cervix_peak": "Pic de position du col",
+  "nfp_temp_peak": "Pic de température",
   "nfp_ovulation": "Ovulation estimée",
   "nfp_fertile_window": "Fenêtre fertile",
   "nfp_score": "Score MNF",

@@ -282,6 +282,7 @@
   "nfp_temp_rise": "Temperaturstegring",
   "nfp_mucus_peak": "Toppvärde cervixslem",
   "nfp_cervix_peak": "Toppvärde livmodertappens position",
+  "nfp_temp_peak": "Temperaturtopp",
   "nfp_ovulation": "Uppskattad ägglossning",
   "nfp_fertile_window": "Fertilt fönster",
   "nfp_score": "NFP-poäng",
