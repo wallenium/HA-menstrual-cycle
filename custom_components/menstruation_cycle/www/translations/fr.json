@@ -371,5 +371,22 @@
   "nfp_likelihood_elevated": "Élevée – proche de la fenêtre fertile",
   "nfp_likelihood_low": "Faible – phase post-ovulatoire confirmée",
   "nfp_likelihood_unknown": "Données insuffisantes",
-  "nfp_likelihood_disclaimer": "Ceci est une estimation uniquement, pas un diagnostic médical."
+  "nfp_likelihood_disclaimer": "Ceci est une estimation uniquement, pas un diagnostic médical.",
+  "planning_title": "Planification du cycle (estimations)",
+  "planning_disclaimer": "Ce sont des estimations statistiques, pas un conseil médical.",
+  "period_forecast_title": "Prochaines règles",
+  "period_forecast_window": "Fenêtre prévue",
+  "period_forecast_confidence": "Confiance",
+  "period_forecast_std": "Variabilité du cycle",
+  "period_forecast_confidence_high": "Élevée (cycle très régulier)",
+  "period_forecast_confidence_medium": "Moyenne (cycle assez régulier)",
+  "period_forecast_confidence_low": "Faible (cycle irrégulier)",
+  "period_forecast_no_data": "Pas assez d'historique de cycle pour une prévision.",
+  "fertility_forecast_title": "Planification de la conception",
+  "fertility_forecast_ovulation": "Ovulation estimée",
+  "fertility_forecast_window": "Fenêtre fertile",
+  "fertility_forecast_best_days": "Meilleurs jours pour la conception",
+  "fertility_forecast_source_nfp": "NFP (mesuré)",
+  "fertility_forecast_source_estimated": "Estimé",
+  "fertility_forecast_no_data": "Pas assez de données pour une prévision de fertilité."
 }

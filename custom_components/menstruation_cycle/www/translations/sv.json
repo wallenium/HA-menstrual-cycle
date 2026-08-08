@@ -369,5 +369,22 @@
   "nfp_likelihood_elevated": "Förhöjd – nära fertilitetsfönster",
   "nfp_likelihood_low": "Låg – post-ovulatorisk fas bekräftad",
   "nfp_likelihood_unknown": "Otillräcklig data",
-  "nfp_likelihood_disclaimer": "Detta är endast en uppskattning, inte en medicinsk diagnos."
+  "nfp_likelihood_disclaimer": "Detta är endast en uppskattning, inte en medicinsk diagnos.",
+  "planning_title": "Cykelplanering (uppskattningar)",
+  "planning_disclaimer": "Detta är statistiska uppskattningar, inte medicinsk rådgivning.",
+  "period_forecast_title": "Nästa menstruation",
+  "period_forecast_window": "Förväntat fönster",
+  "period_forecast_confidence": "Förtroende",
+  "period_forecast_std": "Cykelvariation",
+  "period_forecast_confidence_high": "Hög (mycket regelbunden)",
+  "period_forecast_confidence_medium": "Medel (något regelbunden)",
+  "period_forecast_confidence_low": "Låg (oregelbunden cykel)",
+  "period_forecast_no_data": "Inte tillräckligt med cykelhistorik för en prognos.",
+  "fertility_forecast_title": "Planering av befruktning",
+  "fertility_forecast_ovulation": "Uppskattad ägglossning",
+  "fertility_forecast_window": "Fertilt fönster",
+  "fertility_forecast_best_days": "ästa dagar för befruktning",
+  "fertility_forecast_source_nfp": "NFP (uppmätt)",
+  "fertility_forecast_source_estimated": "Uppskattad",
+  "fertility_forecast_no_data": "Inte tillräckligt med data för en fertilitetsprognos."
 }
