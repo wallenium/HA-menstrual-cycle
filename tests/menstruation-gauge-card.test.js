@@ -506,6 +506,31 @@ function testPregnancyModeModalHidesPeriodToggle() {
 }
 
 // ---------------------------------------------------------------------------
+// E2b) Category label translation fallback in symptom modal
+// ---------------------------------------------------------------------------
+
+function testCategoryLabelTranslationFallback() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass({ state: 'period', attributes: {} });
+  card._hass.locale.language = 'en';
+
+  const prevCache = global.window.menstruationCycleI18n.cache.en;
+  global.window.menstruationCycleI18n.cache.en = {
+    ...(prevCache || {}),
+    cat_libido: 'Libido label',
+    intercourse: 'Intercourse label',
+  };
+
+  assert.strictEqual(card._tCategory('libido'), 'Libido label', 'existing cat_* translations must still be used');
+  assert.strictEqual(card._tCategory('intercourse'), 'Intercourse label', 'missing cat_* translations must fall back to the unprefixed key');
+
+  global.window.menstruationCycleI18n.cache.en = prevCache;
+
+  console.log('  ✓ symptom modal category labels prefer cat_* and fall back to the base key');
+}
+
+// ---------------------------------------------------------------------------
 // E3) Pregnancy mode: symptom logging saves correctly (no early return)
 // ---------------------------------------------------------------------------
 
@@ -1258,6 +1283,7 @@ const tests = [
   ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
+  ['category-label-translation-fallback', testCategoryLabelTranslationFallback],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],
   ['non-pregnancy-symptom-config-regression', testNonPregnancySymptomConfig],
   ['discharge-symptom-config-ordering', testDischargeSymptomConfigAndOrdering],
