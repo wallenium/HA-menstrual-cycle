@@ -1458,6 +1458,10 @@ class MenstruationGaugeCard extends HTMLElement {
     return new Date(base.getFullYear(), base.getMonth(), 1, 12, 0, 0, 0);
   }
 
+  _timelineAnchorMonthStartIso() {
+    return this._isoFromDate(this._timelineBaseMonth());
+  }
+
   _timelineStripMonths() {
     const baseMonth = this._timelineBaseMonth();
     return Array.from({ length: 13 }).map((_, index) => {
@@ -1561,7 +1565,7 @@ class MenstruationGaugeCard extends HTMLElement {
 
   _captureTimelineState() {
     const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
-    if (!strip) return null;
+    if (!strip || !this._timelineHasCenteredOnce) return null;
     const anchor = this._timelineStripAnchorEl(strip) || strip.querySelector?.('.tl-month-col.is-anchor');
     const scrollLeft = Number.isFinite(strip.scrollLeft) ? strip.scrollLeft : null;
     if (!anchor && scrollLeft === null) return null;
@@ -1680,14 +1684,13 @@ class MenstruationGaugeCard extends HTMLElement {
     const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
     const monthEls = Array.from(strip?.querySelectorAll?.('.tl-month-col') || []);
     if (!strip || !monthEls.length) return false;
-    const today = this._todayDate();
-    if (!(today instanceof Date) || Number.isNaN(today.getTime())) return false;
-    const monthStartIso = this._isoFromDate(new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0, 0));
+    const baseMonth = this._timelineBaseMonth();
+    const monthStartIso = this._timelineAnchorMonthStartIso();
     if (!monthStartIso) return false;
     const target = strip.querySelector?.(`[data-timeline-month-start="${monthStartIso}"]`);
     if (!target) return false;
     monthEls.forEach((monthEl) => monthEl.classList.toggle('is-anchor', monthEl === target));
-    this._timelineMonth = new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0, 0);
+    this._timelineMonth = new Date(baseMonth.getFullYear(), baseMonth.getMonth(), 1, 12, 0, 0, 0);
     const targetLeft = Math.max(0, target.offsetLeft - Math.max(0, (strip.clientWidth - target.offsetWidth) / 2));
     if (typeof strip.scrollTo === 'function') {
       strip.scrollTo({ left: targetLeft, behavior: 'auto' });
@@ -1731,25 +1734,23 @@ class MenstruationGaugeCard extends HTMLElement {
     }
     const restored = this._restoreTimelineState();
     if (!restored && !this._timelineHasCenteredOnce && strip.clientWidth > 0) {
-      const focused = this._focusTimelineOnTodayMonth();
-      if (!focused) this._centerTimelineStrip('auto');
-      this._timelineHasCenteredOnce = true;
-    }
-
-    const _scrollToAnchor = () => {
-      const anchor = strip.querySelector('.tl-month-col.is-anchor');
-      if (anchor) {
-        const target = Math.max(0, anchor.offsetLeft - (strip.clientWidth - anchor.offsetWidth) / 2);
-        strip.scrollTo({ left: target, behavior: 'auto' });
-      }
-      this._syncTimelineMonthFromScroll?.();
-      this._updateTimelineNavState?.();
-    };
-    _scrollToAnchor();
-    requestAnimationFrame(() => {
+      const _scrollToAnchor = () => {
+        const focused = this._focusTimelineOnTodayMonth();
+        if (!focused) this._centerTimelineStrip('auto');
+      };
       _scrollToAnchor();
-      requestAnimationFrame(() => _scrollToAnchor());
-    });
+      requestAnimationFrame(() => {
+        _scrollToAnchor();
+        requestAnimationFrame(() => {
+          _scrollToAnchor();
+          this._timelineHasCenteredOnce = true;
+          this._syncTimelineMonthFromScroll?.();
+          this._updateTimelineNavState?.();
+        });
+      });
+    } else {
+      this._updateTimelineNavState?.();
+    }
 
     this._scheduleTimelineNavStateUpdates();
   }
