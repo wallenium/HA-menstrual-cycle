@@ -89,9 +89,11 @@ class MenstruationGaugeCard extends HTMLElement {
     this._iconCache = {};
     this._gaugeRotation = 0;
     this._timelineMonth = null;
+    this._timelineMonthInitialized = false;
     this._timelineWindowRevision = 0;
     this._timelineHasCenteredOnce = false;
     this._pendingTimelineState = null;
+    this._timelineScrollHandler = null;
     this._render();
   }
 
@@ -120,7 +122,6 @@ class MenstruationGaugeCard extends HTMLElement {
     // connected and laid out, so both the gauge sizing and timeline centering self-heal.
     if (this._config && this._hass) {
       this._lastCardWidth = 0;
-      this._timelineHasCenteredOnce = false;
       this._render();
     }
   }
@@ -880,6 +881,142 @@ class MenstruationGaugeCard extends HTMLElement {
     }
     ranges.push({ start, end: prev });
     return ranges;
+  }
+
+  _validSeries60(series60) {
+    return Array.isArray(series60)
+      && series60.length === 60
+      && series60.every((step) => {
+        if (!step || typeof step !== 'object') return false;
+        return Boolean(this._parseISO(step.iso));
+      });
+  }
+
+  _extendCycleStarts(cycleStarts, targetEndIso, effectiveAvgCycle) {
+    const normalized = Array.from(new Set(
+      (Array.isArray(cycleStarts) ? cycleStarts : [])
+        .map((iso) => this._normalizeISO(iso))
+        .filter(Boolean),
+    )).sort();
+    if (!normalized.length) return normalized;
+    const avgCycle = Number.isFinite(Number(effectiveAvgCycle)) && Number(effectiveAvgCycle) > 0
+      ? Math.round(Number(effectiveAvgCycle))
+      : 28;
+    const safeTargetEnd = this._normalizeISO(targetEndIso);
+    if (!safeTargetEnd) return normalized;
+
+    const seen = new Set(normalized);
+    let lastIso = normalized[normalized.length - 1];
+    let safety = 0;
+    while (lastIso && this._dayDiff(safeTargetEnd, lastIso) > 0 && safety < 48) {
+      const nextIso = this._addDaysToISO(lastIso, avgCycle);
+      if (!nextIso || seen.has(nextIso)) break;
+      seen.add(nextIso);
+      normalized.push(nextIso);
+      lastIso = nextIso;
+      safety += 1;
+    }
+    return normalized.sort();
+  }
+
+  _timelineMarkerSets(model, months) {
+    const confirmedSet = model.confirmedSet instanceof Set ? model.confirmedSet : new Set();
+    const predictedSet = new Set();
+    const fertileSet = new Set();
+    const ovulationSet = new Set();
+    const cycleStartsBase = Array.isArray(model.cycleStarts) ? model.cycleStarts : [];
+    const effectiveAvgCycle = Number.isFinite(Number(model.effectiveAvgCycle))
+      ? Number(model.effectiveAvgCycle)
+      : 28;
+    const hasNfpData = model.hasNfpData || false;
+    const shouldUseSensorFallback = model.shouldUseSensorFallback !== false;
+    const showPredictedCycles = this._config?.show_predicted_cycles !== false;
+    const maxPredictedCycles = Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6)));
+    const safePeriodDuration = Number.isFinite(Number(model.periodDuration))
+      ? Math.max(1, Math.min(14, Math.round(Number(model.periodDuration))))
+      : 5;
+    const firstMonth = months[0]?.monthDate;
+    const lastMonth = months[months.length - 1]?.monthDate;
+    if (!firstMonth || !lastMonth) {
+      return { confirmedSet, predictedSet, fertileSet, ovulationSet };
+    }
+
+    const todayDt = this._parseISO(model.todayIso)
+      || this._todayDate?.()
+      || new Date();
+    const safeToday = todayDt instanceof Date && !Number.isNaN(todayDt.getTime())
+      ? new Date(todayDt.getFullYear(), todayDt.getMonth(), todayDt.getDate(), 12, 0, 0, 0)
+      : new Date();
+    const futureHorizonDays = Math.max(maxPredictedCycles * effectiveAvgCycle, 180);
+    const visibleStartDt = new Date(firstMonth.getFullYear(), firstMonth.getMonth(), 1, 12, 0, 0, 0);
+    const visibleEndDt = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 12, 0, 0, 0);
+    const forecastEndDt = new Date(
+      safeToday.getFullYear(),
+      safeToday.getMonth(),
+      safeToday.getDate() + futureHorizonDays,
+      12,
+      0,
+      0,
+      0,
+    );
+    const cycleStarts = this._extendCycleStarts(
+      cycleStartsBase,
+      this._isoFromDate(visibleEndDt > forecastEndDt ? visibleEndDt : forecastEndDt),
+      effectiveAvgCycle,
+    );
+
+    if (showPredictedCycles) {
+      cycleStarts.forEach((cycleStartIso) => {
+        if (!cycleStartIso || confirmedSet.has(cycleStartIso)) return;
+        for (let offset = 0; offset < safePeriodDuration; offset++) {
+          const predIso = this._addDaysToISO(cycleStartIso, offset);
+          if (!predIso || predIso < this._isoFromDate(visibleStartDt) || predIso > this._isoFromDate(visibleEndDt)) continue;
+          if (!confirmedSet.has(predIso)) predictedSet.add(predIso);
+        }
+      });
+    }
+
+    for (
+      let cursor = new Date(visibleStartDt.getFullYear(), visibleStartDt.getMonth(), visibleStartDt.getDate(), 12, 0, 0, 0);
+      cursor <= visibleEndDt;
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1, 12, 0, 0, 0)
+    ) {
+      const iso = this._isoFromDate(cursor);
+      if (!iso) continue;
+      if (!hasNfpData && cycleStarts.length > 0) {
+        let cycleStartForDay = null;
+        let nextCycleStartForDay = null;
+        for (let i = cycleStarts.length - 1; i >= 0; i--) {
+          if (cycleStarts[i] <= iso) {
+            cycleStartForDay = cycleStarts[i];
+            nextCycleStartForDay = cycleStarts[i + 1] || null;
+            break;
+          }
+        }
+        if (cycleStartForDay) {
+          const fw = this._fertileWindowForCycle(cycleStartForDay, nextCycleStartForDay, effectiveAvgCycle);
+          if (fw) {
+            if (fw.fertileStart && fw.fertileEnd
+                && this._dayDiff(iso, fw.fertileStart) >= 0
+                && this._dayDiff(fw.fertileEnd, iso) >= 0) fertileSet.add(iso);
+            if (fw.ovulationDay && iso === fw.ovulationDay) ovulationSet.add(iso);
+          }
+        }
+        if (shouldUseSensorFallback) {
+          if (!fertileSet.has(iso) && model.fertileStart && model.fertileEnd
+              && this._dayDiff(iso, model.fertileStart) >= 0
+              && this._dayDiff(model.fertileEnd, iso) >= 0) fertileSet.add(iso);
+          if (!ovulationSet.has(iso) && model.ovulationDay && iso === model.ovulationDay) ovulationSet.add(iso);
+        }
+      } else if (shouldUseSensorFallback) {
+        if (model.fertileStart && model.fertileEnd
+            && this._dayDiff(iso, model.fertileStart) >= 0
+            && this._dayDiff(model.fertileEnd, iso) >= 0) fertileSet.add(iso);
+        if (model.ovulationDay && iso === model.ovulationDay) ovulationSet.add(iso);
+      }
+    }
+
+    return { confirmedSet, predictedSet, fertileSet, ovulationSet };
   }
 
   _bleedingBlocks(history) {
