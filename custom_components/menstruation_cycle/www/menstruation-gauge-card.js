@@ -2358,7 +2358,8 @@ class MenstruationGaugeCard extends HTMLElement {
       this._lastCardWidth = this.getBoundingClientRect()?.width || 0;
     }
     if (!this._timelineMonthInitialized) {
-      this._timelineMonth = this._currentTimelineMonthStart();
+      const t = this._todayDate?.() || new Date();
+      this._timelineMonth = new Date(t.getFullYear(), t.getMonth(), 1, 12, 0, 0, 0);
       this._timelineMonthInitialized = true;
     }
     const locale = this._hass?.locale?.language || 'de';
