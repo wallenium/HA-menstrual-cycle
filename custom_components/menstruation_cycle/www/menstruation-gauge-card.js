@@ -1428,12 +1428,12 @@ class MenstruationGaugeCard extends HTMLElement {
         const textureValue = existing.cervix_texture || '';
         const positionButtons = cat.options.map((opt) => {
           const sel = positionValue === opt ? ' sym-selected' : '';
-          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_position" data-val="${opt}">${this._t(`opt_${opt}`)}</button>`;
+          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_position" data-val="${opt}">${this._tOption(opt)}</button>`;
         }).join('');
         const textureConfig = symptomConfig.find((entry) => entry.key === 'cervix_texture');
         const textureButtons = (textureConfig?.options || []).map((opt) => {
           const sel = textureValue === opt ? ' sym-selected' : '';
-          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_texture" data-val="${opt}">${this._t(`opt_${opt}`)}</button>`;
+          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_texture" data-val="${opt}">${this._tOption(opt)}</button>`;
         }).join('');
         return `
           <div class="sym-row">
@@ -1455,14 +1455,14 @@ class MenstruationGaugeCard extends HTMLElement {
         const currentValues = Array.isArray(existing[cat.key]) ? existing[cat.key] : [];
         const checkboxes = cat.options.map((opt) => {
           const checked = currentValues.includes(opt) ? 'checked' : '';
-          return `<label class="sym-opt-label"><input type="checkbox" class="sym-multi" name="${cat.key}" value="${opt}" ${checked}><span>${this._t(`opt_${opt}`)}</span></label>`;
+          return `<label class="sym-opt-label"><input type="checkbox" class="sym-multi" name="${cat.key}" value="${opt}" ${checked}><span>${this._tOption(opt)}</span></label>`;
         }).join('');
         return `<div class="sym-row"><div class="sym-cat-head"><ha-icon icon="${cat.icon}"></ha-icon><span>${catLabel}</span></div><div class="sym-options sym-multi-opts">${checkboxes}</div></div>`;
       }
       const currentValue = existing[cat.key] || '';
       const buttons = cat.options.map((opt) => {
         const sel = currentValue === opt ? ' sym-selected' : '';
-        return `<button type="button" class="sym-opt-btn${sel}" data-cat="${cat.key}" data-val="${opt}">${this._t(`opt_${opt}`)}</button>`;
+        return `<button type="button" class="sym-opt-btn${sel}" data-cat="${cat.key}" data-val="${opt}">${this._tOption(opt)}</button>`;
       }).join('');
       const hiddenClass = cat.dependsOn && existing[cat.dependsOn.key] !== cat.dependsOn.value ? ' sym-hidden' : '';
       return `<div class="sym-row${hiddenClass}" data-sym-row="${cat.key}"><div class="sym-cat-head"><ha-icon icon="${cat.icon}"></ha-icon><span>${catLabel}</span></div><div class="sym-options sym-single-opts">${buttons}</div></div>`;

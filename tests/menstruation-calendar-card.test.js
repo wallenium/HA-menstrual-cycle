@@ -255,6 +255,30 @@ function testEditorHasPredictedOptions() {
   console.log('  ✓ editor defaults show_predicted_cycles and num_predicted_cycles');
 }
 
+function testTranslationFallbackHelpers() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = makeHass();
+
+  const prevCache = global.window.menstruationCycleI18n.cache.en;
+  global.window.menstruationCycleI18n.cache.en = {
+    ...(prevCache || {}),
+    cat_libido: 'Libido label',
+    intercourse: 'Intercourse label',
+    opt_protected: 'Protected label',
+    custom_option: 'Custom option label',
+  };
+
+  assert.strictEqual(card._tCategory('libido'), 'Libido label', 'existing cat_* translations must still be used');
+  assert.strictEqual(card._tCategory('intercourse'), 'Intercourse label', 'missing cat_* translations must fall back to the unprefixed key');
+  assert.strictEqual(card._tOption('protected'), 'Protected label', 'existing opt_* translations must still be used');
+  assert.strictEqual(card._tOption('custom_option'), 'Custom option label', 'missing opt_* translations must fall back to the unprefixed key');
+
+  global.window.menstruationCycleI18n.cache.en = prevCache;
+
+  console.log('  ✓ calendar translation helpers prefer prefixed keys and fall back to base keys');
+}
+
 function testNfpLowConfidenceIgnoredInCalendar() {
   // Cycle started June 5; standard calc puts ovulation around June 18.
   // NFP says ovulation on July 25, fertile July 20-26 – but confidence is "low".
@@ -329,6 +353,7 @@ let failed = 0;
   testPredictedLegendEntry,
   testPredictedLegendHidden,
   testEditorHasPredictedOptions,
+  testTranslationFallbackHelpers,
   testNfpLowConfidenceIgnoredInCalendar,
 ].forEach((fn) => {
   try {

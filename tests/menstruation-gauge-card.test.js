@@ -530,6 +530,27 @@ function testCategoryLabelTranslationFallback() {
   console.log('  ✓ symptom modal category labels prefer cat_* and fall back to the base key');
 }
 
+function testOptionLabelTranslationFallback() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass({ state: 'period', attributes: {} });
+  card._hass.locale.language = 'en';
+
+  const prevCache = global.window.menstruationCycleI18n.cache.en;
+  global.window.menstruationCycleI18n.cache.en = {
+    ...(prevCache || {}),
+    opt_protected: 'Protected label',
+    custom_option: 'Custom option label',
+  };
+
+  assert.strictEqual(card._tOption('protected'), 'Protected label', 'existing opt_* translations must still be used');
+  assert.strictEqual(card._tOption('custom_option'), 'Custom option label', 'missing opt_* translations must fall back to the unprefixed key');
+
+  global.window.menstruationCycleI18n.cache.en = prevCache;
+
+  console.log('  ✓ symptom modal option labels prefer opt_* and fall back to the base key');
+}
+
 // ---------------------------------------------------------------------------
 // E3) Pregnancy mode: symptom logging saves correctly (no early return)
 // ---------------------------------------------------------------------------
@@ -1284,6 +1305,7 @@ const tests = [
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['category-label-translation-fallback', testCategoryLabelTranslationFallback],
+  ['option-label-translation-fallback', testOptionLabelTranslationFallback],
   ['pregnancy-mode-symptom-save', testPregnancyModeSymptomSave],
   ['non-pregnancy-symptom-config-regression', testNonPregnancySymptomConfig],
   ['discharge-symptom-config-ordering', testDischargeSymptomConfigAndOrdering],
