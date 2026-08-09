@@ -1735,6 +1735,22 @@ class MenstruationGaugeCard extends HTMLElement {
       if (!focused) this._centerTimelineStrip('auto');
       this._timelineHasCenteredOnce = true;
     }
+
+    const _scrollToAnchor = () => {
+      const anchor = strip.querySelector('.tl-month-col.is-anchor');
+      if (anchor) {
+        const target = Math.max(0, anchor.offsetLeft - (strip.clientWidth - anchor.offsetWidth) / 2);
+        strip.scrollTo({ left: target, behavior: 'auto' });
+      }
+      this._syncTimelineMonthFromScroll?.();
+      this._updateTimelineNavState?.();
+    };
+    _scrollToAnchor();
+    requestAnimationFrame(() => {
+      _scrollToAnchor();
+      requestAnimationFrame(() => _scrollToAnchor());
+    });
+
     this._scheduleTimelineNavStateUpdates();
   }
 
