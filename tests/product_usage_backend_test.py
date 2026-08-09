@@ -648,8 +648,107 @@ class ProductUsageBackendTests(unittest.TestCase):
         # The two fields must differ.
         self.assertNotEqual(result["temperature_rise_day"], result["temperature_peak_day"])
 
+    def test_current_cycle_conception_likelihood_rises_with_fertile_window_signals(self) -> None:
+        history = [
+            "2026-05-27", "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+            "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28", "2026-06-29", "2026-06-30",
+            "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26", "2026-07-27",
+        ]
+        symptom_history = [
+            {"date": "2026-07-22", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-23", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-24", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-25", "basal_temp": 36.0, "bleeding_strength": "medium"},
+            {"date": "2026-07-26", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-27", "basal_temp": 36.2, "bleeding_strength": "medium"},
+            {"date": "2026-07-28", "basal_temp": 36.2},
+            {"date": "2026-07-29", "basal_temp": 36.2},
+            {"date": "2026-07-30", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-07-31", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-01", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-02", "basal_temp": 36.1, "cervical_mucus": "cremig"},
+            {"date": "2026-08-03", "basal_temp": 36.2, "cervical_mucus": "cremig", "intercourse": "unprotected"},
+            {"date": "2026-08-04", "basal_temp": 36.1, "cervical_mucus": "fadenziehend", "test": "positive_ovulation"},
+            {"date": "2026-08-05", "basal_temp": 36.6, "cervical_mucus": "fadenziehend", "intercourse": "unprotected"},
+            {"date": "2026-08-06", "basal_temp": 36.5},
+        ]
 
+        cycle = model.build_cycle_model(
+            history=history,
+            period_duration_days=6,
+            symptom_history=symptom_history,
+            today=date(2026, 8, 10),
+            nfp_mode="strict",
+        )
 
+        likelihood = cycle.nfp_analysis["conception_likelihood"]
+        self.assertEqual(likelihood["level"], "high")
+        self.assertGreaterEqual(likelihood["probability"], 40)
+        self.assertEqual(likelihood["reason_key"], "fertile_unprotected")
+
+    def test_current_cycle_conception_likelihood_drops_after_negative_test_post_ovulation(self) -> None:
+        history = [
+            "2026-05-27", "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+            "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28", "2026-06-29", "2026-06-30",
+            "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26", "2026-07-27",
+        ]
+        symptom_history = [
+            {"date": "2026-07-22", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-23", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-24", "basal_temp": 36.1, "bleeding_strength": "heavy"},
+            {"date": "2026-07-25", "basal_temp": 36.0, "bleeding_strength": "medium"},
+            {"date": "2026-07-26", "basal_temp": 36.2, "bleeding_strength": "heavy"},
+            {"date": "2026-07-27", "basal_temp": 36.2, "bleeding_strength": "medium"},
+            {"date": "2026-07-28", "basal_temp": 36.2},
+            {"date": "2026-07-29", "basal_temp": 36.2},
+            {"date": "2026-07-30", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-07-31", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-01", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-02", "basal_temp": 36.1, "cervical_mucus": "cremig"},
+            {"date": "2026-08-03", "basal_temp": 36.2, "cervical_mucus": "cremig"},
+            {"date": "2026-08-04", "basal_temp": 36.1, "cervical_mucus": "fadenziehend", "test": "positive_ovulation"},
+            {"date": "2026-08-05", "basal_temp": 36.6, "cervical_mucus": "fadenziehend"},
+            {"date": "2026-08-06", "basal_temp": 36.5},
+            {"date": "2026-08-17", "basal_temp": 36.5, "test": "negative_pregnancy"},
+        ]
+
+        cycle = model.build_cycle_model(
+            history=history,
+            period_duration_days=6,
+            symptom_history=symptom_history,
+            today=date(2026, 8, 18),
+            nfp_mode="strict",
+        )
+
+        likelihood = cycle.nfp_analysis["conception_likelihood"]
+        self.assertEqual(likelihood["level"], "low")
+        self.assertLessEqual(likelihood["probability"], 10)
+        self.assertEqual(likelihood["reason_key"], "negative_test")
+
+    def test_current_cycle_conception_likelihood_degrades_gracefully_with_sparse_variable_data(self) -> None:
+        history = [
+            "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-04",
+            "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-23",
+            "2026-07-04", "2026-07-05", "2026-07-06",
+        ]
+        symptom_history = [
+            {"date": "2026-07-04", "bleeding_strength": "heavy"},
+            {"date": "2026-07-05", "bleeding_strength": "medium"},
+        ]
+
+        cycle = model.build_cycle_model(
+            history=history,
+            period_duration_days=5,
+            symptom_history=symptom_history,
+            today=date(2026, 7, 10),
+        )
+
+        likelihood = cycle.nfp_analysis["conception_likelihood"]
+        self.assertEqual(likelihood["level"], "unknown")
+        self.assertIsNone(likelihood["probability"])
+        self.assertEqual(likelihood["reason_key"], "insufficient_data")
+
+    def test_storage_normalizes_product_usage_dates_and_aliases(self) -> None:
         entries = [
             {"created_at": "2026-07-18T09:15:00Z", "product": "pantyliners", "quantity": "2"},
             {"date": "2026-07-19T10:30:00+02:00", "product": "period panties"},

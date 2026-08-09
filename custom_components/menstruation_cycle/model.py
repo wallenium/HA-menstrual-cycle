@@ -608,6 +608,317 @@ def analyze_nfp_cycle(
     }
 
 
+def _entry_value_set(entry: dict[str, Any], key: str) -> set[str]:
+    """Return normalized string values for a symptom entry field."""
+    raw_value = entry.get(key)
+    if raw_value is None:
+        return set()
+
+    values = raw_value if isinstance(raw_value, (list, tuple, set)) else [raw_value]
+    normalized: set[str] = set()
+    for value in values:
+        text = str(value).strip().lower()
+        if text:
+            normalized.add(text)
+    return normalized
+
+
+def compute_cycle_conception_likelihood(
+    history: list[str],
+    symptom_history: list[dict[str, Any]],
+    cycle_start_iso: str,
+    nfp_analysis: dict[str, Any] | None,
+    fertile_window_start: str | None = None,
+    fertile_window_end: str | None = None,
+    ovulation_day: str | None = None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Estimate the current cycle's conception likelihood from cycle + symptom data."""
+    result: dict[str, Any] = {
+        "probability": None,
+        "level": "unknown",
+        "confidence": "low",
+        "reason_key": "insufficient_data",
+        "window_source": "none",
+        "factors": {
+            "unprotected_intercourse_days": 0,
+            "protected_intercourse_days": 0,
+            "positive_ovulation_tests": 0,
+            "negative_pregnancy_tests": 0,
+            "fertile_signal_count": 0,
+        },
+    }
+
+    try:
+        cycle_start = date.fromisoformat(str(cycle_start_iso))
+    except (TypeError, ValueError):
+        return result
+
+    now = today or date.today()
+    normalized_history = [day for day in normalize_history(history) if day <= now.isoformat()]
+    cycle_symptoms = [
+        entry
+        for entry in normalize_symptoms(symptom_history)
+        if cycle_start_iso <= entry.get("date", "") <= now.isoformat()
+    ]
+
+    if not cycle_symptoms and len(normalized_history) < 2:
+        return result
+
+    fw_start_date: date | None = None
+    fw_end_date: date | None = None
+    ovulation_date: date | None = None
+    window_source = "none"
+    try:
+        if fertile_window_start and fertile_window_end:
+            fw_start_date = date.fromisoformat(str(fertile_window_start))
+            fw_end_date = date.fromisoformat(str(fertile_window_end))
+            window_source = (
+                "nfp"
+                if nfp_analysis and nfp_analysis.get("ovulation_detected")
+                else "estimated"
+            )
+        if ovulation_day:
+            ovulation_date = date.fromisoformat(str(ovulation_day))
+        elif fw_end_date is not None:
+            ovulation_date = fw_end_date - timedelta(days=1)
+    except ValueError:
+        fw_start_date = None
+        fw_end_date = None
+        ovulation_date = None
+        window_source = "none"
+
+    unprotected_days: list[date] = []
+    protected_days: list[date] = []
+    positive_ovulation_tests = 0
+    negative_ovulation_tests = 0
+    positive_pregnancy_tests = 0
+    negative_pregnancy_tests: list[date] = []
+    late_bleeding = False
+
+    for entry in cycle_symptoms:
+        entry_date = date.fromisoformat(entry["date"])
+        intercourse_values = _entry_value_set(entry, "intercourse")
+        test_values = _entry_value_set(entry, "test")
+
+        if "unprotected" in intercourse_values:
+            unprotected_days.append(entry_date)
+        if "protected" in intercourse_values:
+            protected_days.append(entry_date)
+
+        if "positive_ovulation" in test_values:
+            positive_ovulation_tests += 1
+        if "negative_ovulation" in test_values:
+            negative_ovulation_tests += 1
+        if "positive_pregnancy" in test_values:
+            positive_pregnancy_tests += 1
+        if "negative_pregnancy" in test_values:
+            negative_pregnancy_tests.append(entry_date)
+
+        bleeding_strength = str(entry.get("bleeding_strength", "")).strip().lower()
+        if (
+            ovulation_date is not None
+            and bleeding_strength in {"medium", "heavy", "very_heavy"}
+            and (entry_date - ovulation_date).days >= 7
+        ):
+            late_bleeding = True
+
+    if positive_pregnancy_tests:
+        return {
+            **result,
+            "probability": 99,
+            "level": "high",
+            "confidence": "high",
+            "reason_key": "positive_test",
+            "window_source": window_source,
+            "factors": {
+                **result["factors"],
+                "unprotected_intercourse_days": len(unprotected_days),
+                "protected_intercourse_days": len(protected_days),
+                "positive_ovulation_tests": positive_ovulation_tests,
+                "negative_pregnancy_tests": len(negative_pregnancy_tests),
+                "fertile_signal_count": 1,
+            },
+        }
+
+    nfp_details = nfp_analysis.get("details", {}) if isinstance(nfp_analysis, dict) else {}
+    temp_rise_confirmed = bool(
+        (isinstance(nfp_details, dict) and nfp_details.get("temperature_rise_confirmed"))
+        or (isinstance(nfp_analysis, dict) and nfp_analysis.get("temperature_rise_detected"))
+    )
+    fertile_signal_count = sum(
+        1
+        for value in (
+            temp_rise_confirmed,
+            bool(isinstance(nfp_analysis, dict) and nfp_analysis.get("cervical_mucus_peak")),
+            bool(isinstance(nfp_analysis, dict) and nfp_analysis.get("cervix_peak")),
+            positive_ovulation_tests > 0,
+            window_source == "nfp" and ovulation_date is not None,
+        )
+        if value
+    )
+
+    recent_starts = grouped_cycle_starts(normalized_history)[-7:]
+    cycle_lengths: list[int] = []
+    for idx in range(1, len(recent_starts)):
+        diff = (date.fromisoformat(recent_starts[idx]) - date.fromisoformat(recent_starts[idx - 1])).days
+        if 10 < diff < 80:
+            cycle_lengths.append(diff)
+
+    regularity_bonus = 0.0
+    confidence_score = 0.05 if cycle_symptoms else 0.0
+    if cycle_lengths:
+        mean = sum(cycle_lengths) / len(cycle_lengths)
+        variance = sum((length - mean) ** 2 for length in cycle_lengths) / len(cycle_lengths)
+        std = variance ** 0.5
+        if std <= 2:
+            regularity_bonus = 0.03
+            confidence_score += 0.18
+        elif std <= 5:
+            regularity_bonus = 0.02
+            confidence_score += 0.1
+        else:
+            confidence_score += 0.03
+
+    nfp_confidence = (
+        str(nfp_analysis.get("confidence_level", "low")).lower()
+        if isinstance(nfp_analysis, dict)
+        else "low"
+    )
+    if nfp_confidence == "high":
+        confidence_score += 0.32
+    elif nfp_confidence == "medium":
+        confidence_score += 0.22
+    elif fertile_signal_count:
+        confidence_score += 0.12
+
+    if window_source != "none":
+        confidence_score += 0.12
+    if positive_ovulation_tests:
+        confidence_score += 0.08
+    if isinstance(nfp_details, dict) and nfp_details.get("conflicting_signals"):
+        confidence_score -= 0.15
+
+    probability = 0.01
+    if ovulation_date is not None:
+        probability += 0.05
+    if fw_start_date is not None and fw_end_date is not None:
+        probability += 0.04
+    if temp_rise_confirmed:
+        probability += 0.04
+    if positive_ovulation_tests:
+        probability += 0.04
+    if isinstance(nfp_analysis, dict) and nfp_analysis.get("cervical_mucus_peak"):
+        probability += 0.03
+    if isinstance(nfp_analysis, dict) and nfp_analysis.get("cervix_peak"):
+        probability += 0.02
+    probability += regularity_bonus
+
+    unprotected_best = 0
+    unprotected_window = 0
+    protected_window = 0
+
+    for intercourse_day in unprotected_days:
+        if ovulation_date is not None and 0 <= (ovulation_date - intercourse_day).days <= 2:
+            unprotected_best += 1
+        elif fw_start_date is not None and fw_end_date is not None and fw_start_date <= intercourse_day <= fw_end_date:
+            unprotected_window += 1
+        elif fw_start_date is not None and fw_end_date is not None:
+            near_start = fw_start_date - timedelta(days=2)
+            near_end = fw_end_date + timedelta(days=1)
+            if near_start <= intercourse_day <= near_end:
+                probability += 0.08
+        else:
+            probability += 0.04
+
+    for intercourse_day in protected_days:
+        if fw_start_date is not None and fw_end_date is not None and fw_start_date <= intercourse_day <= fw_end_date:
+            protected_window += 1
+        elif ovulation_date is not None and 0 <= (ovulation_date - intercourse_day).days <= 2:
+            protected_window += 1
+
+    if unprotected_best:
+        probability += 0.22 + min(0.08, (unprotected_best - 1) * 0.04)
+    elif unprotected_window:
+        probability += 0.16 + min(0.06, (unprotected_window - 1) * 0.03)
+    elif protected_window:
+        probability += 0.04
+
+    if negative_ovulation_tests and not positive_ovulation_tests:
+        probability -= 0.03
+    if isinstance(nfp_details, dict) and nfp_details.get("conflicting_signals"):
+        probability -= 0.05
+
+    late_negative_test = bool(
+        ovulation_date is not None
+        and any((test_day - ovulation_date).days >= 10 for test_day in negative_pregnancy_tests)
+    )
+    if late_negative_test:
+        probability = min(probability, 0.08)
+
+    if late_bleeding:
+        probability = min(probability, 0.05)
+
+    if not unprotected_days and not protected_days and positive_pregnancy_tests == 0:
+        probability = min(probability, 0.28)
+
+    if fertile_signal_count == 0 and not unprotected_days and not protected_days and len(cycle_symptoms) < 3:
+        return {
+            **result,
+            "window_source": window_source,
+            "factors": {
+                **result["factors"],
+                "unprotected_intercourse_days": len(unprotected_days),
+                "protected_intercourse_days": len(protected_days),
+                "positive_ovulation_tests": positive_ovulation_tests,
+                "negative_pregnancy_tests": len(negative_pregnancy_tests),
+                "fertile_signal_count": fertile_signal_count,
+            },
+        }
+
+    probability = max(0.0, min(0.85, probability))
+    probability_percent = int(round(probability * 100))
+
+    if confidence_score >= 0.6:
+        confidence = "high"
+    elif confidence_score >= 0.3:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    if probability_percent >= 40:
+        level = "high"
+    elif probability_percent >= 18:
+        level = "elevated"
+    else:
+        level = "low"
+
+    reason_key = "fertile_signals"
+    if late_negative_test:
+        reason_key = "negative_test"
+    elif unprotected_best or unprotected_window:
+        reason_key = "fertile_unprotected"
+    elif protected_window:
+        reason_key = "protected_window"
+    elif late_bleeding or (temp_rise_confirmed and fw_end_date is not None and now > fw_end_date):
+        reason_key = "post_ovulation"
+
+    return {
+        "probability": probability_percent,
+        "level": level,
+        "confidence": confidence,
+        "reason_key": reason_key,
+        "window_source": window_source,
+        "factors": {
+            "unprotected_intercourse_days": len(unprotected_days),
+            "protected_intercourse_days": len(protected_days),
+            "positive_ovulation_tests": positive_ovulation_tests,
+            "negative_pregnancy_tests": len(negative_pregnancy_tests),
+            "fertile_signal_count": fertile_signal_count,
+        },
+    }
+
+
 def compute_period_forecast(
     grouped_starts: list[str],
     next_predicted_start: str | None,
@@ -1130,6 +1441,17 @@ def build_cycle_model(
                 if fw.get("start") and fw.get("end"):
                     fertile_start = fw["start"]
                     fertile_end = fw["end"]
+
+        nfp_result["conception_likelihood"] = compute_cycle_conception_likelihood(
+            history=normalized,
+            symptom_history=symptoms,
+            cycle_start_iso=current_cycle_start,
+            nfp_analysis=nfp_result,
+            fertile_window_start=(nfp_result.get("fertile_window") or {}).get("start") or fertile_start,
+            fertile_window_end=(nfp_result.get("fertile_window") or {}).get("end") or fertile_end,
+            ovulation_day=nfp_result.get("ovulation_day") or ovulation_day_iso,
+            today=now,
+        )
 
     state = STATE_NEUTRAL
     if current_period and current_period.get("is_active"):

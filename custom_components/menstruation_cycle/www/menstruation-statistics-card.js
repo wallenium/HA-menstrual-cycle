@@ -870,12 +870,19 @@ class MenstruationStatisticsCard extends HTMLElement {
         severity_info: 'Info',
         warning: 'Warning',
         severity_alert: 'Alert',
-        nfp_pregnancy_likelihood: 'Pregnancy Likelihood (Estimate)',
-        nfp_likelihood_high: 'High – fertile window, unprotected intercourse',
-        nfp_likelihood_elevated: 'Elevated – near fertile window',
-        nfp_likelihood_low: 'Low – post-ovulatory phase confirmed',
-        nfp_likelihood_unknown: 'Insufficient data',
-        nfp_likelihood_disclaimer: 'This is an estimate only, not a medical diagnosis.',
+        nfp_pregnancy_likelihood: 'Conception likelihood this cycle',
+        nfp_likelihood_high: 'Higher',
+        nfp_likelihood_elevated: 'Moderate',
+        nfp_likelihood_low: 'Lower',
+        nfp_likelihood_unknown: 'Estimate unavailable',
+        nfp_likelihood_reason_positive_test: 'A logged positive pregnancy test strongly outweighs the cycle estimate.',
+        nfp_likelihood_reason_negative_test: 'A later negative pregnancy test lowers the current-cycle conception estimate.',
+        nfp_likelihood_reason_fertile_unprotected: 'Fertile-window and ovulation signals align with logged unprotected intercourse.',
+        nfp_likelihood_reason_protected_window: 'Fertile-window signals are present, but logged intercourse was protected.',
+        nfp_likelihood_reason_post_ovulation: 'Current-cycle data is mainly post-ovulation, with little logged fertile-window exposure.',
+        nfp_likelihood_reason_fertile_signals: 'Cycle history, symptoms, and NFP signals suggest some conception potential this cycle.',
+        nfp_likelihood_reason_insufficient_data: 'There is not enough current-cycle data for a reliable conception estimate.',
+        nfp_likelihood_disclaimer: 'Estimated from cycle history, symptoms, and NFP signals; not medical advice.',
         planning_title: 'Cycle Planning (Estimates)',
         planning_disclaimer: 'These are statistical estimates, not medical advice.',
         planning_range_title: 'Date Range Forecast',
@@ -1730,11 +1737,38 @@ class MenstruationStatisticsCard extends HTMLElement {
     return 'unknown';
   }
 
+  _nfpConceptionEstimate(nfp, todayIso) {
+    if (nfp && typeof nfp === 'object' && nfp.conception_likelihood && typeof nfp.conception_likelihood === 'object') {
+      const estimate = nfp.conception_likelihood;
+      const probability = Number(estimate.probability);
+      return {
+        level: typeof estimate.level === 'string' ? estimate.level : 'unknown',
+        probability: Number.isFinite(probability) ? Math.max(0, Math.min(100, Math.round(probability))) : null,
+        confidence: typeof estimate.confidence === 'string' ? estimate.confidence : 'low',
+        reason_key: typeof estimate.reason_key === 'string' ? estimate.reason_key : 'insufficient_data',
+      };
+    }
+
+    const level = this._nfpPregnancyLikelihood(nfp, todayIso);
+    return {
+      level,
+      probability: null,
+      confidence: (nfp && nfp.confidence_level) || 'low',
+      reason_key: level === 'low' ? 'post_ovulation' : level === 'unknown' ? 'insufficient_data' : 'fertile_signals',
+    };
+  }
+
   _hasNfpData(attrs) {
     const nfp = attrs && attrs.nfp_analysis;
     if (!nfp || typeof nfp !== 'object') return false;
     // Has NFP data if any meaningful NFP indicator is present
-    return !!(nfp.temperature_rise_day || nfp.cervical_mucus_peak || nfp.cervix_peak || nfp.ovulation_day);
+    return !!(
+      nfp.temperature_rise_day
+      || nfp.cervical_mucus_peak
+      || nfp.cervix_peak
+      || nfp.ovulation_day
+      || nfp.conception_likelihood
+    );
   }
 
   _renderNfpTab(attrs) {
@@ -1788,7 +1822,8 @@ class MenstruationStatisticsCard extends HTMLElement {
     // Build temperature chart from symptom history
     const chartHtml = this._renderNfpTempChart(attrs, nfp);
 
-    const likelihoodLevel = this._nfpPregnancyLikelihood(nfp);
+    const conceptionEstimate = this._nfpConceptionEstimate(nfp);
+    const likelihoodLevel = conceptionEstimate.level;
     const likelihoodLabel = likelihoodLevel === 'high' ? t('nfp_likelihood_high')
       : likelihoodLevel === 'elevated' ? t('nfp_likelihood_elevated')
       : likelihoodLevel === 'low' ? t('nfp_likelihood_low')
@@ -1797,6 +1832,19 @@ class MenstruationStatisticsCard extends HTMLElement {
       : likelihoodLevel === 'elevated' ? 'nfp-likelihood-elevated'
       : likelihoodLevel === 'low' ? 'nfp-likelihood-low'
       : 'nfp-likelihood-unknown';
+    const likelihoodValue = conceptionEstimate.probability != null
+      ? `${conceptionEstimate.probability}% – ${likelihoodLabel}`
+      : likelihoodLabel;
+    const reasonMap = {
+      positive_test: t('nfp_likelihood_reason_positive_test'),
+      negative_test: t('nfp_likelihood_reason_negative_test'),
+      fertile_unprotected: t('nfp_likelihood_reason_fertile_unprotected'),
+      protected_window: t('nfp_likelihood_reason_protected_window'),
+      post_ovulation: t('nfp_likelihood_reason_post_ovulation'),
+      fertile_signals: t('nfp_likelihood_reason_fertile_signals'),
+      insufficient_data: t('nfp_likelihood_reason_insufficient_data'),
+    };
+    const likelihoodReason = reasonMap[conceptionEstimate.reason_key] || reasonMap.insufficient_data;
 
     return `
       <div class="section">
@@ -1839,8 +1887,9 @@ class MenstruationStatisticsCard extends HTMLElement {
           <div class="nfp-info-row nfp-info-highlight nfp-pregnancy-likelihood">
             <span class="nfp-info-icon">🤰</span>
             <span class="nfp-info-label">${esc(t('nfp_pregnancy_likelihood'))}</span>
-            <span class="nfp-info-value nfp-likelihood-badge ${likelihoodClass}">${esc(likelihoodLabel)}</span>
+            <span class="nfp-info-value nfp-likelihood-badge ${likelihoodClass}">${esc(likelihoodValue)}</span>
           </div>
+          <p class="nfp-likelihood-explainer">${esc(likelihoodReason)}</p>
           <p class="nfp-likelihood-disclaimer">${esc(t('nfp_likelihood_disclaimer'))}</p>
           <div class="nfp-info-row">
             <span class="nfp-info-icon">🔢</span>
