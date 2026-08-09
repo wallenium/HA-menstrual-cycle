@@ -1395,7 +1395,7 @@ function testTimelineStateRestoresScrollAfterRerender() {
     makeTimelineMonth('2026-07-01', 0),
     makeTimelineMonth('2026-08-01', 180),
     makeTimelineMonth('2026-09-01', 360),
-  ], { scrollLeft: 250, clientWidth: 360 });
+  ], { scrollLeft: 160, clientWidth: 360 });
   Object.defineProperty(card, 'shadowRoot', {
     get: () => ({ querySelector: (sel) => (sel === '[data-timeline-strip]' ? oldStrip : null) }),
     configurable: true,
@@ -1419,7 +1419,7 @@ function testTimelineStateRestoresScrollAfterRerender() {
   card._syncTimelineMonthFromScroll = () => { syncCalls += 1; };
 
   assert.strictEqual(card._restoreTimelineState(), true, 'timeline state should restore after full re-render');
-  assert.strictEqual(newStrip.lastScrollTo, 280, 'restored scroll should keep the same month anchored in view');
+  assert.strictEqual(newStrip.lastScrollTo, 190, 'restored scroll should keep the same month anchored in view');
   assert.strictEqual(syncCalls, 1, 'timeline month sync should run after restoring scroll');
 
   console.log('  ✓ timeline strip restores scroll state after full re-render');
