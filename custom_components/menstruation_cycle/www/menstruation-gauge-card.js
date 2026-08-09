@@ -2774,9 +2774,12 @@ class MenstruationGaugeCardEditor extends HTMLElement {
     this._attachHandlers();
   }
 }
-
-customElements.define('menstruation-gauge-card', MenstruationGaugeCard);
-customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
+if (!customElements.get('menstruation-gauge-card')) {
+  customElements.define('menstruation-gauge-card', MenstruationGaugeCard);
+}
+if (!customElements.get('menstruation-gauge-card-editor')) {
+  customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
