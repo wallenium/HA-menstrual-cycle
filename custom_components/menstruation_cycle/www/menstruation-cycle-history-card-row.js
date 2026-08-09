@@ -328,8 +328,8 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
         end: 'End',
         length: 'Length',
         status: 'Status',
-        status_actual: 'Past',
-        status_current: 'Current',
+        actual: 'Past',
+        current: 'Current',
         predicted: 'Predicted',
         days: 'd',
       },
@@ -382,7 +382,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
       const endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 27);
       const isLast = i === 0;
-      const status = isLast ? this._t('status_current') : this._t('status_actual');
+      const status = isLast ? this._t('current') : this._t('actual');
       const startStr = startDate.toISOString().slice(0, 10);
       const endStr = isLast ? '—' : endDate.toISOString().slice(0, 10);
       rows.push({ idx: maxRows - i, startStr, endStr, length: 28, status, isCurrent: isLast });

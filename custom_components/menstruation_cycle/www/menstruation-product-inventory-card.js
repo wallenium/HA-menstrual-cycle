@@ -105,7 +105,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
         add_to_shopping: "Add to shopping list",
         recent_usage: "Recent usage",
         no_logs: "No consumption logs",
-        status_good: "Good",
+        good: "Good",
         warning: "Warning",
         critical: "Critical",
         pregnancy: "Pregnancy",
@@ -453,7 +453,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
               <div class="product-name">${this._t(product)}</div>
               <div class="product-icon-wrapper">
                 <div class="product-icon">${this._getProductIconSvg(product)}</div>
-                ${product !== "cup" ? `<div class="stock ${status}">${displayQuantity}<span>${product === "underwear" ? this._t("available") : this._t(`status_${status}`)}</span></div>` : ""}
+                ${product !== "cup" ? `<div class="stock ${status}">${displayQuantity}<span>${product === "underwear" ? this._t("available") : this._t(`${status}`)}</span></div>` : ""}
               </div>
             </div>
             ${product === "underwear" ? `<div class="meta-inline">${this._t("in_use")}: ${Math.max(0, Math.min(underwearTotalOwned, underwearInUse))} / ${underwearTotalOwned}</div>` : ""}

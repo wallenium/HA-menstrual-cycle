@@ -862,7 +862,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         anomaly_pain_low: 'Fewer pain days than usual',
         anomaly_pain_increasing: 'Pain days increasing over time',
         anomaly_pain_decreasing: 'Pain days decreasing over time',
-        status_current: 'Current',
+        current: 'Current',
         anomaly_average: 'Average',
         days_unit: 'days',
         anomaly_consult: 'Consider discussing with your doctor.',
@@ -1370,7 +1370,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       const icon = severityIcon[a.severity] || 'ℹ️';
       let detail = '';
       if (a.current !== null && a.average !== null) {
-        detail = `<span class="anomaly-detail">${esc(t('status_current'))}: <strong>${esc(a.current)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong> &middot; ${esc(t('anomaly_average'))}: <strong>${esc(a.average)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong></span>`;
+        detail = `<span class="anomaly-detail">${esc(t('current'))}: <strong>${esc(a.current)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong> &middot; ${esc(t('anomaly_average'))}: <strong>${esc(a.average)}${a.unit ? ' ' + esc(t('days_unit')) : ''}</strong></span>`;
       }
       const suggestion = a.severity === 'alert' || a.severity === 'warning'
         ? `<span class="anomaly-suggestion">${esc(t('anomaly_consult'))}</span>`
