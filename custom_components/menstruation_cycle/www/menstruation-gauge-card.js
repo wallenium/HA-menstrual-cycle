@@ -116,6 +116,9 @@ class MenstruationGaugeCard extends HTMLElement {
   disconnectedCallback() {
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
+    if (this._timelineScrollTimer) clearTimeout(this._timelineScrollTimer);
+    this._timelineScrollTimer = null;
+    this._timelineStripEl = null;
   }
 
   getCardSize() {
@@ -1287,15 +1290,26 @@ class MenstruationGaugeCard extends HTMLElement {
     `;
   }
 
-  _renderTimeline(model, palette, locale) {
-    // Determine which 3 months to show. _timelineMonth holds the centre month.
-    const tmBase = this._timelineMonth || new Date();
-    const months = [
-      new Date(tmBase.getFullYear(), tmBase.getMonth() - 1, 1),
-      new Date(tmBase.getFullYear(), tmBase.getMonth(), 1),
-      new Date(tmBase.getFullYear(), tmBase.getMonth() + 1, 1),
-    ];
+  _timelineBaseMonth() {
+    const base = this._timelineMonth || this._todayDate?.() || new Date();
+    return new Date(base.getFullYear(), base.getMonth(), 1, 12, 0, 0, 0);
+  }
 
+  _timelineStripMonths() {
+    const baseMonth = this._timelineBaseMonth();
+    return Array.from({ length: 13 }).map((_, index) => {
+      const offset = index - 6;
+      const monthDate = new Date(baseMonth.getFullYear(), baseMonth.getMonth() + offset, 1, 12, 0, 0, 0);
+      return {
+        monthDate,
+        monthIso: this._isoFromDate(monthDate).slice(0, 7),
+        isAnchor: offset === 0,
+      };
+    });
+  }
+
+  _renderTimeline(model, palette, locale) {
+    const months = this._timelineStripMonths();
     const todayIso = model.todayIso || this._isoFromDate(new Date());
     const windowStart = model.windowStartIso || '';
     const windowEnd = model.windowEndIso || '';
@@ -1306,7 +1320,8 @@ class MenstruationGaugeCard extends HTMLElement {
 
     const dows = this._weekdayLabels(locale);
 
-    const renderMonth = (monthDt) => {
+    const renderMonth = ({ monthDate, monthIso, isAnchor }) => {
+      const monthDt = monthDate;
       const y = monthDt.getFullYear();
       const m = monthDt.getMonth();
       const dayCount = new Date(y, m + 1, 0).getDate();
@@ -1340,7 +1355,7 @@ class MenstruationGaugeCard extends HTMLElement {
       }
 
       return `
-        <div class="tl-month-col">
+        <div class="tl-month-col ${isAnchor ? 'is-anchor' : ''}" data-timeline-month="${monthIso}" data-timeline-month-start="${this._isoFromDate(monthDt)}">
           <div class="tl-month-name">${monthName}</div>
           <div class="tl-dow-row">${dowHtml}</div>
           <div class="tl-days-grid">${cellsHtml}</div>
@@ -1350,15 +1365,82 @@ class MenstruationGaugeCard extends HTMLElement {
 
     return `
       <div class="timeline">
-        <div class="tl-nav-row">
-          <button type="button" class="btn tl-nav-btn" data-tl-nav="prev" title="◀">◀</button>
-          <div class="tl-months-wrap">
+        <div class="tl-strip-shell">
+          <button type="button" class="tl-overlay-nav tl-overlay-prev" data-tl-overlay-nav="prev" aria-label="Previous months">‹</button>
+          <div class="tl-strip" data-timeline-strip>
             ${months.map(renderMonth).join('')}
           </div>
-          <button type="button" class="btn tl-nav-btn" data-tl-nav="next" title="▶">▶</button>
+          <button type="button" class="tl-overlay-nav tl-overlay-next" data-tl-overlay-nav="next" aria-label="Next months">›</button>
         </div>
       </div>
     `;
+  }
+
+  _syncTimelineMonthFromScroll() {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    if (!strip) return;
+    const monthEls = Array.from(strip.querySelectorAll('.tl-month-col'));
+    if (!monthEls.length) return;
+    const stripCenter = strip.scrollLeft + (strip.clientWidth / 2);
+    let best = null;
+    let bestDiff = Infinity;
+    monthEls.forEach((monthEl) => {
+      const monthCenter = monthEl.offsetLeft + (monthEl.offsetWidth / 2);
+      const diff = Math.abs(monthCenter - stripCenter);
+      if (diff < bestDiff) {
+        best = monthEl;
+        bestDiff = diff;
+      }
+    });
+    if (!best) return;
+    monthEls.forEach((monthEl) => monthEl.classList.toggle('is-anchor', monthEl === best));
+    const monthStart = this._parseISO(best.getAttribute('data-timeline-month-start'));
+    if (monthStart) {
+      this._timelineMonth = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1, 12, 0, 0, 0);
+    }
+  }
+
+  _centerTimelineStrip(behavior = 'auto') {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    const anchor = strip?.querySelector?.('.tl-month-col.is-anchor');
+    if (!strip || !anchor) return;
+    const targetLeft = Math.max(0, anchor.offsetLeft - Math.max(0, (strip.clientWidth - anchor.offsetWidth) / 2));
+    if (typeof strip.scrollTo === 'function') {
+      strip.scrollTo({ left: targetLeft, behavior });
+    } else {
+      strip.scrollLeft = targetLeft;
+    }
+  }
+
+  _scrollTimelineStrip(direction) {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    const firstMonth = strip?.querySelector?.('.tl-month-col');
+    if (!strip || !firstMonth) return;
+    const styles = typeof getComputedStyle === 'function' ? getComputedStyle(strip) : null;
+    const gap = parseFloat(styles?.gap || styles?.columnGap || '0') || 0;
+    const delta = (firstMonth.offsetWidth + gap) * (direction < 0 ? -1 : 1);
+    if (typeof strip.scrollBy === 'function') {
+      strip.scrollBy({ left: delta, behavior: 'smooth' });
+    } else {
+      strip.scrollLeft += delta;
+    }
+    if (this._timelineScrollTimer) clearTimeout(this._timelineScrollTimer);
+    this._timelineScrollTimer = setTimeout(() => this._syncTimelineMonthFromScroll(), 220);
+  }
+
+  _setupTimelineStrip() {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    if (!strip) return;
+    if (this._timelineStripEl !== strip) {
+      this._timelineStripEl = strip;
+      strip.addEventListener('scroll', () => {
+        if (this._timelineScrollTimer) clearTimeout(this._timelineScrollTimer);
+        this._timelineScrollTimer = setTimeout(() => this._syncTimelineMonthFromScroll(), 140);
+      }, { passive: true });
+      this._centerTimelineStrip('auto');
+      return;
+    }
+    this._centerTimelineStrip('auto');
   }
 
   _calendarGrid(model, locale) {
@@ -1813,20 +1895,13 @@ class MenstruationGaugeCard extends HTMLElement {
         }
         return;
       }
-      // Timeline navigation: previous month group
-      if (ev.target?.closest('[data-tl-nav="prev"]')) {
-        if (!this._timelineMonth) this._timelineMonth = new Date();
-        this._timelineMonth = new Date(this._timelineMonth.getFullYear(), this._timelineMonth.getMonth() - 1, 1);
-        this._lastRenderKey = null;
-        this._render();
+      // Timeline strip overlay navigation
+      if (ev.target?.closest('[data-tl-overlay-nav="prev"]')) {
+        this._scrollTimelineStrip(-1);
         return;
       }
-      // Timeline navigation: next month group
-      if (ev.target?.closest('[data-tl-nav="next"]')) {
-        if (!this._timelineMonth) this._timelineMonth = new Date();
-        this._timelineMonth = new Date(this._timelineMonth.getFullYear(), this._timelineMonth.getMonth() + 1, 1);
-        this._lastRenderKey = null;
-        this._render();
+      if (ev.target?.closest('[data-tl-overlay-nav="next"]')) {
+        this._scrollTimelineStrip(1);
         return;
       }
       // Timeline day click: rotate gauge so clicked day is at top
@@ -2013,6 +2088,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const renderKey = this._buildRenderKey(model, countdown, isOverdueSoon, canEdit, cardTitle, friendlyName);
     if (renderKey === this._lastRenderKey) {
       this._attachHandlers();
+      this._setupTimelineStrip();
       return;
     }
     this._lastRenderKey = renderKey;
@@ -2084,10 +2160,31 @@ class MenstruationGaugeCard extends HTMLElement {
         .day.active.has-symptoms { box-shadow: 0 0 0 2px ${palette.fertile} inset, 0 0 0 4px ${palette.confirmedInset} inset; }
         /* 60-day timeline */
         .timeline { border-top: 1px solid ${palette.border}; padding-top: 8px; }
-        .tl-nav-row { display: flex; align-items: flex-start; gap: 4px; }
-        .tl-nav-btn { flex-shrink: 0; align-self: center; padding: 4px 6px; font-size: .8rem; }
-        .tl-months-wrap { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow: hidden; }
-        .tl-month-col { display: flex; flex-direction: column; gap: 2px; }
+        .tl-strip-shell { position: relative; margin: 0 -10px; padding: 0 10px; }
+        .tl-strip {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          overscroll-behavior-x: contain;
+          scroll-snap-type: x mandatory;
+          scroll-behavior: smooth;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 2px 18px 8px;
+          mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+          -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+        }
+        .tl-strip::-webkit-scrollbar { display: none; }
+        .tl-month-col {
+          flex: 0 0 clamp(180px, calc((100% - 84px) / 3), 240px);
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          scroll-snap-align: center;
+          scroll-snap-stop: always;
+          transition: transform 160ms ease, opacity 160ms ease;
+        }
+        .tl-month-col.is-anchor { transform: translateY(-1px); }
         .tl-month-name { font-size: .72rem; font-weight: 700; color: ${palette.monthText}; text-align: center; padding-bottom: 2px; }
         .tl-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .tl-dow { font-size: .6rem; text-align: center; opacity: .65; }
@@ -2100,6 +2197,36 @@ class MenstruationGaugeCard extends HTMLElement {
         .tl-period { background: ${palette.confirmed}; color: #fff; border-radius: 3px; }
         .tl-fertile:not(.tl-period) { background: ${palette.fertile}; color: #000; border-radius: 3px; opacity: .85; }
         .tl-ovulation { outline: 2px solid ${palette.ovulation}; outline-offset: -2px; }
+        .tl-overlay-nav {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 44px;
+          height: 72px;
+          border: none;
+          border-radius: 999px;
+          background: ${palette.buttonBg};
+          color: ${palette.buttonColor};
+          font-size: 2rem;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0;
+          pointer-events: none;
+          box-shadow: 0 8px 20px rgba(0,0,0,.18);
+          transition: opacity 160ms ease, transform 160ms ease;
+          z-index: 2;
+        }
+        .tl-overlay-prev { left: 2px; }
+        .tl-overlay-next { right: 2px; }
+        .tl-strip-shell:hover .tl-overlay-nav,
+        .tl-overlay-nav:focus-visible { opacity: .96; pointer-events: auto; }
+        .tl-overlay-nav:hover { transform: translateY(-50%) scale(1.04); }
+        @media (hover: none) {
+          .tl-overlay-nav { display: none; }
+        }
         /* Symptom modal */
         .sym-overlay { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; border-radius: 16px; overflow: hidden; }
         .sym-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
@@ -2197,6 +2324,7 @@ class MenstruationGaugeCard extends HTMLElement {
     `;
 
     this._attachHandlers();
+    this._setupTimelineStrip();
   }
 }
 
