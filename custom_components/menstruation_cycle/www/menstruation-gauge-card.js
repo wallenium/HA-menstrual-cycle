@@ -245,6 +245,12 @@ class MenstruationGaugeCard extends HTMLElement {
     return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(key);
   }
 
+  _tOption(key) {
+    const prefixedKey = `opt_${key}`;
+    const prefixedLabel = this._t(prefixedKey);
+    return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(key);
+  }
+
   _normalizeISO(value) {
     const m = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s].*)/);
     if (!m) return null;

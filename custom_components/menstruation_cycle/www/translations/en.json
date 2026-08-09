@@ -6,6 +6,7 @@
   "days_until_menarche": "Days until menarche",
   "menarche_expected_in": "Menarche expected in {days} days",
   "menarche_overdue": "Menarche {days} days overdue",
+
   "save": "Save",
   "cancel": "Cancel",
   "close": "Close",
@@ -22,6 +23,7 @@
   "unknown": "Unknown",
   "entity_not_found": "Entity not found",
   "error_prefix": "Error",
+
   "pregnancy": "Pregnancy",
   "week": "Week",
   "month": "Month",
@@ -37,9 +39,11 @@
   "menarche": "Menarche",
   "menopause": "Menopause",
   "in_menopause": "In Menopause",
+
   "modal_edit_day": "Edit Day",
   "period_start": "Period Start",
   "basal_temp_label": "Basal Temperature (°C)",
+
   "previous_month": "Previous month",
   "next_month": "Next month",
   "cycle_day": "Cycle Day",
@@ -51,6 +55,7 @@
   "discharge": "Discharge",
   "predicted": "Predicted",
   "predicted_period": "Predicted period",
+
   "due_date": "Due Date",
   "estimated_date": "Estimated Date",
   "days_until": "Days until Menarche",
@@ -70,6 +75,7 @@
   "intercourse": "Intercourse",
   "tab_hygiene": "Hygiene",
   "hygiene": "Hygiene",
+
   "cat_test": "Test",
   "cat_smell": "Smell",
   "cat_clots": "Clots",
@@ -80,6 +86,7 @@
   "cat_libido": "Libido",
   "cat_training_intensity": "Training Intensity",
   "cat_basal_temp": "Basal Temp.",
+
   "opt_light": "Light",
   "nfp_confidence_medium": "Medium",
   "bleeding_heavy": "Heavy",
@@ -149,6 +156,7 @@
   "opt_preg_frequent_urination": "Frequent Urination",
   "opt_preg_braxton_hicks": "Braxton Hicks",
   "opt_preg_back_pain": "Back Pain",
+
   "log_first_period": "Log First Period",
   "log_first_period_symptoms": "First Period - Log Symptoms",
   "first_period_description": "Select your symptoms for today and confirm the start of your first period.",
@@ -159,6 +167,7 @@
   "welcome_period_features": "New features: cycle prediction, statistics, ...",
   "welcome_period_contraception": "You are now fertile - think about contraception if needed!",
   "welcome_period_return": "You can always return to Pre-Menarche mode in Settings",
+
   "too_little_history": "Not enough history data in",
   "cycle_start": "Start",
   "end": "End",
@@ -170,6 +179,7 @@
   "legend_alignment_bottom": "Alignment: cycle end (E/-days)",
   "legend_alignment_top": "Alignment: cycle start (day 1..X)",
   "scroll": "scroll",
+
   "cycle": "Cycle",
   "start_date": "Start Date",
   "end_date": "End Date",
@@ -179,6 +189,7 @@
   "actual_period": "Actual Period",
   "current_cycle": "Current Cycle",
   "previous_cycles": "Previous Cycles",
+
   "members": "Household members",
   "member": "Member",
   "all_members": "All",
@@ -213,6 +224,7 @@
   "cups": "Menstrual cups",
   "liners": "Liners",
   "underwears": "Period panties",
+
   "basal_temp": "Basal Temperature",
   "energy": "Energy",
   "notes": "Notes",
@@ -248,6 +260,7 @@
   "card_title": "Menstrual Countdown",
   "symptom_saved": "Symptoms saved.",
   "symptom_save_error": "Could not save symptoms.",
+
   "nfp_method_nfp": "NFP",
   "doctor_report_title": "Doctor Report",
   "filter": "Filter",
@@ -384,6 +397,7 @@
   "total_owned": "Total Owned",
   "washing_threshold": "Washing Threshold",
   "options": "Options",
+
   "last_n_days": "Last {n} days",
   "nfp_day_label": "Day {n}",
   "last_cycles": "{count} cycles",
