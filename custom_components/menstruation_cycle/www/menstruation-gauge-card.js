@@ -1532,11 +1532,11 @@ class MenstruationGaugeCard extends HTMLElement {
     return `
       <div class="timeline">
         <div class="tl-strip-shell">
-          <button type="button" class="tl-overlay-nav tl-overlay-prev" data-tl-overlay-nav="prev" aria-label="Previous months">‹</button>
+          <button type="button" class="tl-overlay-nav tl-overlay-prev" data-tl-nav="left" aria-label="Previous months">‹</button>
           <div class="tl-strip" data-timeline-strip>
             ${months.map(renderMonth).join('')}
           </div>
-          <button type="button" class="tl-overlay-nav tl-overlay-next" data-tl-overlay-nav="next" aria-label="Next months">›</button>
+          <button type="button" class="tl-overlay-nav tl-overlay-next" data-tl-nav="right" aria-label="Next months">›</button>
         </div>
       </div>
     `;
@@ -1603,8 +1603,8 @@ class MenstruationGaugeCard extends HTMLElement {
     const root = this.shadowRoot;
     const strip = root?.querySelector?.('[data-timeline-strip]');
     if (!strip) return;
-    const prevBtn = root?.querySelector?.('[data-tl-overlay-nav="prev"]');
-    const nextBtn = root?.querySelector?.('[data-tl-overlay-nav="next"]');
+    const prevBtn = root?.querySelector?.('[data-tl-nav="left"]') || root?.querySelector?.('[data-tl-overlay-nav="prev"]');
+    const nextBtn = root?.querySelector?.('[data-tl-nav="right"]') || root?.querySelector?.('[data-tl-overlay-nav="next"]');
     const canLeft = strip.scrollLeft > 1;
     const canRight = (strip.scrollWidth - strip.clientWidth - strip.scrollLeft) > 1;
     [
@@ -2191,11 +2191,11 @@ class MenstruationGaugeCard extends HTMLElement {
         return;
       }
       // Timeline strip overlay navigation
-      if (ev.target?.closest('[data-tl-overlay-nav="prev"]')) {
+      if (ev.target?.closest('[data-tl-nav="left"], [data-tl-overlay-nav="prev"]')) {
         this._scrollTimelineStrip(-1);
         return;
       }
-      if (ev.target?.closest('[data-tl-overlay-nav="next"]')) {
+      if (ev.target?.closest('[data-tl-nav="right"], [data-tl-overlay-nav="next"]')) {
         this._scrollTimelineStrip(1);
         return;
       }
