@@ -2535,8 +2535,8 @@ class MenstruationGaugeCard extends HTMLElement {
           transition: opacity 160ms ease, transform 160ms ease;
           z-index: 2;
         }
-        .tl-overlay-prev { left: 2px; }
-        .tl-overlay-next { right: 2px; }
+        .tl-overlay-prev { left: 8px; right: auto; }
+        .tl-overlay-next { left: auto !important; right: 8px !important; }
         .tl-overlay-nav.is-active { opacity: .82; pointer-events: auto; }
         .tl-overlay-nav.is-disabled { opacity: 0; pointer-events: none; }
         .tl-strip-shell:hover .tl-overlay-nav.is-active,
