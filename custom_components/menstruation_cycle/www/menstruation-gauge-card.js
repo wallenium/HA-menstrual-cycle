@@ -114,6 +114,15 @@ class MenstruationGaugeCard extends HTMLElement {
       });
       this._resizeObserver.observe(this);
     }
+    // setConfig()/hass may run before the element is attached to the DOM (common with
+    // masonry/sections/tab layouts), in which case the first _render() measured a width
+    // of 0 and the timeline never got centered. Force a re-render now that we're actually
+    // connected and laid out, so both the gauge sizing and timeline centering self-heal.
+    if (this._config && this._hass) {
+      this._lastCardWidth = 0;
+      this._timelineHasCenteredOnce = false;
+      this._render();
+    }
   }
 
   disconnectedCallback() {
@@ -1587,9 +1596,11 @@ class MenstruationGaugeCard extends HTMLElement {
     }
     if (this._restoreTimelineState()) return;
     if (!this._timelineHasCenteredOnce) {
-      const focused = this._focusTimelineOnTodayMonth();
-      if (!focused) this._centerTimelineStrip('auto');
-      this._timelineHasCenteredOnce = true;
+      if (strip.clientWidth > 0) {
+        const focused = this._focusTimelineOnTodayMonth();
+        if (!focused) this._centerTimelineStrip('auto');
+        this._timelineHasCenteredOnce = true;
+      }
     }
   }
 
