@@ -1566,8 +1566,11 @@ class MenstruationGaugeCard extends HTMLElement {
     }
     if (this._restoreTimelineState()) return;
     if (!this._timelineHasCenteredOnce) {
-      this._centerTimelineStrip('auto');
-      this._timelineHasCenteredOnce = true;
+      if (strip.clientWidth > 0) {
+        this._centerTimelineStrip('auto');
+        this._timelineHasCenteredOnce = true;
+      }
+      // otherwise: strip not yet measured, will center on next _render() when clientWidth > 0
     }
   }
 
