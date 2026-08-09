@@ -541,14 +541,25 @@ function testOptionLabelTranslationFallback() {
     ...(prevCache || {}),
     opt_protected: 'Protected label',
     custom_option: 'Custom option label',
+    opt_underwear: 'Underwear label',
+    underwear: 'Underwear base label',
   };
 
   assert.strictEqual(card._tOption('protected'), 'Protected label', 'existing opt_* translations must still be used');
   assert.strictEqual(card._tOption('custom_option'), 'Custom option label', 'missing opt_* translations must fall back to the unprefixed key');
+  assert.strictEqual(card._tOption('period_underwear'), 'Underwear label', 'period_underwear should normalize to the underwear translation key');
+
+  global.window.menstruationCycleI18n.cache.en = {
+    ...(prevCache || {}),
+    opt_protected: 'Protected label',
+    custom_option: 'Custom option label',
+    underwear: 'Underwear base label',
+  };
+  assert.strictEqual(card._tOption('period_panty'), 'Underwear base label', 'period_panty should normalize before the base-key fallback');
 
   global.window.menstruationCycleI18n.cache.en = prevCache;
 
-  console.log('  ✓ symptom modal option labels prefer opt_* and fall back to the base key');
+  console.log('  ✓ symptom modal option labels normalize aliases and preserve opt_* / base-key fallback');
 }
 
 // ---------------------------------------------------------------------------

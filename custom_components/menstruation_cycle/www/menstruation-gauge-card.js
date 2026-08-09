@@ -8,6 +8,44 @@ if (typeof _mcCycleCardI18n.normalizeLang !== 'function') {
   _mcCycleCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
+function normalizeOptionKey(value) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return '';
+  const normalized = raw.replace(/-/g, '_');
+  return {
+    tampon: 'tampon',
+    tampons: 'tampon',
+    pad: 'pad',
+    pads: 'pad',
+    binde: 'pad',
+    binden: 'pad',
+    cup: 'cup',
+    cups: 'cup',
+    menstrual_cup: 'cup',
+    'menstrual cup': 'cup',
+    liner: 'liner',
+    liners: 'liner',
+    pantyliner: 'liner',
+    pantyliners: 'liner',
+    slipeinlage: 'liner',
+    slipeinlagen: 'liner',
+    underwear: 'underwear',
+    period_underwear: 'underwear',
+    'period underwear': 'underwear',
+    period_panties: 'underwear',
+    'period panties': 'underwear',
+    period_panty: 'underwear',
+    'period panty': 'underwear',
+    periodenunterwaesche: 'underwear',
+    'periodenunterwäsche': 'underwear',
+  }[normalized] || {
+    'period underwear': 'underwear',
+    'period panties': 'underwear',
+    'period panty': 'underwear',
+    'menstrual cup': 'cup',
+  }[raw] || raw;
+}
+
 
 
 
@@ -246,9 +284,10 @@ class MenstruationGaugeCard extends HTMLElement {
   }
 
   _tOption(key) {
-    const prefixedKey = `opt_${key}`;
+    const normalizedKey = normalizeOptionKey(key);
+    const prefixedKey = `opt_${normalizedKey}`;
     const prefixedLabel = this._t(prefixedKey);
-    return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(key);
+    return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(normalizedKey);
   }
 
   _normalizeISO(value) {
