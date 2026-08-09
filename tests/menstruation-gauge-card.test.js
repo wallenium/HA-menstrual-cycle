@@ -1330,6 +1330,135 @@ function testTimelineStripMarkupReplacesOldArrowLayout() {
   console.log('  ✓ timeline strip markup replaces the old arrow-button layout');
 }
 
+function makeTimelineMonth(startIso, offsetLeft, offsetWidth = 180) {
+  return {
+    offsetLeft,
+    offsetWidth,
+    getAttribute: (name) => (name === 'data-timeline-month-start' ? startIso : null),
+    classList: { toggle() {} },
+  };
+}
+
+function makeTimelineStrip(months, options = {}) {
+  return {
+    scrollLeft: options.scrollLeft || 0,
+    clientWidth: options.clientWidth || 360,
+    _listenerCount: 0,
+    addEventListener() { this._listenerCount += 1; },
+    querySelectorAll: (sel) => (sel === '.tl-month-col' ? months : []),
+    querySelector: (sel) => {
+      if (sel === '.tl-month-col.is-anchor') return months[options.anchorIndex || 0] || null;
+      const match = sel.match(/^\[data-timeline-month-start="([^"]+)"\]$/);
+      if (match) return months.find((month) => month.getAttribute('data-timeline-month-start') === match[1]) || null;
+      return null;
+    },
+    scrollTo({ left }) {
+      this.scrollLeft = left;
+      this.lastScrollTo = left;
+    },
+  };
+}
+
+function testTimelineSetupCentersOnlyOnce() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+
+  let currentStrip = makeTimelineStrip([
+    makeTimelineMonth('2026-07-01', 0),
+    makeTimelineMonth('2026-08-01', 190),
+  ], { anchorIndex: 1 });
+
+  Object.defineProperty(card, 'shadowRoot', {
+    get: () => ({ querySelector: (sel) => (sel === '[data-timeline-strip]' ? currentStrip : null) }),
+    configurable: true,
+  });
+
+  let centerCalls = 0;
+  card._centerTimelineStrip = () => { centerCalls += 1; };
+
+  card._setupTimelineStrip();
+  currentStrip = makeTimelineStrip([
+    makeTimelineMonth('2026-07-01', 0),
+    makeTimelineMonth('2026-08-01', 190),
+  ], { anchorIndex: 1 });
+  card._setupTimelineStrip();
+
+  assert.strictEqual(centerCalls, 1, 'timeline strip should auto-center only once across strip remounts');
+  console.log('  ✓ timeline strip auto-centers only on first mount');
+}
+
+function testTimelineStateRestoresScrollAfterRerender() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+
+  const oldStrip = makeTimelineStrip([
+    makeTimelineMonth('2026-07-01', 0),
+    makeTimelineMonth('2026-08-01', 180),
+    makeTimelineMonth('2026-09-01', 360),
+  ], { scrollLeft: 160, clientWidth: 360 });
+  Object.defineProperty(card, 'shadowRoot', {
+    get: () => ({ querySelector: (sel) => (sel === '[data-timeline-strip]' ? oldStrip : null) }),
+    configurable: true,
+  });
+
+  const state = card._captureTimelineState();
+  assert.strictEqual(state.anchorMonthStart, '2026-08-01', 'captured anchor month should track the centered month');
+
+  const newStrip = makeTimelineStrip([
+    makeTimelineMonth('2026-07-01', 0),
+    makeTimelineMonth('2026-08-01', 210),
+    makeTimelineMonth('2026-09-01', 420),
+  ], { clientWidth: 360 });
+  Object.defineProperty(card, 'shadowRoot', {
+    get: () => ({ querySelector: (sel) => (sel === '[data-timeline-strip]' ? newStrip : null) }),
+    configurable: true,
+  });
+
+  card._pendingTimelineState = state;
+  let syncCalls = 0;
+  card._syncTimelineMonthFromScroll = () => { syncCalls += 1; };
+
+  assert.strictEqual(card._restoreTimelineState(), true, 'timeline state should restore after full re-render');
+  assert.strictEqual(newStrip.lastScrollTo, 190, 'restored scroll should keep the same month anchored in view');
+  assert.strictEqual(syncCalls, 1, 'timeline month sync should run after restoring scroll');
+
+  console.log('  ✓ timeline strip restores scroll state after full re-render');
+}
+
+function testGaugeHeaderMonthUsesUiToday() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass({ state: 'neutral', days_until: 5 });
+  card._todayDate = () => new Date(2026, 7, 9, 12, 0, 0, 0);
+
+  const model = card._buildModel();
+  model.todayIso = '2026-02-03';
+  const html = card._renderGauge(model, card._palette(model.state));
+  const expectedMonth = new Intl.DateTimeFormat('de', { month: 'long', year: 'numeric' }).format(card._todayDate());
+
+  assert.ok(html.includes(expectedMonth), '60-day header month should use the UI current date instead of stale sensor todayIso');
+  console.log('  ✓ 60-day gauge header month prefers the UI current date');
+}
+
+function testRenderKeyIgnoresTimelineMonthScrollState() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass({ state: 'neutral', days_until: 5 });
+
+  const model = card._buildModel();
+  const key1 = card._buildRenderKey(model, '5 Tage', false, true, '', '');
+
+  card._timelineMonth = new Date(2026, 7, 1, 12, 0, 0, 0);
+  const key2 = card._buildRenderKey(model, '5 Tage', false, true, '', '');
+  assert.strictEqual(key2, key1, 'timeline month scroll state should not force a full render key change');
+
+  card._timelineWindowRevision = 1;
+  const key3 = card._buildRenderKey(model, '5 Tage', false, true, '', '');
+  assert.notStrictEqual(key3, key1, 'explicit timeline window shifts should still force a full render');
+
+  console.log('  ✓ render key ignores timeline scroll state but tracks window resets');
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -1353,6 +1482,10 @@ const tests = [
   ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],
   ['timeline-strip-month-range', testTimelineStripMonthRange],
   ['timeline-strip-markup', testTimelineStripMarkupReplacesOldArrowLayout],
+  ['timeline-strip-center-once', testTimelineSetupCentersOnlyOnce],
+  ['timeline-strip-restore-scroll', testTimelineStateRestoresScrollAfterRerender],
+  ['timeline-header-uses-ui-today', testGaugeHeaderMonthUsesUiToday],
+  ['timeline-render-key-stable', testRenderKeyIgnoresTimelineMonthScrollState],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['category-label-translation-fallback', testCategoryLabelTranslationFallback],

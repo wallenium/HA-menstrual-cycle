@@ -89,6 +89,9 @@ class MenstruationGaugeCard extends HTMLElement {
     this._iconCache = {};
     this._gaugeRotation = 0;
     this._timelineMonth = null;
+    this._timelineWindowRevision = 0;
+    this._timelineHasCenteredOnce = false;
+    this._pendingTimelineState = null;
     this._render();
   }
 
@@ -1079,7 +1082,10 @@ class MenstruationGaugeCard extends HTMLElement {
       const triangleMarker = `<polygon points="${cx},${Math.round(triTipY)} ${cx - triW},${Math.round(triBaseY)} ${cx + triW},${Math.round(triBaseY)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
 
       // Month label (static, shows today's context)
-      const todayForLabel = this._parseISO(model.todayIso) || this._todayDate();
+      const uiToday = this._todayDate?.();
+      const todayForLabel = uiToday instanceof Date && !Number.isNaN(uiToday.getTime())
+        ? uiToday
+        : (this._parseISO(model.todayIso) || new Date());
       const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(todayForLabel);
 
       return `
@@ -1430,11 +1436,9 @@ class MenstruationGaugeCard extends HTMLElement {
     `;
   }
 
-  _syncTimelineMonthFromScroll() {
-    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
-    if (!strip) return;
-    const monthEls = Array.from(strip.querySelectorAll('.tl-month-col'));
-    if (!monthEls.length) return;
+  _timelineStripAnchorEl(strip) {
+    const monthEls = Array.from(strip?.querySelectorAll?.('.tl-month-col') || []);
+    if (!monthEls.length) return null;
     const stripCenter = strip.scrollLeft + (strip.clientWidth / 2);
     let best = null;
     let bestDiff = Infinity;
@@ -1446,6 +1450,54 @@ class MenstruationGaugeCard extends HTMLElement {
         bestDiff = diff;
       }
     });
+    return best;
+  }
+
+  _captureTimelineState() {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    if (!strip) return null;
+    const anchor = this._timelineStripAnchorEl(strip) || strip.querySelector?.('.tl-month-col.is-anchor');
+    const scrollLeft = Number.isFinite(strip.scrollLeft) ? strip.scrollLeft : null;
+    if (!anchor && scrollLeft === null) return null;
+    return {
+      scrollLeft,
+      anchorMonthStart: anchor?.getAttribute?.('data-timeline-month-start') || '',
+      anchorOffset: anchor && scrollLeft !== null ? (scrollLeft - anchor.offsetLeft) : null,
+    };
+  }
+
+  _restoreTimelineState() {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    const state = this._pendingTimelineState;
+    if (!strip || !state) return false;
+    let targetLeft = null;
+    if (state.anchorMonthStart) {
+      const anchor = strip.querySelector?.(`[data-timeline-month-start="${state.anchorMonthStart}"]`);
+      if (anchor) {
+        const offset = Number.isFinite(state.anchorOffset) ? state.anchorOffset : 0;
+        targetLeft = anchor.offsetLeft + offset;
+      }
+    }
+    if (targetLeft === null && Number.isFinite(state.scrollLeft)) {
+      targetLeft = state.scrollLeft;
+    }
+    this._pendingTimelineState = null;
+    if (!Number.isFinite(targetLeft)) return false;
+    if (typeof strip.scrollTo === 'function') {
+      strip.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' });
+    } else {
+      strip.scrollLeft = Math.max(0, targetLeft);
+    }
+    this._syncTimelineMonthFromScroll();
+    return true;
+  }
+
+  _syncTimelineMonthFromScroll() {
+    const strip = this.shadowRoot?.querySelector?.('[data-timeline-strip]');
+    if (!strip) return;
+    const monthEls = Array.from(strip.querySelectorAll('.tl-month-col'));
+    if (!monthEls.length) return;
+    const best = this._timelineStripAnchorEl(strip);
     if (!best) return;
     monthEls.forEach((monthEl) => monthEl.classList.toggle('is-anchor', monthEl === best));
     const monthStart = this._parseISO(best.getAttribute('data-timeline-month-start'));
@@ -1467,6 +1519,7 @@ class MenstruationGaugeCard extends HTMLElement {
         const distToLast = (lastMonthDate.getFullYear() - newMonth.getFullYear()) * 12
           + (lastMonthDate.getMonth() - newMonth.getMonth());
         if (distToFirst <= 2 || distToLast <= 2) {
+          this._timelineWindowRevision += 1;
           this._render();
         }
       }
@@ -1510,7 +1563,11 @@ class MenstruationGaugeCard extends HTMLElement {
         if (this._timelineScrollTimer) clearTimeout(this._timelineScrollTimer);
         this._timelineScrollTimer = setTimeout(() => this._syncTimelineMonthFromScroll(), 140);
       }, { passive: true });
+    }
+    if (this._restoreTimelineState()) return;
+    if (!this._timelineHasCenteredOnce) {
       this._centerTimelineStrip('auto');
+      this._timelineHasCenteredOnce = true;
     }
   }
 
@@ -2119,7 +2176,7 @@ class MenstruationGaugeCard extends HTMLElement {
       cardTitle,
       friendlyName,
       Object.keys(model.symptomByDate || {}).sort().join(','),
-      this._timelineMonth ? `${this._timelineMonth.getFullYear()}-${this._timelineMonth.getMonth()}` : '',
+      this._timelineWindowRevision,
     ].join('|');
   }
 
@@ -2162,6 +2219,7 @@ class MenstruationGaugeCard extends HTMLElement {
       this._setupTimelineStrip();
       return;
     }
+    this._pendingTimelineState = this._captureTimelineState();
     this._lastRenderKey = renderKey;
 
     this.shadowRoot.innerHTML = `
