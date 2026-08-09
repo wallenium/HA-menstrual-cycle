@@ -552,6 +552,57 @@ test('planning section shows low-confidence hint for variable cycle range foreca
   assert.ok(html.includes('Low confidence due to high cycle variability'), 'low-confidence hint missing');
 });
 
+console.log('\nRender stability');
+
+test('render guard: repeated identical hass updates do not replace shadowRoot.innerHTML', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  // Replace innerHTML with a sentinel so we can detect any DOM replacement.
+  card.shadowRoot.innerHTML = 'SENTINEL';
+
+  // Second identical hass assignment — render guard must prevent DOM rebuild.
+  card.hass = hass;
+  assert.strictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was replaced on identical hass update');
+});
+
+test('render guard: changed entity state triggers a fresh render', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass1 = makeHass();
+  hass1.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass1;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+  assert.ok(card._lastRenderKey.includes('2026-01-01T00:00:00.000Z'), 'render key must include last_changed');
+
+  // Place sentinel; a changed last_changed must invalidate the guard and rebuild the DOM.
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  const hass2 = makeHass();
+  hass2.states['sensor.menstruation'].last_changed = '2026-01-02T00:00:00.000Z';
+  card.hass = hass2;
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not rebuilt after entity last_changed update');
+});
+
+test('render guard: tab switch triggers a fresh render', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  card._tab = 'hygiene';
+  card._lastRenderKey = null; // simulate tab-switch handler invalidating the key
+  card._hass = hass;
+  card._render();
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after tab switch');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

@@ -715,6 +715,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     this._tab = this._tab || 'stats';
     this._settingsOpen = this._settingsOpen || false;
     this._exportStatus = null;
+    this._lastRenderKey = null;
     this._patientName = '';
     this._patientBirthdate = '';
     this._exportLanguage = null;
@@ -2114,9 +2115,33 @@ class MenstruationStatisticsCard extends HTMLElement {
       .replace(/"/g, '&quot;');
   }
 
+  _buildRenderKey() {
+    const entityId = this._config?.entity;
+    const stateObj = entityId ? this._hass?.states?.[entityId] : null;
+    return [
+      stateObj?.state || '',
+      stateObj?.last_changed || '',
+      this._tab,
+      this._daysBack,
+      this._settingsOpen ? 1 : 0,
+      this._planningRangeStart || '',
+      this._planningRangeEnd || '',
+      this._lang(),
+      this._config?.title || '',
+      this._config?.entity || '',
+      this._exportStatus || '',
+    ].join('|');
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
     this._ensureRoot();
+
+    // Skip full DOM replacement when nothing visible has changed — prevents
+    // date-range inputs from losing focus on unrelated hass state pushes.
+    const renderKey = this._buildRenderKey();
+    if (renderKey === this._lastRenderKey) return;
+    this._lastRenderKey = renderKey;
 
     const entityId = this._config.entity;
     const stateObj = entityId ? this._hass.states[entityId] : null;
