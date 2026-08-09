@@ -17,6 +17,7 @@ class MenstruationCalendarCard extends HTMLElement {
     this._viewDate = new Date();
     this._modalIso = null;
     this._focusedIso = null;
+    this._lastRenderKey = null;
   }
 
   static getConfigElement() {
@@ -939,9 +940,35 @@ class MenstruationCalendarCard extends HTMLElement {
     btn?.focus?.();
   }
 
+  _buildRenderKey() {
+    const entityId = this._resolveEntityId();
+    const stateObj = this._hass?.states?.[entityId];
+    return [
+      stateObj?.state || '',
+      stateObj?.last_changed || '',
+      this._viewDate?.getFullYear(),
+      this._viewDate?.getMonth(),
+      this._lang(),
+      this._config?.title || '',
+      this._config?.show_predicted_cycles !== false ? 1 : 0,
+      Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6))),
+      this._config?.show_fertile_period !== false ? 1 : 0,
+      this._config?.show_ovulation_marker !== false ? 1 : 0,
+      this._config?.show_cycle_day_numbers ? 1 : 0,
+      this._config?.week_start || 'monday',
+      this._modalIso || '',
+    ].join('|');
+  }
+
   _render() {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+
+    // Skip full DOM replacement when nothing visible has changed — prevents
+    // date pickers and modal inputs from losing focus on unrelated hass updates.
+    const renderKey = this._buildRenderKey();
+    if (renderKey === this._lastRenderKey) return;
+    this._lastRenderKey = renderKey;
 
     const model = this._buildModel();
     const locale = this._hass?.locale?.language || 'en';

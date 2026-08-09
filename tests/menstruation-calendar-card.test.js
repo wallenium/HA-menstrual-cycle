@@ -341,6 +341,40 @@ function testNfpLowConfidenceIgnoredInCalendar() {
   console.log('  ✓ NFP low-confidence: sensor fallback ignored; medium/high confidence respected');
 }
 
+function testRenderStability() {
+  const CardClass = defined['menstruation-calendar-card'];
+
+  // Initial render
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass;
+  const firstHtml = card.shadowRoot.innerHTML;
+  assert.ok(firstHtml.length > 0, 'initial render expected');
+
+  // Replace innerHTML with sentinel — render guard must preserve it on identical hass update.
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  card.hass = hass;
+  assert.strictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was replaced on identical hass update');
+
+  // A changed last_changed value must trigger a fresh render.
+  const hass2 = makeHass();
+  hass2.states['sensor.menstruation'].last_changed = '2026-01-02T00:00:00.000Z';
+  card.hass = hass2;
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after entity state change');
+
+  // Month navigation (viewDate change) must also trigger a fresh render.
+  const htmlAfterStateChange = card.shadowRoot.innerHTML;
+  card.shadowRoot.innerHTML = 'SENTINEL2';
+  card._viewDate = new Date(2020, 0, 1);
+  card._lastRenderKey = null;
+  card._render();
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL2', 'DOM was not updated after month navigation');
+
+  console.log('  ✓ render stability: repeated identical hass updates do not replace rendered HTML');
+}
+
 let failed = 0;
 [
   testRegistration,
@@ -355,6 +389,7 @@ let failed = 0;
   testEditorHasPredictedOptions,
   testTranslationFallbackHelpers,
   testNfpLowConfidenceIgnoredInCalendar,
+  testRenderStability,
 ].forEach((fn) => {
   try {
     fn();
