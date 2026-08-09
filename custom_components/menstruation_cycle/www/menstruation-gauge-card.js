@@ -1438,9 +1438,7 @@ class MenstruationGaugeCard extends HTMLElement {
         this._timelineScrollTimer = setTimeout(() => this._syncTimelineMonthFromScroll(), 140);
       }, { passive: true });
       this._centerTimelineStrip('auto');
-      return;
     }
-    this._centerTimelineStrip('auto');
   }
 
   _calendarGrid(model, locale) {
@@ -2064,7 +2062,7 @@ class MenstruationGaugeCard extends HTMLElement {
     }
     // Initialize timeline month to today's month if not yet set
     if (!this._timelineMonth) {
-      this._timelineMonth = new Date();
+      this._timelineMonth = new Date(this._todayDate?.() || new Date());
     }
     const locale = this._hass?.locale?.language || 'de';
     const monthYear = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(this._viewDate);
@@ -2166,7 +2164,7 @@ class MenstruationGaugeCard extends HTMLElement {
           gap: 10px;
           overflow-x: auto;
           overscroll-behavior-x: contain;
-          scroll-snap-type: x mandatory;
+          scroll-snap-type: x proximity;
           scroll-behavior: smooth;
           scrollbar-width: none;
           -ms-overflow-style: none;
@@ -2305,7 +2303,7 @@ class MenstruationGaugeCard extends HTMLElement {
                 🩸 ${this._t('log_first_period')}
               </button>
             </div>` : ''}
-            ${model.series60 ? this._renderTimeline(model, palette, locale) : ''}
+            ${this._renderTimeline(model, palette, locale)}
             ${this._config.show_editor && canEdit ? `
             <div class="editor">
               <div class="toolbar">
