@@ -2433,7 +2433,7 @@ class MenstruationGaugeCard extends HTMLElement {
           padding: 10px;
           overflow: hidden;
         }
-        .wrap { display: grid; gap: 10px; }
+        .wrap { display: grid; gap: 10px; min-width: 0; }
         .head { display: grid; gap: 2px; }
         .friendly { font-size: .78rem; font-weight: 600; color: ${palette.monthText}; text-align: left; }
         .title-label { font-size: .95rem; font-weight: 700; color: ${palette.cardColor}; text-align: left; }
@@ -2486,12 +2486,15 @@ class MenstruationGaugeCard extends HTMLElement {
         .day.has-symptoms { box-shadow: 0 0 0 2px ${palette.fertile} inset; }
         .day.active.has-symptoms { box-shadow: 0 0 0 2px ${palette.fertile} inset, 0 0 0 4px ${palette.confirmedInset} inset; }
         /* 60-day timeline */
-        .timeline { border-top: 1px solid ${palette.border}; padding-top: 8px; }
-        .tl-strip-shell { position: relative; margin: 0 -10px; padding: 0 10px; }
+        .timeline { border-top: 1px solid ${palette.border}; padding-top: 8px; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; min-width: 0; }
+        .tl-strip-shell { position: relative; margin: 0 -10px; padding: 0 10px; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; overflow: hidden; }
         .tl-strip {
           display: flex;
           gap: 10px;
           overflow-x: auto;
+          overflow-y: hidden;
+          max-width: 100%;
+          min-width: 0;
           overscroll-behavior-x: contain;
           scroll-snap-type: x proximity;
           scroll-behavior: smooth;
