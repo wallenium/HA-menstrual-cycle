@@ -2070,14 +2070,40 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
         }
 
         added_count = 0
+        updated_count = 0
         failed_urls: list[str] = []
         for resource_url, _static_url, filename in LOVELACE_RESOURCES:
             normalized_resource_url = _normalize_resource_url(resource_url)
-            if resource_url in existing_exact_urls or (
-                normalized_resource_url is not None and normalized_resource_url in existing_urls
-            ):
+
+            if resource_url in existing_exact_urls:
                 _LOGGER.debug("Lovelace resource already registered: %s", resource_url)
                 continue
+
+            # A resource with the same base path but a DIFFERENT (older) version exists.
+            # Update it in place instead of skipping (which would leave the stale version
+            # active until cleanup deletes it, and re-adding a fresh copy would create a
+            # duplicate entry if the deletion and re-add ever land in different runs).
+            stale_item = None
+            if normalized_resource_url is not None:
+                for item in items or []:
+                    if not isinstance(item, dict) or not item.get("url"):
+                        continue
+                    if _normalize_resource_url(item.get("url")) == normalized_resource_url:
+                        stale_item = item
+                        break
+
+            if stale_item is not None and hasattr(collection, "async_update_item"):
+                try:
+                    item_id = stale_item.get("id")
+                    await _maybe_await(collection.async_update_item(item_id, {"url": resource_url}))
+                    updated_count += 1
+                    existing_urls.add(normalized_resource_url)
+                    existing_exact_urls.add(resource_url)
+                    _LOGGER.info("Updated Lovelace resource to new version: %s", resource_url)
+                    continue
+                except Exception as err:
+                    _LOGGER.debug("Failed to update stale Lovelace resource %s: %s", resource_url, err)
+                    # fall through to normal create/cleanup handling below
 
             create_errors: list[str] = []
             created = False
@@ -2132,7 +2158,11 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
             return
 
         await _async_cleanup_old_lovelace_resources(hass, RESOURCE_VERSION)
-        _LOGGER.info("Lovelace resource registration complete; %s new resources added", added_count)
+        _LOGGER.info(
+            "Lovelace resource registration complete; %s new resources added, %s updated",
+            added_count,
+            updated_count,
+        )
     except Exception as err:
         _LOGGER.exception("Auto-registration of Lovelace resources failed: %s", err)
 
