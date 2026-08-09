@@ -1292,6 +1292,44 @@ function testRenderGaugeUsesIsoTodayForHandAndCurrentMonth() {
   console.log('  ✓ render gauge uses ISO/parsed today for hand angle and current month checks');
 }
 
+function testTimelineStripMonthRange() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._todayDate = () => new Date(2026, 7, 9, 12, 0, 0, 0);
+
+  const months = card._timelineStripMonths();
+
+  assert.strictEqual(months.length, 13, 'timeline strip should render a broad month range for horizontal scrolling');
+  assert.strictEqual(months[0].monthIso, '2026-02', 'timeline strip should include months before the anchor month');
+  assert.strictEqual(months[6].monthIso, '2026-08', 'timeline strip anchor should default to the current month');
+  assert.strictEqual(months[6].isAnchor, true, 'current timeline month should be marked as the anchor');
+  assert.strictEqual(months[12].monthIso, '2027-02', 'timeline strip should include months after the anchor month');
+
+  console.log('  ✓ timeline strip builds a centered multi-month range');
+}
+
+function testTimelineStripMarkupReplacesOldArrowLayout() {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._todayDate = () => new Date(2026, 7, 9, 12, 0, 0, 0);
+  card._hass = makeHass({ state: 'neutral', days_until: 5 });
+  card._render();
+
+  const html = card.shadowRoot.innerHTML;
+  const monthColCount = (html.match(/class="tl-month-col/g) || []).length;
+
+  assert.ok(html.includes('class="tl-strip" data-timeline-strip'), 'timeline should render a horizontal strip container');
+  assert.ok(html.includes('scroll-snap-type: x mandatory'), 'timeline strip should use month snapping');
+  assert.ok(html.includes('overflow-x: auto'), 'timeline strip should remain swipeable/scrollable');
+  assert.ok(html.includes('data-tl-overlay-nav="prev"'), 'desktop overlay previous affordance should be rendered');
+  assert.ok(html.includes('data-tl-overlay-nav="next"'), 'desktop overlay next affordance should be rendered');
+  assert.ok(html.includes('@media (hover: none)'), 'overlay arrows should be hidden on touch devices');
+  assert.ok(!html.includes('data-tl-nav='), 'old persistent timeline arrow button layout should be removed');
+  assert.ok(monthColCount >= 9, 'timeline strip should render several month columns for peeking neighbors');
+
+  console.log('  ✓ timeline strip markup replaces the old arrow-button layout');
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -1313,6 +1351,8 @@ const tests = [
   ['ovulation-marker-fallback-iso-day-extraction', testOvulationMarkerFallbackUsesIsoDayExtraction],
   ['two-ovulations-same-month-both-markers', testTwoOvulationsInSameMonthBothMarkersRendered],
   ['render-gauge-uses-iso-today', testRenderGaugeUsesIsoTodayForHandAndCurrentMonth],
+  ['timeline-strip-month-range', testTimelineStripMonthRange],
+  ['timeline-strip-markup', testTimelineStripMarkupReplacesOldArrowLayout],
   ['pregnancy-mode-symptom-config', testPregnancyModeSymptomModalFields],
   ['pregnancy-mode-modal-field-visibility', testPregnancyModeModalHidesPeriodToggle],
   ['category-label-translation-fallback', testCategoryLabelTranslationFallback],
