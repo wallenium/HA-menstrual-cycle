@@ -688,6 +688,10 @@ class MenstruationGaugeCard extends HTMLElement {
       windowStartIso,
       windowEndIso,
       todayIso: todayIso60,
+      cycleStarts,
+      effectiveAvgCycle,
+      hasNfpData,
+      shouldUseSensorFallback,
       nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
     };
   }
@@ -933,7 +937,7 @@ class MenstruationGaugeCard extends HTMLElement {
     const maxPredictedCycles = Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6)));
 
     // --- 60-day view (when series60 is present in model) ---
-    if (model.series60) {
+    if (Array.isArray(model.series60) && model.series60.length === 60) {
       const total = 60;
       const spanDeg = 300; // 300° span: day 1 at ~7 o'clock, today at 12, day 60 at ~5 o'clock
       const startAngle60 = -90 - (30 / total) * spanDeg; // = -240°; puts today (day 31) at -90° (top)
@@ -1075,7 +1079,8 @@ class MenstruationGaugeCard extends HTMLElement {
       const triangleMarker = `<polygon points="${cx},${Math.round(triTipY)} ${cx - triW},${Math.round(triBaseY)} ${cx + triW},${Math.round(triBaseY)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
 
       // Month label (static, shows today's context)
-      const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date());
+      const todayForLabel = this._parseISO(model.todayIso) || this._todayDate();
+      const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(todayForLabel);
 
       return `
         <svg class="gauge" viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label="Menstruation gauge 60 days">
@@ -1314,9 +1319,58 @@ class MenstruationGaugeCard extends HTMLElement {
     const windowStart = model.windowStartIso || '';
     const windowEnd = model.windowEndIso || '';
     const confirmedSet = model.confirmedSet || new Set();
-    const series60 = model.series60 || [];
+    const series60 = Array.isArray(model.series60) ? model.series60 : [];
+
+    // Build fertile/ovulation sets covering the full 13-month timeline range.
+    // Start with what series60 already provides, then extend to months outside that window.
     const fertileSet = new Set(series60.filter((s) => s.fertile).map((s) => s.iso));
     const ovulationSet = new Set(series60.filter((s) => s.ovulation).map((s) => s.iso));
+
+    const cycleStarts = Array.isArray(model.cycleStarts) ? model.cycleStarts : [];
+    const effectiveAvgCycle = model.effectiveAvgCycle || 28;
+    const hasNfpData = model.hasNfpData || false;
+    const shouldUseSensorFallback = model.shouldUseSensorFallback !== false;
+
+    months.forEach(({ monthDate }) => {
+      const y = monthDate.getFullYear();
+      const mo = monthDate.getMonth();
+      const dayCount = new Date(y, mo + 1, 0).getDate();
+      for (let d = 1; d <= dayCount; d++) {
+        const iso = this._isoFromDate(new Date(y, mo, d, 12, 0, 0, 0));
+        if (fertileSet.has(iso) || ovulationSet.has(iso)) continue;
+        if (!hasNfpData && cycleStarts.length > 0) {
+          let cycleStartForDay = null;
+          let nextCycleStartForDay = null;
+          for (let i = cycleStarts.length - 1; i >= 0; i--) {
+            if (cycleStarts[i] <= iso) {
+              cycleStartForDay = cycleStarts[i];
+              nextCycleStartForDay = cycleStarts[i + 1] || null;
+              break;
+            }
+          }
+          if (cycleStartForDay) {
+            const fw = this._fertileWindowForCycle(cycleStartForDay, nextCycleStartForDay, effectiveAvgCycle);
+            if (fw) {
+              if (fw.fertileStart && fw.fertileEnd
+                  && this._dayDiff(iso, fw.fertileStart) >= 0
+                  && this._dayDiff(fw.fertileEnd, iso) >= 0) fertileSet.add(iso);
+              if (fw.ovulationDay && iso === fw.ovulationDay) ovulationSet.add(iso);
+            }
+          }
+          if (shouldUseSensorFallback) {
+            if (!fertileSet.has(iso) && model.fertileStart && model.fertileEnd
+                && this._dayDiff(iso, model.fertileStart) >= 0
+                && this._dayDiff(model.fertileEnd, iso) >= 0) fertileSet.add(iso);
+            if (!ovulationSet.has(iso) && model.ovulationDay && iso === model.ovulationDay) ovulationSet.add(iso);
+          }
+        } else if (shouldUseSensorFallback) {
+          if (model.fertileStart && model.fertileEnd
+              && this._dayDiff(iso, model.fertileStart) >= 0
+              && this._dayDiff(model.fertileEnd, iso) >= 0) fertileSet.add(iso);
+          if (model.ovulationDay && iso === model.ovulationDay) ovulationSet.add(iso);
+        }
+      }
+    });
 
     const dows = this._weekdayLabels(locale);
 
@@ -1396,7 +1450,26 @@ class MenstruationGaugeCard extends HTMLElement {
     monthEls.forEach((monthEl) => monthEl.classList.toggle('is-anchor', monthEl === best));
     const monthStart = this._parseISO(best.getAttribute('data-timeline-month-start'));
     if (monthStart) {
-      this._timelineMonth = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1, 12, 0, 0, 0);
+      const prevMonth = this._timelineMonth;
+      const newMonth = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1, 12, 0, 0, 0);
+      const monthChanged = !prevMonth
+        || prevMonth.getFullYear() !== newMonth.getFullYear()
+        || prevMonth.getMonth() !== newMonth.getMonth();
+      this._timelineMonth = newMonth;
+      // Re-render when the visible month changes so the 13-month window shifts and
+      // historical fertile/ovulation markers become available without a hass push.
+      if (monthChanged && this._config && this._hass && !this._modalIso && !this._pmModalOpen) {
+        const allMonths = this._timelineStripMonths();
+        const firstMonthDate = allMonths[0].monthDate;
+        const lastMonthDate = allMonths[allMonths.length - 1].monthDate;
+        const distToFirst = (newMonth.getFullYear() - firstMonthDate.getFullYear()) * 12
+          + (newMonth.getMonth() - firstMonthDate.getMonth());
+        const distToLast = (lastMonthDate.getFullYear() - newMonth.getFullYear()) * 12
+          + (lastMonthDate.getMonth() - newMonth.getMonth());
+        if (distToFirst <= 2 || distToLast <= 2) {
+          this._render();
+        }
+      }
     }
   }
 
