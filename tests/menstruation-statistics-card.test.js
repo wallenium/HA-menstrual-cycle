@@ -303,7 +303,27 @@ test('_nfpPregnancyLikelihood returns unknown when temperature rise detected but
   assert.strictEqual(card._nfpPregnancyLikelihood(nfp, today), 'unknown');
 });
 
-test('NFP tab renders pregnancy likelihood section when NFP data is present', () => {
+test('_nfpConceptionEstimate uses cycle-based backend estimate when available', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const estimate = card._nfpConceptionEstimate({
+    confidence_level: 'high',
+    conception_likelihood: {
+      probability: 47,
+      level: 'high',
+      confidence: 'high',
+      reason_key: 'fertile_unprotected',
+    },
+  });
+  assert.deepStrictEqual(estimate, {
+    probability: 47,
+    level: 'high',
+    confidence: 'high',
+    reason_key: 'fertile_unprotected',
+  });
+});
+
+test('NFP tab renders current-cycle conception estimate when available', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
   const hass = makeHass();
@@ -316,6 +336,12 @@ test('NFP tab renders pregnancy likelihood section when NFP data is present', ()
     temperature_rise_detected: true,
     fertile_window: { start: today, end: today },
     nfp_symptom_score: 0.8,
+    conception_likelihood: {
+      probability: 47,
+      level: 'high',
+      confidence: 'high',
+      reason_key: 'fertile_unprotected',
+    },
     details: { temperature_rise_confirmed: true, conflicting_signals: false },
   };
   card._hass = hass;
@@ -323,7 +349,10 @@ test('NFP tab renders pregnancy likelihood section when NFP data is present', ()
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(html.includes('nfp-pregnancy-likelihood'), 'pregnancy likelihood section missing from NFP tab');
-  assert.ok(html.includes('nfp_likelihood_disclaimer') || html.includes('estimate only'), 'disclaimer missing from NFP tab');
+  assert.ok(html.includes('Conception likelihood this cycle'), 'current-cycle conception label missing');
+  assert.ok(html.includes('47%'), 'probability estimate missing from NFP tab');
+  assert.ok(html.includes('logged unprotected intercourse'), 'conception explanation missing from NFP tab');
+  assert.ok(html.includes('nfp_likelihood_disclaimer') || html.includes('Estimated from cycle history'), 'disclaimer missing from NFP tab');
 });
 
 test('NFP tab shows no-data message and no pregnancy likelihood when NFP data is absent', () => {
@@ -336,6 +365,27 @@ test('NFP tab shows no-data message and no pregnancy likelihood when NFP data is
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(!html.includes('nfp-pregnancy-likelihood'), 'pregnancy likelihood section must be absent when no NFP data');
+});
+
+test('NFP tab keeps low-data conception estimate visible when only conception likelihood is available', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.nfp_analysis = {
+    confidence_level: 'low',
+    conception_likelihood: {
+      probability: null,
+      level: 'unknown',
+      confidence: 'low',
+      reason_key: 'insufficient_data',
+    },
+  };
+  card._hass = hass;
+  card._tab = 'nfp';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Conception likelihood this cycle'), 'conception estimate label missing for low-data case');
+  assert.ok(html.includes('Estimate unavailable'), 'low-data estimate text missing');
 });
 
 console.log('\nCycle planning and fertility forecast');
