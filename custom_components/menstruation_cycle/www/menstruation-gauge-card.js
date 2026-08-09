@@ -1621,6 +1621,18 @@ class MenstruationGaugeCard extends HTMLElement {
       btn.classList.toggle('is-active', canScroll);
       btn.classList.toggle('is-disabled', !canScroll);
     });
+    if (prevBtn) {
+      prevBtn.style.left = '8px';
+      prevBtn.style.right = 'auto';
+      prevBtn.style.top = '50%';
+      prevBtn.style.transform = 'translateY(-50%)';
+    }
+    if (nextBtn) {
+      nextBtn.style.left = 'auto';
+      nextBtn.style.right = '8px';
+      nextBtn.style.top = '50%';
+      nextBtn.style.transform = 'translateY(-50%)';
+    }
   }
 
   _scheduleTimelineNavStateUpdates() {
