@@ -432,5 +432,9 @@
   "fertility_forecast_best_days": "Beste Tage für eine Empfängnis",
   "fertility_forecast_source_nfp": "NFP (gemessen)",
   "fertility_forecast_source_estimated": "Geschätzt",
-  "fertility_forecast_no_data": "Nicht genügend Daten für eine Fruchtbarkeitsprognose."
+  "fertility_forecast_no_data": "Nicht genügend Daten für eine Fruchtbarkeitsprognose.",
+  "planning_range_mini_calendar": "Mini-Kalender für den Bereich",
+  "planning_range_marker_period": "Periode",
+  "planning_range_marker_fertile": "Fruchtbar",
+  "planning_range_marker_ovulation": "Ovulation"
 }

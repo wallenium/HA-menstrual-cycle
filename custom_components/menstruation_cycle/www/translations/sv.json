@@ -432,5 +432,9 @@
   "fertility_forecast_best_days": "Bästa dagar för befruktning",
   "fertility_forecast_source_nfp": "NFP (uppmätt)",
   "fertility_forecast_source_estimated": "Uppskattad",
-  "fertility_forecast_no_data": "Inte tillräckligt med data för en fertilitetsprognos."
+  "fertility_forecast_no_data": "Inte tillräckligt med data för en fertilitetsprognos.",
+  "planning_range_mini_calendar": "Mini-kalender för intervallet",
+  "planning_range_marker_period": "mens",
+  "planning_range_marker_fertile": "fertil",
+  "planning_range_marker_ovulation": "ägglossning"
 }

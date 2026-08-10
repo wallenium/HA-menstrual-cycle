@@ -432,5 +432,9 @@
   "fertility_forecast_best_days": "Meilleurs jours pour la conception",
   "fertility_forecast_source_nfp": "MNF (mesuré)",
   "fertility_forecast_source_estimated": "Estimé",
-  "fertility_forecast_no_data": "Pas assez de données pour une prévision de fertilité."
+  "fertility_forecast_no_data": "Pas assez de données pour une prévision de fertilité.",
+  "planning_range_mini_calendar": "Mini-calendrier de la plage",
+  "planning_range_marker_period": "règles",
+  "planning_range_marker_fertile": "fertile",
+  "planning_range_marker_ovulation": "ovulation"
 }
