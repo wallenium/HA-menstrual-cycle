@@ -1553,7 +1553,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const rangeStart = this._planningRangeStart || '';
     const rangeEnd = this._planningRangeEnd || '';
     const rangeForecast = this._computeDateRangeForecast(pf, ff, rangeStart, rangeEnd);
-    const miniCalendarHtml = this._renderRangeMiniCalendar(rangeStart, rangeEnd, pf, ff);
+    const miniCalendarHtml = this._renderRangeMiniCalendar(rangeStart, rangeEnd, pf, ff, attrs && attrs.avg_cycle_length);
     let rangeHtml = '';
     if (!rangeForecast) {
       rangeHtml = `<p class="no-data">${esc(t('planning_range_invalid'))}</p>`;
@@ -1605,21 +1605,89 @@ class MenstruationStatisticsCard extends HTMLElement {
     return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
   }
 
-  _collectRangeMarkers(dayIso, periodForecast, fertilityForecast) {
+  _projectRangeWindows(periodForecast, fertilityForecast, avgCycleLength, rangeStartIso, rangeEndIso) {
+    if (!rangeStartIso || !rangeEndIso || rangeStartIso > rangeEndIso) {
+      return { periodWindows: [], fertilityWindows: [] };
+    }
+    let cycleLength = 28;
+    const clRaw = Number(avgCycleLength);
+    if (Number.isFinite(clRaw) && clRaw >= 20 && clRaw <= 60) cycleLength = Math.round(clRaw);
+    for (const src of [periodForecast, fertilityForecast]) {
+      if (!src) continue;
+      for (const key of ['avg_cycle_length', 'predicted_cycle_length', 'cycle_length', 'cycle_days']) {
+        const v = Number(src[key]);
+        if (Number.isFinite(v) && v >= 20 && v <= 60) { cycleLength = Math.round(v); break; }
+      }
+    }
+    const cycleDaysMs = cycleLength * 86400000;
+    const maxCycles = 60;
+    const rangeStart = new Date(`${rangeStartIso}T12:00:00Z`);
+    const rangeEnd = new Date(`${rangeEndIso}T12:00:00Z`);
+
+    const periodWindows = [];
+    if (periodForecast && periodForecast.predicted_start && periodForecast.predicted_end) {
+      let pStart = new Date(`${periodForecast.predicted_start}T12:00:00Z`);
+      let pEnd = new Date(`${periodForecast.predicted_end}T12:00:00Z`);
+      if (!Number.isNaN(pStart.getTime()) && !Number.isNaN(pEnd.getTime())) {
+        let count = 0;
+        while (pStart.getTime() <= rangeEnd.getTime() && count < maxCycles) {
+          if (pEnd.getTime() >= rangeStart.getTime()) {
+            periodWindows.push({ start: pStart.toISOString().slice(0, 10), end: pEnd.toISOString().slice(0, 10) });
+          }
+          pStart = new Date(pStart.getTime() + cycleDaysMs);
+          pEnd = new Date(pEnd.getTime() + cycleDaysMs);
+          count++;
+        }
+      }
+    }
+
+    const fertilityWindows = [];
+    if (fertilityForecast && fertilityForecast.fertile_window_start && fertilityForecast.fertile_window_end && fertilityForecast.ovulation_estimate) {
+      let fStart = new Date(`${fertilityForecast.fertile_window_start}T12:00:00Z`);
+      let fEnd = new Date(`${fertilityForecast.fertile_window_end}T12:00:00Z`);
+      let ov = new Date(`${fertilityForecast.ovulation_estimate}T12:00:00Z`);
+      if (!Number.isNaN(fStart.getTime()) && !Number.isNaN(fEnd.getTime()) && !Number.isNaN(ov.getTime())) {
+        let count = 0;
+        while (fStart.getTime() <= rangeEnd.getTime() && count < maxCycles) {
+          if (fEnd.getTime() >= rangeStart.getTime()) {
+            fertilityWindows.push({
+              fertileStart: fStart.toISOString().slice(0, 10),
+              fertileEnd: fEnd.toISOString().slice(0, 10),
+              ovulation: ov.toISOString().slice(0, 10),
+            });
+          }
+          fStart = new Date(fStart.getTime() + cycleDaysMs);
+          fEnd = new Date(fEnd.getTime() + cycleDaysMs);
+          ov = new Date(ov.getTime() + cycleDaysMs);
+          count++;
+        }
+      }
+    }
+    return { periodWindows, fertilityWindows };
+  }
+
+  _collectRangeMarkers(dayIso, periodForecast, fertilityForecast, rangeWindows) {
     const markers = [];
-    if (periodForecast && periodForecast.predicted_start && periodForecast.predicted_end && dayIso >= periodForecast.predicted_start && dayIso <= periodForecast.predicted_end) {
-      markers.push('period');
-    }
-    if (fertilityForecast && fertilityForecast.fertile_window_start && fertilityForecast.fertile_window_end && dayIso >= fertilityForecast.fertile_window_start && dayIso <= fertilityForecast.fertile_window_end) {
-      markers.push('fertile');
-    }
-    if (fertilityForecast && fertilityForecast.ovulation_estimate === dayIso) {
-      markers.push('ovulation');
-    }
+    const pWindows = (rangeWindows && rangeWindows.periodWindows) || [];
+    const periodMatched = pWindows.some((w) => dayIso >= w.start && dayIso <= w.end)
+      || (periodForecast && periodForecast.predicted_start && periodForecast.predicted_end
+        && dayIso >= periodForecast.predicted_start && dayIso <= periodForecast.predicted_end);
+    if (periodMatched) markers.push('period');
+
+    const fWindows = (rangeWindows && rangeWindows.fertilityWindows) || [];
+    const fertileMatched = fWindows.some((w) => dayIso >= w.fertileStart && dayIso <= w.fertileEnd)
+      || (fertilityForecast && fertilityForecast.fertile_window_start && fertilityForecast.fertile_window_end
+        && dayIso >= fertilityForecast.fertile_window_start && dayIso <= fertilityForecast.fertile_window_end);
+    if (fertileMatched) markers.push('fertile');
+
+    const ovMatched = fWindows.some((w) => w.ovulation === dayIso)
+      || (fertilityForecast && fertilityForecast.ovulation_estimate === dayIso);
+    if (ovMatched) markers.push('ovulation');
+
     return markers;
   }
 
-  _renderRangeMiniCalendar(rangeStartIso, rangeEndIso, periodForecast, fertilityForecast) {
+  _renderRangeMiniCalendar(rangeStartIso, rangeEndIso, periodForecast, fertilityForecast, avgCycleLength) {
     if (!rangeStartIso || !rangeEndIso || rangeStartIso > rangeEndIso) return '';
     const rangeDays = this._rangeLengthDays(rangeStartIso, rangeEndIso);
     if (rangeDays <= 10) return '';
@@ -1635,12 +1703,13 @@ class MenstruationStatisticsCard extends HTMLElement {
       fertile: 'F',
       ovulation: 'O',
     };
+    const rangeWindows = this._projectRangeWindows(periodForecast, fertilityForecast, avgCycleLength, rangeStartIso, rangeEndIso);
     const dayCells = [];
     let day = new Date(`${rangeStartIso}T12:00:00Z`);
     const end = new Date(`${rangeEndIso}T12:00:00Z`);
     while (day.getTime() <= end.getTime()) {
       const dayIso = day.toISOString().slice(0, 10);
-      const markers = this._collectRangeMarkers(dayIso, periodForecast, fertilityForecast);
+      const markers = this._collectRangeMarkers(dayIso, periodForecast, fertilityForecast, rangeWindows);
       const topMarker = markers.includes('ovulation')
         ? 'ovulation'
         : markers.includes('period')
