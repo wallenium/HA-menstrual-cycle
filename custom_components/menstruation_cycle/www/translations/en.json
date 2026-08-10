@@ -305,6 +305,8 @@
   "nfp_temp_chart": "Basal Temperature Curve",
   "nfp_baseline": "Baseline",
   "nfp_threshold": "Threshold (+0.2°C)",
+  "nfp_period_marker": "Period",
+  "nfp_intercourse_marker": "Intercourse",
   "nfp_temp_unit": "°C",
   "nfp_not_detected": "Not detected",
   "nfp_temperature": "Temperature (°C)",

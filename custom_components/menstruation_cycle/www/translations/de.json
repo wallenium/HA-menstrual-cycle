@@ -305,6 +305,8 @@
   "nfp_temp_chart": "Basaltemperaturkurve",
   "nfp_baseline": "Basislinie",
   "nfp_threshold": "Schwelle (+0,2°C)",
+  "nfp_period_marker": "Periode",
+  "nfp_intercourse_marker": "Geschlechtsverkehr",
   "nfp_temp_unit": "°C",
   "nfp_not_detected": "Nicht erkannt",
   "nfp_temperature": "Temperatur (°C)",

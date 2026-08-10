@@ -305,6 +305,8 @@
   "nfp_temp_chart": "Courbe de température basale",
   "nfp_baseline": "Ligne de base",
   "nfp_threshold": "Seuil (+0,2°C)",
+  "nfp_period_marker": "Règles",
+  "nfp_intercourse_marker": "Rapports sexuels",
   "nfp_temp_unit": "°C",
   "nfp_not_detected": "Non détecté",
   "nfp_temperature": "Température (°C)",

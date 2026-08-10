@@ -750,6 +750,101 @@ test('render guard: attribute-only updates trigger a fresh render', () => {
   assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not rebuilt after attribute-only update');
 });
 
+console.log('\nBBT chart event markers');
+
+function makeBbtAttrs(cycleStart, symptomHistory, tempDays) {
+  return {
+    cycle_start_date: cycleStart,
+    symptom_history: symptomHistory.concat(
+      tempDays.map(({ day, temp }) => {
+        const d = new Date(cycleStart + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + day - 1);
+        return { date: d.toISOString().slice(0, 10), basal_temp: temp };
+      })
+    ),
+  };
+}
+
+test('BBT chart: period days render blood drop markers', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const cycleStart = daysAgo(14);
+  const symptomHistory = [
+    { date: daysAgo(14), bleeding_strength: 'heavy' },
+    { date: daysAgo(13), bleeding_strength: 'medium' },
+  ];
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day, i) => ({ day, temp: 36.5 + i * 0.05 }));
+  const attrs = makeBbtAttrs(cycleStart, symptomHistory, tempDays);
+  const html = card._renderNfpTempChart(attrs, null);
+  assert.ok(html.includes('🩸'), 'blood drop marker missing for period day');
+  assert.ok(html.includes('Period'), 'accessible Period label missing from blood drop marker');
+});
+
+test('BBT chart: intercourse days render heart markers', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const cycleStart = daysAgo(14);
+  const symptomHistory = [
+    { date: daysAgo(10), intercourse: 'unprotected' },
+    { date: daysAgo(9), intercourse: 'protected' },
+  ];
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day, i) => ({ day, temp: 36.5 + i * 0.05 }));
+  const attrs = makeBbtAttrs(cycleStart, symptomHistory, tempDays);
+  const html = card._renderNfpTempChart(attrs, null);
+  assert.ok(html.includes('❤️'), 'heart marker missing for intercourse day');
+  assert.ok(html.includes('Intercourse'), 'accessible Intercourse label missing from heart marker');
+});
+
+test('BBT chart: day with both period and intercourse shows both markers without duplicates', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const cycleStart = daysAgo(14);
+  const symptomHistory = [
+    { date: daysAgo(12), bleeding_strength: 'heavy', intercourse: 'protected' },
+  ];
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day, i) => ({ day, temp: 36.5 + i * 0.05 }));
+  const attrs = makeBbtAttrs(cycleStart, symptomHistory, tempDays);
+  const html = card._renderNfpTempChart(attrs, null);
+  assert.ok(html.includes('🩸'), 'blood drop marker missing when both events on same day');
+  assert.ok(html.includes('❤️'), 'heart marker missing when both events on same day');
+  // Verify each marker group appears exactly once (count <title> elements, not aria-label duplicates)
+  const bloodDropMarkerCount = (html.match(/<title>Day \d+: Period<\/title>/g) || []).length;
+  const heartMarkerCount = (html.match(/<title>Day \d+: Intercourse<\/title>/g) || []).length;
+  assert.strictEqual(bloodDropMarkerCount, 1, `expected 1 period marker group, got ${bloodDropMarkerCount}`);
+  assert.strictEqual(heartMarkerCount, 1, `expected 1 intercourse marker group, got ${heartMarkerCount}`);
+});
+
+test('BBT chart: legend contains blood drop and heart entries', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const cycleStart = daysAgo(14);
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day, i) => ({ day, temp: 36.5 + i * 0.05 }));
+  const attrs = makeBbtAttrs(cycleStart, [], tempDays);
+  const html = card._renderNfpTempChart(attrs, null);
+  assert.ok(html.includes('🩸'), 'blood drop legend entry missing');
+  assert.ok(html.includes('❤️'), 'heart legend entry missing');
+  assert.ok(html.includes('Period'), 'Period legend label missing');
+  assert.ok(html.includes('Intercourse'), 'Intercourse legend label missing');
+});
+
+test('BBT chart: intercourse as array is recognized', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const cycleStart = daysAgo(14);
+  const symptomHistory = [
+    { date: daysAgo(10), intercourse: ['unprotected'] },
+  ];
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day, i) => ({ day, temp: 36.5 + i * 0.05 }));
+  const attrs = makeBbtAttrs(cycleStart, symptomHistory, tempDays);
+  const html = card._renderNfpTempChart(attrs, null);
+  assert.ok(html.includes('❤️'), 'heart marker missing when intercourse is an array value');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

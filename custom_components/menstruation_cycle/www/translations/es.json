@@ -305,6 +305,8 @@
   "nfp_temp_chart": "Curva de temperatura basal",
   "nfp_baseline": "Línea base",
   "nfp_threshold": "Umbral (+0,2 °C)",
+  "nfp_period_marker": "Periodo",
+  "nfp_intercourse_marker": "Relaciones sexuales",
   "nfp_temp_unit": "°C",
   "nfp_not_detected": "No detectado",
   "nfp_temperature": "Temperatura (°C)",
