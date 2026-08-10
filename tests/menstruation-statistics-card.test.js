@@ -524,6 +524,64 @@ test('_computeDateRangeForecast marks fertility window as likely in selected ran
   assert.ok(forecast.fertility.percent >= 70, `expected fertility likelihood >= 70, got ${forecast.fertility.percent}`);
 });
 
+test('_computeDateRangeForecast projects distant selected range and avoids false zero for period and fertility', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const forecast = card._computeDateRangeForecast(
+    {
+      predicted_start: '2026-08-05',
+      predicted_end: '2026-08-09',
+      cycle_std_days: 1,
+      confidence: 'high',
+      avg_cycle_length: 28,
+    },
+    {
+      ovulation_estimate: '2026-08-20',
+      fertile_window_start: '2026-08-15',
+      fertile_window_end: '2026-08-21',
+      best_days_start: '2026-08-18',
+      best_days_end: '2026-08-19',
+      source: 'estimated',
+      confidence: 'medium',
+      avg_cycle_length: 28,
+    },
+    '2027-08-01',
+    '2027-08-15',
+  );
+  assert.ok(forecast, 'range forecast missing');
+  assert.ok(forecast.period.percent > 0, `expected projected period likelihood > 0, got ${forecast.period.percent}`);
+  assert.ok(forecast.fertility.percent > 0, `expected projected fertility likelihood > 0, got ${forecast.fertility.percent}`);
+});
+
+test('_computeDateRangeForecast keeps zero when selected range has no projected overlap', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const forecast = card._computeDateRangeForecast(
+    {
+      predicted_start: '2026-08-05',
+      predicted_end: '2026-08-09',
+      cycle_std_days: 1,
+      confidence: 'high',
+      avg_cycle_length: 28,
+    },
+    {
+      ovulation_estimate: '2026-08-20',
+      fertile_window_start: '2026-08-15',
+      fertile_window_end: '2026-08-21',
+      best_days_start: '2026-08-18',
+      best_days_end: '2026-08-19',
+      source: 'estimated',
+      confidence: 'medium',
+      avg_cycle_length: 28,
+    },
+    '2027-08-22',
+    '2027-08-22',
+  );
+  assert.ok(forecast, 'range forecast missing');
+  assert.strictEqual(forecast.period.percent, 0);
+  assert.strictEqual(forecast.fertility.percent, 0);
+});
+
 test('planning section shows low-confidence hint for variable cycle range forecast', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
@@ -611,10 +669,16 @@ test('planning mini-calendar marker priority keeps ovulation marker when fertile
   card._tab = 'stats';
   card._render();
   const html = card.shadowRoot.innerHTML;
-  assert.ok(html.includes('mini-calendar-marker-ovulation'), 'ovulation marker missing');
-  assert.ok(html.includes('mini-calendar-marker-fertile'), 'fertile marker missing');
-  assert.ok(html.includes('mini-calendar-marker-period'), 'period marker missing');
+  assert.ok(html.includes('mini-calendar-day-ovulation'), 'ovulation day color missing');
+  assert.ok(html.includes('mini-calendar-day-fertile'), 'fertile day color missing');
+  assert.ok(html.includes('mini-calendar-day-period'), 'period day color missing');
+  assert.ok(!html.includes('mini-calendar-marker-'), 'symbol marker classes should not be present');
+  assert.ok(!html.includes('>P</span>') && !html.includes('>F</span>') && !html.includes('>O</span>'), 'symbol markers should not be primary day markers');
   assert.ok(html.includes('2027-08-06: fertile, ovulation'), 'ovulation overlap accessibility label missing');
+  assert.ok(
+    /mini-calendar-day mini-calendar-day-ovulation" title="2027-08-06: fertile, ovulation"/.test(html),
+    'overlap day should use ovulation priority class',
+  );
 });
 
 console.log('\nRender stability');

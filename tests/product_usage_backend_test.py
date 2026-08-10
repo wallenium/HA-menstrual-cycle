@@ -402,6 +402,50 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertIsNotNone(result["period"])
         self.assertEqual(result["period"]["probability_percent"], 0)
 
+    def test_date_range_forecast_long_range_projects_future_fertility_windows(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast=None,
+            fertility_forecast={
+                "ovulation_estimate": "2027-01-19",
+                "fertile_window_start": "2027-01-14",
+                "fertile_window_end": "2027-01-20",
+                "best_days_start": "2027-01-17",
+                "best_days_end": "2027-01-18",
+                "source": "estimated",
+                "confidence": "medium",
+                "avg_cycle_length": 28,
+            },
+            range_start_iso="2027-08-01",
+            range_end_iso="2027-08-04",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["fertility"])
+        self.assertGreater(result["fertility"]["probability_percent"], 0)
+
+    def test_date_range_forecast_long_range_no_fertility_overlap_stays_zero(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast=None,
+            fertility_forecast={
+                "ovulation_estimate": "2027-01-19",
+                "fertile_window_start": "2027-01-14",
+                "fertile_window_end": "2027-01-20",
+                "best_days_start": "2027-01-17",
+                "best_days_end": "2027-01-18",
+                "source": "estimated",
+                "confidence": "medium",
+                "avg_cycle_length": 28,
+            },
+            range_start_iso="2027-08-22",
+            range_end_iso="2027-08-22",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["fertility"])
+        self.assertEqual(result["fertility"]["probability_percent"], 0)
+
     def test_date_range_forecast_short_range_matches_single_window_behavior(self) -> None:
         result = model.compute_date_range_forecast(
             period_forecast={
