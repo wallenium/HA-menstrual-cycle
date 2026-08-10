@@ -1998,6 +1998,7 @@ class MenstruationGaugeCard extends HTMLElement {
       : [];
 
     this._modalIso = null;
+    this._pendingTimelineState = this._captureTimelineState();
 
     // Toggle period start if state changed
     if (allowPeriodToggle && wantsPeriod !== hasPeriod) {

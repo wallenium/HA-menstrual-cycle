@@ -787,6 +787,52 @@ async function testClotSizeDependencyOnSave() {
   console.log('  ✓ clot size dependency enforced on modal save');
 }
 
+async function testModalSaveCapturesTimelineStateBeforeServiceCalls() {
+  const card = makeCard();
+  const iso = '2026-08-10';
+  const savedTimelineState = { anchorMonthStart: '2026-08-01', anchorOffset: 12, scrollLeft: 120 };
+  card._modalIso = iso;
+
+  card._buildModel = () => ({
+    entityId: 'sensor.menstruation',
+    stateObj: { attributes: {} },
+    state: 'neutral',
+    confirmedSet: new Set(),
+    pregnancyInfo: { isPregnant: false },
+  });
+  card._symptomConfig = () => [];
+  card._periodModalContext = () => ({ showPeriodToggle: true, continuationBlock: null });
+  card._captureTimelineState = () => savedTimelineState;
+  card._refreshSensorEntity = async () => {};
+  card._render = () => {};
+
+  const fakeRoot = {
+    querySelector: (sel) => {
+      if (sel === '.sym-opt-btn[data-cat="_period"][data-val="yes"]') {
+        return { classList: { contains: (name) => name === 'sym-selected' } };
+      }
+      return null;
+    },
+    querySelectorAll: () => [],
+    getElementById: () => null,
+  };
+  Object.defineProperty(card, 'shadowRoot', { get: () => fakeRoot, configurable: true });
+
+  let sawPendingStateDuringServiceCall = false;
+  card._toggleCycleStart = async () => {
+    sawPendingStateDuringServiceCall = card._pendingTimelineState === savedTimelineState;
+  };
+
+  await card._handleModalSave();
+
+  assert.strictEqual(
+    sawPendingStateDuringServiceCall,
+    true,
+    'modal save should preserve timeline state before starting service calls',
+  );
+  console.log('  ✓ modal save captures timeline state before service calls');
+}
+
 // ---------------------------------------------------------------------------
 // D3) Ovulation fallback: sensor ovulation_day used when current cycle not in grouped_starts
 // ---------------------------------------------------------------------------
@@ -1495,6 +1541,7 @@ const tests = [
   ['discharge-symptom-config-ordering', testDischargeSymptomConfigAndOrdering],
   ['new-symptom-categories-across-modes', testNewSymptomCategoriesAcrossModes],
   ['clot-size-dependency-save', testClotSizeDependencyOnSave],
+  ['modal-save-captures-timeline-state-before-service-calls', testModalSaveCapturesTimelineStateBeforeServiceCalls],
   ['period-lifecycle-save-labels', testTodaySaveButtonUsesPeriodLifecycleLabels],
 ];
 
