@@ -100,10 +100,32 @@ function testGaugeCanHidePredictedCycles() {
   console.log('  ✓ hides predicted cycle markers when disabled');
 }
 
+function testTimelineMarkersCoverFutureMonths() {
+  const card = makeCard({ show_predicted_cycles: true, num_predicted_cycles: 6 });
+  card._hass = makeHass({
+    grouped_starts: ['2026-06-07', '2026-07-05', '2026-08-02'],
+    predicted_cycle_starts: ['2026-08-30', '2026-09-27', '2026-10-25', '2026-11-22', '2026-12-20'],
+    nfp_analysis: { fertile_window: ['2026-07-10', '2026-07-16'], confidence_level: 'high', ovulation_detected: true },
+    fertile_window_start: '2026-07-10',
+    fertile_window_end: '2026-07-16',
+    ovulation_day: '2026-07-14',
+  });
+  const model = card._buildModel();
+  const months = card._timelineStripMonths();
+  const markers = card._timelineMarkerSets(model, months);
+  const futureOvulation = Array.from(markers.ovulationSet).filter((iso) => iso >= '2026-09-01');
+  const futureFertile = Array.from(markers.fertileSet).filter((iso) => iso >= '2026-09-01');
+  assert.ok(futureOvulation.length > 0, 'future months should contain ovulation markers');
+  assert.ok(futureFertile.length > 0, 'future months should contain fertile window days');
+  assert.ok(markers.predictedSet.has('2026-11-22'), 'predicted period start should be marked in future months');
+  console.log('  ✓ timeline marks predicted fertile and ovulation days across future months');
+}
+
 let failed = 0;
 [
   testGaugeUsesMultiplePredictedStarts,
   testGaugeCanHidePredictedCycles,
+  testTimelineMarkersCoverFutureMonths,
 ].forEach((fn) => {
   try {
     fn();
