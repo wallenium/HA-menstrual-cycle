@@ -577,13 +577,13 @@ test('planning section renders mini-calendar only when selected range is longer 
   card._tab = 'stats';
   card._render();
   let html = card.shadowRoot.innerHTML;
-  assert.ok(html.includes('planning-mini-calendar'), 'mini-calendar missing for >10-day range');
+  assert.ok(html.includes('class="planning-mini-calendar"'), 'mini-calendar missing for >10-day range');
 
   card._planningRangeStart = '2027-08-01';
   card._planningRangeEnd = '2027-08-10';
   card._render();
   html = card.shadowRoot.innerHTML;
-  assert.ok(!html.includes('planning-mini-calendar'), 'mini-calendar should not render for <=10-day range');
+  assert.ok(!html.includes('class="planning-mini-calendar"'), 'mini-calendar should not render for <=10-day range');
 });
 
 test('planning mini-calendar marker priority keeps ovulation marker when fertile day overlaps', () => {
