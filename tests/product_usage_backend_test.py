@@ -415,8 +415,8 @@ class ProductUsageBackendTests(unittest.TestCase):
                 "confidence": "medium",
                 "avg_cycle_length": 28,
             },
-            range_start_iso="2027-08-15",
-            range_end_iso="2027-08-18",
+            range_start_iso="2027-08-01",
+            range_end_iso="2027-08-04",
         )
 
         self.assertIsNotNone(result)
