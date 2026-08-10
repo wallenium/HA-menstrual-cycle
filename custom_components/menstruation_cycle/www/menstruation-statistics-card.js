@@ -899,6 +899,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         planning_range_possible: 'Possible',
         planning_range_unlikely: 'Unlikely',
         planning_range_low_confidence: 'Low confidence due to high cycle variability.',
+        planning_range_mini_calendar: 'Range mini-calendar',
+        planning_range_marker_period: 'period',
+        planning_range_marker_fertile: 'fertile',
+        planning_range_marker_ovulation: 'ovulation',
         period_forecast_title: 'Next Period',
         period_forecast_window: 'Expected window',
         period_forecast_confidence: 'Confidence',
@@ -1549,6 +1553,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const rangeStart = this._planningRangeStart || '';
     const rangeEnd = this._planningRangeEnd || '';
     const rangeForecast = this._computeDateRangeForecast(pf, ff, rangeStart, rangeEnd);
+    const miniCalendarHtml = this._renderRangeMiniCalendar(rangeStart, rangeEnd, pf, ff);
     let rangeHtml = '';
     if (!rangeForecast) {
       rangeHtml = `<p class="no-data">${esc(t('planning_range_invalid'))}</p>`;
@@ -1567,7 +1572,8 @@ class MenstruationStatisticsCard extends HTMLElement {
           <span class="nfp-info-icon">🌱</span>
           <span class="nfp-info-label">${esc(t('planning_range_fertility'))}</span>
           <span class="nfp-info-value"><span class="${fertilityBadgeClass}">${esc(t(`planning_range_${rangeForecast.fertility.label}`))}</span> ${esc(rangeForecast.fertility.percent)}%</span>
-        </div>`;
+        </div>
+        ${miniCalendarHtml}`;
     }
 
     return `
@@ -1589,6 +1595,76 @@ class MenstruationStatisticsCard extends HTMLElement {
           ${rangeHtml}
         </div>
         <p class="nfp-likelihood-disclaimer">${esc(t('planning_disclaimer'))}</p>
+      </div>`;
+  }
+
+  _rangeLengthDays(startIso, endIso) {
+    const start = new Date(`${startIso}T12:00:00Z`);
+    const end = new Date(`${endIso}T12:00:00Z`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+  }
+
+  _collectRangeMarkers(dayIso, periodForecast, fertilityForecast) {
+    const markers = [];
+    if (periodForecast && periodForecast.predicted_start && periodForecast.predicted_end && dayIso >= periodForecast.predicted_start && dayIso <= periodForecast.predicted_end) {
+      markers.push('period');
+    }
+    if (fertilityForecast && fertilityForecast.fertile_window_start && fertilityForecast.fertile_window_end && dayIso >= fertilityForecast.fertile_window_start && dayIso <= fertilityForecast.fertile_window_end) {
+      markers.push('fertile');
+    }
+    if (fertilityForecast && fertilityForecast.ovulation_estimate === dayIso) {
+      markers.push('ovulation');
+    }
+    return markers;
+  }
+
+  _renderRangeMiniCalendar(rangeStartIso, rangeEndIso, periodForecast, fertilityForecast) {
+    if (!rangeStartIso || !rangeEndIso || rangeStartIso > rangeEndIso) return '';
+    const rangeDays = this._rangeLengthDays(rangeStartIso, rangeEndIso);
+    if (rangeDays <= 10) return '';
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+    const markerClassByType = {
+      period: 'mini-calendar-marker-period',
+      fertile: 'mini-calendar-marker-fertile',
+      ovulation: 'mini-calendar-marker-ovulation',
+    };
+    const markerSymbolByType = {
+      period: 'P',
+      fertile: 'F',
+      ovulation: 'O',
+    };
+    const dayCells = [];
+    let day = new Date(`${rangeStartIso}T12:00:00Z`);
+    const end = new Date(`${rangeEndIso}T12:00:00Z`);
+    while (day.getTime() <= end.getTime()) {
+      const dayIso = day.toISOString().slice(0, 10);
+      const markers = this._collectRangeMarkers(dayIso, periodForecast, fertilityForecast);
+      const topMarker = markers.includes('ovulation')
+        ? 'ovulation'
+        : markers.includes('period')
+          ? 'period'
+          : markers.includes('fertile')
+            ? 'fertile'
+            : '';
+      const markerHtml = topMarker
+        ? `<span class="mini-calendar-marker ${markerClassByType[topMarker]}" title="${esc(t(`planning_range_marker_${topMarker}`))}" aria-label="${esc(t(`planning_range_marker_${topMarker}`))}">${markerSymbolByType[topMarker]}</span>`
+        : '';
+      const dateLabel = day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const markerText = markers.length ? markers.map((m) => t(`planning_range_marker_${m}`)).join(', ') : '';
+      const ariaText = markerText ? `${dayIso}: ${markerText}` : dayIso;
+      dayCells.push(`<div class="mini-calendar-day" title="${esc(ariaText)}" aria-label="${esc(ariaText)}"><span class="mini-calendar-date">${esc(dateLabel)}</span>${markerHtml}</div>`);
+      day.setUTCDate(day.getUTCDate() + 1);
+    }
+    return `
+      <div class="planning-mini-calendar" role="group" aria-label="${esc(t('planning_range_mini_calendar'))}">
+        <div class="planning-mini-calendar-grid">${dayCells.join('')}</div>
+        <div class="planning-mini-calendar-legend" role="list">
+          <span class="planning-mini-calendar-legend-item" role="listitem"><span class="mini-calendar-marker mini-calendar-marker-period" aria-hidden="true">P</span>${esc(t('planning_range_marker_period'))}</span>
+          <span class="planning-mini-calendar-legend-item" role="listitem"><span class="mini-calendar-marker mini-calendar-marker-fertile" aria-hidden="true">F</span>${esc(t('planning_range_marker_fertile'))}</span>
+          <span class="planning-mini-calendar-legend-item" role="listitem"><span class="mini-calendar-marker mini-calendar-marker-ovulation" aria-hidden="true">O</span>${esc(t('planning_range_marker_ovulation'))}</span>
+        </div>
       </div>`;
   }
 
@@ -2242,6 +2318,16 @@ class MenstruationStatisticsCard extends HTMLElement {
         .planning-range-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--secondary-text-color, #888); }
         .planning-range-inputs input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color, #ddd); background: var(--card-background-color, #fff); color: var(--primary-text-color); font-size: 12px; }
         .planning-range-hint { margin: 2px 0 6px 24px; font-size: 10px; color: var(--secondary-text-color, #888); font-style: italic; }
+        .planning-mini-calendar { margin: 8px 0 0 24px; max-width: calc(100% - 24px); }
+        .planning-mini-calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); gap: 6px; width: 100%; }
+        .mini-calendar-day { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 4px 6px; border-radius: 8px; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #ddd); font-size: 10px; color: var(--primary-text-color); }
+        .mini-calendar-date { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mini-calendar-marker { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-size: 9px; font-weight: 700; border: 1px solid transparent; border-radius: 999px; line-height: 1; flex: 0 0 auto; }
+        .mini-calendar-marker-period { background: rgba(220, 38, 38, 0.18); color: #dc2626; border-color: #dc2626; }
+        .mini-calendar-marker-fertile { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-color: #f59e0b; border-style: dashed; }
+        .mini-calendar-marker-ovulation { background: rgba(22, 163, 74, 0.2); color: #16a34a; border-color: #16a34a; border-width: 2px; border-radius: 4px; }
+        .planning-mini-calendar-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; font-size: 10px; color: var(--secondary-text-color, #888); }
+        .planning-mini-calendar-legend-item { display: inline-flex; align-items: center; gap: 4px; }
         .nfp-chart-wrap { width: 100%; overflow: hidden; }
         .nfp-temp-chart { display: block; width: 100%; }
         .nfp-chart-axis-label { text-align: center; font-size: 10px; color: var(--secondary-text-color, #888); margin-top: 2px; }
@@ -2275,6 +2361,8 @@ class MenstruationStatisticsCard extends HTMLElement {
           .days-buttons.compact { grid-template-columns: 1fr; }
           .nfp-info-label { flex-basis: 110px; }
           .planning-range-inputs { grid-template-columns: 1fr; }
+          .planning-mini-calendar { margin-left: 0; max-width: 100%; }
+          .planning-mini-calendar-grid { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
         }
       </style>
       <ha-card>
