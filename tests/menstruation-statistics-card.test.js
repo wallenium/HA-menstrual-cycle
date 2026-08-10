@@ -552,6 +552,71 @@ test('planning section shows low-confidence hint for variable cycle range foreca
   assert.ok(html.includes('Low confidence due to high cycle variability'), 'low-confidence hint missing');
 });
 
+test('planning section renders mini-calendar only when selected range is longer than 10 days', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2027-08-20',
+    predicted_end: '2027-08-24',
+    cycle_std_days: 2,
+    confidence: 'medium',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2027-08-16',
+    fertile_window_start: '2027-08-11',
+    fertile_window_end: '2027-08-17',
+    best_days_start: '2027-08-14',
+    best_days_end: '2027-08-15',
+    source: 'estimated',
+    confidence: 'medium',
+  };
+  card._planningRangeStart = '2027-08-01';
+  card._planningRangeEnd = '2027-08-12';
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  let html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('class="planning-mini-calendar"'), 'mini-calendar missing for >10-day range');
+
+  card._planningRangeStart = '2027-08-01';
+  card._planningRangeEnd = '2027-08-10';
+  card._render();
+  html = card.shadowRoot.innerHTML;
+  assert.ok(!html.includes('class="planning-mini-calendar"'), 'mini-calendar should not render for <=10-day range');
+});
+
+test('planning mini-calendar marker priority keeps ovulation marker when fertile day overlaps', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2027-08-03',
+    predicted_end: '2027-08-05',
+    cycle_std_days: 1,
+    confidence: 'high',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2027-08-06',
+    fertile_window_start: '2027-08-04',
+    fertile_window_end: '2027-08-08',
+    best_days_start: '2027-08-05',
+    best_days_end: '2027-08-07',
+    source: 'nfp',
+    confidence: 'high',
+  };
+  card._planningRangeStart = '2027-08-01';
+  card._planningRangeEnd = '2027-08-15';
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('mini-calendar-marker-ovulation'), 'ovulation marker missing');
+  assert.ok(html.includes('mini-calendar-marker-fertile'), 'fertile marker missing');
+  assert.ok(html.includes('mini-calendar-marker-period'), 'period marker missing');
+  assert.ok(html.includes('2027-08-06: fertile, ovulation'), 'ovulation overlap accessibility label missing');
+});
+
 console.log('\nRender stability');
 
 test('render guard: repeated identical hass updates do not replace shadowRoot.innerHTML', () => {
