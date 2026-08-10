@@ -603,6 +603,24 @@ test('render guard: tab switch triggers a fresh render', () => {
   assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after tab switch');
 });
 
+test('render guard: attribute-only updates trigger a fresh render', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass1 = makeHass();
+  hass1.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass1;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  const hass2 = makeHass();
+  hass2.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  hass2.states['sensor.menstruation'].attributes.product_usage_this_cycle = {
+    tampon: 4, pad: 1, cup: 0, liner: 3, underwear: 1,
+  };
+  card.hass = hass2;
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not rebuilt after attribute-only update');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

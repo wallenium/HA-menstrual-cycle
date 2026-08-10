@@ -388,6 +388,24 @@ function testRenderStability() {
   console.log('  ✓ render stability: repeated identical hass updates do not replace rendered HTML');
 }
 
+function testAttributeOnlyChangeTriggersRender() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const hass1 = makeHass();
+  hass1.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  card.hass = hass1;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  const hass2 = makeHass();
+  hass2.states['sensor.menstruation'].last_changed = '2026-01-01T00:00:00.000Z';
+  hass2.states['sensor.menstruation'].attributes.grouped_starts = ['2026-07-02', '2026-08-01'];
+  card.hass = hass2;
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after attribute-only change');
+
+  console.log('  ✓ render stability: attribute-only changes invalidate calendar render key');
+}
+
 let failed = 0;
 [
   testRegistration,
@@ -403,6 +421,7 @@ let failed = 0;
   testTranslationFallbackHelpers,
   testNfpLowConfidenceIgnoredInCalendar,
   testRenderStability,
+  testAttributeOnlyChangeTriggersRender,
 ].forEach((fn) => {
   try {
     fn();

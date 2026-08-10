@@ -44,6 +44,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
       num_predicted_cycles: 6,
       ...config,
     };
+    this._lastRenderSignature = null;
     this._ensureRoot();
     this._render();
   }
@@ -51,6 +52,9 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._loadTranslations();
+    const renderSignature = this._buildRenderSignature();
+    if (renderSignature === this._lastRenderSignature) return;
+    this._lastRenderSignature = renderSignature;
     this._render();
   }
 
@@ -120,6 +124,22 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     }
 
     return configuredEntity || null;
+  }
+
+  _buildRenderSignature() {
+    const entityId = this._resolveEntityId();
+    const stateObj = entityId ? this._hass?.states?.[entityId] : null;
+    return JSON.stringify({
+      entityId,
+      lang: this._lang(),
+      title: this._config?.title || '',
+      max_rows: Math.max(1, Number(this._config?.max_rows || 12)),
+      show_predicted_cycles: this._config?.show_predicted_cycles !== false,
+      num_predicted_cycles: Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6))),
+      grouped_starts: stateObj?.attributes?.grouped_starts || null,
+      predicted_cycle_starts: stateObj?.attributes?.predicted_cycle_starts || null,
+      next_predicted_start: stateObj?.attributes?.next_predicted_start || null,
+    });
   }
 
   _normalizeISO(value) {

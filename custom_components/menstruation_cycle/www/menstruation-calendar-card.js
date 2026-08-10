@@ -100,6 +100,8 @@ class MenstruationCalendarCard extends HTMLElement {
     if (!this._config) return;
     // Don't re-render while the symptom modal is open to preserve user input.
     if (this._modalIso) return;
+    const renderKey = this._buildRenderKey();
+    if (renderKey === this._lastRenderKey) return;
     this._render();
   }
 
@@ -982,21 +984,23 @@ class MenstruationCalendarCard extends HTMLElement {
   _buildRenderKey() {
     const entityId = this._resolveEntityId();
     const stateObj = this._hass?.states?.[entityId];
-    return [
-      stateObj?.state || '',
-      stateObj?.last_changed || '',
-      this._viewDate?.getFullYear(),
-      this._viewDate?.getMonth(),
-      this._lang(),
-      this._config?.title || '',
-      this._config?.show_predicted_cycles !== false ? 1 : 0,
-      Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6))),
-      this._config?.show_fertile_period !== false ? 1 : 0,
-      this._config?.show_ovulation_marker !== false ? 1 : 0,
-      this._config?.show_cycle_day_numbers ? 1 : 0,
-      this._config?.week_start || 'monday',
-      this._modalIso || '',
-    ].join('|');
+    return JSON.stringify({
+      entityId,
+      state: stateObj?.state || '',
+      last_changed: stateObj?.last_changed || '',
+      attributes: stateObj?.attributes || null,
+      view_year: this._viewDate?.getFullYear(),
+      view_month: this._viewDate?.getMonth(),
+      lang: this._lang(),
+      title: this._config?.title || '',
+      show_predicted_cycles: this._config?.show_predicted_cycles !== false,
+      num_predicted_cycles: Math.max(1, Math.min(12, Number(this._config?.num_predicted_cycles || 6))),
+      show_fertile_period: this._config?.show_fertile_period !== false,
+      show_ovulation_marker: this._config?.show_ovulation_marker !== false,
+      show_cycle_day_numbers: this._config?.show_cycle_day_numbers === true,
+      week_start: this._config?.week_start || 'monday',
+      modal_iso: this._modalIso || '',
+    });
   }
 
   _render() {

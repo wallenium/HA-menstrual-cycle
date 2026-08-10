@@ -110,7 +110,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       reminderEnabled: true,
     };
     this.config = null;
-    this._lastEntityState = null;
+    this._lastRenderSignature = null;
     this._animator = null;
     this._timerHandlersAttached = false;
     this._onRootClick = null;
@@ -147,7 +147,7 @@ class MenstruationCountdownTimer extends HTMLElement {
 
   setConfig(config) {
     this.config = config || {};
-    this._lastEntityState = null;
+    this._lastRenderSignature = null;
     this._render();
   }
 
@@ -163,12 +163,10 @@ class MenstruationCountdownTimer extends HTMLElement {
       return;
     }
 
-    const stateObj = hass.states[this.config.entity];
-    const newState = stateObj ? JSON.stringify({ state: stateObj.state, attributes: stateObj.attributes }) : null;
-    if (newState !== this._lastEntityState) {
-      this._lastEntityState = newState;
-      this._render();
-    }
+    const renderSignature = this._buildRenderSignature(hass);
+    if (renderSignature === this._lastRenderSignature) return;
+    this._lastRenderSignature = renderSignature;
+    this._render();
   }
 
   querySelector(selector) {
@@ -183,6 +181,20 @@ class MenstruationCountdownTimer extends HTMLElement {
       this.attachShadow({ mode: "open" });
     }
     return this.shadowRoot;
+  }
+
+  _buildRenderSignature(hass = this._hass) {
+    const entityId = this.config?.entity || null;
+    const stateObj = entityId ? hass?.states?.[entityId] : null;
+    return JSON.stringify({
+      entityId,
+      lang: this._lang(),
+      title: this.config?.title || "",
+      product_animations: this.config?.product_animations !== false,
+      animation_style: this.config?.animation_style || "realistic",
+      state: stateObj?.state || null,
+      attributes: stateObj?.attributes || null,
+    });
   }
 
   _render() {
