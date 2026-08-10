@@ -1063,6 +1063,44 @@ def _likelihood_label(probability: float) -> str:
     return "unlikely"
 
 
+def _union_probability(probabilities: list[float]) -> float:
+    """Combine independent overlap probabilities using union logic."""
+    clamped = [max(0.0, min(1.0, float(p))) for p in probabilities if p is not None]
+    if not clamped:
+        return 0.0
+    miss_product = 1.0
+    for p in clamped:
+        miss_product *= max(0.0, min(1.0, 1.0 - p))
+    return max(0.0, min(1.0, 1.0 - miss_product))
+
+
+def _derive_cycle_length_days(
+    period_forecast: dict[str, Any] | None,
+    fertility_forecast: dict[str, Any] | None,
+    period_start: date | None = None,
+    ovulation: date | None = None,
+) -> int:
+    """Derive cycle length from available forecast inputs with safe fallback."""
+    for source in (period_forecast, fertility_forecast):
+        if not isinstance(source, dict):
+            continue
+        for key in ("avg_cycle_length", "predicted_cycle_length", "cycle_length", "cycle_days"):
+            raw = source.get(key)
+            try:
+                cycle_days = int(round(float(raw)))
+            except (TypeError, ValueError):
+                continue
+            if 20 <= cycle_days <= 60:
+                return cycle_days
+
+    if period_start and ovulation:
+        estimated = (period_start - ovulation).days + 14
+        if 20 <= estimated <= 60:
+            return estimated
+
+    return 28
+
+
 def compute_date_range_forecast(
     period_forecast: dict[str, Any] | None,
     fertility_forecast: dict[str, Any] | None,
@@ -1100,14 +1138,27 @@ def compute_date_range_forecast(
 
             confidence = str(period_forecast.get("confidence", "low")).lower()
             confidence_weight = 1.0 if confidence == "high" else 0.85 if confidence == "medium" else 0.65
-            probability = _overlap_probability(
-                range_start,
-                range_end,
-                period_start,
-                period_end,
-                std_days,
-                confidence_weight,
-            )
+            cycle_days = _derive_cycle_length_days(period_forecast, fertility_forecast, period_start=period_start)
+            period_probabilities: list[float] = []
+            projected_start = period_start
+            projected_end = period_end
+            max_cycles = 60
+            cycle_count = 0
+            while projected_start <= range_end and cycle_count < max_cycles:
+                period_probabilities.append(
+                    _overlap_probability(
+                        range_start,
+                        range_end,
+                        projected_start,
+                        projected_end,
+                        std_days,
+                        confidence_weight,
+                    )
+                )
+                projected_start += timedelta(days=cycle_days)
+                projected_end += timedelta(days=cycle_days)
+                cycle_count += 1
+            probability = _union_probability(period_probabilities)
             period_result = {
                 "probability": round(probability, 3),
                 "probability_percent": int(round(probability * 100)),
@@ -1142,36 +1193,64 @@ def compute_date_range_forecast(
             if source != "nfp":
                 uncertainty_days += 1
 
-            fertile_probability = _overlap_probability(
-                range_start,
-                range_end,
-                fertile_start,
-                fertile_end,
-                uncertainty_days,
-                confidence_weight,
-            )
-            ovulation_probability = _overlap_probability(
-                range_start,
-                range_end,
-                ovulation,
-                ovulation,
-                uncertainty_days,
-                confidence_weight,
-            )
-            probability = max(0.0, min(1.0, (fertile_probability * 0.7) + (ovulation_probability * 0.3)))
-
+            cycle_days = _derive_cycle_length_days(period_forecast, fertility_forecast, ovulation=ovulation)
+            cycle_probabilities: list[float] = []
             best_days_overlap = False
             best_start_raw = fertility_forecast.get("best_days_start")
             best_end_raw = fertility_forecast.get("best_days_end")
+            best_start: date | None = None
+            best_end: date | None = None
             try:
                 if best_start_raw and best_end_raw:
                     best_start = date.fromisoformat(str(best_start_raw))
                     best_end = date.fromisoformat(str(best_end_raw))
-                    best_days_overlap = not (best_end < range_start or best_start > range_end)
             except (TypeError, ValueError):
-                best_days_overlap = False
-            if best_days_overlap:
-                probability = min(1.0, probability + 0.1)
+                best_start = None
+                best_end = None
+
+            projected_fertile_start = fertile_start
+            projected_fertile_end = fertile_end
+            projected_ovulation = ovulation
+            projected_best_start = best_start
+            projected_best_end = best_end
+            max_cycles = 60
+            cycle_count = 0
+            while projected_fertile_start <= range_end and cycle_count < max_cycles:
+                fertile_probability = _overlap_probability(
+                    range_start,
+                    range_end,
+                    projected_fertile_start,
+                    projected_fertile_end,
+                    uncertainty_days,
+                    confidence_weight,
+                )
+                ovulation_probability = _overlap_probability(
+                    range_start,
+                    range_end,
+                    projected_ovulation,
+                    projected_ovulation,
+                    uncertainty_days,
+                    confidence_weight,
+                )
+                cycle_probability = max(0.0, min(1.0, (fertile_probability * 0.7) + (ovulation_probability * 0.3)))
+
+                if projected_best_start and projected_best_end:
+                    current_best_overlap = not (
+                        projected_best_end < range_start or projected_best_start > range_end
+                    )
+                    best_days_overlap = best_days_overlap or current_best_overlap
+                    if current_best_overlap:
+                        cycle_probability = min(1.0, cycle_probability + 0.1)
+
+                cycle_probabilities.append(cycle_probability)
+                projected_fertile_start += timedelta(days=cycle_days)
+                projected_fertile_end += timedelta(days=cycle_days)
+                projected_ovulation += timedelta(days=cycle_days)
+                if projected_best_start and projected_best_end:
+                    projected_best_start += timedelta(days=cycle_days)
+                    projected_best_end += timedelta(days=cycle_days)
+                cycle_count += 1
+            probability = _union_probability(cycle_probabilities)
 
             fertility_result = {
                 "probability": round(probability, 3),
