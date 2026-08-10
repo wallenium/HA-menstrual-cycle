@@ -69,12 +69,58 @@ function testToLocalDateLabelFallsBackToHassLanguage() {
   console.log('  ✓ _toLocalDateLabel falls back to hass.language when locale missing');
 }
 
+function testHassUpdatesOnlyRenderOnCycleDataChanges() {
+  const card = new CardClass();
+  let renderCount = 0;
+  card._render = () => { renderCount += 1; };
+  card.setConfig({ entity: 'sensor.menstruation' });
+
+  const baseState = {
+    state: 'ok',
+    attributes: {
+      grouped_starts: ['2026-07-01', '2026-07-29'],
+      predicted_cycle_starts: ['2026-08-26'],
+      unrelated: 1,
+    },
+  };
+
+  card.hass = { states: { 'sensor.menstruation': baseState }, locale: { language: 'en' } };
+  const afterFirstHass = renderCount;
+
+  card.hass = {
+    states: {
+      'sensor.menstruation': {
+        ...baseState,
+        attributes: { ...baseState.attributes, unrelated: 2 },
+      },
+    },
+    locale: { language: 'en' },
+  };
+  assert.strictEqual(renderCount, afterFirstHass);
+
+  card.hass = {
+    states: {
+      'sensor.menstruation': {
+        ...baseState,
+        attributes: {
+          ...baseState.attributes,
+          grouped_starts: ['2026-07-01', '2026-07-29', '2026-08-26'],
+        },
+      },
+    },
+    locale: { language: 'en' },
+  };
+  assert.strictEqual(renderCount, afterFirstHass + 1);
+  console.log('  ✓ hass updates only re-render on grouped/predicted cycle changes');
+}
+
 let failed = 0;
 [
   testBuildCyclesWithMultiplePredictions,
   testToLocalDateLabelFallsBackToEn,
   testToLocalDateLabelUsesHassLocale,
   testToLocalDateLabelFallsBackToHassLanguage,
+  testHassUpdatesOnlyRenderOnCycleDataChanges,
 ].forEach((fn) => {
   try {
     fn();
