@@ -838,6 +838,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_temp_chart: 'Basal Temperature Curve',
         nfp_baseline: 'Baseline',
         nfp_threshold: 'Threshold (+0.2°C)',
+        nfp_period_marker: 'Period',
+        nfp_intercourse_marker: 'Intercourse',
         day: 'Day',
         nfp_temp_unit: '°C',
         nfp_not_detected: 'Not detected',
@@ -2101,11 +2103,11 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     // Chart dimensions
     const W = 320;
-    const H = 160;
+    const H = 182;
     const padL = 36;
     const padR = 12;
-    const padT = 12;
-    const padB = 28;
+    const padT = 22;
+    const padB = 40;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
 
@@ -2117,6 +2119,50 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     const xScale = (day) => padL + ((day - 1) / Math.max(maxDay - 1, 1)) * chartW;
     const yScale = (temp) => padT + chartH - ((temp - minTemp) / (maxTemp - minTemp)) * chartH;
+
+    // Build period and intercourse day sets from symptom history
+    const periodDaySet = new Set();
+    const intercourseDaySet = new Set();
+    if (cycleStart) {
+      for (const e of symptomHistory) {
+        if (!e || !e.date || e.date < cycleStart) continue;
+        const d0 = new Date(cycleStart + 'T12:00:00Z');
+        const d1 = new Date(e.date + 'T12:00:00Z');
+        const cycleDay = Math.round((d1 - d0) / 86400000) + 1;
+        if (cycleDay < 1) continue;
+        const bs = e.bleeding_strength;
+        if (bs && bs !== 'none') periodDaySet.add(cycleDay);
+        const ic = e.intercourse;
+        if (ic && ic !== false && ic !== 'none') {
+          if (Array.isArray(ic) ? ic.length > 0 : String(ic).trim().length > 0) {
+            intercourseDaySet.add(cycleDay);
+          }
+        }
+      }
+    }
+
+    // Period (blood drop) markers above temperature dots
+    const periodMarkers = tempEntries
+      .filter(e => periodDaySet.has(e.day))
+      .map(e => {
+        const x = xScale(e.day);
+        const yDot = yScale(e.temp);
+        const hasBoth = intercourseDaySet.has(e.day);
+        const yMark = hasBoth ? yDot - 16 : yDot - 9;
+        return `<g role="img" aria-label="Day ${e.day}: Period"><title>Day ${e.day}: Period</title>` +
+          `<text x="${x.toFixed(1)}" y="${yMark.toFixed(1)}" text-anchor="middle" font-size="8">🩸</text></g>`;
+      }).join('');
+
+    // Intercourse (heart) markers above temperature dots
+    const intercourseMarkers = tempEntries
+      .filter(e => intercourseDaySet.has(e.day))
+      .map(e => {
+        const x = xScale(e.day);
+        const yDot = yScale(e.temp);
+        const yMark = yDot - 9;
+        return `<g role="img" aria-label="Day ${e.day}: Intercourse"><title>Day ${e.day}: Intercourse</title>` +
+          `<text x="${x.toFixed(1)}" y="${yMark.toFixed(1)}" text-anchor="middle" font-size="8">❤️</text></g>`;
+      }).join('');
 
     // Baseline = min of first 6 measurements
     const baseline = temps.length >= 6 ? Math.min(...temps.slice(0, 6)) : Math.min(...temps);
@@ -2205,18 +2251,22 @@ class MenstruationStatisticsCard extends HTMLElement {
     }
 
     // Legend
-    const legendY = H - 4;
+    const legendY = H - 16;
     const legend = `
       <line x1="${padL}" y1="${legendY}" x2="${padL + 14}" y2="${legendY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" />
       <text x="${padL + 16}" y="${legendY + 3}" font-size="8" fill="#94a3b8">${esc(t('nfp_baseline'))}</text>
       <line x1="${padL + 70}" y1="${legendY}" x2="${padL + 84}" y2="${legendY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" />
-      <text x="${padL + 86}" y="${legendY + 3}" font-size="8" fill="#f59e0b">${esc(t('nfp_threshold'))}</text>`;
+      <text x="${padL + 86}" y="${legendY + 3}" font-size="8" fill="#f59e0b">${esc(t('nfp_threshold'))}</text>
+      <text x="${padL}" y="${H - 4}" font-size="8" fill="#dc2626">🩸 ${esc(t('nfp_period_marker'))}</text>
+      <text x="${padL + 60}" y="${H - 4}" font-size="8" fill="#db2777">❤️ ${esc(t('nfp_intercourse_marker'))}</text>`;
 
     const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" class="nfp-temp-chart" aria-label="${esc(t('nfp_temp_chart'))}">
       ${fertileShade}
       ${refLines}
       ${polyline}
       ${dots}
+      ${periodMarkers}
+      ${intercourseMarkers}
       ${ovMarker}
       ${mucusMarker}
       ${cervixMarker}

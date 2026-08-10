@@ -305,6 +305,8 @@
   "nfp_temp_chart": "Basaltemperaturkurva",
   "nfp_baseline": "Baslinje",
   "nfp_threshold": "Tröskelvärde (+0,2°C)",
+  "nfp_period_marker": "Mens",
+  "nfp_intercourse_marker": "Samlag",
   "nfp_temp_unit": "°C",
   "nfp_not_detected": "Ej upptäckt",
   "nfp_temperature": "Temperatur (°C)",
