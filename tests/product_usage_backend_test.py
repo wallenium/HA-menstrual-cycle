@@ -364,6 +364,113 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(result["fertility"]["confidence"], "low")
         self.assertLessEqual(result["fertility"]["probability_percent"], 35)
 
+    def test_date_range_forecast_long_range_projects_future_period_windows(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast={
+                "predicted_start": "2027-01-05",
+                "predicted_end": "2027-01-09",
+                "cycle_std_days": 2,
+                "confidence": "medium",
+                "avg_cycle_length": 28,
+            },
+            fertility_forecast=None,
+            range_start_iso="2027-08-10",
+            range_end_iso="2027-08-20",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["period"])
+        self.assertGreater(result["period"]["probability_percent"], 0)
+
+    def test_date_range_forecast_long_range_without_overlap_stays_zero(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast={
+                "predicted_start": "2027-01-05",
+                "predicted_end": "2027-01-09",
+                "cycle_std_days": 1,
+                "confidence": "high",
+                "avg_cycle_length": 28,
+            },
+            fertility_forecast=None,
+            range_start_iso="2027-08-30",
+            range_end_iso="2027-08-30",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result["period"])
+        self.assertEqual(result["period"]["probability_percent"], 0)
+
+    def test_date_range_forecast_short_range_matches_single_window_behavior(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast={
+                "predicted_start": "2027-08-03",
+                "predicted_end": "2027-08-07",
+                "cycle_std_days": 1.5,
+                "confidence": "high",
+            },
+            fertility_forecast=None,
+            range_start_iso="2027-08-01",
+            range_end_iso="2027-08-10",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        expected = model._overlap_probability(
+            date.fromisoformat("2027-08-01"),
+            date.fromisoformat("2027-08-10"),
+            date.fromisoformat("2027-08-03"),
+            date.fromisoformat("2027-08-07"),
+            2,
+            1.0,
+        )
+        self.assertEqual(result["period"]["probability"], round(expected, 3))
+        self.assertEqual(result["period"]["probability_percent"], int(round(expected * 100)))
+
+    def test_date_range_forecast_returns_none_for_invalid_range(self) -> None:
+        result = model.compute_date_range_forecast(
+            period_forecast=None,
+            fertility_forecast=None,
+            range_start_iso="2027-08-10",
+            range_end_iso="2027-08-01",
+        )
+        self.assertIsNone(result)
+
+    def test_date_range_forecast_probability_percent_is_bounded_and_stable(self) -> None:
+        kwargs = {
+            "period_forecast": {
+                "predicted_start": "2027-01-05",
+                "predicted_end": "2027-01-09",
+                "cycle_std_days": 3,
+                "confidence": "high",
+                "avg_cycle_length": 28,
+            },
+            "fertility_forecast": {
+                "ovulation_estimate": "2027-01-19",
+                "fertile_window_start": "2027-01-14",
+                "fertile_window_end": "2027-01-20",
+                "best_days_start": "2027-01-17",
+                "best_days_end": "2027-01-18",
+                "source": "estimated",
+                "confidence": "medium",
+                "avg_cycle_length": 28,
+            },
+            "range_start_iso": "2027-08-15",
+            "range_end_iso": "2027-08-18",
+        }
+        first = model.compute_date_range_forecast(**kwargs)
+        second = model.compute_date_range_forecast(**kwargs)
+
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        assert first is not None and second is not None
+        self.assertEqual(first, second)
+        self.assertGreaterEqual(first["period"]["probability_percent"], 0)
+        self.assertLessEqual(first["period"]["probability_percent"], 100)
+        self.assertGreaterEqual(first["fertility"]["probability_percent"], 0)
+        self.assertLessEqual(first["fertility"]["probability_percent"], 100)
+
     def test_learn_ovulation_pattern_returns_none_when_no_cycle_starts(self) -> None:
         result = model.learn_ovulation_pattern([], [])
         self.assertIsNone(result)
