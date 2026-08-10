@@ -200,6 +200,63 @@ function testDischargeTranslations() {
   console.log('  ✓ period timer discharge translations');
 }
 
+function createCountdownRoot() {
+  return {
+    innerHTML: '',
+    querySelector: () => null,
+  };
+}
+
+function makeCountdownHass(attrs = {}) {
+  return {
+    locale: { language: 'en' },
+    states: {
+      'sensor.menstruation': {
+        state: 'period',
+        attributes: {
+          friendly_name: 'Test Sensor',
+          days_until_next_start: 3,
+          product_usage_today: { tampon: 1 },
+          ...attrs,
+        },
+      },
+    },
+  };
+}
+
+function makeCountdownTimer() {
+  const timer = new PeriodCountdownTimer();
+  const shadow = createCountdownRoot();
+  timer.attachShadow = () => shadow;
+  Object.defineProperty(timer, 'shadowRoot', { get: () => shadow, configurable: true });
+  timer.updateStatus = () => {};
+  return timer;
+}
+
+function testCountdownRenderGuardSkipsIdenticalHassUpdates() {
+  const timer = makeCountdownTimer();
+  timer.setConfig({ entity: 'sensor.menstruation' });
+  const hass = makeCountdownHass();
+  timer.hass = hass;
+  assert.ok(timer.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  timer.shadowRoot.innerHTML = 'SENTINEL';
+  timer.hass = hass;
+  assert.strictEqual(timer.shadowRoot.innerHTML, 'SENTINEL', 'DOM was replaced on identical hass update');
+  console.log('  ✓ countdown timer render guard skips identical hass updates');
+}
+
+function testCountdownRenderGuardReactsToAttributeChanges() {
+  const timer = makeCountdownTimer();
+  timer.setConfig({ entity: 'sensor.menstruation' });
+  timer.hass = makeCountdownHass();
+  timer.shadowRoot.innerHTML = 'SENTINEL';
+
+  timer.hass = makeCountdownHass({ days_until_next_start: 2 });
+  assert.notStrictEqual(timer.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after relevant attribute change');
+  console.log('  ✓ countdown timer render guard reacts to relevant attribute changes');
+}
+
 let failed = 0;
 
 [
@@ -209,6 +266,8 @@ let failed = 0;
   testTimerProductIconSizes,
   testTimerProductConfigIconSize,
   testDischargeTranslations,
+  testCountdownRenderGuardSkipsIdenticalHassUpdates,
+  testCountdownRenderGuardReactsToAttributeChanges,
 ].forEach((fn) => {
   try {
     fn();

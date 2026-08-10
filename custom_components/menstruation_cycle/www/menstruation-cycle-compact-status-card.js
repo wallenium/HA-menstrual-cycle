@@ -35,6 +35,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
       ...config,
     };
     this._iconCache = {};
+    this._lastRenderSignature = null;
     this._ensureRoot();
     this._render();
   }
@@ -42,6 +43,9 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._loadTranslations();
+    const renderSignature = this._buildRenderSignature();
+    if (renderSignature === this._lastRenderSignature) return;
+    this._lastRenderSignature = renderSignature;
     this._render();
   }
 
@@ -140,6 +144,19 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     }
 
     return configuredEntity || null;
+  }
+
+  _buildRenderSignature() {
+    const entityId = this._resolveEntityId();
+    const stateObj = entityId ? this._hass?.states?.[entityId] : null;
+    return JSON.stringify({
+      entityId,
+      lang: this._lang(),
+      title: this._config?.title || '',
+      show_title: this._config?.show_title === true,
+      state: stateObj?.state || null,
+      attributes: stateObj?.attributes || null,
+    });
   }
 
   _normalizeISO(value) {

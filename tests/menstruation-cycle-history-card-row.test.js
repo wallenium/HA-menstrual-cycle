@@ -69,12 +69,55 @@ function testToLocalDateLabelFallsBackToHassLanguage() {
   console.log('  ✓ _toLocalDateLabel falls back to hass.language when locale missing');
 }
 
+function makeHass(attrs = {}) {
+  return {
+    locale: { language: 'en' },
+    states: {
+      'sensor.menstruation': {
+        state: 'period',
+        attributes: {
+          grouped_starts: ['2026-07-01', '2026-07-29'],
+          predicted_cycle_starts: ['2026-08-26'],
+          next_predicted_start: '2026-08-26',
+          ...attrs,
+        },
+      },
+    },
+  };
+}
+
+function testRenderGuardSkipsIdenticalHassUpdates() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const hass = makeHass();
+  card.hass = hass;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  card.hass = hass;
+  assert.strictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was replaced on identical hass update');
+  console.log('  ✓ history row render guard skips identical hass updates');
+}
+
+function testRenderGuardReactsToPredictionChanges() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = makeHass();
+  card.shadowRoot.innerHTML = 'SENTINEL';
+
+  card.hass = makeHass({ predicted_cycle_starts: ['2026-08-26', '2026-09-23'] });
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after predicted cycle change');
+  console.log('  ✓ history row render guard reacts to prediction changes');
+}
+
 let failed = 0;
 [
   testBuildCyclesWithMultiplePredictions,
   testToLocalDateLabelFallsBackToEn,
   testToLocalDateLabelUsesHassLocale,
   testToLocalDateLabelFallsBackToHassLanguage,
+  testRenderGuardSkipsIdenticalHassUpdates,
+  testRenderGuardReactsToPredictionChanges,
 ].forEach((fn) => {
   try {
     fn();

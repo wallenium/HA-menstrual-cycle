@@ -392,6 +392,30 @@ test('missing entity: shows entity_not_found message', () => {
   assert.ok(html.includes('Entity not found'), 'should show error for missing entity');
 });
 
+console.log('\nRender stability');
+
+test('repeated identical hass updates do not replace rendered HTML', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const hass = buildHass('period');
+  card.hass = hass;
+  assert.ok(card.shadowRoot.innerHTML.length > 0, 'initial render expected');
+
+  card.shadowRoot.innerHTML = 'SENTINEL';
+  card.hass = hass;
+  assert.strictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was replaced on identical hass update');
+});
+
+test('attribute changes trigger a fresh render', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = buildHass('period');
+  card.shadowRoot.innerHTML = 'SENTINEL';
+
+  card.hass = buildHass('period', { product_usage_today: { tampon: 2, pad: 0, cup: 0, liner: 0, underwear: 0 } });
+  assert.notStrictEqual(card.shadowRoot.innerHTML, 'SENTINEL', 'DOM was not updated after relevant attribute change');
+});
+
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------

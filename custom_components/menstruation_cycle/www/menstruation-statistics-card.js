@@ -733,6 +733,9 @@ class MenstruationStatisticsCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._loadTranslations();
+    if (!this._config) return;
+    const renderKey = this._buildRenderKey();
+    if (renderKey === this._lastRenderKey) return;
     this._render();
   }
 
@@ -2118,19 +2121,20 @@ class MenstruationStatisticsCard extends HTMLElement {
   _buildRenderKey() {
     const entityId = this._config?.entity;
     const stateObj = entityId ? this._hass?.states?.[entityId] : null;
-    return [
-      stateObj?.state || '',
-      stateObj?.last_changed || '',
-      this._tab,
-      this._daysBack,
-      this._settingsOpen ? 1 : 0,
-      this._planningRangeStart || '',
-      this._planningRangeEnd || '',
-      this._lang(),
-      this._config?.title || '',
-      this._config?.entity || '',
-      this._exportStatus || '',
-    ].join('|');
+    return JSON.stringify({
+      entityId: this._config?.entity || '',
+      state: stateObj?.state || '',
+      last_changed: stateObj?.last_changed || '',
+      attributes: stateObj?.attributes || null,
+      tab: this._tab,
+      daysBack: this._daysBack,
+      settingsOpen: this._settingsOpen ? 1 : 0,
+      planningRangeStart: this._planningRangeStart || '',
+      planningRangeEnd: this._planningRangeEnd || '',
+      lang: this._lang(),
+      title: this._config?.title || '',
+      exportStatus: this._exportStatus || '',
+    });
   }
 
   _render() {
