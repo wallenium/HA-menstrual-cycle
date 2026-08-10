@@ -1270,6 +1270,110 @@ def compute_date_range_forecast(
     }
 
 
+def project_range_windows(
+    period_forecast: dict[str, Any] | None,
+    fertility_forecast: dict[str, Any] | None,
+    range_start_iso: str,
+    range_end_iso: str,
+    avg_cycle_length: int | None = None,
+) -> dict[str, Any] | None:
+    """Project recurring cycle windows forward and return those overlapping the selected range.
+
+    Returns a dict with:
+        range_start: ISO date of range start.
+        range_end: ISO date of range end.
+        period_windows: list of {start, end} ISO dicts for all projected periods overlapping the range.
+        fertility_windows: list of {fertile_start, fertile_end, ovulation} ISO dicts overlapping the range.
+
+    Returns None for invalid input.
+    """
+    try:
+        range_start = date.fromisoformat(str(range_start_iso))
+        range_end = date.fromisoformat(str(range_end_iso))
+    except (TypeError, ValueError):
+        return None
+    if range_start > range_end:
+        return None
+
+    cycle_days = _derive_cycle_length_days(period_forecast, fertility_forecast)
+    if avg_cycle_length is not None:
+        try:
+            cl = int(avg_cycle_length)
+            if 20 <= cl <= 60:
+                cycle_days = cl
+        except (TypeError, ValueError):
+            pass
+
+    max_cycles = 60
+    period_windows: list[dict[str, str]] = []
+    fertility_windows: list[dict[str, str]] = []
+
+    if (
+        period_forecast
+        and period_forecast.get("predicted_start")
+        and period_forecast.get("predicted_end")
+    ):
+        try:
+            p_start = date.fromisoformat(str(period_forecast["predicted_start"]))
+            p_end = date.fromisoformat(str(period_forecast["predicted_end"]))
+        except (TypeError, ValueError):
+            p_start = None
+            p_end = None
+
+        if p_start and p_end:
+            projected_start = p_start
+            projected_end = p_end
+            cycle_count = 0
+            while projected_start <= range_end and cycle_count < max_cycles:
+                if projected_end >= range_start:
+                    period_windows.append({
+                        "start": projected_start.isoformat(),
+                        "end": projected_end.isoformat(),
+                    })
+                projected_start += timedelta(days=cycle_days)
+                projected_end += timedelta(days=cycle_days)
+                cycle_count += 1
+
+    if (
+        fertility_forecast
+        and fertility_forecast.get("fertile_window_start")
+        and fertility_forecast.get("fertile_window_end")
+        and fertility_forecast.get("ovulation_estimate")
+    ):
+        try:
+            f_start = date.fromisoformat(str(fertility_forecast["fertile_window_start"]))
+            f_end = date.fromisoformat(str(fertility_forecast["fertile_window_end"]))
+            ov = date.fromisoformat(str(fertility_forecast["ovulation_estimate"]))
+        except (TypeError, ValueError):
+            f_start = None
+            f_end = None
+            ov = None
+
+        if f_start and f_end and ov:
+            proj_f_start = f_start
+            proj_f_end = f_end
+            proj_ov = ov
+            cycle_count = 0
+            while proj_f_start <= range_end and cycle_count < max_cycles:
+                if proj_f_end >= range_start:
+                    fertility_windows.append({
+                        "fertile_start": proj_f_start.isoformat(),
+                        "fertile_end": proj_f_end.isoformat(),
+                        "ovulation": proj_ov.isoformat(),
+                    })
+                proj_f_start += timedelta(days=cycle_days)
+                proj_f_end += timedelta(days=cycle_days)
+                proj_ov += timedelta(days=cycle_days)
+                cycle_count += 1
+
+    return {
+        "range_start": range_start.isoformat(),
+        "range_end": range_end.isoformat(),
+        "period_windows": period_windows,
+        "fertility_windows": fertility_windows,
+    }
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,
