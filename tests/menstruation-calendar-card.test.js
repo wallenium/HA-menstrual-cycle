@@ -406,6 +406,238 @@ function testAttributeOnlyChangeTriggersRender() {
   console.log('  ✓ render stability: attribute-only changes invalidate calendar render key');
 }
 
+/**
+ * Helper: create a hass object where all predicted_cycle_starts are within
+ * 6 months of today (Jul 2026), so the horizon is at most Sep 2026.
+ */
+function makeHassShortForecast() {
+  return {
+    locale: { language: 'en' },
+    callService: async () => {},
+    states: {
+      'sensor.menstruation': {
+        state: 'ok',
+        attributes: {
+          entry_id: 'entry-1',
+          profile: 'default',
+          history: ['2026-07-02', '2026-07-03'],
+          grouped_starts: ['2026-07-02'],
+          fertile_window_start: '2026-07-10',
+          fertile_window_end: '2026-07-16',
+          ovulation_day: '2026-07-14',
+          avg_cycle_length: 28,
+          period_duration_days: 5,
+          // Only 2 predicted starts; last one is 2026-08-27 (< 6 months ahead from Jul 2026)
+          predicted_cycle_starts: ['2026-07-30', '2026-08-27'],
+          symptom_history: [],
+        },
+      },
+    },
+  };
+}
+
+function testForecastExtensionBeyondHorizon() {
+  const card = new CardClass();
+  card.setConfig({
+    entity: 'sensor.menstruation',
+    show_predicted_cycles: true,
+    num_predicted_cycles: 6,
+  });
+  const hass = makeHassShortForecast();
+  card.hass = hass;
+
+  // Navigate 12 months into the future: Jan 2028 — well beyond the Aug 2026 horizon.
+  card._viewDate = new Date(2028, 0, 1, 12, 0, 0, 0);
+  card._maybeExtendForecast();
+  const model = card._buildModel();
+
+  // Extension must have generated extra predicted starts covering Jan 2028.
+  assert.ok(
+    model.extraPredictedStartSet.size > 0,
+    'extraPredictedStartSet must contain dynamically generated starts',
+  );
+
+  const html = card._calendarGrid(model, 'en');
+  assert.ok(
+    html.includes('is-predicted-period') || html.includes('is-predicted-fertile'),
+    'navigating to a far-future month shows predicted indicators via forecast extension',
+  );
+
+  console.log('  ✓ forecast extension: far-future month shows predicted indicators');
+}
+
+function testForecastExtensionRespectsCap() {
+  const card = new CardClass();
+  card.setConfig({
+    entity: 'sensor.menstruation',
+    show_predicted_cycles: true,
+    num_predicted_cycles: 6,
+  });
+  card.hass = makeHassShortForecast();
+
+  // Navigate 10 years ahead — should be capped at MAX_EXTRA_YEARS (3 years).
+  card._viewDate = new Date(2036, 0, 1, 12, 0, 0, 0);
+  card._maybeExtendForecast();
+
+  const capYear = new Date().getFullYear() + 3;
+  const allExtra = card._extraPredictedStarts;
+  assert.ok(allExtra.length > 0, 'some extra starts generated');
+  const maxYear = Math.max(...allExtra.map((iso) => parseInt(iso.slice(0, 4), 10)));
+  assert.ok(maxYear <= capYear + 1, `extra starts stay within ~3-year cap (got max year ${maxYear})`);
+
+  console.log('  ✓ forecast extension: capped at ~3 years');
+}
+
+function testForecastExtensionSensorLimitPreserved() {
+  // num_predicted_cycles=1 still restricts predictedStartSet; extras are separate.
+  const card = new CardClass();
+  card.setConfig({
+    entity: 'sensor.menstruation',
+    show_predicted_cycles: true,
+    num_predicted_cycles: 1,
+  });
+  card.hass = makeHassShortForecast();
+
+  card._viewDate = new Date(2027, 0, 1, 12, 0, 0, 0);
+  card._maybeExtendForecast();
+  const model = card._buildModel();
+
+  // Sensor-limited set remains at 1.
+  assert.strictEqual(model.predictedStartSet.size, 1, 'predictedStartSet still limited to 1 by num_predicted_cycles');
+  // But extras cover the far month.
+  assert.ok(model.extraPredictedStartSet.size > 0, 'extraPredictedStartSet has dynamically extended starts');
+
+  console.log('  ✓ forecast extension: predictedStartSet limit preserved; extras are separate');
+}
+
+function testForecastExtensionDisabled() {
+  // When show_predicted_cycles is false, no extension should happen.
+  const card = new CardClass();
+  card.setConfig({
+    entity: 'sensor.menstruation',
+    show_predicted_cycles: false,
+  });
+  card.hass = makeHassShortForecast();
+
+  card._viewDate = new Date(2028, 0, 1, 12, 0, 0, 0);
+  card._maybeExtendForecast();
+
+  assert.strictEqual(card._extraPredictedStarts.length, 0, 'no extension when show_predicted_cycles is false');
+  console.log('  ✓ forecast extension: disabled when show_predicted_cycles is false');
+}
+
+// ── Current period predicted tail ────────────────────────────────────────────
+
+function makeHassActivePeriod(loggedDays, periodDuration) {
+  // Period started on 2026-08-01; logged through day `loggedDays` (1-indexed).
+  const history = [];
+  for (let i = 0; i < loggedDays; i += 1) {
+    const d = new Date(2026, 7, 1 + i, 12, 0, 0, 0);
+    history.push(`2026-08-${String(1 + i).padStart(2, '0')}`);
+  }
+  const lastLogged = history[history.length - 1];
+  return {
+    locale: { language: 'en' },
+    callService: async () => {},
+    states: {
+      'sensor.menstruation': {
+        state: 'period',
+        attributes: {
+          entry_id: 'entry-1',
+          profile: 'default',
+          history,
+          grouped_starts: ['2026-08-01'],
+          avg_cycle_length: 28,
+          period_duration_days: periodDuration,
+          symptom_history: [],
+          // current_bleeding_block provided by sensor
+          current_bleeding_block: {
+            start: '2026-08-01',
+            end: lastLogged,
+            days: history,
+          },
+        },
+      },
+    },
+  };
+}
+
+function testCurrentPeriodTailShowsLightRed() {
+  // Period duration 5, logged through day 2 → tail should be days 3–5 (light red).
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation', show_predicted_cycles: true });
+  card.hass = makeHassActivePeriod(2, 5);
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0); // August 2026
+
+  const model = card._buildModel();
+  assert.ok(model.currentPeriodTailSet.has('2026-08-03'), 'day 3 is a tail day');
+  assert.ok(model.currentPeriodTailSet.has('2026-08-04'), 'day 4 is a tail day');
+  assert.ok(model.currentPeriodTailSet.has('2026-08-05'), 'day 5 is a tail day');
+  assert.strictEqual(model.currentPeriodTailSet.size, 3, 'exactly 3 tail days for duration 5, logged 2');
+
+  const html = card._calendarGrid(model, 'en');
+  assert.ok(html.includes('is-current-period-tail'), 'calendar grid includes is-current-period-tail class');
+
+  console.log('  ✓ current period tail: days 3–5 rendered as light red when logged through day 2 of 5');
+}
+
+function testCurrentPeriodTailLoggedDaysNotOverwritten() {
+  // Logged days must NOT be overwritten by tail styling.
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = makeHassActivePeriod(2, 5);
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0);
+
+  const model = card._buildModel();
+  // Logged days 1 and 2 must not be in tail set.
+  assert.ok(!model.currentPeriodTailSet.has('2026-08-01'), 'logged day 1 not in tail set');
+  assert.ok(!model.currentPeriodTailSet.has('2026-08-02'), 'logged day 2 not in tail set');
+
+  // _statusForDay must give isPeriod=true, isCurrentPeriodTail=false for logged days.
+  const st1 = card._statusForDay('2026-08-01', model);
+  assert.ok(st1.isPeriod, 'logged day 1 is period day');
+  assert.ok(!st1.isCurrentPeriodTail, 'logged day 1 not a tail day');
+  const st2 = card._statusForDay('2026-08-02', model);
+  assert.ok(st2.isPeriod, 'logged day 2 is period day');
+  assert.ok(!st2.isCurrentPeriodTail, 'logged day 2 not a tail day');
+
+  console.log('  ✓ current period tail: logged days not overwritten by tail prediction');
+}
+
+function testCurrentPeriodTailDisappearsWhenPeriodEnds() {
+  // When logged days equal or exceed the predicted duration, no tail is shown.
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = makeHassActivePeriod(5, 5); // exactly at duration
+  const model = card._buildModel();
+  assert.strictEqual(model.currentPeriodTailSet.size, 0, 'no tail when logged days equal duration');
+  console.log('  ✓ current period tail: tail disappears when logged days reach duration');
+}
+
+function testCurrentPeriodTailNoCbb() {
+  // Without current_bleeding_block, no tail is shown.
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = makeHassActivePeriod(2, 5);
+  // Remove current_bleeding_block.
+  card._hass.states['sensor.menstruation'].attributes.current_bleeding_block = null;
+  const model = card._buildModel();
+  assert.strictEqual(model.currentPeriodTailSet.size, 0, 'no tail when current_bleeding_block is absent');
+  console.log('  ✓ current period tail: no tail when current_bleeding_block is absent');
+}
+
+function testCurrentPeriodTailLegendEntry() {
+  // Legend should show the light-red swatch when there are tail days.
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation', show_predicted_cycles: true });
+  card.hass = makeHassActivePeriod(2, 5);
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0);
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('current-period-tail'), 'legend includes current-period-tail swatch when tail days exist');
+  console.log('  ✓ current period tail: legend entry shown when tail days exist');
+}
+
 let failed = 0;
 [
   testRegistration,
@@ -422,6 +654,15 @@ let failed = 0;
   testNfpLowConfidenceIgnoredInCalendar,
   testRenderStability,
   testAttributeOnlyChangeTriggersRender,
+  testForecastExtensionBeyondHorizon,
+  testForecastExtensionRespectsCap,
+  testForecastExtensionSensorLimitPreserved,
+  testForecastExtensionDisabled,
+  testCurrentPeriodTailShowsLightRed,
+  testCurrentPeriodTailLoggedDaysNotOverwritten,
+  testCurrentPeriodTailDisappearsWhenPeriodEnds,
+  testCurrentPeriodTailNoCbb,
+  testCurrentPeriodTailLegendEntry,
 ].forEach((fn) => {
   try {
     fn();
