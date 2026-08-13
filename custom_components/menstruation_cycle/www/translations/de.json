@@ -158,6 +158,16 @@
   "welcome_period_contraception": "Du bist jetzt fruchtbar - denke an Verhütung, wenn nötig!",
   "welcome_period_return": "Du kannst jederzeit in den Einstellungen zum Pre-Menarche Modus zurückwechseln",
 
+  "ob_explainer_label": "Über deinen Körper",
+  "ob_puberty_label": "Körperveränderungen",
+  "ob_puberty_desc": "Dein Körper wächst und verändert sich. Das ist normal.",
+  "ob_period_label": "Erste Periode",
+  "ob_period_desc": "Deine erste Periode kann leicht sein. Sie ist ein natürlicher Teil des Erwachsenwerdens.",
+  "ob_cycle_label": "Zykluslernphase",
+  "ob_cycle_desc": "Es braucht Zeit, bis dein Zyklus regelmäßig wird. Diese App lernt mit dir.",
+  "ob_symptoms_label": "Symptome",
+  "ob_symptoms_desc": "Du könntest Stimmungsschwankungen, leichte Krämpfe oder Müdigkeit bemerken. Das ist in Ordnung.",
+
   "too_little_history": "Zu wenig Verlaufsdaten in",
   "cycle_start": "Start",
   "end": "Ende",

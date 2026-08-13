@@ -158,6 +158,16 @@
   "welcome_period_contraception": "Vous êtes maintenant fertile - pensez à la contraception si nécessaire !",
   "welcome_period_return": "Vous pouvez toujours revenir au mode pré-ménarche dans les paramètres",
 
+  "ob_explainer_label": "Ton corps",
+  "ob_puberty_label": "Changements",
+  "ob_puberty_desc": "Ton corps grandit et change. C'est tout à fait normal.",
+  "ob_period_label": "Premières règles",
+  "ob_period_desc": "Tes premières règles peuvent être légères. C'est une partie naturelle de la croissance.",
+  "ob_cycle_label": "Apprentissage",
+  "ob_cycle_desc": "Il faut du temps pour que ton cycle devienne régulier. L'app apprendra avec toi.",
+  "ob_symptoms_label": "Symptômes",
+  "ob_symptoms_desc": "Tu pourrais remarquer des changements d'humeur, de légères crampes ou de la fatigue. C'est normal.",
+
   "too_little_history": "Pas assez d&apos;historique dans",
   "cycle_start": "Début",
   "end": "Fin",

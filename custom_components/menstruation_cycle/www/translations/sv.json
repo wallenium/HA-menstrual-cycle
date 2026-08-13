@@ -158,6 +158,16 @@
   "welcome_period_contraception": "Du är nu fertil – tänk på preventivmedel om det behövs!",
   "welcome_period_return": "Du kan alltid återgå till Pre-menarche-läget i inställningarna",
 
+  "ob_explainer_label": "Om din kropp",
+  "ob_puberty_label": "Kroppsförändringar",
+  "ob_puberty_desc": "Din kropp växer och förändras. Det är normalt.",
+  "ob_period_label": "Första mens",
+  "ob_period_desc": "Din första mens kan vara lätt. Det är en naturlig del av att växa upp.",
+  "ob_cycle_label": "Cykelinlärning",
+  "ob_cycle_desc": "Det tar tid för din cykel att bli regelbunden. Appen lär sig med dig.",
+  "ob_symptoms_label": "Symtom",
+  "ob_symptoms_desc": "Du kanske märker humörsvängningar, milda kramper eller trötthet. Det är okej.",
+
   "too_little_history": "Inte tillräckligt med historikdata i",
   "cycle_start": "Start",
   "end": "Slut",

@@ -292,6 +292,38 @@ class MenstruationCountdownTimer extends HTMLElement {
     `;
   }
 
+  _buildOnboardingExplainerCards() {
+    const pubertySvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="6" r="3"/><path d="M7 20v-4a5 5 0 0 1 10 0v4"/><line x1="9" y1="3" x2="7.5" y2="1.5"/><line x1="15" y1="3" x2="16.5" y2="1.5"/></svg>`;
+    const periodSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3C9 7 6 11 6 14.5a6 6 0 0 0 12 0C18 11 15 7 12 3z"/><path d="M9.5 15.5Q11 17 12.5 15.5" stroke-width="1.4"/></svg>`;
+    const cycleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="4" width="16" height="14" rx="2"/><line x1="2" y1="9" x2="18" y2="9"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="14" y1="2" x2="14" y2="6"/><path d="M21 3l.5-1.5L22 3l1.5.5L22 4l-.5 1.5L21 4 19.5 3.5Z" fill="currentColor" stroke="none"/></svg>`;
+    const symptomsSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="M9 15q1.5 1.5 3 .5 1.5 1 3-.5"/></svg>`;
+
+    return `
+      <section class="ob-explainer" aria-label="${this._t('ob_explainer_label')}">
+        <div class="ob-card ob-card--puberty" role="img" aria-label="${this._t('ob_puberty_label')}: ${this._t('ob_puberty_desc')}" tabindex="0">
+          <div class="ob-icon" aria-hidden="true">${pubertySvg}</div>
+          <div class="ob-label">${this._t('ob_puberty_label')}</div>
+          <div class="ob-tooltip" role="tooltip">${this._t('ob_puberty_desc')}</div>
+        </div>
+        <div class="ob-card ob-card--period" role="img" aria-label="${this._t('ob_period_label')}: ${this._t('ob_period_desc')}" tabindex="0">
+          <div class="ob-icon" aria-hidden="true">${periodSvg}</div>
+          <div class="ob-label">${this._t('ob_period_label')}</div>
+          <div class="ob-tooltip" role="tooltip">${this._t('ob_period_desc')}</div>
+        </div>
+        <div class="ob-card ob-card--cycle" role="img" aria-label="${this._t('ob_cycle_label')}: ${this._t('ob_cycle_desc')}" tabindex="0">
+          <div class="ob-icon" aria-hidden="true">${cycleSvg}</div>
+          <div class="ob-label">${this._t('ob_cycle_label')}</div>
+          <div class="ob-tooltip" role="tooltip">${this._t('ob_cycle_desc')}</div>
+        </div>
+        <div class="ob-card ob-card--symptoms" role="img" aria-label="${this._t('ob_symptoms_label')}: ${this._t('ob_symptoms_desc')}" tabindex="0">
+          <div class="ob-icon" aria-hidden="true">${symptomsSvg}</div>
+          <div class="ob-label">${this._t('ob_symptoms_label')}</div>
+          <div class="ob-tooltip" role="tooltip">${this._t('ob_symptoms_desc')}</div>
+        </div>
+      </section>
+    `;
+  }
+
   renderPreMearcheMode(cardContent) {
     const preMenarcheIcon = this._getStatusAnimatedIcon("pre_menarche");
     cardContent.innerHTML = `
@@ -307,7 +339,9 @@ class MenstruationCountdownTimer extends HTMLElement {
             <p>${this._t('pre_menarche_desc')}</p>
           </div>
         </div>
-        
+
+        ${this._buildOnboardingExplainerCards()}
+
         <div class="info-section">
           <h4>${this._t('preparation_tips')}</h4>
           <div class="tips-grid">
@@ -1699,6 +1733,16 @@ class MenstruationCountdownTimer extends HTMLElement {
         welcome_period_features: "New features: cycle prediction, statistics, ...",
         welcome_period_contraception: "You are now fertile - think about contraception if needed!",
         welcome_period_return: "You can always return to Pre-Menarche mode in Settings",
+        // Onboarding explainer cards
+        ob_explainer_label: "About your body",
+        ob_puberty_label: "Body changes",
+        ob_puberty_desc: "Your body is growing and changing. This is normal.",
+        ob_period_label: "First period",
+        ob_period_desc: "Your first period may be light. It is a natural part of growing up.",
+        ob_cycle_label: "Cycle learning",
+        ob_cycle_desc: "It takes time for your cycle to become regular. This app will learn with you.",
+        ob_symptoms_label: "Symptoms",
+        ob_symptoms_desc: "You may notice mood changes, mild cramps, or tiredness. That is okay.",
         yes: "Yes",
         no: "No",
         cancel: "Cancel",
@@ -2522,6 +2566,98 @@ class MenstruationCountdownTimer extends HTMLElement {
 
       .pm-btn-ok {
         min-width: 100px;
+      }
+
+      /* ── Onboarding Explainer Cards ─────────────────────────── */
+      @keyframes ob-fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes ob-float {
+        0%, 100% { transform: translateY(0); }
+        50%       { transform: translateY(-4px); }
+      }
+
+      .ob-explainer {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+        gap: 8px;
+        margin: 2px 0;
+      }
+
+      .ob-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 6px;
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--mg-status-accent) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--mg-status-accent) 25%, transparent);
+        cursor: default;
+        animation: ob-fade-in 0.6s ease-out both;
+        outline-offset: 2px;
+      }
+
+      .ob-card:nth-child(1) { animation-delay: 0s; }
+      .ob-card:nth-child(2) { animation-delay: 0.15s; }
+      .ob-card:nth-child(3) { animation-delay: 0.30s; }
+      .ob-card:nth-child(4) { animation-delay: 0.45s; }
+
+      .ob-card--period   { background: color-mix(in srgb, var(--mg-status-error)   10%, transparent); border-color: color-mix(in srgb, var(--mg-status-error)   25%, transparent); }
+      .ob-card--cycle    { background: color-mix(in srgb, var(--mg-status-info)    10%, transparent); border-color: color-mix(in srgb, var(--mg-status-info)    25%, transparent); }
+      .ob-card--symptoms { background: color-mix(in srgb, var(--mg-status-warning) 10%, transparent); border-color: color-mix(in srgb, var(--mg-status-warning) 25%, transparent); }
+
+      .ob-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--mg-status-accent);
+        animation: ob-float 3s ease-in-out infinite;
+      }
+      .ob-card--period   .ob-icon { color: var(--mg-status-error); }
+      .ob-card--cycle    .ob-icon { color: var(--mg-status-info); }
+      .ob-card--symptoms .ob-icon { color: var(--mg-status-warning); }
+
+      .ob-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--primary-text-color);
+        line-height: 1.2;
+      }
+
+      .ob-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 160px;
+        max-width: 220px;
+        background: var(--mg-card-bg);
+        border: 1px solid var(--mg-border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 0.8rem;
+        color: var(--primary-text-color);
+        line-height: 1.4;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+        text-align: center;
+        pointer-events: none;
+      }
+
+      .ob-card:hover .ob-tooltip,
+      .ob-card:focus .ob-tooltip,
+      .ob-card:focus-visible .ob-tooltip {
+        display: block;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .ob-card { animation: none; }
+        .ob-icon { animation: none; }
       }
     `;
   }
