@@ -56,6 +56,8 @@ class CycleModel:
     nfp_mode: str
     period_forecast: dict[str, Any] | None
     fertility_forecast: dict[str, Any] | None
+    symptom_correlation_insights: list[dict[str, Any]]
+    symptom_correlation_insights_reason: str | None
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -322,6 +324,356 @@ def normalize_symptoms(symptom_history: list[dict[str, Any]]) -> list[dict[str, 
             continue
 
     return sorted(normalized, key=lambda x: x.get("date", ""))
+
+
+PHASE_PERIOD = "period"
+PHASE_FOLLICULAR = "follicular"
+PHASE_FERTILE_WINDOW = "fertile_window"
+PHASE_OVULATION_DAY = "ovulation_day"
+PHASE_LUTEAL = "luteal"
+PHASE_LATE_LUTEAL = "late_luteal"
+PHASE_ORDER = (
+    PHASE_PERIOD,
+    PHASE_FOLLICULAR,
+    PHASE_FERTILE_WINDOW,
+    PHASE_OVULATION_DAY,
+    PHASE_LUTEAL,
+    PHASE_LATE_LUTEAL,
+)
+
+SYMPTOM_MULTI_VALUE_KEYS = ("pain", "hygiene", "test")
+SYMPTOM_SINGLE_VALUE_KEYS = ("spotting", "discharge", "intercourse", "cervical_mucus", "bleeding_strength")
+_CONFIDENCE_WEIGHT = {"low": 1.0, "medium": 1.6, "high": 2.2}
+
+
+def _coerce_values(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if value in (None, ""):
+        return []
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def _clamp_ratio(value: float, min_ratio: float = 0.1, max_ratio: float = 8.0) -> float:
+    return max(min_ratio, min(max_ratio, value))
+
+
+def _phase_label(phase: str) -> str:
+    labels = {
+        PHASE_PERIOD: "period",
+        PHASE_FOLLICULAR: "follicular phase",
+        PHASE_FERTILE_WINDOW: "fertile window",
+        PHASE_OVULATION_DAY: "ovulation day",
+        PHASE_LUTEAL: "luteal phase",
+        PHASE_LATE_LUTEAL: "late luteal phase",
+    }
+    return labels.get(phase, phase.replace("_", " "))
+
+
+def _symptom_human_label(symptom_key: str) -> str:
+    key = symptom_key.split(":", 1)[1] if ":" in symptom_key else symptom_key
+    return key.replace("_", " ")
+
+
+def _insight_confidence(logged_days_in_phase: int, overall_logged_days: int, symptom_occurrences: int) -> str:
+    if logged_days_in_phase >= 18 and overall_logged_days >= 45 and symptom_occurrences >= 8:
+        return "high"
+    if logged_days_in_phase >= 10 and overall_logged_days >= 25 and symptom_occurrences >= 5:
+        return "medium"
+    return "low"
+
+
+def _symptom_presence_keys(
+    entry: dict[str, Any],
+    multi_value_keys: tuple[str, ...] = SYMPTOM_MULTI_VALUE_KEYS,
+    single_value_keys: tuple[str, ...] = SYMPTOM_SINGLE_VALUE_KEYS,
+) -> set[str]:
+    present: set[str] = set()
+
+    for key in multi_value_keys:
+        for value in _coerce_values(entry.get(key)):
+            present.add(f"{key}:{value}")
+
+    for key in single_value_keys:
+        value = entry.get(key)
+        if value not in (None, ""):
+            present.add(f"{key}:{str(value).strip()}")
+
+    return present
+
+
+def assign_symptom_day_phase(
+    day_iso: str,
+    cycle_start_iso: str,
+    cycle_end_anchor_iso: str,
+    period_duration_days: int,
+    history_set: set[str] | None = None,
+    fertile_window_start_iso: str | None = None,
+    fertile_window_end_iso: str | None = None,
+    ovulation_day_iso: str | None = None,
+    late_luteal_days: int = 5,
+) -> str:
+    """Assign a logged symptom day to a cycle phase."""
+    day = date.fromisoformat(day_iso)
+    cycle_start = date.fromisoformat(cycle_start_iso)
+    cycle_end_anchor = date.fromisoformat(cycle_end_anchor_iso)
+    history_days = history_set or set()
+
+    if day_iso in history_days:
+        return PHASE_PERIOD
+
+    period_days = max(1, min(14, int(period_duration_days)))
+    period_end = cycle_start + timedelta(days=period_days - 1)
+    if day <= period_end:
+        return PHASE_PERIOD
+
+    ovulation_day: date | None = None
+    if ovulation_day_iso:
+        try:
+            ovulation_day = date.fromisoformat(ovulation_day_iso)
+        except ValueError:
+            ovulation_day = None
+    if ovulation_day and day == ovulation_day:
+        return PHASE_OVULATION_DAY
+
+    fertile_start: date | None = None
+    fertile_end: date | None = None
+    if fertile_window_start_iso and fertile_window_end_iso:
+        try:
+            fertile_start = date.fromisoformat(fertile_window_start_iso)
+            fertile_end = date.fromisoformat(fertile_window_end_iso)
+        except ValueError:
+            fertile_start = None
+            fertile_end = None
+    if fertile_start and fertile_end and fertile_start <= day <= fertile_end:
+        return PHASE_FERTILE_WINDOW
+
+    late_luteal_span = max(3, min(10, int(late_luteal_days)))
+    late_luteal_start = cycle_end_anchor - timedelta(days=late_luteal_span - 1)
+    if day >= late_luteal_start:
+        return PHASE_LATE_LUTEAL
+
+    if ovulation_day and day > ovulation_day:
+        return PHASE_LUTEAL
+    if fertile_end and day > fertile_end:
+        return PHASE_LUTEAL
+    return PHASE_FOLLICULAR
+
+
+def compute_symptom_correlation_insights(
+    history: list[str],
+    grouped_starts: list[str],
+    symptom_history: list[dict[str, Any]],
+    today: date,
+    period_duration_days: int = DEFAULT_PERIOD_DURATION_DAYS,
+    next_predicted_start: str | None = None,
+    avg_cycle_length: int | None = None,
+    fertile_window_start: str | None = None,
+    fertile_window_end: str | None = None,
+    ovulation_day: str | None = None,
+    nfp_analysis: dict[str, Any] | None = None,
+    max_insights: int = 3,
+    min_logged_days_per_phase: int = 5,
+    min_total_symptom_occurrences: int = 3,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Compute phase-based symptom correlation insights."""
+    starts = []
+    for start in grouped_starts:
+        try:
+            d = date.fromisoformat(str(start))
+        except ValueError:
+            continue
+        if d <= today:
+            starts.append(d)
+    starts = sorted(set(starts))
+    if not starts:
+        return [], "insufficient_cycle_history"
+
+    predicted_next_date: date | None = None
+    if next_predicted_start:
+        try:
+            predicted_next_date = date.fromisoformat(str(next_predicted_start))
+        except ValueError:
+            predicted_next_date = None
+
+    nfp_window = (nfp_analysis or {}).get("fertile_window") if isinstance(nfp_analysis, dict) else {}
+    nfp_fertile_start = nfp_window.get("start") if isinstance(nfp_window, dict) else None
+    nfp_fertile_end = nfp_window.get("end") if isinstance(nfp_window, dict) else None
+    nfp_ovulation = (nfp_analysis or {}).get("ovulation_day") if isinstance(nfp_analysis, dict) else None
+
+    cycle_meta: list[dict[str, Any]] = []
+    for idx, start in enumerate(starts):
+        next_start = starts[idx + 1] if idx + 1 < len(starts) else None
+        if next_start:
+            cycle_end_observed = next_start - timedelta(days=1)
+            cycle_end_anchor = cycle_end_observed
+            cycle_length = (next_start - start).days
+            cycle_ovulation = None
+            cycle_fertile_start = None
+            cycle_fertile_end = None
+        else:
+            cycle_end_observed = today
+            cycle_length = int(avg_cycle_length or DEFAULT_CYCLE_LENGTH)
+            cycle_end_anchor = start + timedelta(days=max(20, min(60, cycle_length)) - 1)
+            if predicted_next_date and predicted_next_date > start:
+                cycle_end_anchor = predicted_next_date - timedelta(days=1)
+                cycle_length = (predicted_next_date - start).days
+            cycle_ovulation = nfp_ovulation or ovulation_day
+            cycle_fertile_start = nfp_fertile_start or fertile_window_start
+            cycle_fertile_end = nfp_fertile_end or fertile_window_end
+
+        if not cycle_ovulation:
+            offset = max(8, min(25, (max(20, min(60, cycle_length)) // 2) - 1))
+            cycle_ovulation = (start + timedelta(days=offset)).isoformat()
+        if not cycle_fertile_start or not cycle_fertile_end:
+            try:
+                ov_date = date.fromisoformat(cycle_ovulation)
+                cycle_fertile_start = (ov_date - timedelta(days=5)).isoformat()
+                cycle_fertile_end = (ov_date + timedelta(days=1)).isoformat()
+            except ValueError:
+                cycle_fertile_start = None
+                cycle_fertile_end = None
+
+        cycle_meta.append(
+            {
+                "start": start,
+                "observed_end": cycle_end_observed,
+                "end_anchor": cycle_end_anchor,
+                "ovulation_day": cycle_ovulation,
+                "fertile_start": cycle_fertile_start,
+                "fertile_end": cycle_fertile_end,
+            }
+        )
+
+    history_set = set(normalize_history(history))
+    normalized_symptoms = normalize_symptoms(symptom_history)
+    phase_logged_days = {phase: 0 for phase in PHASE_ORDER}
+    symptom_overall_counts: dict[str, int] = {}
+    symptom_phase_counts: dict[str, dict[str, int]] = {}
+    overall_logged_days = 0
+
+    for entry in normalized_symptoms:
+        day_iso = entry.get("date")
+        if not isinstance(day_iso, str):
+            continue
+        try:
+            day = date.fromisoformat(day_iso)
+        except ValueError:
+            continue
+        if day > today:
+            continue
+
+        cycle = None
+        for meta in reversed(cycle_meta):
+            if meta["start"] <= day <= meta["observed_end"]:
+                cycle = meta
+                break
+        if cycle is None:
+            continue
+
+        phase = assign_symptom_day_phase(
+            day_iso=day_iso,
+            cycle_start_iso=cycle["start"].isoformat(),
+            cycle_end_anchor_iso=cycle["end_anchor"].isoformat(),
+            period_duration_days=period_duration_days,
+            history_set=history_set,
+            fertile_window_start_iso=cycle["fertile_start"],
+            fertile_window_end_iso=cycle["fertile_end"],
+            ovulation_day_iso=cycle["ovulation_day"],
+        )
+
+        phase_logged_days[phase] += 1
+        overall_logged_days += 1
+
+        day_symptoms = _symptom_presence_keys(entry)
+        for symptom_key in day_symptoms:
+            symptom_overall_counts[symptom_key] = symptom_overall_counts.get(symptom_key, 0) + 1
+            per_phase = symptom_phase_counts.setdefault(symptom_key, {})
+            per_phase[phase] = per_phase.get(phase, 0) + 1
+
+    if overall_logged_days < min_logged_days_per_phase:
+        return [], "insufficient_logged_days"
+
+    phases_with_min_days = {phase for phase, count in phase_logged_days.items() if count >= min_logged_days_per_phase}
+    if not phases_with_min_days:
+        return [], "insufficient_phase_coverage"
+
+    if not any(count >= min_total_symptom_occurrences for count in symptom_overall_counts.values()):
+        return [], "insufficient_symptom_occurrences"
+
+    insights: list[dict[str, Any]] = []
+    for symptom_key, total_occurrences in symptom_overall_counts.items():
+        if total_occurrences < min_total_symptom_occurrences:
+            continue
+        baseline_frequency = total_occurrences / overall_logged_days
+        if baseline_frequency <= 0:
+            continue
+
+        for phase in PHASE_ORDER:
+            logged_days_in_phase = phase_logged_days.get(phase, 0)
+            if logged_days_in_phase < min_logged_days_per_phase:
+                continue
+
+            symptom_days_in_phase = symptom_phase_counts.get(symptom_key, {}).get(phase, 0)
+            phase_frequency = symptom_days_in_phase / logged_days_in_phase
+            raw_ratio = phase_frequency / baseline_frequency if baseline_frequency > 0 else 0.0
+            ratio = round(_clamp_ratio(raw_ratio), 1)
+            if ratio == 1.0:
+                continue
+
+            direction = "more_frequent" if ratio > 1 else "less_frequent"
+            confidence = _insight_confidence(logged_days_in_phase, overall_logged_days, total_occurrences)
+            strength = abs(raw_ratio - 1.0) * _CONFIDENCE_WEIGHT[confidence]
+            if phase_frequency == 0 and total_occurrences < (min_total_symptom_occurrences + 2):
+                continue
+
+            symptom_label = _symptom_human_label(symptom_key).capitalize()
+            phase_label = _phase_label(phase)
+            if direction == "more_frequent":
+                message = f"{symptom_label} are {ratio:.1f}x more frequent in {phase_label}."
+            else:
+                message = f"{symptom_label} are less common during {phase_label} ({ratio:.1f}x baseline)."
+
+            insights.append(
+                {
+                    "symptom_key": symptom_key,
+                    "phase": phase,
+                    "ratio": ratio,
+                    "direction": direction,
+                    "phase_frequency": round(phase_frequency, 3),
+                    "baseline_frequency": round(baseline_frequency, 3),
+                    "confidence": confidence,
+                    "message": message,
+                    "_strength": strength,
+                }
+            )
+
+    if not insights:
+        return [], "no_strong_insights"
+
+    confidence_rank = {"high": 3, "medium": 2, "low": 1}
+    insights.sort(
+        key=lambda item: (
+            item.get("_strength", 0.0),
+            confidence_rank.get(str(item.get("confidence")), 0),
+            abs(float(item.get("ratio", 1.0)) - 1.0),
+        ),
+        reverse=True,
+    )
+    selected = []
+    seen: set[tuple[str, str]] = set()
+    for item in insights:
+        key = (str(item["symptom_key"]), str(item["phase"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        payload = dict(item)
+        payload.pop("_strength", None)
+        selected.append(payload)
+        if len(selected) >= max(1, min(5, int(max_insights))):
+            break
+    return selected, None
 
 
 def calculate_pregnancy_info(pregnancy_start_date: str | None, today: date | None = None) -> tuple[int | None, str | None]:
@@ -1444,6 +1796,8 @@ def build_cycle_model(
             nfp_mode=nfp_mode,
             period_forecast=None,
             fertility_forecast=None,
+            symptom_correlation_insights=[],
+            symptom_correlation_insights_reason="unavailable_for_pregnancy",
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
@@ -1477,6 +1831,8 @@ def build_cycle_model(
             nfp_mode=nfp_mode,
             period_forecast=None,
             fertility_forecast=None,
+            symptom_correlation_insights=[],
+            symptom_correlation_insights_reason="unavailable_for_pre_menarche",
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -1516,6 +1872,8 @@ def build_cycle_model(
                     nfp_mode=nfp_mode,
                     period_forecast=None,
                     fertility_forecast=None,
+                    symptom_correlation_insights=[],
+                    symptom_correlation_insights_reason="unavailable_for_menarche",
                 )
         except ValueError:
             pass
@@ -1650,6 +2008,19 @@ def build_cycle_model(
     fertility_forecast = compute_fertility_forecast(
         next_start, avg_cycle, fertile_start, fertile_end, ovulation_day_iso, nfp_result
     )
+    symptom_correlation_insights, symptom_correlation_reason = compute_symptom_correlation_insights(
+        history=normalized,
+        grouped_starts=starts,
+        symptom_history=symptoms,
+        today=now,
+        period_duration_days=effective_duration,
+        next_predicted_start=next_start,
+        avg_cycle_length=avg_cycle,
+        fertile_window_start=fertile_start,
+        fertile_window_end=fertile_end,
+        ovulation_day=ovulation_day_iso,
+        nfp_analysis=nfp_result,
+    )
 
     return CycleModel(
         history=normalized,
@@ -1680,4 +2051,6 @@ def build_cycle_model(
         nfp_mode=nfp_mode,
         period_forecast=period_forecast,
         fertility_forecast=fertility_forecast,
+        symptom_correlation_insights=symptom_correlation_insights,
+        symptom_correlation_insights_reason=symptom_correlation_reason,
     )
