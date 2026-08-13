@@ -1,5 +1,5 @@
 /**
- * Tests for young-girls-support-card.js
+ * Tests for menstruation-support-card.js
  *
  * Covers:
  *  A) School-day reminders appear and toggles work
@@ -11,7 +11,7 @@
  *  G) Visibility rules: pre_menarche / early_menarche shown by default
  *  H) Regression: card does not affect unrelated globals
  *
- * Run with: node tests/young-girls-support-card.test.js
+ * Run with: node tests/menstruation-support-card.test.js
  */
 
 'use strict';
@@ -47,14 +47,14 @@ global.fetch = () => Promise.reject(new Error('fetch stub'));
 
 // Load the card
 const cardSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/young-girls-support-card.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-support-card.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
 eval(cardSrc);
 
-const CardClass = _defined['young-girls-support-card'];
-assert.ok(CardClass, 'Card class should be registered as young-girls-support-card');
+const CardClass = _defined['menstruation-support-card'];
+assert.ok(CardClass, 'Card class should be registered as menstruation-support-card');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -312,7 +312,7 @@ function renderWithHass(el, shadow, onboardingStage) {
 
 {
   assert.ok(
-    Array.isArray(window.customCards) && window.customCards.some((c) => c.type === 'young-girls-support-card'),
+    Array.isArray(window.customCards) && window.customCards.some((c) => c.type === 'menstruation-support-card'),
     'J1: card should register itself in window.customCards',
   );
 
@@ -330,4 +330,4 @@ function renderWithHass(el, shadow, onboardingStage) {
   console.log('K) Regression (globals): PASS');
 }
 
-console.log('\nAll young-girls-support-card tests passed. ✅');
+console.log('\nAll menstruation-support-card tests passed. ✅');

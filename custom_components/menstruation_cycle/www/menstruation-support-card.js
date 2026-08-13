@@ -85,7 +85,7 @@ const CYCLE_PHASES = [
 class YoungGirlsSupportCard extends HTMLElement {
   static getStubConfig() {
     return {
-      type: 'custom:young-girls-support-card',
+      type: 'custom:menstruation-support-card',
       entity: 'sensor.menstruation',
       show_reminders: true,
       show_glossary: true,
@@ -1036,12 +1036,12 @@ class YoungGirlsSupportCard extends HTMLElement {
   }
 }
 
-customElements.define('young-girls-support-card', YoungGirlsSupportCard);
+customElements.define('menstruation-support-card', YoungGirlsSupportCard);
 
 window.customCards = window.customCards || [];
-if (!window.customCards.find((c) => c.type === 'young-girls-support-card')) {
+if (!window.customCards.find((c) => c.type === 'menstruation-support-card')) {
   window.customCards.push({
-    type: 'young-girls-support-card',
+    type: 'menstruation-support-card',
     name: 'Young Girls Support',
     description: 'Age-appropriate support cards: school reminders, glossary, cycle phases, hygiene guides, and reassurance content.',
     preview: false,

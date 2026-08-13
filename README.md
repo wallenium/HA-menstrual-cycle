@@ -87,7 +87,7 @@ You can change the onboarding stage at any time in **Settings → Devices & Serv
 
 ## Young Girls Support
 
-The `custom:young-girls-support-card` provides age-appropriate, practical education and low-anxiety support for pre-/early-menarche users. It has **no effect on forecast logic** — it is a UI-only card.
+The `custom:menstruation-support-card` provides age-appropriate, practical education and low-anxiety support for pre-/early-menarche users. It has **no effect on forecast logic** — it is a UI-only card.
 
 ### Included content modules
 
