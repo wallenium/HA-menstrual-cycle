@@ -7,7 +7,8 @@
         "data": {
           "profile": "Username/Profile",
           "friendly_name": "Friendly name",
-          "icon": "Icon (optional, e.g. mdi:calendar-heart)"
+          "icon": "Icon (optional, e.g. mdi:calendar-heart)",
+          "onboarding_stage": "Onboarding stage"
         }
       }
     },
@@ -32,7 +33,8 @@
           "menopause_enabled": "Enable menopause mode",
           "menopause_start_date": "Menopause start date (YYYY-MM-DD)",
           "cycle_length_override": "Cycle length override (days, 0 = auto)",
-          "num_predictions": "Number of future cycle predictions"
+          "num_predictions": "Number of future cycle predictions",
+          "onboarding_stage": "Onboarding stage"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -44,7 +46,8 @@
           "menopause_enabled": "Activates menopause tracking mode.",
           "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",
           "cycle_length_override": "Override the automatically calculated average cycle length. Set to 0 to use the auto-calculated value from your history (recommended). Set to 20–38 to manually fix the cycle length used for fertile window and ovulation calculations.",
-          "num_predictions": "How many future cycle starts to generate (1–12). Default is 6."
+          "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
+          "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle."
         }
       }
     },

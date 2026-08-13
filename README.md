@@ -57,6 +57,34 @@ Before using it in a shared household or for sensitive automations:
 
 Read the full disclaimer in [`Disclaimer`](https://github.com/wallenium/HA-menstrual-cycle/wiki/DISCLAIMER).
 
+## Onboarding stages and confidence gating
+
+The integration now supports stage-aware onboarding and forecast confidence gating:
+
+- **pre_menarche** – educational mode before the first period. Deterministic period/ovulation predictions are suppressed.
+- **early_menarche** – learning phase after the first period when history is sparse/irregular. Forecasts are shown as broader possible windows with low confidence by default.
+- **established_cycle** – standard cycle forecasting. If data quality is still too low, read-only display logic can temporarily downgrade to learning-phase behavior.
+
+### How predictions differ by stage
+
+- **Pre-menarche:** no precise cycle-day claims; emphasis is on neutral tracking/supportive messaging.
+- **Early menarche:** low-data users get uncertainty-aware windows (for example “possible period window”) and ovulation-day precision is withheld until data quality thresholds are met.
+- **Established cycle:** prior behavior is retained unless confidence gates detect insufficient quality (too few valid cycles, high variability, or too few recent logs).
+
+### Confidence/data-quality gates
+
+High-precision outputs are only shown when all required checks pass:
+
+- minimum valid cycle count
+- acceptable cycle variability bounds
+- sufficient recent log activity
+
+Otherwise the integration degrades to low-confidence window output and suppresses precise ovulation claims.
+
+### Switching stage later
+
+You can change the onboarding stage at any time in **Settings → Devices & Services → Menstruation Cycle → Configure** (`onboarding_stage` option).
+
 ## Translations
 
 | Language | Status |

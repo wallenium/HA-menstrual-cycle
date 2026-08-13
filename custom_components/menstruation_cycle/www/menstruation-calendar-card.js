@@ -159,6 +159,9 @@ class MenstruationCalendarCard extends HTMLElement {
         confidence_medium: 'Medium confidence',
         confidence_low: 'Low confidence',
         confidence_unknown: 'Unknown confidence',
+        learning_phase: 'Learning phase',
+        low_confidence_badge: 'Low confidence',
+        exploratory_prediction: 'Exploratory only',
         modal_edit_day: 'Edit Day',
         period: 'Period',
         period_start: 'Period Start',
@@ -529,6 +532,24 @@ class MenstruationCalendarCard extends HTMLElement {
 
     const cycleDay = cycleStart ? this._dayDiff(iso, cycleStart) + 1 : null;
     const isCurrentPeriodTail = !isPeriod && !isPredictedPeriod && (ctx.currentPeriodTailSet?.has(iso) ?? false);
+    const learningLowConfidence = Boolean(ctx.learningPhase)
+      && String(ctx.predictionGating?.confidence || 'low').toLowerCase() === 'low';
+    if (ctx.onboardingStageEffective === 'pre_menarche') {
+      return {
+        isPeriod,
+        isFertile: false,
+        isOvulation: false,
+        cycleDay,
+        isPredictedPeriod: false,
+        isPredictedFertile: false,
+        isPredictedOvulation: false,
+        isCurrentPeriodTail,
+      };
+    }
+    if (learningLowConfidence) {
+      isOvulation = false;
+      isPredictedOvulation = false;
+    }
     return { isPeriod, isFertile, isOvulation, cycleDay, isPredictedPeriod, isPredictedFertile, isPredictedOvulation, isCurrentPeriodTail };
   }
 
@@ -598,6 +619,10 @@ class MenstruationCalendarCard extends HTMLElement {
       currentPeriodTailSet,
       nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
       predictionConfidenceByDay: this._predictionConfidenceByDay(attrs),
+      onboardingStage: String(attrs.onboarding_stage || ''),
+      onboardingStageEffective: String(attrs.onboarding_stage_effective || ''),
+      learningPhase: Boolean(attrs.learning_phase),
+      predictionGating: (attrs.prediction_gating && typeof attrs.prediction_gating === 'object') ? attrs.prediction_gating : {},
     };
   }
 
@@ -1315,6 +1340,20 @@ class MenstruationCalendarCard extends HTMLElement {
         .ovulation-dot.predicted { background: color-mix(in srgb, var(--success-color, #16a34a) 55%, transparent); }
         .nfp-method-badge { font-size: .72rem; opacity: .75; margin-left: auto; }
         .nfp-method-badge .method-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px; }
+        .stage-badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+        .stage-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: .72rem;
+          font-weight: 600;
+          border-radius: 999px;
+          padding: 2px 8px;
+          border: 1px solid var(--divider-color);
+          color: var(--primary-text-color);
+        }
+        .stage-badge.learning { background: color-mix(in srgb, var(--warning-color, #facc15) 18%, transparent); }
+        .stage-badge.low { background: color-mix(in srgb, var(--error-color, #e11d48) 12%, transparent); }
         /* Symptom modal */
         .sym-overlay { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; }
         .sym-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
@@ -1357,11 +1396,19 @@ class MenstruationCalendarCard extends HTMLElement {
             </div>
             <button type="button" class="btn" data-action="today">${this._t('today')}</button>
           </div>
+          ${(model.learningPhase || model.onboardingStageEffective === 'pre_menarche') ? `
+            <div class="stage-badges">
+              <span class="stage-badge learning">${this._t('learning_phase')}</span>
+              ${String(model.predictionGating?.confidence || 'low').toLowerCase() === 'low'
+                ? `<span class="stage-badge low">${this._t('low_confidence_badge')}</span>`
+                : ''}
+            </div>
+          ` : ''}
           <div class="grid" role="grid" aria-label="calendar">${this._calendarGrid(model, locale)}</div>
           <div class="legend">
             <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}<</span>
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
-            ${this._config?.show_ovulation_marker !== false ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
+            ${this._config?.show_ovulation_marker !== false && !(model.learningPhase && String(model.predictionGating?.confidence || 'low').toLowerCase() === 'low') ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch conf-high"></span> ${this._t('confidence_high')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch conf-medium"></span> ${this._t('confidence_medium')}</span>` : ''}

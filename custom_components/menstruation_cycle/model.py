@@ -9,9 +9,14 @@ from typing import Any
 from .const import (
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
+    DEFAULT_ONBOARDING_STAGE,
     DEFAULT_CYCLE_LENGTH,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_PERIOD_DURATION_DAYS,
+    ONBOARDING_STAGE_EARLY_MENARCHE,
+    ONBOARDING_STAGE_ESTABLISHED_CYCLE,
+    ONBOARDING_STAGE_PRE_MENARCHE,
+    ONBOARDING_STAGES,
     STATE_FERTILE,
     STATE_MENARCHE,
     STATE_NEUTRAL,
@@ -32,6 +37,10 @@ PREDICTION_CONFIDENCE_HIGH_THRESHOLD = 0.67
 PREDICTION_CONFIDENCE_MEDIUM_THRESHOLD = 0.34
 PREDICTION_CONFIDENCE_DECAY_PER_CYCLE = 0.14
 PREDICTION_CONFIDENCE_MIN_DECAY_FACTOR = 0.3
+MIN_VALID_CYCLES_FOR_HIGH_PRECISION = 4
+MAX_CYCLE_STD_FOR_HIGH_PRECISION = 5.0
+MIN_RECENT_LOG_ENTRIES_FOR_HIGH_PRECISION = 2
+RECENT_LOG_WINDOW_DAYS = 120
 
 PREDICTION_CONFIDENCE_WEIGHTS: dict[str, float] = {
     "regularity": 0.28,
@@ -77,6 +86,10 @@ class CycleModel:
     fertility_forecast: dict[str, Any] | None
     symptom_correlation_insights: list[dict[str, Any]]
     symptom_correlation_insights_reason: str | None
+    onboarding_stage: str
+    onboarding_stage_effective: str
+    learning_phase: bool
+    prediction_gating: dict[str, Any]
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -1975,6 +1988,75 @@ def project_range_windows(
     }
 
 
+def _normalize_onboarding_stage(stage: str | None) -> str:
+    raw = str(stage or "").strip().lower()
+    if raw in ONBOARDING_STAGES:
+        return raw
+    return DEFAULT_ONBOARDING_STAGE
+
+
+def _recent_log_entry_count(symptoms: list[dict[str, Any]], now: date) -> int:
+    floor = now - timedelta(days=RECENT_LOG_WINDOW_DAYS)
+    count = 0
+    for item in symptoms:
+        raw = item.get("date") if isinstance(item, dict) else None
+        if not raw:
+            continue
+        try:
+            logged_day = date.fromisoformat(str(raw))
+        except ValueError:
+            continue
+        if floor <= logged_day <= now:
+            count += 1
+    return count
+
+
+def _build_prediction_gating(
+    starts: list[str],
+    symptoms: list[dict[str, Any]],
+    now: date,
+) -> dict[str, Any]:
+    lengths = _recent_cycle_lengths(starts)
+    valid_cycles = len(lengths)
+    cycle_std = _cycle_regularity_std(starts)
+    recent_logs = _recent_log_entry_count(symptoms, now)
+    cycle_variability_ok = cycle_std is not None and cycle_std <= MAX_CYCLE_STD_FOR_HIGH_PRECISION
+    precision_allowed = (
+        valid_cycles >= MIN_VALID_CYCLES_FOR_HIGH_PRECISION
+        and cycle_variability_ok
+        and recent_logs >= MIN_RECENT_LOG_ENTRIES_FOR_HIGH_PRECISION
+    )
+    if precision_allowed:
+        confidence = "high" if cycle_std is not None and cycle_std <= 2 else "medium"
+    else:
+        confidence = "low"
+    return {
+        "precision_allowed": precision_allowed,
+        "confidence": confidence,
+        "valid_cycles": valid_cycles,
+        "cycle_std_days": round(cycle_std, 2) if cycle_std is not None else None,
+        "recent_log_entries": recent_logs,
+        "thresholds": {
+            "min_valid_cycles": MIN_VALID_CYCLES_FOR_HIGH_PRECISION,
+            "max_cycle_std_days": MAX_CYCLE_STD_FOR_HIGH_PRECISION,
+            "min_recent_log_entries": MIN_RECENT_LOG_ENTRIES_FOR_HIGH_PRECISION,
+            "recent_window_days": RECENT_LOG_WINDOW_DAYS,
+        },
+    }
+
+
+def _window_bounds(center_iso: str, half_span_days: int) -> tuple[str, str] | None:
+    try:
+        center = date.fromisoformat(str(center_iso))
+    except (TypeError, ValueError):
+        return None
+    span = max(2, min(10, int(half_span_days)))
+    return (
+        (center - timedelta(days=span)).isoformat(),
+        (center + timedelta(days=span)).isoformat(),
+    )
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,
@@ -1987,6 +2069,7 @@ def build_cycle_model(
     today: date | None = None,
     cycle_length_override: int | None = None,
     nfp_mode: str = DEFAULT_NFP_ANALYSIS_MODE,
+    onboarding_stage: str | None = None,
 ) -> CycleModel:
     """Build complete cycle model for sensor state + attributes."""
     now = today or date.today()
@@ -2012,6 +2095,8 @@ def build_cycle_model(
     nc_data: dict[str, Any] = {"has_noncycle": False}
     if isinstance(noncycle_data, dict):
         nc_data.update(noncycle_data)
+    stage_explicit = onboarding_stage is not None
+    requested_stage = _normalize_onboarding_stage(onboarding_stage) if stage_explicit else DEFAULT_ONBOARDING_STAGE
 
     # If pregnant, return pregnancy state
     if is_pregnant:
@@ -2047,15 +2132,21 @@ def build_cycle_model(
             fertility_forecast=None,
             symptom_correlation_insights=[],
             symptom_correlation_insights_reason="unavailable_for_pregnancy",
+            onboarding_stage=requested_stage,
+            onboarding_stage_effective=requested_stage,
+            learning_phase=False,
+            prediction_gating={"precision_allowed": False, "confidence": "low"},
         )
 
     # If in pre-menarche mode (tracking explicitly enabled, awaiting first period)
-    if men_data.get("tracking_active") and men_data.get("is_menarche") is False:
+    if requested_stage == ONBOARDING_STAGE_PRE_MENARCHE or (
+        men_data.get("tracking_active") and men_data.get("is_menarche") is False
+    ):
         return CycleModel(
             history=normalized,
             grouped_starts=[],
             bleeding_blocks=[],
-            next_predicted_start=men_data.get("estimated_date"),
+            next_predicted_start=None,
             predicted_cycle_starts=[],
             avg_cycle_length=None,
             fertile_window_start=None,
@@ -2082,6 +2173,14 @@ def build_cycle_model(
             fertility_forecast=None,
             symptom_correlation_insights=[],
             symptom_correlation_insights_reason="unavailable_for_pre_menarche",
+            onboarding_stage=requested_stage,
+            onboarding_stage_effective=ONBOARDING_STAGE_PRE_MENARCHE,
+            learning_phase=True,
+            prediction_gating={
+                "precision_allowed": False,
+                "confidence": "low",
+                "reason": "pre_menarche_mode",
+            },
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state
@@ -2123,6 +2222,14 @@ def build_cycle_model(
                     fertility_forecast=None,
                     symptom_correlation_insights=[],
                     symptom_correlation_insights_reason="unavailable_for_menarche",
+                    onboarding_stage=requested_stage,
+                    onboarding_stage_effective=ONBOARDING_STAGE_EARLY_MENARCHE,
+                    learning_phase=True,
+                    prediction_gating={
+                        "precision_allowed": False,
+                        "confidence": "low",
+                        "reason": "menarche_transition",
+                    },
                 )
         except ValueError:
             pass
@@ -2141,6 +2248,16 @@ def build_cycle_model(
         if block
     ]
     starts = grouped_cycle_starts(base_history)
+    prediction_gating = _build_prediction_gating(starts, symptoms, now)
+    if (
+        stage_explicit
+        and requested_stage == ONBOARDING_STAGE_ESTABLISHED_CYCLE
+        and prediction_gating["valid_cycles"] < MIN_VALID_CYCLES_FOR_HIGH_PRECISION
+    ):
+        effective_stage = ONBOARDING_STAGE_EARLY_MENARCHE
+    else:
+        effective_stage = requested_stage
+    learning_phase = effective_stage in (ONBOARDING_STAGE_PRE_MENARCHE, ONBOARDING_STAGE_EARLY_MENARCHE)
     effective_duration, learned_avg_duration = learned_period_duration(period_duration_days, blocks)
     next_start, avg_cycle = predict_next_start(starts)
     predicted_starts = predict_future_starts(starts)
@@ -2243,6 +2360,15 @@ def build_cycle_model(
             today=now,
         )
 
+    low_data_mode = (
+        effective_stage == ONBOARDING_STAGE_EARLY_MENARCHE
+        and not bool(prediction_gating.get("precision_allowed"))
+    )
+    if low_data_mode:
+        ovulation_day_iso = None
+        fertile_start = None
+        fertile_end = None
+
     state = STATE_NEUTRAL
     if current_period and current_period.get("is_active"):
         state = STATE_PERIOD
@@ -2257,6 +2383,41 @@ def build_cycle_model(
     fertility_forecast = compute_fertility_forecast(
         next_start, avg_cycle, fertile_start, fertile_end, ovulation_day_iso, nfp_result
     )
+    if low_data_mode:
+        window_center = next_start or (period_forecast or {}).get("predicted_start")
+        window_bounds = _window_bounds(window_center, 4) if window_center else None
+        if period_forecast is None and next_start:
+            period_forecast = {
+                "predicted_start": next_start,
+                "predicted_end": (
+                    date.fromisoformat(next_start) + timedelta(days=effective_duration - 1)
+                ).isoformat(),
+                "cycle_std_days": None,
+                "confidence": "low",
+            }
+        if isinstance(period_forecast, dict):
+            period_forecast["confidence"] = "low"
+            period_forecast["window_mode"] = "broad"
+            period_forecast["learning_phase"] = True
+            if window_bounds:
+                period_forecast["possible_window_start"] = window_bounds[0]
+                period_forecast["possible_window_end"] = window_bounds[1]
+        fertility_forecast = {
+            "ovulation_estimate": None,
+            "fertile_window_start": None,
+            "fertile_window_end": None,
+            "best_days_start": None,
+            "best_days_end": None,
+            "source": "estimated",
+            "confidence": "low",
+            "window_mode": "broad",
+            "ovulation_precision_suppressed": True,
+            "learning_phase": True,
+        }
+        if window_bounds:
+            fertility_forecast["possible_window_start"] = window_bounds[0]
+            fertility_forecast["possible_window_end"] = window_bounds[1]
+
     symptom_correlation_insights, symptom_correlation_reason = compute_symptom_correlation_insights(
         history=normalized,
         grouped_starts=starts,
@@ -2302,4 +2463,8 @@ def build_cycle_model(
         fertility_forecast=fertility_forecast,
         symptom_correlation_insights=symptom_correlation_insights,
         symptom_correlation_insights_reason=symptom_correlation_reason,
+        onboarding_stage=requested_stage,
+        onboarding_stage_effective=effective_stage,
+        learning_phase=learning_phase,
+        prediction_gating=prediction_gating,
     )

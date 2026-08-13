@@ -651,6 +651,67 @@ test('planning section shows low-confidence hint for variable cycle range foreca
   assert.ok(html.includes('Low confidence due to high cycle variability'), 'low-confidence hint missing');
 });
 
+test('planning section renders learning-phase badges and broad possible windows', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.learning_phase = true;
+  hass.states['sensor.menstruation'].attributes.onboarding_stage_effective = 'early_menarche';
+  hass.states['sensor.menstruation'].attributes.prediction_gating = { confidence: 'low' };
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2027-08-20',
+    predicted_end: '2027-08-24',
+    confidence: 'low',
+    possible_window_start: '2027-08-16',
+    possible_window_end: '2027-08-28',
+    window_mode: 'broad',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: null,
+    fertile_window_start: null,
+    fertile_window_end: null,
+    source: 'estimated',
+    confidence: 'low',
+    possible_window_start: '2027-08-16',
+    possible_window_end: '2027-08-28',
+    ovulation_precision_suppressed: true,
+  };
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Learning phase'), 'learning phase badge missing');
+  assert.ok(html.includes('Possible period window'), 'possible period window label missing');
+  assert.ok(html.includes('Possible fertile window'), 'possible fertile window label missing');
+  assert.ok(html.includes('Ovulation day withheld during learning phase'), 'ovulation suppression copy missing');
+});
+
+test('planning section uses educational message for pre-menarche stage', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.onboarding_stage_effective = 'pre_menarche';
+  hass.states['sensor.menstruation'].attributes.learning_phase = true;
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2027-08-20',
+    predicted_end: '2027-08-24',
+    confidence: 'low',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2027-08-16',
+    fertile_window_start: '2027-08-11',
+    fertile_window_end: '2027-08-17',
+    source: 'estimated',
+    confidence: 'low',
+  };
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('educational support only') || html.includes('not medical advice'), 'pre-menarche educational disclaimer missing');
+  assert.ok(!html.includes('2027-08-16'), 'pre-menarche should avoid precise ovulation date display');
+});
+
 test('planning section renders mini-calendar only when selected range is longer than 10 days', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
