@@ -63,6 +63,7 @@ ATTR_MENOPAUSE_DATA = "menopause_data"
 ATTR_NFP_ANALYSIS = "nfp_analysis"
 ATTR_PERIOD_FORECAST = "period_forecast"
 ATTR_FERTILITY_FORECAST = "fertility_forecast"
+ATTR_PREDICTION_DAY_CONFIDENCE = "prediction_day_confidence"
 
 SERVICE_ADD_CYCLE_START = "add_cycle_start"
 SERVICE_REMOVE_CYCLE_START = "remove_cycle_start"

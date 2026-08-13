@@ -908,6 +908,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         planning_range_likely: 'Likely',
         planning_range_possible: 'Possible',
         planning_range_unlikely: 'Unlikely',
+        planning_range_confidence: 'Confidence',
         planning_range_low_confidence: 'Low confidence due to high cycle variability.',
         planning_range_mini_calendar: 'Range mini-calendar',
         planning_range_marker_period: 'period',
@@ -920,6 +921,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         period_forecast_confidence_high: 'High (very regular)',
         period_forecast_confidence_medium: 'Medium (somewhat regular)',
         period_forecast_confidence_low: 'Low (irregular cycle)',
+        period_forecast_confidence_unknown: 'Unknown',
         period_forecast_no_data: 'Not enough cycle history for a forecast.',
         fertility_forecast_title: 'Conception Planning',
         fertility_forecast_ovulation: 'Est. ovulation',
@@ -927,6 +929,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         fertility_forecast_best_days: 'Best days for conception',
         fertility_forecast_source_nfp: 'NFP (measured)',
         fertility_forecast_source_estimated: 'Estimated',
+        fertility_forecast_confidence: 'Window confidence',
         fertility_forecast_no_data: 'Not enough data for a fertility forecast.',
       },
     };
@@ -1547,16 +1550,22 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     const pf = attrs && attrs.period_forecast;
     const ff = attrs && attrs.fertility_forecast;
+    const confidenceByDay = this._predictionConfidenceByDay(attrs || {});
 
     if (!pf && !ff) return '';
 
     const confClass = (c) => c === 'high' ? 'nfp-conf-high' : c === 'medium' ? 'nfp-conf-medium' : 'nfp-conf-low';
-    const confLabel = (c) => c === 'high' ? t('period_forecast_confidence_high')
-      : c === 'medium' ? t('period_forecast_confidence_medium')
-      : t('period_forecast_confidence_low');
+    const confLabel = (c) => this._confidenceLabel(c);
 
     let periodHtml = '';
     if (pf) {
+      const periodWindowConfidence = this._windowConfidenceFromDayMap(
+        confidenceByDay,
+        pf.predicted_start,
+        pf.predicted_end,
+        'period',
+        pf.window_confidence || pf.confidence || 'unknown',
+      );
       periodHtml = `
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🩸</span>
@@ -1566,7 +1575,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📊</span>
           <span class="nfp-info-label">${esc(t('period_forecast_confidence'))}</span>
-          <span class="nfp-info-value nfp-likelihood-badge ${confClass(pf.confidence)}">${esc(confLabel(pf.confidence))}</span>
+          <span class="nfp-info-value nfp-likelihood-badge ${confClass(periodWindowConfidence)}">${esc(confLabel(periodWindowConfidence))}</span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📐</span>
@@ -1580,16 +1589,28 @@ class MenstruationStatisticsCard extends HTMLElement {
     let fertilityHtml = '';
     if (ff) {
       const sourceLabel = ff.source === 'nfp' ? t('fertility_forecast_source_nfp') : t('fertility_forecast_source_estimated');
+      const fertileWindowConfidence = this._windowConfidenceFromDayMap(
+        confidenceByDay,
+        ff.fertile_window_start,
+        ff.fertile_window_end,
+        'fertile',
+        ff.window_confidence || ff.confidence || 'unknown',
+      );
       fertilityHtml = `
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🎯</span>
           <span class="nfp-info-label">${esc(t('fertility_forecast_ovulation'))}</span>
-          <span class="nfp-info-value">${esc(ff.ovulation_estimate)} <span class="nfp-confidence-badge ${confClass(ff.confidence)}">${esc(sourceLabel)}</span></span>
+          <span class="nfp-info-value">${esc(ff.ovulation_estimate)} <span class="nfp-confidence-badge ${confClass(fertileWindowConfidence)}">${esc(sourceLabel)}</span></span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📅</span>
           <span class="nfp-info-label">${esc(t('fertility_forecast_window'))}</span>
           <span class="nfp-info-value">${esc(ff.fertile_window_start)} – ${esc(ff.fertile_window_end)}</span>
+        </div>
+        <div class="nfp-info-row">
+          <span class="nfp-info-icon">📊</span>
+          <span class="nfp-info-label">${esc(t('fertility_forecast_confidence'))}</span>
+          <span class="nfp-info-value nfp-likelihood-badge ${confClass(fertileWindowConfidence)}">${esc(confLabel(fertileWindowConfidence))}</span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">💚</span>
@@ -1602,7 +1623,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     const rangeStart = this._planningRangeStart || '';
     const rangeEnd = this._planningRangeEnd || '';
-    const rangeForecast = this._computeDateRangeForecast(pf, ff, rangeStart, rangeEnd);
+    const rangeForecast = this._computeDateRangeForecast(pf, ff, rangeStart, rangeEnd, confidenceByDay);
     const miniCalendarHtml = this._renderRangeMiniCalendar(rangeStart, rangeEnd, pf, ff, attrs && attrs.avg_cycle_length);
     let rangeHtml = '';
     if (!rangeForecast) {
@@ -1615,13 +1636,13 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🧭</span>
           <span class="nfp-info-label">${esc(t('planning_range_period'))}</span>
-          <span class="nfp-info-value"><span class="${periodBadgeClass}">${esc(t(`planning_range_${rangeForecast.period.label}`))}</span> ${esc(rangeForecast.period.percent)}%</span>
+          <span class="nfp-info-value"><span class="${periodBadgeClass}">${esc(t(`planning_range_${rangeForecast.period.label}`))}</span> ${esc(rangeForecast.period.percent)}% · ${esc(confLabel(rangeForecast.period.confidence))}</span>
         </div>
         ${periodHint}
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🌱</span>
           <span class="nfp-info-label">${esc(t('planning_range_fertility'))}</span>
-          <span class="nfp-info-value"><span class="${fertilityBadgeClass}">${esc(t(`planning_range_${rangeForecast.fertility.label}`))}</span> ${esc(rangeForecast.fertility.percent)}%</span>
+          <span class="nfp-info-value"><span class="${fertilityBadgeClass}">${esc(t(`planning_range_${rangeForecast.fertility.label}`))}</span> ${esc(rangeForecast.fertility.percent)}% · ${esc(confLabel(rangeForecast.fertility.confidence))}</span>
         </div>
         ${miniCalendarHtml}`;
     }
@@ -1653,6 +1674,45 @@ class MenstruationStatisticsCard extends HTMLElement {
     const end = new Date(`${endIso}T12:00:00Z`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
     return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+  }
+
+  _predictionConfidenceByDay(attrs) {
+    const payload = attrs?.prediction_day_confidence;
+    if (!payload || typeof payload !== 'object') return {};
+    const byDay = payload.by_day;
+    return (byDay && typeof byDay === 'object') ? byDay : {};
+  }
+
+  _confidenceLevelRank(level) {
+    if (level === 'high') return 2;
+    if (level === 'medium') return 1;
+    return 0;
+  }
+
+  _confidenceLabel(level) {
+    const normalized = String(level || '').toLowerCase();
+    if (normalized === 'high') return this._t('period_forecast_confidence_high');
+    if (normalized === 'medium') return this._t('period_forecast_confidence_medium');
+    if (normalized === 'low') return this._t('period_forecast_confidence_low');
+    return this._t('period_forecast_confidence_unknown');
+  }
+
+  _windowConfidenceFromDayMap(confidenceByDay, startIso, endIso, eventKey, fallback = 'unknown') {
+    if (!startIso || !endIso || startIso > endIso) return String(fallback || 'unknown').toLowerCase();
+    let cursor = new Date(`${startIso}T12:00:00Z`);
+    const end = new Date(`${endIso}T12:00:00Z`);
+    if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) return String(fallback || 'unknown').toLowerCase();
+
+    let bestLevel = null;
+    while (cursor.getTime() <= end.getTime()) {
+      const iso = cursor.toISOString().slice(0, 10);
+      const dayEntry = confidenceByDay?.[iso];
+      const eventEntry = dayEntry && typeof dayEntry === 'object' ? dayEntry[eventKey] : null;
+      const level = eventEntry && typeof eventEntry === 'object' ? String(eventEntry.level || '').toLowerCase() : null;
+      if (level && this._confidenceLevelRank(level) > this._confidenceLevelRank(bestLevel)) bestLevel = level;
+      cursor = new Date(cursor.getTime() + 86400000);
+    }
+    return bestLevel || String(fallback || 'unknown').toLowerCase();
   }
 
   _projectRangeWindows(periodForecast, fertilityForecast, avgCycleLength, rangeStartIso, rangeEndIso) {
@@ -1818,7 +1878,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     return Math.max(0, Math.min(1, score));
   }
 
-  _computeDateRangeForecast(periodForecast, fertilityForecast, rangeStartIso, rangeEndIso) {
+  _computeDateRangeForecast(periodForecast, fertilityForecast, rangeStartIso, rangeEndIso, confidenceByDay = null) {
     if (!rangeStartIso || !rangeEndIso || rangeStartIso > rangeEndIso) return null;
 
     const windows = this._projectRangeWindows(periodForecast, fertilityForecast, null, rangeStartIso, rangeEndIso);
@@ -1890,6 +1950,42 @@ class MenstruationStatisticsCard extends HTMLElement {
     });
     const fertilityScore = this._unionProbability(fertilityCycleScores);
 
+    let periodRangeConfidence = periodConfidence;
+    let bestPeriodOverlap = -1;
+    periodWindows.forEach((w) => {
+      const overlap = this._estimateOverlap(rangeStartIso, rangeEndIso, w.start, w.end, 0, 1);
+      if (overlap > bestPeriodOverlap) {
+        bestPeriodOverlap = overlap;
+        periodRangeConfidence = this._windowConfidenceFromDayMap(confidenceByDay, w.start, w.end, 'period', periodConfidence);
+      }
+    });
+
+    let fertilityRangeConfidence = fertilityConfidence;
+    let bestFertilityOverlap = -1;
+    fertilityWindows.forEach((w) => {
+      const overlap = this._estimateOverlap(rangeStartIso, rangeEndIso, w.fertileStart, w.fertileEnd, 0, 1);
+      if (overlap > bestFertilityOverlap) {
+        bestFertilityOverlap = overlap;
+        const windowLevel = this._windowConfidenceFromDayMap(
+          confidenceByDay,
+          w.fertileStart,
+          w.fertileEnd,
+          'fertile',
+          fertilityConfidence,
+        );
+        const ovLevel = this._windowConfidenceFromDayMap(
+          confidenceByDay,
+          w.ovulation,
+          w.ovulation,
+          'ovulation',
+          fertilityConfidence,
+        );
+        fertilityRangeConfidence = this._confidenceLevelRank(ovLevel) > this._confidenceLevelRank(windowLevel)
+          ? ovLevel
+          : windowLevel;
+      }
+    });
+
     const periodLik = this._scoreToLikelihood(periodScore);
     const fertilityLik = this._scoreToLikelihood(fertilityScore);
 
@@ -1898,10 +1994,12 @@ class MenstruationStatisticsCard extends HTMLElement {
         ...periodLik,
         percent: Math.round(periodScore * 100),
         lowConfidence: periodConfidence === 'low' || periodStd > 5,
+        confidence: periodRangeConfidence || 'unknown',
       },
       fertility: {
         ...fertilityLik,
         percent: Math.round(fertilityScore * 100),
+        confidence: fertilityRangeConfidence || 'unknown',
       },
     };
   }

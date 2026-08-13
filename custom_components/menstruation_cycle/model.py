@@ -23,6 +23,25 @@ from .const import (
 
 PREGNANCY_DAYS = 280  # Standard pregnancy duration in days (40 weeks)
 
+# Day-level forecast confidence thresholds and weights.
+# Score mapping is deterministic and centralized:
+#   score >= 0.67 -> high
+#   score >= 0.34 -> medium
+#   score < 0.34 -> low
+PREDICTION_CONFIDENCE_HIGH_THRESHOLD = 0.67
+PREDICTION_CONFIDENCE_MEDIUM_THRESHOLD = 0.34
+PREDICTION_CONFIDENCE_DECAY_PER_CYCLE = 0.14
+PREDICTION_CONFIDENCE_MIN_DECAY_FACTOR = 0.3
+
+PREDICTION_CONFIDENCE_WEIGHTS: dict[str, float] = {
+    "regularity": 0.28,
+    "history_depth": 0.20,
+    "nfp": 0.17,
+    "source": 0.20,
+    "consistency": 0.10,
+    "observed_evidence": 0.05,
+}
+
 
 @dataclass(slots=True)
 class CycleModel:
@@ -1271,6 +1290,242 @@ def compute_cycle_conception_likelihood(
     }
 
 
+def _recent_cycle_lengths(grouped_starts: list[str], recent_limit: int = 7) -> list[int]:
+    """Return recent valid cycle lengths."""
+    if len(grouped_starts) < 2:
+        return []
+    recent = grouped_starts[-max(2, int(recent_limit)) :]
+    lengths: list[int] = []
+    for idx in range(1, len(recent)):
+        try:
+            diff = (date.fromisoformat(recent[idx]) - date.fromisoformat(recent[idx - 1])).days
+        except ValueError:
+            continue
+        if 10 < diff < 80:
+            lengths.append(diff)
+    return lengths
+
+
+def _cycle_regularity_std(grouped_starts: list[str]) -> float | None:
+    """Calculate standard deviation for recent cycle lengths."""
+    lengths = _recent_cycle_lengths(grouped_starts)
+    if not lengths:
+        return None
+    mean = sum(lengths) / len(lengths)
+    variance = sum((x - mean) ** 2 for x in lengths) / len(lengths)
+    return variance ** 0.5
+
+
+def _prediction_confidence_level(score: float) -> str:
+    """Map confidence score to level."""
+    if score >= PREDICTION_CONFIDENCE_HIGH_THRESHOLD:
+        return "high"
+    if score >= PREDICTION_CONFIDENCE_MEDIUM_THRESHOLD:
+        return "medium"
+    return "low"
+
+
+def _nfp_score(nfp_confidence: str | None) -> float:
+    normalized = str(nfp_confidence or "").lower()
+    if normalized == "high":
+        return 0.95
+    if normalized == "medium":
+        return 0.75
+    if normalized == "low":
+        return 0.45
+    return 0.55
+
+
+def _regularity_score(cycle_std_days: float | None) -> float:
+    if cycle_std_days is None:
+        return 0.45
+    if cycle_std_days <= 1.5:
+        return 1.0
+    if cycle_std_days <= 2.5:
+        return 0.9
+    if cycle_std_days <= 4:
+        return 0.72
+    if cycle_std_days <= 6:
+        return 0.52
+    return 0.32
+
+
+def _history_depth_score(valid_cycles: int) -> float:
+    if valid_cycles <= 0:
+        return 0.05
+    return max(0.2, min(1.0, valid_cycles / 8))
+
+
+def _prediction_source_score(source: str) -> float:
+    if source == "nfp":
+        return 0.9
+    if source == "hybrid":
+        return 0.78
+    if source == "estimated":
+        return 0.62
+    if source == "extrapolated":
+        return 0.5
+    return 0.55
+
+
+def _add_confidence_day(
+    by_day: dict[str, dict[str, Any]],
+    iso_day: str,
+    event_key: str,
+    score: float,
+    source: str,
+    cycle_ahead: int,
+    metadata: dict[str, Any],
+) -> None:
+    by_day.setdefault(iso_day, {})
+    by_day[iso_day][event_key] = {
+        "score": round(score, 3),
+        "level": _prediction_confidence_level(score),
+        "source": source,
+        "cycle_ahead": cycle_ahead,
+        "signals": metadata,
+    }
+
+
+def compute_prediction_day_confidence(
+    grouped_starts: list[str],
+    predicted_cycle_starts: list[str],
+    period_duration_days: int,
+    avg_cycle_length: int | None,
+    nfp_analysis: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build deterministic per-day confidence metadata for predicted cycle events."""
+    by_day: dict[str, dict[str, Any]] = {}
+    if not predicted_cycle_starts:
+        return {
+            "thresholds": {
+                "high": PREDICTION_CONFIDENCE_HIGH_THRESHOLD,
+                "medium": PREDICTION_CONFIDENCE_MEDIUM_THRESHOLD,
+            },
+            "by_day": by_day,
+            "signals": {
+                "history_cycles": 0,
+                "cycle_std_days": None,
+                "nfp_confidence_level": "unknown",
+                "conflicting_signals": False,
+            },
+        }
+
+    cycle_std_days = _cycle_regularity_std(grouped_starts)
+    valid_cycles = len(_recent_cycle_lengths(grouped_starts))
+    regularity_score = _regularity_score(cycle_std_days)
+    history_score = _history_depth_score(valid_cycles)
+
+    nfp_confidence = None
+    nfp_detected = False
+    nfp_ovulation_iso = None
+    if isinstance(nfp_analysis, dict):
+        nfp_confidence = str(nfp_analysis.get("confidence_level") or "").lower() or None
+        nfp_detected = bool(nfp_analysis.get("ovulation_detected"))
+        nfp_ovulation_iso = nfp_analysis.get("ovulation_day")
+    nfp_component = _nfp_score(nfp_confidence)
+
+    period_days = max(1, min(14, int(period_duration_days or DEFAULT_PERIOD_DURATION_DAYS)))
+    cycle_length = max(20, min(60, int(avg_cycle_length or DEFAULT_CYCLE_LENGTH)))
+    ovulation_offset = max(6, min(24, (cycle_length // 2) - 1))
+
+    for idx, start_iso in enumerate(predicted_cycle_starts):
+        try:
+            cycle_start = date.fromisoformat(str(start_iso))
+        except ValueError:
+            continue
+        cycle_ahead = idx + 1
+        cycle_ovulation = cycle_start + timedelta(days=ovulation_offset)
+        fertile_start = cycle_ovulation - timedelta(days=5)
+        fertile_end = cycle_ovulation + timedelta(days=1)
+
+        source = "estimated"
+        observed_evidence = False
+        if idx == 0 and nfp_detected and nfp_confidence in ("high", "medium"):
+            source = "nfp"
+            observed_evidence = True
+        elif idx == 0 and valid_cycles >= 3:
+            source = "hybrid"
+        elif idx >= 2:
+            source = "extrapolated"
+
+        conflicting_signals = False
+        if idx == 0 and nfp_ovulation_iso:
+            try:
+                nfp_ovulation_date = date.fromisoformat(str(nfp_ovulation_iso))
+                conflicting_signals = abs((nfp_ovulation_date - cycle_ovulation).days) > 2
+            except ValueError:
+                conflicting_signals = False
+        if idx == 0 and nfp_detected and nfp_confidence == "low":
+            conflicting_signals = True
+
+        consistency_score = 0.35 if conflicting_signals else 0.88
+        source_score = _prediction_source_score(source)
+        observed_score = 1.0 if observed_evidence else 0.45
+
+        base_score = (
+            (regularity_score * PREDICTION_CONFIDENCE_WEIGHTS["regularity"])
+            + (history_score * PREDICTION_CONFIDENCE_WEIGHTS["history_depth"])
+            + (nfp_component * PREDICTION_CONFIDENCE_WEIGHTS["nfp"])
+            + (source_score * PREDICTION_CONFIDENCE_WEIGHTS["source"])
+            + (consistency_score * PREDICTION_CONFIDENCE_WEIGHTS["consistency"])
+            + (observed_score * PREDICTION_CONFIDENCE_WEIGHTS["observed_evidence"])
+        )
+        decay_factor = max(
+            PREDICTION_CONFIDENCE_MIN_DECAY_FACTOR,
+            1.0 - (idx * PREDICTION_CONFIDENCE_DECAY_PER_CYCLE),
+        )
+        final_score = max(0.0, min(1.0, base_score * decay_factor))
+        metadata = {
+            "history_cycles": valid_cycles,
+            "cycle_std_days": round(cycle_std_days, 2) if cycle_std_days is not None else None,
+            "nfp_confidence_level": nfp_confidence or "unknown",
+            "conflicting_signals": conflicting_signals,
+            "distance_cycles": cycle_ahead,
+            "observed_evidence": observed_evidence,
+        }
+
+        for day_offset in range(period_days):
+            day_iso = (cycle_start + timedelta(days=day_offset)).isoformat()
+            _add_confidence_day(by_day, day_iso, "period", final_score, source, cycle_ahead, metadata)
+
+        fertile_day = fertile_start
+        while fertile_day <= fertile_end:
+            _add_confidence_day(
+                by_day,
+                fertile_day.isoformat(),
+                "fertile",
+                final_score,
+                source,
+                cycle_ahead,
+                metadata,
+            )
+            fertile_day += timedelta(days=1)
+
+        _add_confidence_day(
+            by_day,
+            cycle_ovulation.isoformat(),
+            "ovulation",
+            final_score,
+            source,
+            cycle_ahead,
+            metadata,
+        )
+
+    return {
+        "thresholds": {
+            "high": PREDICTION_CONFIDENCE_HIGH_THRESHOLD,
+            "medium": PREDICTION_CONFIDENCE_MEDIUM_THRESHOLD,
+        },
+        "by_day": by_day,
+        "signals": {
+            "history_cycles": valid_cycles,
+            "cycle_std_days": round(cycle_std_days, 2) if cycle_std_days is not None else None,
+            "nfp_confidence_level": nfp_confidence or "unknown",
+        },
+    }
+
+
 def compute_period_forecast(
     grouped_starts: list[str],
     next_predicted_start: str | None,
@@ -1290,13 +1545,7 @@ def compute_period_forecast(
         return None
 
     # Compute recent cycle lengths (up to 6 most recent)
-    recent = grouped_starts[-7:]
-    lengths: list[int] = []
-    for idx in range(1, len(recent)):
-        diff = (date.fromisoformat(recent[idx]) - date.fromisoformat(recent[idx - 1])).days
-        if 10 < diff < 80:
-            lengths.append(diff)
-
+    lengths = _recent_cycle_lengths(grouped_starts)
     if not lengths:
         return None
 

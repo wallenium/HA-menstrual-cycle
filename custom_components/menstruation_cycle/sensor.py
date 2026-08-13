@@ -39,6 +39,7 @@ from .const import (
     ATTR_PREDICTED_CYCLE_STARTS,
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRE_MENARCHE_DATA,
+    ATTR_PREDICTION_DAY_CONFIDENCE,
     ATTR_PREGNANCY_DATA,
     ATTR_PREGNANCY_START_DATE,
     ATTR_SYMPTOM_HISTORY,
@@ -58,6 +59,7 @@ from .const import (
 from .model import (
     bleeding_blocks,
     build_cycle_model,
+    compute_prediction_day_confidence,
     grouped_cycle_starts,
     normalize_history,
     predict_future_starts,
@@ -281,6 +283,32 @@ def _normalize_product_usage_entry(entry: dict[str, Any]) -> dict[str, Any] | No
         "quantity": _entry_quantity(entry),
         "action": str(entry.get("action", "used")).strip().lower() or "used",
     }
+
+
+def _aggregate_day_confidence_levels(
+    confidence_by_day: dict[str, Any] | None,
+    day_keys: list[str],
+    event_key: str,
+) -> str:
+    """Aggregate day-level confidence for an event window."""
+    if not isinstance(confidence_by_day, dict) or not day_keys:
+        return "low"
+
+    level_order = {"high": 2, "medium": 1, "low": 0}
+    best_level = "low"
+    seen = False
+    for day_iso in day_keys:
+        event_map = confidence_by_day.get(day_iso)
+        if not isinstance(event_map, dict):
+            continue
+        event_conf = event_map.get(event_key)
+        if not isinstance(event_conf, dict):
+            continue
+        level = str(event_conf.get("level", "low")).lower()
+        if level_order.get(level, 0) > level_order.get(best_level, 0):
+            best_level = level
+        seen = True
+    return best_level if seen else "low"
 
 
 def _merge_product_usage_sources(
@@ -742,6 +770,56 @@ class MenstruationGaugeSensor(SensorEntity):
             num_predictions = DEFAULT_NUM_PREDICTIONS
         num_predictions = max(1, min(MAX_NUM_PREDICTIONS, num_predictions))
         predicted_cycle_starts = predict_future_starts(model.grouped_starts, num_predictions)
+        prediction_day_confidence = compute_prediction_day_confidence(
+            model.grouped_starts,
+            predicted_cycle_starts,
+            model.period_duration_days,
+            model.avg_cycle_length,
+            model.nfp_analysis,
+        )
+        confidence_by_day = prediction_day_confidence.get("by_day", {})
+
+        period_forecast = dict(model.period_forecast) if isinstance(model.period_forecast, dict) else model.period_forecast
+        if isinstance(period_forecast, dict) and period_forecast.get("predicted_start") and period_forecast.get("predicted_end"):
+            start = _parse_iso_date(period_forecast.get("predicted_start"))
+            end = _parse_iso_date(period_forecast.get("predicted_end"))
+            if start and end and start <= end:
+                period_days: list[str] = []
+                day_cursor = start
+                while day_cursor <= end:
+                    period_days.append(day_cursor.isoformat())
+                    day_cursor += timedelta(days=1)
+                period_forecast["day_confidence"] = {
+                    day_iso: confidence_by_day.get(day_iso, {}).get("period", {"level": "low", "source": "estimated"})
+                    for day_iso in period_days
+                }
+                period_forecast["window_confidence"] = _aggregate_day_confidence_levels(confidence_by_day, period_days, "period")
+
+        fertility_forecast = dict(model.fertility_forecast) if isinstance(model.fertility_forecast, dict) else model.fertility_forecast
+        if isinstance(fertility_forecast, dict):
+            fertile_start = _parse_iso_date(fertility_forecast.get("fertile_window_start"))
+            fertile_end = _parse_iso_date(fertility_forecast.get("fertile_window_end"))
+            if fertile_start and fertile_end and fertile_start <= fertile_end:
+                fertile_days: list[str] = []
+                day_cursor = fertile_start
+                while day_cursor <= fertile_end:
+                    fertile_days.append(day_cursor.isoformat())
+                    day_cursor += timedelta(days=1)
+                fertility_forecast["day_confidence"] = {
+                    day_iso: confidence_by_day.get(day_iso, {}).get("fertile", {"level": "low", "source": "estimated"})
+                    for day_iso in fertile_days
+                }
+                ovulation_iso = str(fertility_forecast.get("ovulation_estimate") or "")
+                ovulation_conf = confidence_by_day.get(ovulation_iso, {}).get("ovulation", {"level": "low", "source": "estimated"})
+                fertility_forecast["ovulation_confidence"] = ovulation_conf
+                fertile_window_conf = _aggregate_day_confidence_levels(confidence_by_day, fertile_days, "fertile")
+                ovulation_level = str(ovulation_conf.get("level", "low")).lower()
+                if ovulation_level == "high" or fertile_window_conf == "high":
+                    fertility_forecast["window_confidence"] = "high"
+                elif ovulation_level == "medium" or fertile_window_conf == "medium":
+                    fertility_forecast["window_confidence"] = "medium"
+                else:
+                    fertility_forecast["window_confidence"] = "low"
 
         # Compact history/grouped_starts for sensor broadcasting (full data stays in storage)
         sensor_history = _compact_history_for_sensor(model.history, today)
@@ -801,8 +879,9 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_NFP_ANALYSIS: model.nfp_analysis,
             "learned_ovulation_offset": model.learned_ovulation_offset,
             "nfp_mode": model.nfp_mode,
-            ATTR_PERIOD_FORECAST: model.period_forecast,
-            ATTR_FERTILITY_FORECAST: model.fertility_forecast,
+            ATTR_PERIOD_FORECAST: period_forecast,
+            ATTR_FERTILITY_FORECAST: fertility_forecast,
+            ATTR_PREDICTION_DAY_CONFIDENCE: prediction_day_confidence,
             ATTR_ICS_URL: f"/{DOMAIN}/ics/{runtime.ics_token}.ics",
         }
 

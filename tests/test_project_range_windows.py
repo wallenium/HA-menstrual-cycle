@@ -49,6 +49,7 @@ model = _load_module("mctest.model", "model.py")
 project_range_windows = model.project_range_windows
 compute_period_forecast = model.compute_period_forecast
 compute_fertility_forecast = model.compute_fertility_forecast
+compute_prediction_day_confidence = model.compute_prediction_day_confidence
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +274,94 @@ class TestProjectRangeWindowsBackwardCompatibility(unittest.TestCase):
         self.assertGreater(len(starts_30), 0)
         # The window starts should be different since cycle lengths differ
         self.assertNotEqual(starts_28, starts_30)
+
+
+class TestPredictionDayConfidence(unittest.TestCase):
+    """Day-level confidence scoring behavior."""
+
+    def _pick_event(self, payload: dict[str, object], day_iso: str, event_key: str) -> dict[str, object]:
+        by_day = payload.get("by_day", {})
+        self.assertIsInstance(by_day, dict)
+        event = by_day.get(day_iso, {})
+        self.assertIsInstance(event, dict)
+        entry = event.get(event_key, {})
+        self.assertIsInstance(entry, dict)
+        return entry
+
+    def test_confidence_increases_with_regular_cycles_and_history(self):
+        regular_starts = [
+            "2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26",
+            "2026-04-23", "2026-05-21", "2026-06-18", "2026-07-16",
+        ]
+        sparse_irregular_starts = ["2026-01-01", "2026-01-26", "2026-03-05"]
+
+        strong = compute_prediction_day_confidence(
+            regular_starts,
+            ["2026-08-13", "2026-09-10"],
+            5,
+            28,
+            {"confidence_level": "high", "ovulation_detected": True, "ovulation_day": "2026-08-26"},
+        )
+        weak = compute_prediction_day_confidence(
+            sparse_irregular_starts,
+            ["2026-08-13", "2026-09-10"],
+            5,
+            31,
+            {"confidence_level": "low", "ovulation_detected": True, "ovulation_day": "2026-08-10"},
+        )
+
+        strong_entry = self._pick_event(strong, "2026-08-13", "period")
+        weak_entry = self._pick_event(weak, "2026-08-13", "period")
+        self.assertGreater(float(strong_entry.get("score", 0)), float(weak_entry.get("score", 0)))
+
+    def test_confidence_decreases_with_variance_and_conflicts(self):
+        regular_starts = [
+            "2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26", "2026-04-23", "2026-05-21",
+        ]
+        irregular_starts = [
+            "2026-01-01", "2026-01-21", "2026-02-28", "2026-03-22", "2026-05-07", "2026-05-30",
+        ]
+
+        baseline = compute_prediction_day_confidence(
+            regular_starts,
+            ["2026-06-18"],
+            5,
+            28,
+            {"confidence_level": "medium", "ovulation_detected": True, "ovulation_day": "2026-07-01"},
+        )
+        conflicted = compute_prediction_day_confidence(
+            irregular_starts,
+            ["2026-06-18"],
+            5,
+            28,
+            {"confidence_level": "low", "ovulation_detected": True, "ovulation_day": "2026-06-10"},
+        )
+
+        baseline_entry = self._pick_event(baseline, "2026-06-18", "period")
+        conflicted_entry = self._pick_event(conflicted, "2026-06-18", "period")
+        self.assertGreater(float(baseline_entry.get("score", 0)), float(conflicted_entry.get("score", 0)))
+
+    def test_confidence_decays_for_future_cycles(self):
+        grouped_starts = [
+            "2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26", "2026-04-23", "2026-05-21",
+        ]
+        payload = compute_prediction_day_confidence(
+            grouped_starts,
+            ["2026-06-18", "2026-07-16", "2026-08-13"],
+            5,
+            28,
+            {"confidence_level": "high", "ovulation_detected": True, "ovulation_day": "2026-07-01"},
+        )
+
+        c1 = self._pick_event(payload, "2026-06-18", "period")
+        c3 = self._pick_event(payload, "2026-08-13", "period")
+        self.assertGreater(float(c1.get("score", 0)), float(c3.get("score", 0)))
+
+    def test_threshold_mapping_high_medium_low(self):
+        to_level = model._prediction_confidence_level
+        self.assertEqual(to_level(0.67), "high")
+        self.assertEqual(to_level(0.34), "medium")
+        self.assertEqual(to_level(0.339), "low")
 
 
 if __name__ == "__main__":

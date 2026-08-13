@@ -154,6 +154,11 @@ class MenstruationCalendarCard extends HTMLElement {
         predicted: 'Predicted',
         predicted_period: 'Predicted period',
         predicted_current_period: 'Predicted end of current period',
+        confidence: 'Confidence',
+        confidence_high: 'High confidence',
+        confidence_medium: 'Medium confidence',
+        confidence_low: 'Low confidence',
+        confidence_unknown: 'Unknown confidence',
         modal_edit_day: 'Edit Day',
         period: 'Period',
         period_start: 'Period Start',
@@ -178,6 +183,7 @@ class MenstruationCalendarCard extends HTMLElement {
         cat_training_intensity: 'Training Intensity',
         pregnancy: 'Pregnancy',
         opt_light: 'Light',
+        nfp_confidence_high: 'High',
         nfp_confidence_medium: 'Medium',
         bleeding_heavy: 'Heavy',
         opt_very_heavy: 'Very Heavy',
@@ -457,6 +463,22 @@ class MenstruationCalendarCard extends HTMLElement {
     };
   }
 
+  _predictionConfidenceByDay(attrs) {
+    const payload = attrs?.prediction_day_confidence;
+    if (!payload || typeof payload !== 'object') return {};
+    const byDay = payload.by_day;
+    return (byDay && typeof byDay === 'object') ? byDay : {};
+  }
+
+  _predictedDayConfidence(iso, ctx, st) {
+    const eventMap = ctx.predictionConfidenceByDay?.[iso];
+    if (!eventMap || typeof eventMap !== 'object') return { level: 'low', source: 'estimated' };
+    if (st?.isPredictedOvulation && eventMap.ovulation) return eventMap.ovulation;
+    if (st?.isPredictedPeriod && eventMap.period) return eventMap.period;
+    if (st?.isPredictedFertile && eventMap.fertile) return eventMap.fertile;
+    return eventMap.ovulation || eventMap.period || eventMap.fertile || { level: 'low', source: 'estimated' };
+  }
+
   _cycleStartForDate(iso, starts) {
     let found = null;
     for (let i = 0; i < starts.length; i += 1) {
@@ -575,6 +597,7 @@ class MenstruationCalendarCard extends HTMLElement {
       extraPredictedStartSet,
       currentPeriodTailSet,
       nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
+      predictionConfidenceByDay: this._predictionConfidenceByDay(attrs),
     };
   }
 
@@ -979,6 +1002,8 @@ class MenstruationCalendarCard extends HTMLElement {
       const isToday = iso === model.todayIso;
       const isFocused = this._focusedIso ? this._focusedIso === iso : isToday;
       const isPredictedDay = st.isPredictedPeriod || st.isPredictedFertile || st.isPredictedOvulation;
+      const predictedConfidence = isPredictedDay ? this._predictedDayConfidence(iso, model, st) : null;
+      const confidenceLevel = String(predictedConfidence?.level || 'low').toLowerCase();
       const hasSymptoms = model.symptomByDate && Object.keys(model.symptomByDate[iso] || {}).length > 0;
       const isModalOpen = this._modalIso === iso;
 
@@ -991,6 +1016,7 @@ class MenstruationCalendarCard extends HTMLElement {
         (this._config?.show_fertile_period !== false && st.isPredictedFertile) ? 'is-predicted-fertile' : '',
         (this._config?.show_ovulation_marker !== false && st.isOvulation) ? 'is-ovulation' : '',
         (this._config?.show_ovulation_marker !== false && st.isPredictedOvulation) ? 'is-predicted-ovulation' : '',
+        isPredictedDay ? `pred-conf-${confidenceLevel}` : '',
         (isPregnant && !st.isPeriod) ? 'is-pregnancy-day' : '',
         (isPreMenarche && !st.isPeriod) ? 'is-premenarche-day' : '',
         (isMenopause && !st.isPeriod) ? 'is-menopause-day' : '',
@@ -999,7 +1025,7 @@ class MenstruationCalendarCard extends HTMLElement {
       ].filter(Boolean).join(' ');
 
       const cycleHint = Number.isFinite(st.cycleDay)
-        ? `${this._t('cycle_day')}: ${st.cycleDay}${isPredictedDay ? ` (${this._t('predicted')})` : ''}`
+        ? `${this._t('cycle_day')}: ${st.cycleDay}${isPredictedDay ? ` (${this._t('predicted')}, ${this._t(`confidence_${confidenceLevel}`)})` : ''}`
         : this._t('no_data');
       items.push(`
         <button
@@ -1015,6 +1041,7 @@ class MenstruationCalendarCard extends HTMLElement {
             ? `<span class="cycle-day">${st.cycleDay}</span>`
             : ''}
           ${hasSymptoms ? '<span class="sym-dot" aria-hidden="true"></span>' : ''}
+          ${isPredictedDay ? `<span class="confidence-chip" aria-hidden="true">${confidenceLevel === 'high' ? 'H' : confidenceLevel === 'medium' ? 'M' : 'L'}</span>` : ''}
           ${(this._config?.show_ovulation_marker !== false && (st.isOvulation || st.isPredictedOvulation))
             ? `<span class="ovulation-dot${st.isPredictedOvulation ? ' predicted' : ''}" aria-hidden="true"></span>`
             : ''}
@@ -1232,6 +1259,9 @@ class MenstruationCalendarCard extends HTMLElement {
         .day.is-current-period-tail { background: color-mix(in srgb, var(--error-color, #e11d48) 16%, var(--card-background-color)); border-style: dashed; border-color: color-mix(in srgb, var(--error-color, #e11d48) 40%, transparent); }
         .day.is-predicted-fertile { background: color-mix(in srgb, var(--warning-color, #facc15) 11%, var(--card-background-color)); border-style: dashed; }
         .day.is-predicted-ovulation { background: color-mix(in srgb, var(--success-color, #22c55e) 8%, var(--card-background-color)); border-style: dashed; }
+        .day.pred-conf-high { outline: 2px solid color-mix(in srgb, var(--success-color, #22c55e) 75%, transparent); outline-offset: -2px; }
+        .day.pred-conf-medium { outline: 2px dashed color-mix(in srgb, var(--warning-color, #facc15) 80%, transparent); outline-offset: -2px; }
+        .day.pred-conf-low { outline: 2px dotted color-mix(in srgb, var(--secondary-text-color) 65%, transparent); outline-offset: -2px; }
         .day.is-pregnancy-day { background: color-mix(in srgb, #a855f7 10%, var(--card-background-color)); }
         .day.is-premenarche-day { background: color-mix(in srgb, #94a3b8 12%, var(--card-background-color)); }
         .day.is-menopause-day { background: color-mix(in srgb, #94a3b8 8%, var(--card-background-color)); }
@@ -1246,6 +1276,19 @@ class MenstruationCalendarCard extends HTMLElement {
           border-radius: 50%;
           background: var(--warning-color, #d97706);
           opacity: .85;
+        }
+        .confidence-chip {
+          position: absolute;
+          left: 7px;
+          bottom: 7px;
+          font-size: .6rem;
+          font-weight: 700;
+          line-height: 1;
+          padding: 2px 4px;
+          border-radius: 999px;
+          border: 1px solid var(--divider-color);
+          background: color-mix(in srgb, var(--card-background-color) 88%, var(--primary-text-color));
+          color: var(--primary-text-color);
         }
         .ovulation-dot {
           position: absolute;
@@ -1266,6 +1309,9 @@ class MenstruationCalendarCard extends HTMLElement {
         .swatch.current-period-tail { background: color-mix(in srgb, var(--error-color, #e11d48) 50%, transparent); border-style: dashed; }
         .swatch.predicted-fertile { background: color-mix(in srgb, var(--warning-color, #facc15) 36%, transparent); border-style: dashed; }
         .swatch.predicted-ovulation { background: color-mix(in srgb, var(--success-color, #16a34a) 45%, transparent); border-style: dashed; }
+        .swatch.conf-high { border: 2px solid color-mix(in srgb, var(--success-color, #16a34a) 80%, transparent); background: transparent; }
+        .swatch.conf-medium { border: 2px dashed color-mix(in srgb, var(--warning-color, #facc15) 80%, transparent); background: transparent; }
+        .swatch.conf-low { border: 2px dotted color-mix(in srgb, var(--secondary-text-color) 65%, transparent); background: transparent; }
         .ovulation-dot.predicted { background: color-mix(in srgb, var(--success-color, #16a34a) 55%, transparent); }
         .nfp-method-badge { font-size: .72rem; opacity: .75; margin-left: auto; }
         .nfp-method-badge .method-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px; }
@@ -1317,6 +1363,9 @@ class MenstruationCalendarCard extends HTMLElement {
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
             ${this._config?.show_ovulation_marker !== false ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}
+            ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch conf-high"></span> ${this._t('confidence_high')}</span>` : ''}
+            ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch conf-medium"></span> ${this._t('confidence_medium')}</span>` : ''}
+            ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch conf-low"></span> ${this._t('confidence_low')}</span>` : ''}
             ${model.currentPeriodTailSet?.size > 0 ? `<span class="legend-item"><span class="swatch current-period-tail"></span> ${this._t('predicted_current_period')}</span>` : ''}
             ${model.nfpAnalysis && model.nfpAnalysis.ovulation_detected && model.nfpAnalysis.confidence_level !== 'low' ? `<span class="legend-item nfp-method-badge"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP Method" class="method-icon" /><span>NFP</span></span>` : (model.sensorOvulation ? `<span class="legend-item nfp-method-badge"><img src="/menstruation_cycle/assets/state/hybrid.svg" alt="Standard Method" class="method-icon" /><span>Standard</span></span>` : '')}
           </div>
