@@ -97,6 +97,18 @@ function makeHassWithPredictions() {
           avg_cycle_length: 28,
           period_duration_days: 5,
           predicted_cycle_starts: ['2026-07-30', '2026-08-27', '2026-09-24'],
+          prediction_day_confidence: {
+            by_day: {
+              '2026-08-01': { period: { level: 'high', source: 'hybrid' } },
+              '2026-08-02': { period: { level: 'high', source: 'hybrid' } },
+              '2026-08-08': { fertile: { level: 'medium', source: 'estimated' } },
+              '2026-08-09': { fertile: { level: 'medium', source: 'estimated' } },
+              '2026-08-12': {
+                fertile: { level: 'medium', source: 'estimated' },
+                ovulation: { level: 'low', source: 'estimated' },
+              },
+            },
+          },
           symptom_history: [],
         },
       },
@@ -182,8 +194,12 @@ function testPredictedCycleRendering() {
   assert.ok(html.includes('is-predicted-period'), 'predicted period days are marked with is-predicted-period class');
   assert.ok(html.includes('is-predicted-fertile'), 'predicted fertile days are marked with is-predicted-fertile class');
   assert.ok(html.includes('is-predicted-ovulation'), 'predicted ovulation day is marked with is-predicted-ovulation class');
+  assert.ok(html.includes('pred-conf-high'), 'predicted high-confidence days are marked');
+  assert.ok(html.includes('pred-conf-medium'), 'predicted medium-confidence days are marked');
+  assert.ok(html.includes('pred-conf-low'), 'predicted low-confidence days are marked');
+  assert.ok(html.includes('confidence-chip'), 'predicted confidence chip is rendered');
   assert.ok(html.includes('ovulation-dot predicted'), 'predicted ovulation dot has predicted class');
-  assert.ok(html.includes('(Predicted)'), 'predicted days have Predicted label in tooltip');
+  assert.ok(html.includes('(Predicted, High confidence)'), 'predicted days include confidence label in tooltip');
   console.log('  ✓ renders predicted cycle period, fertile, and ovulation markers');
 }
 
@@ -230,6 +246,12 @@ function testPredictedLegendEntry() {
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(html.includes('predicted-period'), 'legend includes predicted-period swatch when show_predicted_cycles is true');
+  assert.ok(html.includes('swatch conf-high'), 'legend includes high confidence swatch');
+  assert.ok(html.includes('swatch conf-medium'), 'legend includes medium confidence swatch');
+  assert.ok(html.includes('swatch conf-low'), 'legend includes low confidence swatch');
+  assert.ok(html.includes('High confidence'), 'legend includes high confidence label');
+  assert.ok(html.includes('Medium confidence'), 'legend includes medium confidence label');
+  assert.ok(html.includes('Low confidence'), 'legend includes low confidence label');
   console.log('  ✓ shows predicted period legend entry when enabled');
 }
 
@@ -244,7 +266,24 @@ function testPredictedLegendHidden() {
   card._render();
   const html = card.shadowRoot.innerHTML;
   assert.ok(!html.includes('swatch predicted-period'), 'legend hides predicted-period swatch when show_predicted_cycles is false');
+  assert.ok(!html.includes('swatch conf-high'), 'legend hides confidence swatches when show_predicted_cycles is false');
   console.log('  ✓ hides predicted period legend entry when disabled');
+}
+
+function testPredictionConfidenceFallbackWhenMissing() {
+  const card = new CardClass();
+  card.setConfig({
+    entity: 'sensor.menstruation',
+    show_predicted_cycles: true,
+  });
+  const hass = makeHassWithPredictions();
+  delete hass.states['sensor.menstruation'].attributes.prediction_day_confidence;
+  card.hass = hass;
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0);
+  const model = card._buildModel();
+  const html = card._calendarGrid(model, 'en');
+  assert.ok(html.includes('pred-conf-low'), 'missing confidence payload falls back to low confidence style');
+  console.log('  ✓ prediction confidence gracefully falls back when metadata is missing');
 }
 
 function testEditorHasPredictedOptions() {
@@ -658,6 +697,7 @@ let failed = 0;
   testForecastExtensionRespectsCap,
   testForecastExtensionSensorLimitPreserved,
   testForecastExtensionDisabled,
+  testPredictionConfidenceFallbackWhenMissing,
   testCurrentPeriodTailShowsLightRed,
   testCurrentPeriodTailLoggedDaysNotOverwritten,
   testCurrentPeriodTailDisappearsWhenPeriodEnds,

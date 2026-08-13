@@ -409,6 +409,15 @@ test('stats tab renders planning section when period_forecast and fertility_fore
     source: 'estimated',
     confidence: 'medium',
   };
+  hass.states['sensor.menstruation'].attributes.prediction_day_confidence = {
+    by_day: {
+      '2026-09-01': { period: { level: 'high' } },
+      '2026-09-02': { period: { level: 'high' } },
+      '2026-08-13': { fertile: { level: 'medium' } },
+      '2026-08-14': { fertile: { level: 'medium' } },
+      '2026-08-18': { ovulation: { level: 'low' } },
+    },
+  };
   card._hass = hass;
   card._tab = 'stats';
   card._render();
@@ -419,6 +428,38 @@ test('stats tab renders planning section when period_forecast and fertility_fore
   assert.ok(html.includes('planning_disclaimer') || html.includes('estimate') || html.includes('statistical'), 'planning disclaimer missing');
   assert.ok(html.includes('2026-08-13'), 'fertile window start missing');
   assert.ok(html.includes('2026-08-16'), 'best days start missing');
+  assert.ok(html.includes('High (very regular)'), 'period confidence label missing');
+  assert.ok(html.includes('Window confidence'), 'fertility confidence row missing');
+});
+
+test('planning section falls back gracefully when confidence metadata is missing', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2026-09-01',
+    predicted_end: '2026-09-05',
+    cycle_std_days: 3.2,
+    confidence: 'medium',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2026-08-18',
+    fertile_window_start: '2026-08-13',
+    fertile_window_end: '2026-08-19',
+    best_days_start: '2026-08-16',
+    best_days_end: '2026-08-17',
+    source: 'estimated',
+    confidence: 'low',
+  };
+  card._hass = hass;
+  card._planningRangeStart = '2026-08-13';
+  card._planningRangeEnd = '2026-08-19';
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('planning-section'), 'planning section missing');
+  assert.ok(html.includes('Low (irregular cycle)'), 'fallback low confidence label missing');
+  assert.ok(/%\s·\s/.test(html), 'range forecast confidence label missing next to percentage');
 });
 
 test('stats tab renders fertility forecast with NFP source label when source is nfp', () => {
