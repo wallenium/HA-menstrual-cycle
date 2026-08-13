@@ -223,7 +223,7 @@ class MenstruationRuntime:
     period_duration_days: int
     symptom_history: list[dict[str, Any]]
     product_usage: list[dict[str, Any]]
-    ics_token: str
+    ics_token: str = ""
     pregnancy_data: dict[str, Any] = field(default_factory=lambda: {"is_pregnant": False, "start_date": None})
     menarche_data: dict[str, Any] = field(default_factory=lambda: {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None})
     pre_menarche_data: dict[str, Any] = field(default_factory=lambda: {"signs": {}, "tanner_stage": None})

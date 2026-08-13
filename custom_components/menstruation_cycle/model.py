@@ -2095,7 +2095,8 @@ def build_cycle_model(
     nc_data: dict[str, Any] = {"has_noncycle": False}
     if isinstance(noncycle_data, dict):
         nc_data.update(noncycle_data)
-    requested_stage = _normalize_onboarding_stage(onboarding_stage)
+    stage_explicit = onboarding_stage is not None
+    requested_stage = _normalize_onboarding_stage(onboarding_stage) if stage_explicit else DEFAULT_ONBOARDING_STAGE
 
     # If pregnant, return pregnancy state
     if is_pregnant:
@@ -2248,7 +2249,11 @@ def build_cycle_model(
     ]
     starts = grouped_cycle_starts(base_history)
     prediction_gating = _build_prediction_gating(starts, symptoms, now)
-    if requested_stage == ONBOARDING_STAGE_ESTABLISHED_CYCLE and prediction_gating["valid_cycles"] < MIN_VALID_CYCLES_FOR_HIGH_PRECISION:
+    if (
+        stage_explicit
+        and requested_stage == ONBOARDING_STAGE_ESTABLISHED_CYCLE
+        and prediction_gating["valid_cycles"] < MIN_VALID_CYCLES_FOR_HIGH_PRECISION
+    ):
         effective_stage = ONBOARDING_STAGE_EARLY_MENARCHE
     else:
         effective_stage = requested_stage

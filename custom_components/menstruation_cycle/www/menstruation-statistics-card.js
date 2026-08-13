@@ -1659,6 +1659,7 @@ class MenstruationStatisticsCard extends HTMLElement {
           <span class="nfp-info-label">${esc(t('fertility_forecast_best_days'))}</span>
           <span class="nfp-info-value">${esc(ff.best_days_start)} – ${esc(ff.best_days_end)}</span>
         </div>` : ''}
+      `;
     } else {
       fertilityHtml = `<p class="no-data">${esc(t('fertility_forecast_no_data'))}</p>`;
     }
