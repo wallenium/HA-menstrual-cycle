@@ -173,6 +173,7 @@ CARD_FILES = [
     "menstruation-cycle-compact-status-card.js",
     "menstruation-cycle-history-card-row.js",
     "menstruation-statistics-card.js",
+    "menstruation-support-card.js",
 ]
 LOVELACE_RESOURCES = [
     (
