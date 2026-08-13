@@ -722,6 +722,52 @@ test('planning mini-calendar marker priority keeps ovulation marker when fertile
   );
 });
 
+console.log('\nSymptom correlation insights');
+
+test('stats tab renders symptom correlation insights section and preserves insight order', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.symptom_correlation_insights = [
+    {
+      symptom_key: 'pain:headache',
+      phase: 'late_luteal',
+      ratio: 2.3,
+      direction: 'more_frequent',
+      confidence: 'high',
+    },
+    {
+      symptom_key: 'pain:cramps',
+      phase: 'follicular',
+      ratio: 0.6,
+      direction: 'less_frequent',
+      confidence: 'medium',
+    },
+  ];
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Symptom correlation insights'), 'insight section title missing');
+  const firstIdx = html.indexOf('Headache are 2.3x more frequent in late luteal.');
+  const secondIdx = html.indexOf('Cramps are less common during follicular (0.6x baseline).');
+  assert.ok(firstIdx >= 0, 'first insight line missing');
+  assert.ok(secondIdx > firstIdx, 'insights are not rendered in expected order');
+});
+
+test('stats tab shows subtle insight empty-state when no insight data exists', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.symptom_correlation_insights = [];
+  hass.states['sensor.menstruation'].attributes.symptom_correlation_insights_reason = 'insufficient_logged_days';
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Not enough data yet.'), 'insight empty-state text missing');
+});
+
 console.log('\nRender stability');
 
 test('render guard: repeated identical hass updates do not replace shadowRoot.innerHTML', () => {

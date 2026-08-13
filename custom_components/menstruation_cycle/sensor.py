@@ -30,6 +30,7 @@ from .const import (
     ATTR_FAMILY_MENARCHE_AGE,
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
+    ATTR_ICS_URL,
     ATTR_OVULATION_DAY,
     ATTR_GROUPED_STARTS,
     ATTR_HISTORY,
@@ -38,8 +39,8 @@ from .const import (
     ATTR_PREDICTED_CYCLE_STARTS,
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRE_MENARCHE_DATA,
-    ATTR_PREGNANCY_DATA,
     ATTR_PREDICTION_DAY_CONFIDENCE,
+    ATTR_PREGNANCY_DATA,
     ATTR_PREGNANCY_START_DATE,
     ATTR_SYMPTOM_HISTORY,
     ATTR_WEEKS_PREGNANT,
@@ -265,6 +266,25 @@ def _parse_iso_date(raw: Any) -> date | None:
         return None
 
 
+def _normalize_product_usage_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
+    entry_date = (
+        _parse_iso_date(entry.get("date"))
+        or _parse_iso_date(entry.get("created_at"))
+        or _parse_iso_date(entry.get("logged_at"))
+        or _parse_iso_date(entry.get("timestamp"))
+    )
+    product = _normalize_product_usage_product(entry.get("product"))
+    if entry_date is None or product is None:
+        return None
+    return {
+        **entry,
+        "date": entry_date.isoformat(),
+        "product": product,
+        "quantity": _entry_quantity(entry),
+        "action": str(entry.get("action", "used")).strip().lower() or "used",
+    }
+
+
 def _aggregate_day_confidence_levels(
     confidence_by_day: dict[str, Any] | None,
     day_keys: list[str],
@@ -289,25 +309,6 @@ def _aggregate_day_confidence_levels(
             best_level = level
         seen = True
     return best_level if seen else "low"
-
-
-def _normalize_product_usage_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
-    entry_date = (
-        _parse_iso_date(entry.get("date"))
-        or _parse_iso_date(entry.get("created_at"))
-        or _parse_iso_date(entry.get("logged_at"))
-        or _parse_iso_date(entry.get("timestamp"))
-    )
-    product = _normalize_product_usage_product(entry.get("product"))
-    if entry_date is None or product is None:
-        return None
-    return {
-        **entry,
-        "date": entry_date.isoformat(),
-        "product": product,
-        "quantity": _entry_quantity(entry),
-        "action": str(entry.get("action", "used")).strip().lower() or "used",
-    }
 
 
 def _merge_product_usage_sources(
@@ -868,6 +869,8 @@ class MenstruationGaugeSensor(SensorEntity):
             "symptom_data_today": symptom_data_today,
             "symptom_data_this_cycle": symptom_data_this_cycle,
             "symptom_statistics": symptom_statistics,
+            "symptom_correlation_insights": model.symptom_correlation_insights,
+            "symptom_correlation_insights_reason": model.symptom_correlation_insights_reason,
             "cycle_start_date": cycle_start_date,
             "cycle_day": cycle_day,
             "current_bleeding_block": current_bleeding_block,
@@ -879,6 +882,7 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_PERIOD_FORECAST: period_forecast,
             ATTR_FERTILITY_FORECAST: fertility_forecast,
             ATTR_PREDICTION_DAY_CONFIDENCE: prediction_day_confidence,
+            ATTR_ICS_URL: f"/{DOMAIN}/ics/{runtime.ics_token}.ics",
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:
