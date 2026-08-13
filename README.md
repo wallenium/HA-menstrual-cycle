@@ -85,6 +85,46 @@ Otherwise the integration degrades to low-confidence window output and suppresse
 
 You can change the onboarding stage at any time in **Settings → Devices & Services → Menstruation Cycle → Configure** (`onboarding_stage` option).
 
+## Young Girls Support
+
+The `custom:young-girls-support-card` provides age-appropriate, practical education and low-anxiety support for pre-/early-menarche users. It has **no effect on forecast logic** — it is a UI-only card.
+
+### Included content modules
+
+| Module | Description |
+|--------|-------------|
+| 🗓️ School-day helper reminders | Configurable, discreet reminder presets: kit check, drink water, comfort check-in, rest cue |
+| 📖 Glossary | Plain-language definitions for *cycle*, *ovulation*, and *spotting*, with optional "learn more" expansion |
+| 🔵 Cycle phases graphic | Abstract SVG donut chart of period / follicular / ovulation / luteal phases with legend and ARIA description |
+| 🧼 Hygiene how-to cards | Step-by-step guides for washing period underwear and using a period cup (basics) |
+| 💛 Reassurance cards | Short "Is this normal?" cards covering irregular timing, flow variation, and spotting, each with a gentle escalation prompt |
+
+### Visibility
+
+- Shown **by default** in `pre_menarche` and `early_menarche` modes.
+- Hidden by default in `established_cycle` mode; set the internal `_showInEstablished` flag or use a conditional card to display it when desired.
+
+### Reminder configuration
+
+Reminders are rendered as a settings panel inside the card. Each preset can be toggled on/off and assigned a preferred time. School-day-only reminders are labelled accordingly. Quiet hours can be enabled to suppress reminders between configurable start and end times.
+
+> **Note:** The card renders reminder previews only. To send actual notifications, connect the reminder state to a Home Assistant automation using the notification service of your choice.
+
+### Educational content scope and disclaimers
+
+All content is for **educational purposes only** and must not be used as medical advice. Each content module includes a visible disclaimer. Users are encouraged to follow the instructions provided with their hygiene products and to consult a clinician for medical questions.
+
+### Localization
+
+All user-facing strings in the Young Girls Support card use i18n keys (`ygs_*`). Translations are provided for English (🇬🇧), German (🇩🇪), Swedish (🇸🇪), French (🇫🇷), and Spanish (🇪🇸). To add or improve a translation, edit the corresponding file in `custom_components/menstruation_cycle/www/translations/`.
+
+### Accessibility
+
+- The cycle phases SVG includes `role="img"`, `aria-label`, and a hidden `<desc>` element for screen readers.
+- Non-colour-only meaning: every phase has a text label in the legend alongside its colour dot.
+- Toggle controls use visible focus styles.
+- Reduced-motion: any future animations must respect `prefers-reduced-motion`; the current SVG graphic is static.
+
 ## Translations
 
 | Language | Status |
