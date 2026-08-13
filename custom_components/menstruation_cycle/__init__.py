@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -113,7 +114,10 @@ from .const import (
     TANNER_STAGE_3,
     TANNER_STAGE_4,
     TANNER_STAGE_5,
+    ICS_HORIZON_MONTHS_DEFAULT,
+    ICS_TOKEN_KEY,
 )
+from .ical import generate_ics
 from .model import build_cycle_model, normalize_history
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
@@ -216,6 +220,7 @@ class MenstruationRuntime:
     period_duration_days: int
     symptom_history: list[dict[str, Any]]
     product_usage: list[dict[str, Any]]
+    ics_token: str
     pregnancy_data: dict[str, Any] = field(default_factory=lambda: {"is_pregnant": False, "start_date": None})
     menarche_data: dict[str, Any] = field(default_factory=lambda: {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None})
     pre_menarche_data: dict[str, Any] = field(default_factory=lambda: {"signs": {}, "tanner_stage": None})
@@ -1167,6 +1172,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     stored = await storage.async_load()
 
+    ics_token: str = stored.get(ICS_TOKEN_KEY) or ""
+    if not ics_token:
+        ics_token = secrets.token_urlsafe(32)
+        await storage.async_save_ics_token(ics_token)
+
     runtime = MenstruationRuntime(
         storage=storage,
         profile=profile,
@@ -1176,6 +1186,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         period_duration_days=stored.get(ATTR_PERIOD_DURATION_DAYS, DEFAULT_PERIOD_DURATION_DAYS),
         symptom_history=stored.get(ATTR_SYMPTOM_HISTORY, []),
         product_usage=stored.get(ATTR_PRODUCT_USAGE, []),
+        ics_token=ics_token,
         pregnancy_data=stored.get("pregnancy_data", {"is_pregnant": False, "start_date": None}),
         menarche_data=stored.get("menarche_data", {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None}),
         pre_menarche_data=stored.get("pre_menarche_data", {"signs": {}, "tanner_stage": None}),
@@ -1906,15 +1917,78 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             },
         )
 
+    async def _serve_ics_feed(request):  # type: ignore[no-untyped-def]
+        from aiohttp.web import HTTPNotFound, Response
+
+        token = request.match_info.get("token", "")
+        if not token:
+            raise HTTPNotFound()
+
+        # Find the runtime whose token matches
+        domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
+        matched_runtime: MenstruationRuntime | None = None
+        matched_entry_id: str | None = None
+        for entry_id, rt in domain_data.items():
+            if isinstance(rt, MenstruationRuntime) and rt.ics_token == token:
+                matched_runtime = rt
+                matched_entry_id = entry_id
+                break
+
+        if matched_runtime is None or matched_entry_id is None:
+            raise HTTPNotFound()
+
+        # Parse optional horizon_months query parameter
+        try:
+            from .const import ICS_HORIZON_MONTHS_MAX
+            raw_months = request.rel_url.query.get("months", "")
+            horizon_months = int(raw_months) if raw_months.isdigit() else ICS_HORIZON_MONTHS_DEFAULT
+            horizon_months = max(1, min(ICS_HORIZON_MONTHS_MAX, horizon_months))
+        except Exception:
+            horizon_months = ICS_HORIZON_MONTHS_DEFAULT
+
+        # Build cycle model to get forecasts
+        from .model import build_cycle_model
+        cycle_model = await hass.async_add_executor_job(
+            build_cycle_model,
+            matched_runtime.history,
+            matched_runtime.period_duration_days,
+            matched_runtime.symptom_history,
+            matched_runtime.pregnancy_data,
+            matched_runtime.menarche_data,
+            matched_runtime.pre_menarche_data,
+            matched_runtime.menopause_data,
+            matched_runtime.noncycle_data,
+            None,
+            matched_runtime.cycle_length_override,
+        )
+
+        ics_bytes = await hass.async_add_executor_job(
+            generate_ics,
+            matched_entry_id,
+            cycle_model.period_forecast,
+            cycle_model.fertility_forecast,
+            cycle_model.avg_cycle_length,
+            horizon_months,
+        )
+
+        return Response(
+            body=ics_bytes,
+            content_type="text/calendar",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
     try:
         hass.http.app.router.add_get(f"/{DOMAIN}/translations/{{filename}}", _serve_translation_file)
         hass.http.app.router.add_get(f"/{DOMAIN}/assets/{{subfolder}}/{{filename}}", _serve_asset_file)
+        hass.http.app.router.add_get(f"/{DOMAIN}/ics/{{token}}.ics", _serve_ics_feed)
         hass.http.app.router.add_get(f"/{DOMAIN}/{{filename}}", _serve_card_file)
         hass.data[_HTTP_ROUTES_REGISTERED_KEY] = True
         for _resource_url, _static_url, filename in LOVELACE_RESOURCES:
             _LOGGER.info("Registered HTTP route: /%s/%s", DOMAIN, filename)
         _LOGGER.info("Registered HTTP route: /%s/assets/{subfolder}/{filename}", DOMAIN)
         _LOGGER.info("Registered HTTP route: /%s/translations/{filename}", DOMAIN)
+        _LOGGER.info("Registered HTTP route: /%s/ics/{token}.ics", DOMAIN)
     except Exception as err:
         _LOGGER.warning("Failed to register HTTP routes for card files: %s", err)
 

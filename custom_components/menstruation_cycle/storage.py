@@ -135,6 +135,10 @@ class MenstruationStorage:
             except (TypeError, ValueError):
                 pass
 
+        ics_token = data.get("ics_token")
+        if not isinstance(ics_token, str) or not ics_token:
+            ics_token = None
+
         return {
             "history": normalized,
             "period_duration_days": days,
@@ -146,6 +150,7 @@ class MenstruationStorage:
             "menopause_data": menopause_data,
             "noncycle_data": noncycle_data,
             "cycle_length_override": cycle_length_override,
+            "ics_token": ics_token,
         }
 
     async def async_save(
@@ -160,6 +165,7 @@ class MenstruationStorage:
         menopause_data: dict[str, Any] | None = None,
         noncycle_data: dict[str, Any] | None = None,
         cycle_length_override: int | None = None,
+        ics_token: str | None = None,
     ) -> None:
         """Save data to storage."""
         from .const import CYCLE_LENGTH_OVERRIDE_MAX, CYCLE_LENGTH_OVERRIDE_MIN
@@ -193,13 +199,40 @@ class MenstruationStorage:
                 "menopause_data": meno_data,
                 "noncycle_data": nc_data,
                 "cycle_length_override": validated_override,
+                "ics_token": ics_token if isinstance(ics_token, str) and ics_token else await self._load_existing_ics_token(),
             }
         )
+
+    async def _load_existing_ics_token(self) -> str | None:
+        """Return the ics_token currently persisted without a full reload."""
+        raw = await self._store.async_load()
+        if isinstance(raw, dict):
+            tok = raw.get("ics_token")
+            if isinstance(tok, str) and tok:
+                return tok
+        return None
 
     async def async_load_product_usage(self) -> list[dict[str, Any]]:
         """Load only normalized product usage history."""
         data = await self.async_load()
         return data["product_usage"]
+
+    async def async_save_ics_token(self, ics_token: str) -> None:
+        """Persist an ICS token while preserving all other stored fields."""
+        data = await self.async_load()
+        await self.async_save(
+            data["history"],
+            data["period_duration_days"],
+            data.get("symptom_history", []),
+            data.get("product_usage", []),
+            data.get("pregnancy_data"),
+            data.get("menarche_data"),
+            data.get("pre_menarche_data"),
+            data.get("menopause_data"),
+            data.get("noncycle_data"),
+            data.get("cycle_length_override"),
+            ics_token=ics_token,
+        )
 
     async def async_save_product_usage(self, product_usage: list[dict[str, Any]]) -> None:
         """Persist product usage while preserving the remaining stored fields."""

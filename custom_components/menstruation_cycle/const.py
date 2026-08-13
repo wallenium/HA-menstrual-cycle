@@ -122,6 +122,12 @@ SERVICE_FIELD_INCLUDE_CHARTS = "include_charts"
 
 SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
+# ICS / iCalendar feed
+ATTR_ICS_URL = "ics_url"
+ICS_TOKEN_KEY = "ics_token"
+ICS_HORIZON_MONTHS_DEFAULT = 12
+ICS_HORIZON_MONTHS_MAX = 24
+
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"
 STATE_PMS = "pms"

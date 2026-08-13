@@ -30,6 +30,7 @@ from .const import (
     ATTR_FAMILY_MENARCHE_AGE,
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
+    ATTR_ICS_URL,
     ATTR_OVULATION_DAY,
     ATTR_GROUPED_STARTS,
     ATTR_HISTORY,
@@ -802,6 +803,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "nfp_mode": model.nfp_mode,
             ATTR_PERIOD_FORECAST: model.period_forecast,
             ATTR_FERTILITY_FORECAST: model.fertility_forecast,
+            ATTR_ICS_URL: f"/{DOMAIN}/ics/{runtime.ics_token}.ics",
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:
