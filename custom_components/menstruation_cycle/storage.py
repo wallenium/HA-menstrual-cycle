@@ -11,7 +11,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import STORAGE_KEY, STORAGE_VERSION
+from .const import DEFAULT_ONBOARDING_STAGE, ONBOARDING_STAGES, STORAGE_KEY, STORAGE_VERSION
 
 
 _PRODUCT_USAGE_PRODUCT_ALIASES: dict[str, str] = {
@@ -70,6 +70,7 @@ class MenstruationStorage:
                 "menopause_data": {"is_menopause": False, "start_date": None},
                 "noncycle_data": {"has_noncycle": False},
                 "cycle_length_override": None,
+                "onboarding_stage": DEFAULT_ONBOARDING_STAGE,
             }
 
         history = data.get("history", [])
@@ -135,6 +136,9 @@ class MenstruationStorage:
             except (TypeError, ValueError):
                 pass
 
+        raw_stage = str(data.get("onboarding_stage") or "").strip().lower()
+        onboarding_stage = raw_stage if raw_stage in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
+
         ics_token = data.get("ics_token")
         if not isinstance(ics_token, str) or not ics_token:
             ics_token = None
@@ -150,6 +154,7 @@ class MenstruationStorage:
             "menopause_data": menopause_data,
             "noncycle_data": noncycle_data,
             "cycle_length_override": cycle_length_override,
+            "onboarding_stage": onboarding_stage,
             "ics_token": ics_token,
         }
 
@@ -165,6 +170,7 @@ class MenstruationStorage:
         menopause_data: dict[str, Any] | None = None,
         noncycle_data: dict[str, Any] | None = None,
         cycle_length_override: int | None = None,
+        onboarding_stage: str | None = None,
         ics_token: str | None = None,
     ) -> None:
         """Save data to storage."""
@@ -186,6 +192,9 @@ class MenstruationStorage:
                     validated_override = val
             except (TypeError, ValueError):
                 pass
+        normalized_stage = str(onboarding_stage or "").strip().lower()
+        if normalized_stage not in ONBOARDING_STAGES:
+            normalized_stage = DEFAULT_ONBOARDING_STAGE
 
         await self._store.async_save(
             {
@@ -199,6 +208,7 @@ class MenstruationStorage:
                 "menopause_data": meno_data,
                 "noncycle_data": nc_data,
                 "cycle_length_override": validated_override,
+                "onboarding_stage": normalized_stage,
                 "ics_token": ics_token if isinstance(ics_token, str) and ics_token else await self._load_existing_ics_token(),
             }
         )
@@ -231,6 +241,7 @@ class MenstruationStorage:
             data.get("menopause_data"),
             data.get("noncycle_data"),
             data.get("cycle_length_override"),
+            data.get("onboarding_stage"),
             ics_token=ics_token,
         )
 
@@ -247,6 +258,8 @@ class MenstruationStorage:
             data.get("pre_menarche_data"),
             data.get("menopause_data"),
             data.get("noncycle_data"),
+            data.get("cycle_length_override"),
+            data.get("onboarding_stage"),
         )
 
     async def async_load_pregnancy_data(self) -> dict[str, Any]:
@@ -267,6 +280,8 @@ class MenstruationStorage:
             data.get("pre_menarche_data"),
             data.get("menopause_data"),
             data.get("noncycle_data"),
+            data.get("cycle_length_override"),
+            data.get("onboarding_stage"),
         )
 
     async def async_load_menarche_data(self) -> dict[str, Any]:
@@ -287,6 +302,8 @@ class MenstruationStorage:
             data.get("pre_menarche_data"),
             data.get("menopause_data"),
             data.get("noncycle_data"),
+            data.get("cycle_length_override"),
+            data.get("onboarding_stage"),
         )
 
     @staticmethod

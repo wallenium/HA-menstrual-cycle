@@ -910,12 +910,16 @@ class MenstruationStatisticsCard extends HTMLElement {
         planning_range_unlikely: 'Unlikely',
         planning_range_confidence: 'Confidence',
         planning_range_low_confidence: 'Low confidence due to high cycle variability.',
+        learning_phase: 'Learning phase',
+        low_confidence_badge: 'Low confidence',
+        onboarding_not_medical: 'Cycle timing can vary a lot early on. This is educational support only and not medical advice.',
         planning_range_mini_calendar: 'Range mini-calendar',
         planning_range_marker_period: 'period',
         planning_range_marker_fertile: 'fertile',
         planning_range_marker_ovulation: 'ovulation',
         period_forecast_title: 'Next Period',
         period_forecast_window: 'Expected window',
+        period_forecast_window_possible: 'Possible period window',
         period_forecast_confidence: 'Confidence',
         period_forecast_std: 'Cycle variability',
         period_forecast_confidence_high: 'High (very regular)',
@@ -925,7 +929,9 @@ class MenstruationStatisticsCard extends HTMLElement {
         period_forecast_no_data: 'Not enough cycle history for a forecast.',
         fertility_forecast_title: 'Conception Planning',
         fertility_forecast_ovulation: 'Est. ovulation',
+        fertility_forecast_ovulation_suppressed: 'Ovulation day withheld during learning phase',
         fertility_forecast_window: 'Fertile window',
+        fertility_forecast_window_possible: 'Possible fertile window',
         fertility_forecast_best_days: 'Best days for conception',
         fertility_forecast_source_nfp: 'NFP (measured)',
         fertility_forecast_source_estimated: 'Estimated',
@@ -1551,14 +1557,41 @@ class MenstruationStatisticsCard extends HTMLElement {
     const pf = attrs && attrs.period_forecast;
     const ff = attrs && attrs.fertility_forecast;
     const confidenceByDay = this._predictionConfidenceByDay(attrs || {});
+    const effectiveStage = String(attrs?.onboarding_stage_effective || attrs?.onboarding_stage || '').toLowerCase();
+    const learningPhase = Boolean(attrs?.learning_phase) || effectiveStage === 'early_menarche' || effectiveStage === 'pre_menarche';
+    const gatingConfidence = String(attrs?.prediction_gating?.confidence || '').toLowerCase();
+    const learningLowConfidence = learningPhase && (gatingConfidence === 'low' || !gatingConfidence);
 
     if (!pf && !ff) return '';
+    if (effectiveStage === 'pre_menarche') {
+      return `
+      <div class="section planning-section">
+        <div class="section-header">
+          <span class="section-icon">🗓️</span>
+          <span>${esc(t('planning_title'))}</span>
+        </div>
+        <div class="nfp-info-box">
+          <div class="nfp-info-row nfp-info-highlight">
+            <span class="nfp-info-icon">🌼</span>
+            <span class="nfp-info-label">${esc(t('learning_phase'))}</span>
+            <span class="nfp-info-value"><span class="nfp-likelihood-badge nfp-conf-low">${esc(t('low_confidence_badge'))}</span></span>
+          </div>
+          <p class="no-data">${esc(t('onboarding_not_medical'))}</p>
+        </div>
+      </div>`;
+    }
 
     const confClass = (c) => c === 'high' ? 'nfp-conf-high' : c === 'medium' ? 'nfp-conf-medium' : 'nfp-conf-low';
     const confLabel = (c) => this._confidenceLabel(c);
 
     let periodHtml = '';
     if (pf) {
+      const periodStartText = pf.possible_window_start && pf.possible_window_end
+        ? `${pf.possible_window_start} – ${pf.possible_window_end}`
+        : `${pf.predicted_start} – ${pf.predicted_end}`;
+      const periodWindowLabel = (pf.possible_window_start && pf.possible_window_end)
+        ? t('period_forecast_window_possible')
+        : t('period_forecast_window');
       const periodWindowConfidence = this._windowConfidenceFromDayMap(
         confidenceByDay,
         pf.predicted_start,
@@ -1569,8 +1602,8 @@ class MenstruationStatisticsCard extends HTMLElement {
       periodHtml = `
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🩸</span>
-          <span class="nfp-info-label">${esc(t('period_forecast_window'))}</span>
-          <span class="nfp-info-value">${esc(pf.predicted_start)} – ${esc(pf.predicted_end)}</span>
+          <span class="nfp-info-label">${esc(periodWindowLabel)}</span>
+          <span class="nfp-info-value">${esc(periodStartText)}</span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📊</span>
@@ -1596,27 +1629,36 @@ class MenstruationStatisticsCard extends HTMLElement {
         'fertile',
         ff.window_confidence || ff.confidence || 'unknown',
       );
+      const fertilityWindowLabel = ff.possible_window_start && ff.possible_window_end
+        ? t('fertility_forecast_window_possible')
+        : t('fertility_forecast_window');
+      const fertilityWindowText = ff.possible_window_start && ff.possible_window_end
+        ? `${ff.possible_window_start} – ${ff.possible_window_end}`
+        : `${ff.fertile_window_start} – ${ff.fertile_window_end}`;
+      const ovulationText = ff.ovulation_estimate
+        ? ff.ovulation_estimate
+        : t('fertility_forecast_ovulation_suppressed');
       fertilityHtml = `
         <div class="nfp-info-row nfp-info-highlight">
           <span class="nfp-info-icon">🎯</span>
           <span class="nfp-info-label">${esc(t('fertility_forecast_ovulation'))}</span>
-          <span class="nfp-info-value">${esc(ff.ovulation_estimate)} <span class="nfp-confidence-badge ${confClass(fertileWindowConfidence)}">${esc(sourceLabel)}</span></span>
+          <span class="nfp-info-value">${esc(ovulationText)} <span class="nfp-confidence-badge ${confClass(fertileWindowConfidence)}">${esc(sourceLabel)}</span></span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📅</span>
-          <span class="nfp-info-label">${esc(t('fertility_forecast_window'))}</span>
-          <span class="nfp-info-value">${esc(ff.fertile_window_start)} – ${esc(ff.fertile_window_end)}</span>
+          <span class="nfp-info-label">${esc(fertilityWindowLabel)}</span>
+          <span class="nfp-info-value">${esc(fertilityWindowText)}</span>
         </div>
         <div class="nfp-info-row">
           <span class="nfp-info-icon">📊</span>
           <span class="nfp-info-label">${esc(t('fertility_forecast_confidence'))}</span>
           <span class="nfp-info-value nfp-likelihood-badge ${confClass(fertileWindowConfidence)}">${esc(confLabel(fertileWindowConfidence))}</span>
         </div>
-        <div class="nfp-info-row">
+        ${ff.best_days_start && ff.best_days_end ? `<div class="nfp-info-row">
           <span class="nfp-info-icon">💚</span>
           <span class="nfp-info-label">${esc(t('fertility_forecast_best_days'))}</span>
           <span class="nfp-info-value">${esc(ff.best_days_start)} – ${esc(ff.best_days_end)}</span>
-        </div>`;
+        </div>` : ''}
     } else {
       fertilityHtml = `<p class="no-data">${esc(t('fertility_forecast_no_data'))}</p>`;
     }
@@ -1626,7 +1668,9 @@ class MenstruationStatisticsCard extends HTMLElement {
     const rangeForecast = this._computeDateRangeForecast(pf, ff, rangeStart, rangeEnd, confidenceByDay);
     const miniCalendarHtml = this._renderRangeMiniCalendar(rangeStart, rangeEnd, pf, ff, attrs && attrs.avg_cycle_length);
     let rangeHtml = '';
-    if (!rangeForecast) {
+    if (learningLowConfidence) {
+      rangeHtml = `<p class="no-data">${esc(t('planning_range_low_confidence'))}</p>`;
+    } else if (!rangeForecast) {
       rangeHtml = `<p class="no-data">${esc(t('planning_range_invalid'))}</p>`;
     } else {
       const periodBadgeClass = `nfp-likelihood-badge ${confClass(rangeForecast.period.level)}`;
@@ -1652,6 +1696,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="section-header">
           <span class="section-icon">🗓️</span>
           <span>${esc(t('planning_title'))}</span>
+          ${learningPhase ? `<span class="nfp-likelihood-badge nfp-conf-low">${esc(t('learning_phase'))}</span>` : ''}
         </div>
         <div class="nfp-info-box">
           <div class="planning-subsection-title">${esc(t('period_forecast_title'))}</div>

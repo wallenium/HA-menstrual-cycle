@@ -677,6 +677,43 @@ function testCurrentPeriodTailLegendEntry() {
   console.log('  ✓ current period tail: legend entry shown when tail days exist');
 }
 
+function testLearningPhaseBadgesAndLowConfidenceOvulationSuppression() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation', show_predicted_cycles: true, show_ovulation_marker: true });
+  const hass = makeHassWithPredictions();
+  hass.states['sensor.menstruation'].attributes.learning_phase = true;
+  hass.states['sensor.menstruation'].attributes.onboarding_stage_effective = 'early_menarche';
+  hass.states['sensor.menstruation'].attributes.prediction_gating = { confidence: 'low' };
+  card.hass = hass;
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0);
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Learning phase'), 'learning phase badge missing');
+  assert.ok(html.includes('Low confidence'), 'low confidence badge missing');
+  assert.ok(!html.includes('swatch ovulation'), 'ovulation legend should be hidden in low-confidence learning phase');
+
+  const model = card._buildModel();
+  const st = card._statusForDay('2026-08-12', model);
+  assert.ok(!st.isPredictedOvulation, 'predicted ovulation should be suppressed in low-confidence learning phase');
+  console.log('  ✓ learning phase badges render and predicted ovulation is suppressed at low confidence');
+}
+
+function testPreMenarcheSuppressesPredictedCycleMarkers() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation', show_predicted_cycles: true, show_ovulation_marker: true });
+  const hass = makeHassWithPredictions();
+  hass.states['sensor.menstruation'].state = 'pre_menarche';
+  hass.states['sensor.menstruation'].attributes.onboarding_stage_effective = 'pre_menarche';
+  card.hass = hass;
+  card._viewDate = new Date(2026, 7, 1, 12, 0, 0, 0);
+  const model = card._buildModel();
+  const st = card._statusForDay('2026-08-12', model);
+  assert.ok(!st.isPredictedPeriod, 'pre-menarche should suppress predicted period markers');
+  assert.ok(!st.isPredictedFertile, 'pre-menarche should suppress predicted fertile markers');
+  assert.ok(!st.isPredictedOvulation, 'pre-menarche should suppress predicted ovulation markers');
+  console.log('  ✓ pre-menarche suppresses deterministic predicted markers');
+}
+
 let failed = 0;
 [
   testRegistration,
@@ -698,6 +735,8 @@ let failed = 0;
   testForecastExtensionSensorLimitPreserved,
   testForecastExtensionDisabled,
   testPredictionConfidenceFallbackWhenMissing,
+  testLearningPhaseBadgesAndLowConfidenceOvulationSuppression,
+  testPreMenarcheSuppressesPredictedCycleMarkers,
   testCurrentPeriodTailShowsLightRed,
   testCurrentPeriodTailLoggedDaysNotOverwritten,
   testCurrentPeriodTailDisappearsWhenPeriodEnds,

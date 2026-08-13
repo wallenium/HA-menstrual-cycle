@@ -266,6 +266,81 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(cycle.fertile_window_start, "2026-06-09")
         self.assertEqual(cycle.fertile_window_end, "2026-06-19")
 
+    def test_pre_menarche_onboarding_stage_suppresses_deterministic_forecasts(self) -> None:
+        cycle = model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=[],
+            today=date(2026, 7, 1),
+            onboarding_stage=const.ONBOARDING_STAGE_PRE_MENARCHE,
+        )
+
+        self.assertEqual(cycle.state, const.STATE_PRE_MENARCHE)
+        self.assertIsNone(cycle.next_predicted_start)
+        self.assertIsNone(cycle.period_forecast)
+        self.assertIsNone(cycle.fertility_forecast)
+        self.assertTrue(cycle.learning_phase)
+
+    def test_early_menarche_low_data_uses_broad_windows_and_hides_ovulation(self) -> None:
+        cycle = model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=[],
+            today=date(2026, 7, 1),
+            onboarding_stage=const.ONBOARDING_STAGE_EARLY_MENARCHE,
+        )
+
+        self.assertEqual(cycle.onboarding_stage_effective, const.ONBOARDING_STAGE_EARLY_MENARCHE)
+        self.assertTrue(cycle.learning_phase)
+        self.assertIsNone(cycle.ovulation_day)
+        self.assertIsNotNone(cycle.period_forecast)
+        self.assertEqual(cycle.period_forecast.get("window_mode"), "broad")
+        self.assertEqual(cycle.period_forecast.get("confidence"), "low")
+        self.assertTrue(cycle.period_forecast.get("possible_window_start"))
+        self.assertTrue(cycle.period_forecast.get("possible_window_end"))
+        self.assertIsNotNone(cycle.fertility_forecast)
+        self.assertIsNone(cycle.fertility_forecast.get("ovulation_estimate"))
+        self.assertTrue(cycle.fertility_forecast.get("ovulation_precision_suppressed"))
+
+    def test_established_stage_auto_downgrades_to_learning_when_history_is_sparse(self) -> None:
+        cycle = model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=[],
+            today=date(2026, 7, 1),
+            onboarding_stage=const.ONBOARDING_STAGE_ESTABLISHED_CYCLE,
+        )
+
+        self.assertEqual(cycle.onboarding_stage, const.ONBOARDING_STAGE_ESTABLISHED_CYCLE)
+        self.assertEqual(cycle.onboarding_stage_effective, const.ONBOARDING_STAGE_EARLY_MENARCHE)
+        self.assertTrue(cycle.learning_phase)
+        self.assertEqual(cycle.prediction_gating.get("confidence"), "low")
+
+    def test_established_stage_keeps_precision_when_data_quality_is_sufficient(self) -> None:
+        cycle = model.build_cycle_model(
+            history=[
+                "2026-01-01",
+                "2026-01-29",
+                "2026-02-26",
+                "2026-03-26",
+                "2026-04-23",
+            ],
+            period_duration_days=5,
+            symptom_history=[
+                {"date": "2026-04-20", "basal_temp": 36.5},
+                {"date": "2026-04-22", "bleeding_strength": "light"},
+                {"date": "2026-04-24", "test": ["negative_ovulation"]},
+            ],
+            today=date(2026, 4, 25),
+            onboarding_stage=const.ONBOARDING_STAGE_ESTABLISHED_CYCLE,
+        )
+
+        self.assertEqual(cycle.onboarding_stage_effective, const.ONBOARDING_STAGE_ESTABLISHED_CYCLE)
+        self.assertFalse(cycle.learning_phase)
+        self.assertTrue(cycle.prediction_gating.get("precision_allowed"))
+        self.assertIsNotNone(cycle.fertility_forecast)
+        self.assertNotEqual(cycle.fertility_forecast.get("window_mode"), "broad")
+
     def test_predict_future_starts_returns_six_predictions_with_avg_cycle_length(self) -> None:
         predictions = model.predict_future_starts(
             ["2026-01-01", "2026-01-29", "2026-02-26"],

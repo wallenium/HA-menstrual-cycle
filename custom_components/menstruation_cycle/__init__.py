@@ -38,15 +38,18 @@ from .const import (
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
+    CONF_ONBOARDING_STAGE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_NAME,
     CONF_PROFILE,
     DEFAULT_NAME,
+    DEFAULT_ONBOARDING_STAGE,
     DEFAULT_PERIOD_DURATION_DAYS,
     DEFAULT_MENARCHE_AGE_MAX,
     DEFAULT_MENARCHE_AGE_MIN,
     DOMAIN,
+    ONBOARDING_STAGES,
     PRE_MENARCHE_SIGN_OPTIONS,
     SERVICE_ADD_CYCLE_START,
     SERVICE_ADD_PRE_MENARCHE_SIGN,
@@ -226,6 +229,7 @@ class MenstruationRuntime:
     pre_menarche_data: dict[str, Any] = field(default_factory=lambda: {"signs": {}, "tanner_stage": None})
     menopause_data: dict[str, Any] = field(default_factory=lambda: {"is_menopause": False, "start_date": None})
     noncycle_data: dict[str, Any] = field(default_factory=lambda: {"has_noncycle": False})
+    onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
     unregister_midnight_listener: Callable[[], None] | None = None
     cycle_length_override: int | None = None
 
@@ -681,6 +685,7 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
         runtime.menopause_data,
         runtime.noncycle_data,
         cycle_length_override=runtime.cycle_length_override,
+        onboarding_stage=runtime.onboarding_stage,
     )
     await _async_refresh_cycle_model(hass, {_entry_id_for_runtime(hass, runtime)})
 
@@ -1171,6 +1176,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
     )
     stored = await storage.async_load()
+    stored_stage = str(stored.get(CONF_ONBOARDING_STAGE) or "").strip().lower()
+    option_stage = str(entry.options.get(CONF_ONBOARDING_STAGE) or "").strip().lower()
+    data_stage = str(entry.data.get(CONF_ONBOARDING_STAGE) or "").strip().lower()
+    onboarding_stage = option_stage or data_stage or stored_stage or DEFAULT_ONBOARDING_STAGE
+    if onboarding_stage not in ONBOARDING_STAGES:
+        onboarding_stage = DEFAULT_ONBOARDING_STAGE
 
     ics_token: str = stored.get(ICS_TOKEN_KEY) or ""
     if not ics_token:
@@ -1192,6 +1203,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         pre_menarche_data=stored.get("pre_menarche_data", {"signs": {}, "tanner_stage": None}),
         menopause_data=stored.get("menopause_data", {"is_menopause": False, "start_date": None}),
         noncycle_data=stored.get("noncycle_data", {"has_noncycle": False}),
+        onboarding_stage=onboarding_stage,
         cycle_length_override=stored.get("cycle_length_override"),
     )
 

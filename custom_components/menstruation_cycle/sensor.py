@@ -46,8 +46,12 @@ from .const import (
     ATTR_WEEKS_PREGNANT,
     ATTR_MENOPAUSE_DATA,
     ATTR_NFP_ANALYSIS,
+    ATTR_ONBOARDING_STAGE,
+    ATTR_ONBOARDING_STAGE_EFFECTIVE,
     ATTR_PERIOD_FORECAST,
+    ATTR_PREDICTION_GATING,
     ATTR_FERTILITY_FORECAST,
+    ATTR_LEARNING_PHASE,
     CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
     DEFAULT_NFP_ANALYSIS_MODE,
@@ -726,6 +730,7 @@ class MenstruationGaugeSensor(SensorEntity):
             today=today,
             cycle_length_override=runtime.cycle_length_override,
             nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            onboarding_stage=getattr(runtime, "onboarding_stage", None),
         )
         usage_stats = _build_product_usage_stats(
             runtime.history,
@@ -770,6 +775,8 @@ class MenstruationGaugeSensor(SensorEntity):
             num_predictions = DEFAULT_NUM_PREDICTIONS
         num_predictions = max(1, min(MAX_NUM_PREDICTIONS, num_predictions))
         predicted_cycle_starts = predict_future_starts(model.grouped_starts, num_predictions)
+        if model.learning_phase and not bool((model.prediction_gating or {}).get("precision_allowed")):
+            predicted_cycle_starts = []
         prediction_day_confidence = compute_prediction_day_confidence(
             model.grouped_starts,
             predicted_cycle_starts,
@@ -879,6 +886,10 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_NFP_ANALYSIS: model.nfp_analysis,
             "learned_ovulation_offset": model.learned_ovulation_offset,
             "nfp_mode": model.nfp_mode,
+            ATTR_ONBOARDING_STAGE: model.onboarding_stage,
+            ATTR_ONBOARDING_STAGE_EFFECTIVE: model.onboarding_stage_effective,
+            ATTR_LEARNING_PHASE: model.learning_phase,
+            ATTR_PREDICTION_GATING: model.prediction_gating,
             ATTR_PERIOD_FORECAST: period_forecast,
             ATTR_FERTILITY_FORECAST: fertility_forecast,
             ATTR_PREDICTION_DAY_CONFIDENCE: prediction_day_confidence,

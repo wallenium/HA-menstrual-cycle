@@ -19,6 +19,7 @@ from .const import (
     CONF_MENOPAUSE_ENABLED,
     CONF_MENOPAUSE_START_DATE,
     CONF_NFP_ANALYSIS_MODE,
+    CONF_ONBOARDING_STAGE,
     CONF_NUM_PREDICTIONS,
     CONF_PERIOD_DURATION_DAYS,
     CONF_PRE_MENARCHE_ENABLED,
@@ -33,9 +34,11 @@ from .const import (
     DEFAULT_MENARCHE_AGE_MAX,
     DEFAULT_MENARCHE_AGE_MIN,
     DEFAULT_NAME,
+    DEFAULT_ONBOARDING_STAGE,
     DEFAULT_PERIOD_DURATION_DAYS,
     DOMAIN,
     NFP_ANALYSIS_MODES,
+    ONBOARDING_STAGES,
     SIGNAL_HISTORY_UPDATED,
     STORAGE_KEY,
     STORAGE_KEY_LEGACY,
@@ -82,10 +85,13 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 friendly_name = str(user_input[CONF_FRIENDLY_NAME]).strip() or DEFAULT_NAME
                 icon = str(user_input.get(CONF_ICON, "")).strip()
+                selected_stage = str(user_input.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE)).strip().lower()
+                onboarding_stage = selected_stage if selected_stage in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
                 data = {
                     CONF_PROFILE: profile,
                     CONF_FRIENDLY_NAME: friendly_name,
                     CONF_ICON: icon,
+                    CONF_ONBOARDING_STAGE: onboarding_stage,
                 }
                 return self.async_create_entry(
                     title=friendly_name,
@@ -97,6 +103,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_PROFILE): str,
                 vol.Required(CONF_FRIENDLY_NAME, default=DEFAULT_NAME): str,
                 vol.Optional(CONF_ICON, default=""): str,
+                vol.Optional(CONF_ONBOARDING_STAGE, default=DEFAULT_ONBOARDING_STAGE): vol.In(ONBOARDING_STAGES),
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
@@ -117,6 +124,8 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         friendly_name = str(import_data.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
         icon = str(import_data.get(CONF_ICON, "")).strip()
+        import_stage = str(import_data.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE)).strip().lower()
+        onboarding_stage = import_stage if import_stage in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
 
         # Use the original unique_id when available so that entity IDs are preserved.
         unique_id = str(import_data.get("unique_id", profile)).strip() or profile
@@ -129,6 +138,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_PROFILE: profile,
                 CONF_FRIENDLY_NAME: friendly_name,
                 CONF_ICON: icon,
+                CONF_ONBOARDING_STAGE: onboarding_stage,
             },
         )
 
@@ -157,6 +167,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             menarche_data: dict = runtime.menarche_data
             menopause_data: dict = runtime.menopause_data
             current_cycle_length_override: int = runtime.cycle_length_override or 0
+            current_onboarding_stage: str = str(getattr(runtime, "onboarding_stage", DEFAULT_ONBOARDING_STAGE))
         else:
             # Fallback: load from storage when runtime is not yet available
             profile = slugify(str(self._entry.data.get(CONF_PROFILE, ""))).strip("_") or "default"
@@ -182,6 +193,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             )
             menopause_data = stored.get("menopause_data", {"is_menopause": False, "start_date": None})
             current_cycle_length_override = stored.get("cycle_length_override") or 0
+            current_onboarding_stage = str(stored.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE))
+        if current_onboarding_stage not in ONBOARDING_STAGES:
+            current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
         current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
         current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
 
@@ -228,6 +242,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         int(user_input.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)),
                     ),
                 )
+                stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, current_onboarding_stage)).strip().lower()
+                new_onboarding_stage = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
 
                 # Parse cycle length override (0 = auto/disabled, 20-38 = override)
                 raw_cycle_override = user_input.get(CONF_CYCLE_LENGTH_OVERRIDE, 0)
@@ -269,6 +285,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     runtime.menarche_data = new_menarche_data
                     runtime.menopause_data = new_menopause_data
                     runtime.cycle_length_override = new_cycle_length_override
+                    runtime.onboarding_stage = new_onboarding_stage
 
                     # Persist to storage
                     await runtime.storage.async_save(
@@ -280,7 +297,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         runtime.menarche_data,
                         runtime.pre_menarche_data,
                         runtime.menopause_data,
+                        runtime.noncycle_data,
                         cycle_length_override=new_cycle_length_override,
+                        onboarding_stage=new_onboarding_stage,
                     )
                     async_dispatcher_send(self.hass, SIGNAL_HISTORY_UPDATED)
                 else:
@@ -301,7 +320,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         new_menarche_data,
                         stored_full.get("pre_menarche_data"),
                         new_menopause_data,
+                        stored_full.get("noncycle_data"),
                         cycle_length_override=new_cycle_length_override,
+                        onboarding_stage=new_onboarding_stage,
                     )
 
                 # Keep entry.data in sync for basic info fields
@@ -311,6 +332,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         **self._entry.data,
                         CONF_FRIENDLY_NAME: new_friendly_name,
                         CONF_ICON: new_icon,
+                        CONF_ONBOARDING_STAGE: new_onboarding_stage,
                     },
                     title=new_friendly_name,
                 )
@@ -321,6 +343,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         **self._entry.options,
                         CONF_NUM_PREDICTIONS: new_num_predictions,
                         CONF_NFP_ANALYSIS_MODE: user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+                        CONF_ONBOARDING_STAGE: new_onboarding_stage,
                     },
                 )
 
@@ -373,6 +396,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_NFP_ANALYSIS_MODE,
                     default=current_nfp_mode,
                 ): vol.In(NFP_ANALYSIS_MODES),
+                vol.Optional(
+                    CONF_ONBOARDING_STAGE,
+                    default=current_onboarding_stage,
+                ): vol.In(ONBOARDING_STAGES),
             }
         )
 
