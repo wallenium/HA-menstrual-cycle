@@ -849,13 +849,21 @@ class MenstruationStatisticsCard extends HTMLElement {
         correlations_title: 'Symptom Correlations',
         correlations_subtitle: 'Patterns from last 3–6 cycles',
         correlations_no_data: 'Not enough data for correlation analysis (need ≥ 3 cycles).',
+        symptom_correlation_insights_title: 'Symptom correlation insights',
+        symptom_correlation_insights_no_data: 'Not enough data yet.',
+        symptom_correlation_insight_more: '{symptom} are {ratio}x more frequent in {phase}.',
+        symptom_correlation_insight_less: '{symptom} are less common during {phase} ({ratio}x baseline).',
         nfp_confidence_high: 'High',
         nfp_confidence_medium: 'Medium',
         nfp_confidence_low: 'Low',
         phase_menstruation: 'menstruation',
+        phase_period: 'period',
         phase_follicular: 'follicular',
+        phase_fertile_window: 'fertile window',
+        phase_ovulation_day: 'ovulation day',
         phase_ovulation: 'ovulation',
         phase_luteal: 'luteal',
+        phase_late_luteal: 'late luteal',
         anomalies_title: 'Alerts & Insights',
         anomalies_no_data: 'Not enough data for anomaly detection (need ≥ 3 cycles).',
         anomaly_cycle_short: 'Current cycle is shorter than average',
@@ -1053,6 +1061,9 @@ class MenstruationStatisticsCard extends HTMLElement {
     const anomalies = this._computeAnomalies(attrs, {
       cycleLengths, avg, stdDev, avgBleed, minBleed, maxBleed, durations, bsDist, painTrend,
     });
+    const symptomCorrelationInsights = Array.isArray(attrs.symptom_correlation_insights)
+      ? attrs.symptom_correlation_insights.slice(0, 3)
+      : [];
 
     return {
       history,
@@ -1074,6 +1085,8 @@ class MenstruationStatisticsCard extends HTMLElement {
       cyclesAnalyzed: cycleLengths.length,
       correlations,
       anomalies,
+      symptomCorrelationInsights,
+      symptomCorrelationInsightsReason: attrs.symptom_correlation_insights_reason || null,
     };
   }
 
@@ -1420,6 +1433,37 @@ class MenstruationStatisticsCard extends HTMLElement {
     }).join('');
   }
 
+  _renderSymptomCorrelationInsights(insights, _reason) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+    if (!Array.isArray(insights) || insights.length === 0) {
+      return `<div class="no-data">${esc(t('symptom_correlation_insights_no_data'))}</div>`;
+    }
+    const applyTemplate = (template, values) => Object.entries(values).reduce(
+      (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+      template,
+    );
+    return insights.slice(0, 3).map((insight) => {
+      const symptomLabel = this._symLabel(insight.symptom_key || '');
+      const phaseLabel = t(`phase_${insight.phase}`) || String(insight.phase || '');
+      const ratio = Number.isFinite(Number(insight.ratio)) ? Number(insight.ratio).toFixed(1) : String(insight.ratio || '1.0');
+      const direction = insight.direction === 'less_frequent' ? 'less' : 'more';
+      const templateKey = direction === 'less'
+        ? 'symptom_correlation_insight_less'
+        : 'symptom_correlation_insight_more';
+      const message = applyTemplate(t(templateKey), {
+        symptom: symptomLabel,
+        ratio,
+        phase: phaseLabel,
+      });
+      const confidence = String(insight.confidence || 'low');
+      return `<div class="insight-card">
+        <div class="insight-text">${esc(message)}</div>
+        <div class="insight-meta">${esc(t('nfp_confidence'))}: <strong>${esc(t(`nfp_confidence_${confidence}`))}</strong></div>
+      </div>`;
+    }).join('');
+  }
+
   _renderStatsTab(stats, attrs) {
     if (!stats) return `<div class="no-data">${this._t('no_cycle_data')}</div>`;
     const t = (k) => this._t(k);
@@ -1482,6 +1526,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="section-header"><span class="section-icon">🔗</span><span>${esc(t('correlations_title'))}</span></div>
         ${stats.correlations ? `<div class="section-meta">${esc(t('correlations_subtitle'))}</div>` : ''}
         <div class="corr-list">${this._renderCorrelations(stats.correlations)}</div>
+      </div>
+      <div class="section">
+        <div class="section-header"><span class="section-icon">🧠</span><span>${esc(t('symptom_correlation_insights_title'))}</span></div>
+        <div class="insight-list">${this._renderSymptomCorrelationInsights(stats.symptomCorrelationInsights, stats.symptomCorrelationInsightsReason)}</div>
       </div>
       ${this._renderPlanningSection(attrs)}`;
   }
@@ -2490,6 +2538,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         .corr-pct { font-size: 20px; font-weight: 700; color: var(--primary-color, #c0392b); line-height: 1; }
         .corr-phase { font-size: 11px; color: var(--secondary-text-color, #888); }
         .corr-strength-badge { font-size: 10px; font-weight: 600; margin-top: 2px; color: var(--secondary-text-color, #888); text-transform: uppercase; letter-spacing: 0.5px; }
+        .insight-list { display: flex; flex-direction: column; gap: 8px; }
+        .insight-card { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; }
+        .insight-text { font-size: 12px; color: var(--primary-text-color); }
+        .insight-meta { margin-top: 4px; font-size: 11px; color: var(--secondary-text-color, #888); }
         ${productStyles}
         @media (max-width: 480px) {
           ha-card { padding: 12px; }

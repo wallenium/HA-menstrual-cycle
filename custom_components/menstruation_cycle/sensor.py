@@ -790,6 +790,8 @@ class MenstruationGaugeSensor(SensorEntity):
             "symptom_data_today": symptom_data_today,
             "symptom_data_this_cycle": symptom_data_this_cycle,
             "symptom_statistics": symptom_statistics,
+            "symptom_correlation_insights": model.symptom_correlation_insights,
+            "symptom_correlation_insights_reason": model.symptom_correlation_insights_reason,
             "cycle_start_date": cycle_start_date,
             "cycle_day": cycle_day,
             "current_bleeding_block": current_bleeding_block,

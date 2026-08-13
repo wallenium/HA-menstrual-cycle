@@ -6,7 +6,7 @@ import json
 import sys
 import types
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 
@@ -1014,6 +1014,90 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(stats["today"], {"tampon": 0, "pad": 0, "cup": 0, "liner": 0, "underwear": 0})
         self.assertEqual(stats["this_cycle"], {"tampon": 5, "pad": 1, "cup": 1, "liner": 0, "underwear": 0})
         self.assertEqual(stats["stats"]["average_per_cycle"], {"tampon": 5, "pad": 1, "cup": 1, "liner": 0, "underwear": 0})
+
+    def test_assign_symptom_day_phase_maps_late_luteal_and_ovulation(self) -> None:
+        phase_ovulation = model.assign_symptom_day_phase(
+            day_iso="2026-02-14",
+            cycle_start_iso="2026-02-01",
+            cycle_end_anchor_iso="2026-02-28",
+            period_duration_days=5,
+            history_set={"2026-02-01", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05"},
+            fertile_window_start_iso="2026-02-09",
+            fertile_window_end_iso="2026-02-15",
+            ovulation_day_iso="2026-02-14",
+        )
+        phase_late_luteal = model.assign_symptom_day_phase(
+            day_iso="2026-02-27",
+            cycle_start_iso="2026-02-01",
+            cycle_end_anchor_iso="2026-02-28",
+            period_duration_days=5,
+            history_set={"2026-02-01", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05"},
+            fertile_window_start_iso="2026-02-09",
+            fertile_window_end_iso="2026-02-15",
+            ovulation_day_iso="2026-02-14",
+        )
+        self.assertEqual(phase_ovulation, "ovulation_day")
+        self.assertEqual(phase_late_luteal, "late_luteal")
+
+    def test_compute_symptom_correlation_insights_returns_ranked_ratio_with_confidence(self) -> None:
+        starts = ["2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26"]
+        history: list[str] = []
+        symptom_history: list[dict[str, object]] = []
+
+        for start_iso in starts[:-1]:
+            start_day = date.fromisoformat(start_iso)
+            for offset in range(28):
+                day = start_day + timedelta(days=offset)
+                day_iso = day.isoformat()
+                if offset <= 4:
+                    history.append(day_iso)
+                entry: dict[str, object] = {"date": day_iso, "pain": []}
+                if offset >= 23:
+                    entry["pain"] = ["headache"]
+                symptom_history.append(entry)
+
+        grouped_starts = model.grouped_cycle_starts(model.normalize_history(history))
+        insights, reason = model.compute_symptom_correlation_insights(
+            history=history,
+            grouped_starts=grouped_starts,
+            symptom_history=symptom_history,
+            today=date(2026, 3, 25),
+            period_duration_days=5,
+            next_predicted_start="2026-03-26",
+            avg_cycle_length=28,
+        )
+
+        self.assertIsNone(reason)
+        self.assertGreaterEqual(len(insights), 1)
+        top = insights[0]
+        self.assertEqual(top["symptom_key"], "pain:headache")
+        self.assertEqual(top["phase"], "late_luteal")
+        self.assertEqual(top["direction"], "more_frequent")
+        self.assertGreater(top["ratio"], 2.0)
+        self.assertEqual(top["ratio"], round(top["ratio"], 1))
+        self.assertIn(top["confidence"], {"medium", "high"})
+
+    def test_compute_symptom_correlation_insights_suppresses_when_data_too_sparse(self) -> None:
+        history = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"]
+        grouped_starts = ["2026-07-01"]
+        symptom_history = [
+            {"date": "2026-07-02", "pain": ["headache"]},
+            {"date": "2026-07-04", "pain": ["headache"]},
+            {"date": "2026-07-05", "pain": ["cramps"]},
+        ]
+
+        insights, reason = model.compute_symptom_correlation_insights(
+            history=history,
+            grouped_starts=grouped_starts,
+            symptom_history=symptom_history,
+            today=date(2026, 7, 6),
+            period_duration_days=5,
+            next_predicted_start="2026-07-29",
+            avg_cycle_length=28,
+        )
+
+        self.assertEqual(insights, [])
+        self.assertIn(reason, {"insufficient_phase_coverage", "insufficient_logged_days", "insufficient_symptom_occurrences"})
 
 
 class _FakeLovelaceCollection:
