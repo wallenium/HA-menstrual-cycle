@@ -158,6 +158,16 @@
   "welcome_period_contraception": "You are now fertile - think about contraception if needed!",
   "welcome_period_return": "You can always return to Pre-Menarche mode in Settings",
 
+  "ob_explainer_label": "About your body",
+  "ob_puberty_label": "Body changes",
+  "ob_puberty_desc": "Your body is growing and changing. This is normal.",
+  "ob_period_label": "First period",
+  "ob_period_desc": "Your first period may be light. It is a natural part of growing up.",
+  "ob_cycle_label": "Cycle learning",
+  "ob_cycle_desc": "It takes time for your cycle to become regular. This app will learn with you.",
+  "ob_symptoms_label": "Symptoms",
+  "ob_symptoms_desc": "You may notice mood changes, mild cramps, or tiredness. That is okay.",
+
   "too_little_history": "Not enough history data in",
   "cycle_start": "Start",
   "end": "End",

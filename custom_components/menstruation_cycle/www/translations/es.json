@@ -158,6 +158,16 @@
   "welcome_period_contraception": "Ahora eres fértil: piensa en la anticoncepción si es necesario.",
   "welcome_period_return": "Siempre puedes volver al modo Pre-menarquia en Ajustes",
 
+  "ob_explainer_label": "Tu cuerpo",
+  "ob_puberty_label": "Cambios",
+  "ob_puberty_desc": "Tu cuerpo está creciendo y cambiando. Esto es normal.",
+  "ob_period_label": "Primera regla",
+  "ob_period_desc": "Tu primera regla puede ser leve. Es una parte natural del crecimiento.",
+  "ob_cycle_label": "Aprendizaje",
+  "ob_cycle_desc": "Lleva tiempo que tu ciclo se vuelva regular. Esta app aprenderá contigo.",
+  "ob_symptoms_label": "Síntomas",
+  "ob_symptoms_desc": "Podrías notar cambios de humor, cólicos leves o cansancio. Eso está bien.",
+
   "too_little_history": "No hay suficientes datos históricos en",
   "cycle_start": "Inicio",
   "end": "Fin",
