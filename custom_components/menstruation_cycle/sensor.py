@@ -60,6 +60,7 @@ from .const import (
     MAX_NUM_PREDICTIONS,
     SIGNAL_HISTORY_UPDATED,
 )
+from .badges import evaluate_badges, new_badges_this_week
 from .model import (
     bleeding_blocks,
     build_cycle_model,
@@ -832,6 +833,22 @@ class MenstruationGaugeSensor(SensorEntity):
         sensor_history = _compact_history_for_sensor(model.history, today)
         sensor_grouped_starts = _compact_grouped_starts_for_sensor(model.grouped_starts, today)
 
+        # Progress badges — evaluated from full history, idempotent
+        existing_badges: list[dict] = []
+        prev_attrs = self._attrs or {}
+        if isinstance(prev_attrs.get("progress_badges"), list):
+            existing_badges = prev_attrs["progress_badges"]
+        progress_badges = evaluate_badges(
+            model.history,
+            model.symptom_history,
+            model.grouped_starts,
+            nfp_analysis=model.nfp_analysis,
+            avg_cycle_length=model.avg_cycle_length,
+            today=today,
+            existing_badges=existing_badges,
+        )
+        progress_badges_new_this_week = new_badges_this_week(progress_badges, today=today)
+
         self._state = model.state
         has_history = bool(model.history)
 
@@ -894,6 +911,8 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_FERTILITY_FORECAST: fertility_forecast,
             ATTR_PREDICTION_DAY_CONFIDENCE: prediction_day_confidence,
             ATTR_ICS_URL: f"/{DOMAIN}/ics/{runtime.ics_token}.ics",
+            "progress_badges": progress_badges,
+            "progress_badges_new_this_week": progress_badges_new_this_week,
         }
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:

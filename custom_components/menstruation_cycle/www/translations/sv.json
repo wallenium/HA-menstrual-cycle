@@ -6,7 +6,6 @@
   "days_until_menarche": "Dagar till menarche",
   "menarche_expected_in": "Menarche förväntas om {days} dagar",
   "menarche_overdue": "Menarche {days} dagar försenad",
-
   "save": "Spara",
   "cancel": "Avbryt",
   "close": "Stäng",
@@ -23,7 +22,6 @@
   "unknown": "Okänt",
   "entity_not_found": "Entitet hittades inte",
   "error_prefix": "Fel",
-
   "pregnancy": "Graviditet",
   "week": "Vecka",
   "month": "Månad",
@@ -39,11 +37,9 @@
   "menarche": "Menarche",
   "menopause": "Klimakteriet",
   "in_menopause": "I klimakteriet",
-
   "modal_edit_day": "Redigera dag",
   "period_start": "Mensens start",
   "basal_temp_label": "Basaltemperatur (°C)",
-
   "previous_month": "Föregående månad",
   "next_month": "Nästa månad",
   "cycle_day": "Cykeldag",
@@ -55,7 +51,6 @@
   "discharge": "Flytningar",
   "predicted": "Förutsedd",
   "predicted_period": "Förutsedd mens",
-
   "due_date": "Beräknat förlossningsdatum",
   "estimated_date": "Uppskattat datum",
   "days_until": "Dagar till menarche",
@@ -75,7 +70,6 @@
   "intercourse": "Samlag",
   "tab_hygiene": "Hygien",
   "hygiene": "Hygien",
-  
   "cat_test": "Test",
   "cat_smell": "Lukt",
   "cat_clots": "Koagler",
@@ -85,7 +79,6 @@
   "cat_cervix_texture": "Livmodertappens konsistens",
   "cat_libido": "Libido",
   "cat_training_intensity": "Träningsintensitet",
-
   "opt_light": "Lätt",
   "nfp_confidence_medium": "Medel",
   "bleeding_heavy": "Kraftig",
@@ -146,7 +139,6 @@
   "opt_preg_frequent_urination": "Täta urinträngningar",
   "opt_preg_braxton_hicks": "Braxton Hicks-sammandragningar",
   "opt_preg_back_pain": "Ryggsmärta",
-
   "log_first_period": "Logga första mens",
   "log_first_period_symptoms": "Första mensen – Logga symtom",
   "first_period_description": "Välj dina symtom för idag och bekräfta starten av din första mens.",
@@ -157,7 +149,6 @@
   "welcome_period_features": "Nya funktioner: cykelförutsägelse, statistik, …",
   "welcome_period_contraception": "Du är nu fertil – tänk på preventivmedel om det behövs!",
   "welcome_period_return": "Du kan alltid återgå till Pre-menarche-läget i inställningarna",
-
   "ob_explainer_label": "Om din kropp",
   "ob_puberty_label": "Kroppsförändringar",
   "ob_puberty_desc": "Din kropp växer och förändras. Det är normalt.",
@@ -167,7 +158,6 @@
   "ob_cycle_desc": "Det tar tid för din cykel att bli regelbunden. Appen lär sig med dig.",
   "ob_symptoms_label": "Symtom",
   "ob_symptoms_desc": "Du kanske märker humörsvängningar, milda kramper eller trötthet. Det är okej.",
-
   "too_little_history": "Inte tillräckligt med historikdata i",
   "cycle_start": "Start",
   "end": "Slut",
@@ -179,7 +169,6 @@
   "legend_alignment_bottom": "Justering: cykelslut (E/-dagar)",
   "legend_alignment_top": "Justering: cykelstart (dag 1..X)",
   "scroll": "rulla",
-
   "cycle": "Cykel",
   "start_date": "Startdatum",
   "end_date": "Slutdatum",
@@ -189,7 +178,6 @@
   "actual_period": "Faktisk mens",
   "current_cycle": "Nuvarande cykel",
   "previous_cycles": "Tidigare cykler",
-
   "members": "Hushållsmedlemmar",
   "member": "Medlem",
   "all_members": "Alla",
@@ -224,7 +212,6 @@
   "cups": "Mensskålar",
   "liners": "Trosskydd",
   "underwears": "Mensunderkläder",
-
   "basal_temp": "Basaltemperatur",
   "energy": "Energi",
   "notes": "Anteckningar",
@@ -260,7 +247,6 @@
   "card_title": "Menstruations-nedräkning",
   "symptom_saved": "Symtom sparade.",
   "symptom_save_error": "Kunde inte spara symtom.",
-
   "nfp_method_nfp": "NFP",
   "doctor_report_title": "Läkarrapport",
   "filter": "Filter",
@@ -407,7 +393,6 @@
   "total_owned": "Totalt ägda",
   "washing_threshold": "Tvättröskel",
   "options": "Alternativ",
-
   "last_n_days": "Senaste {n} dagarna",
   "nfp_day_label": "Dag {n}",
   "last_cycles": "{count} cykler",
@@ -457,9 +442,7 @@
   "planning_range_marker_period": "mens",
   "planning_range_marker_fertile": "fertil",
   "planning_range_marker_ovulation": "ägglossning",
-
   "ygs_title": "Stöd för unga tjejer",
-
   "ygs_reminders_title": "Skoldag-påminnelser",
   "ygs_reminders_desc": "Diskreta dagliga påminnelser för att hjälpa dig känna dig förberedd och bekväm i skolan.",
   "ygs_rem_kit_check": "Kolla väskan",
@@ -477,7 +460,6 @@
   "ygs_rem_quiet_start": "Tyst från",
   "ygs_rem_quiet_end": "Tyst till",
   "ygs_rem_disclaimer": "Påminnelser visas som förhandsgranskning i detta kort. Använd Home Assistant-automationer för att skicka riktiga notiser.",
-
   "ygs_glossary_title": "Ordlista",
   "ygs_glossary_desc": "Enkla förklaringar av vanliga cykelbegrepp.",
   "ygs_gloss_cycle": "Cykel",
@@ -490,7 +472,6 @@
   "ygs_gloss_spotting_def": "Mellanblödning är lätt blödning som uppträder som små bruna eller rosa fläckar mellan mensarna.",
   "ygs_gloss_spotting_more": "Mellanblödning kan vara normal de första åren eller runt ägglossning. Om du är osäker, prata med en vuxen du litar på.",
   "ygs_glossary_disclaimer": "Definitionerna är enbart i utbildningssyfte och är inte medicinsk rådgivning.",
-
   "ygs_phases_title": "Cykelfaser",
   "ygs_phases_desc": "En typisk 28-dagarscykel har fyra huvudfaser. Din egen cykel kan vara kortare eller längre.",
   "ygs_phases_aria": "Diagram som visar de fyra faserna i menstruationscykeln som en färgkodad ring",
@@ -500,7 +481,6 @@
   "ygs_phase_ovulation": "Ägglossning",
   "ygs_phase_luteal": "Lutealfas",
   "ygs_phases_varies": "Varje cykel är unik — tidpunkt och längd kan variera från månad till månad.",
-
   "ygs_hygiene_title": "Praktiska guider",
   "ygs_howto_underwear_tab": "Mensunderkläder",
   "ygs_howto_cup_tab": "Menskopp",
@@ -516,7 +496,6 @@
   "ygs_howto_cup_step4": "Sterilisera koppen i kokande vatten i slutet av varje cykel, enligt tillverkarens anvisningar.",
   "ygs_howto_cup_caution": "Sluta använda och prata med en vuxen du litar på eller en vårdgivare om du upplever ihållande smärta, obehag eller ovanliga symptom.",
   "ygs_howto_disclaimer": "Enbart utbildningsguide. Följ alltid instruktionerna som medföljer din produkt och rådfråga en vårdgivare vid osäkerhet.",
-
   "ygs_reassure_title": "Är det normalt?",
   "ygs_reassure_desc": "Tidiga cykler kan vara oförutsägbara. Det är helt normalt.",
   "ygs_reassure_irregular_timing_title": "Oregelbunden rytm",
@@ -526,5 +505,18 @@
   "ygs_reassure_spotting_title": "Mellanblödning",
   "ygs_reassure_spotting_body": "Lätt mellanblödning eller brunaktigt flytning kan förekomma, särskilt de första åren eller runt ägglossning.",
   "ygs_reassure_escalation": "Överväg att prata med en vuxen du litar på eller en vårdgivare om du är orolig, om smärtan är svår eller om mönstren känns oroande.",
-  "ygs_reassure_disclaimer": "Dessa kort ger endast allmän trygghet och ersätter inte medicinsk rådgivning."
+  "ygs_reassure_disclaimer": "Dessa kort ger endast allmän trygghet och ersätter inte medicinsk rådgivning.",
+  "progress_section_title": "Framsteg",
+  "progress_empty_state": "Dina framsteg visas här.",
+  "progress_badge_first_entry_title": "Första inloggning",
+  "progress_badge_first_entry_desc": "Du loggade din första cykeldag.",
+  "progress_badge_cycles_3_logged_title": "3 cykler loggade",
+  "progress_badge_cycles_3_logged_desc": "Mönster börjar framträda.",
+  "progress_badge_cycles_6_logged_title": "6 cykler loggade",
+  "progress_badge_cycles_6_logged_desc": "Du har en bra databas.",
+  "progress_badge_consistent_logging_30d_title": "Konsekvent loggning",
+  "progress_badge_consistent_logging_30d_desc": "Du loggade regelbundet de senaste 30 dagarna.",
+  "progress_badge_pattern_emerging_title": "Mönster framträder",
+  "progress_badge_pattern_emerging_desc": "Din cykeldata berättar en historia.",
+  "progress_in_progress": "pågår"
 }

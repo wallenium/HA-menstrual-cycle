@@ -6,7 +6,6 @@
   "days_until_menarche": "Tage bis Menarche",
   "menarche_expected_in": "Menarche erwartet in {days} Tagen",
   "menarche_overdue": "Menarche {days} Tage überfällig",
-
   "save": "Speichern",
   "cancel": "Abbrechen",
   "close": "Schließen",
@@ -23,7 +22,6 @@
   "unknown": "Unbekannt",
   "entity_not_found": "Entity nicht gefunden",
   "error_prefix": "Fehler",
-
   "pregnancy": "Schwangerschaft",
   "week": "Woche",
   "month": "Monat",
@@ -39,11 +37,9 @@
   "menarche": "Menarche",
   "menopause": "Menopause",
   "in_menopause": "In Menopause",
-
   "modal_edit_day": "Tag bearbeiten",
   "period_start": "Periode Start",
   "basal_temp_label": "Basaltemperatur (°C)",
-
   "previous_month": "Vorheriger Monat",
   "next_month": "Nächster Monat",
   "cycle_day": "Zyklustag",
@@ -55,7 +51,6 @@
   "discharge": "Ausfluss",
   "predicted": "Vorhergesagt",
   "predicted_period": "Vorhergesagte Periode",
-
   "due_date": "Geburtstermin",
   "estimated_date": "Geschätzter Termin",
   "days_until": "Tage bis Menarche",
@@ -75,7 +70,6 @@
   "intercourse": "Geschlechtsverkehr",
   "tab_hygiene": "Hygiene",
   "hygiene": "Hygiene",
-
   "cat_test": "Test",
   "cat_smell": "Geruch",
   "cat_clots": "Klumpen",
@@ -85,7 +79,6 @@
   "cat_cervix_texture": "Zervixbeschaffenheit",
   "cat_libido": "Libido",
   "cat_training_intensity": "Trainingsintensität",
-
   "opt_light": "Gering",
   "nfp_confidence_medium": "Mittel",
   "bleeding_heavy": "Stark",
@@ -146,7 +139,6 @@
   "opt_preg_frequent_urination": "Häufiges Wasserlassen",
   "opt_preg_braxton_hicks": "Braxton-Hicks",
   "opt_preg_back_pain": "Rückenschmerzen",
-
   "log_first_period": "Erste Periode loggen",
   "log_first_period_symptoms": "Erste Periode - Symptome loggen",
   "first_period_description": "Wähle deine heutigen Symptome aus und bestätige den Start deiner ersten Periode.",
@@ -157,7 +149,6 @@
   "welcome_period_features": "Neue Features: Zyklus-Vorhersage, Statistiken, ...",
   "welcome_period_contraception": "Du bist jetzt fruchtbar - denke an Verhütung, wenn nötig!",
   "welcome_period_return": "Du kannst jederzeit in den Einstellungen zum Pre-Menarche Modus zurückwechseln",
-
   "ob_explainer_label": "Über deinen Körper",
   "ob_puberty_label": "Körperveränderungen",
   "ob_puberty_desc": "Dein Körper wächst und verändert sich. Das ist normal.",
@@ -167,7 +158,6 @@
   "ob_cycle_desc": "Es braucht Zeit, bis dein Zyklus regelmäßig wird. Diese App lernt mit dir.",
   "ob_symptoms_label": "Symptome",
   "ob_symptoms_desc": "Du könntest Stimmungsschwankungen, leichte Krämpfe oder Müdigkeit bemerken. Das ist in Ordnung.",
-
   "too_little_history": "Zu wenig Verlaufsdaten in",
   "cycle_start": "Start",
   "end": "Ende",
@@ -179,7 +169,6 @@
   "legend_alignment_bottom": "Ausrichtung: Zyklusende (E/-Tage)",
   "legend_alignment_top": "Ausrichtung: Zyklusstart (Tag 1..X)",
   "scroll": "scroll",
-
   "cycle": "Zyklus",
   "start_date": "Startdatum",
   "end_date": "Enddatum",
@@ -189,7 +178,6 @@
   "actual_period": "Tatsächliche Periode",
   "current_cycle": "Aktueller Zyklus",
   "previous_cycles": "Vorherige Zyklen",
-
   "members": "Haushaltsmitglieder",
   "member": "Mitglied",
   "all_members": "Alle",
@@ -224,7 +212,6 @@
   "cups": "Menstruationstassen",
   "liners": "Slipeinlagen",
   "underwears": "Periodenunterwäsche",
-
   "basal_temp": "Basaltemperatur",
   "energy": "Energie",
   "notes": "Notizen",
@@ -260,7 +247,6 @@
   "card_title": "Menstruations-Countdown",
   "symptom_saved": "Symptome gespeichert.",
   "symptom_save_error": "Symptome konnten nicht gespeichert werden.",
-
   "nfp_method_nfp": "NFP",
   "doctor_report_title": "Arzt-Bericht",
   "filter": "Filter",
@@ -407,7 +393,6 @@
   "total_owned": "Gesamt besessen",
   "washing_threshold": "Wasch-Schwelle",
   "options": "Optionen",
-
   "last_n_days": "Letzte {n} Tage",
   "nfp_day_label": "Tag {n}",
   "last_cycles": "{count} Zyklen",
@@ -457,9 +442,7 @@
   "planning_range_marker_period": "Periode",
   "planning_range_marker_fertile": "Fruchtbar",
   "planning_range_marker_ovulation": "Ovulation",
-
   "ygs_title": "Unterstützung für Mädchen",
-
   "ygs_reminders_title": "Schul-Alltagshelfer",
   "ygs_reminders_desc": "Diskrete tägliche Erinnerungen, damit du dich in der Schule gut vorbereitet fühlst.",
   "ygs_rem_kit_check": "Tasche prüfen",
@@ -477,7 +460,6 @@
   "ygs_rem_quiet_start": "Ruhe ab",
   "ygs_rem_quiet_end": "Ruhe bis",
   "ygs_rem_disclaimer": "Erinnerungen werden nur in dieser Karte als Vorschau angezeigt. Für echte Benachrichtigungen nutze Home Assistant Automationen.",
-
   "ygs_glossary_title": "Glossar",
   "ygs_glossary_desc": "Einfache Erklärungen zu häufigen Zyklusbegriffen.",
   "ygs_gloss_cycle": "Zyklus",
@@ -490,7 +472,6 @@
   "ygs_gloss_spotting_def": "Eine Zwischenblutung ist leichte Blutung zwischen den Perioden, meist als braune oder rosa Flecken.",
   "ygs_gloss_spotting_more": "Zwischenblutungen sind in den ersten Jahren und um den Eisprung herum normal. Bei Unsicherheit wende dich an eine vertrauensperson.",
   "ygs_glossary_disclaimer": "Definitionen dienen nur zu Bildungszwecken und sind keine medizinische Beratung.",
-
   "ygs_phases_title": "Zyklusphasen",
   "ygs_phases_desc": "Ein typischer 28-Tage-Zyklus hat vier Hauptphasen. Dein Zyklus kann kürzer oder länger sein.",
   "ygs_phases_aria": "Diagramm mit den vier Phasen des Menstruationszyklus als farbcodierter Ring",
@@ -500,7 +481,6 @@
   "ygs_phase_ovulation": "Eisprung",
   "ygs_phase_luteal": "Lutealphase",
   "ygs_phases_varies": "Jeder Zyklus ist einzigartig – Zeitpunkt und Länge können von Monat zu Monat variieren.",
-
   "ygs_hygiene_title": "Anleitungen",
   "ygs_howto_underwear_tab": "Periodenunterwäsche",
   "ygs_howto_cup_tab": "Menstruationstasse",
@@ -516,7 +496,6 @@
   "ygs_howto_cup_step4": "Am Ende jedes Zyklus in kochendem Wasser sterilisieren, wie vom Hersteller angegeben.",
   "ygs_howto_cup_caution": "Nutzung stoppen und eine Vertrauensperson oder einen Arzt aufsuchen, wenn du anhaltende Schmerzen, Unbehagen oder ungewöhnliche Symptome bemerkst.",
   "ygs_howto_disclaimer": "Nur zur Bildung. Befolge stets die mitgelieferte Produktanleitung und frage bei Unsicherheit einen Arzt.",
-
   "ygs_reassure_title": "Ist das normal?",
   "ygs_reassure_desc": "Frühe Zyklen können unvorhersehbar sein. Das ist völlig normal.",
   "ygs_reassure_irregular_timing_title": "Unregelmäßiger Rhythmus",
@@ -526,5 +505,18 @@
   "ygs_reassure_spotting_title": "Zwischenblutungen",
   "ygs_reassure_spotting_body": "Leichte Zwischenblutungen oder bräunlicher Ausfluss können auftreten, besonders in den ersten Jahren oder um den Eisprung.",
   "ygs_reassure_escalation": "Sprich mit einer vertrauten Person oder einem Arzt, wenn du dir Sorgen machst, starke Schmerzen hast oder etwas besorgniserregend erscheint.",
-  "ygs_reassure_disclaimer": "Diese Karten bieten nur allgemeine Beruhigung und ersetzen keine ärztliche Beratung."
+  "ygs_reassure_disclaimer": "Diese Karten bieten nur allgemeine Beruhigung und ersetzen keine ärztliche Beratung.",
+  "progress_section_title": "Fortschritt",
+  "progress_empty_state": "Dein Fortschritt erscheint hier.",
+  "progress_badge_first_entry_title": "Erster Eintrag",
+  "progress_badge_first_entry_desc": "Du hast deinen ersten Zyklustag eingetragen.",
+  "progress_badge_cycles_3_logged_title": "3 Zyklen eingetragen",
+  "progress_badge_cycles_3_logged_desc": "Erste Muster zeichnen sich ab.",
+  "progress_badge_cycles_6_logged_title": "6 Zyklen eingetragen",
+  "progress_badge_cycles_6_logged_desc": "Du hast eine gute Datenbasis aufgebaut.",
+  "progress_badge_consistent_logging_30d_title": "Regelmäßiges Loggen",
+  "progress_badge_consistent_logging_30d_desc": "Du hast in den letzten 30 Tagen regelmäßig eingetragen.",
+  "progress_badge_pattern_emerging_title": "Muster erkennbar",
+  "progress_badge_pattern_emerging_desc": "Deine Zyklus-Daten ergeben ein Bild.",
+  "progress_in_progress": "im Gange"
 }
