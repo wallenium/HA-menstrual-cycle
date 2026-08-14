@@ -937,6 +937,19 @@ class MenstruationStatisticsCard extends HTMLElement {
         fertility_forecast_source_estimated: 'Estimated',
         fertility_forecast_confidence: 'Window confidence',
         fertility_forecast_no_data: 'Not enough data for a fertility forecast.',
+        progress_section_title: 'Progress',
+        progress_empty_state: 'Your progress will appear here.',
+        progress_badge_first_entry_title: 'First Entry',
+        progress_badge_first_entry_desc: 'You logged your first cycle day.',
+        progress_badge_cycles_3_logged_title: '3 Cycles Logged',
+        progress_badge_cycles_3_logged_desc: 'Patterns are starting to emerge.',
+        progress_badge_cycles_6_logged_title: '6 Cycles Logged',
+        progress_badge_cycles_6_logged_desc: 'You have a good foundation of data.',
+        progress_badge_consistent_logging_30d_title: 'Consistent Logging',
+        progress_badge_consistent_logging_30d_desc: 'You logged regularly over the last 30 days.',
+        progress_badge_pattern_emerging_title: 'Patterns Emerging',
+        progress_badge_pattern_emerging_desc: 'Your cycle data is telling a story.',
+        progress_in_progress: 'in progress',
       },
     };
     const lang = this._lang();
@@ -1540,7 +1553,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="section-header"><span class="section-icon">🧠</span><span>${esc(t('symptom_correlation_insights_title'))}</span></div>
         <div class="insight-list">${this._renderSymptomCorrelationInsights(stats.symptomCorrelationInsights, stats.symptomCorrelationInsightsReason)}</div>
       </div>
-      ${this._renderPlanningSection(attrs)}`;
+      ${this._renderPlanningSection(attrs)}
+      ${this._renderProgressSection(attrs)}`;
   }
 
   /**
@@ -1712,6 +1726,91 @@ class MenstruationStatisticsCard extends HTMLElement {
           ${rangeHtml}
         </div>
         <p class="nfp-likelihood-disclaimer">${esc(t('planning_disclaimer'))}</p>
+      </div>`;
+  }
+
+  /**
+   * Render the "Progress" section with gentle, non-gamified milestone badges.
+   * Earned badges appear first; up to 2 in-progress badges are shown below.
+   * An empty-state message is shown when no badges have been earned yet.
+   *
+   * @param {object} attrs  Sensor state attributes.
+   * @returns {string}  HTML string for the progress section.
+   */
+  _renderProgressSection(attrs) {
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(String(s));
+
+    const badges = Array.isArray(attrs && attrs.progress_badges) ? attrs.progress_badges : [];
+    const newThisWeek = new Set(
+      Array.isArray(attrs && attrs.progress_badges_new_this_week)
+        ? attrs.progress_badges_new_this_week
+        : [],
+    );
+    const showHighlights = this._config && this._config.show_badge_highlights !== false;
+
+    const badgeMeta = {
+      first_entry:            { icon: '📅', titleKey: 'progress_badge_first_entry_title', descKey: 'progress_badge_first_entry_desc' },
+      cycles_3_logged:        { icon: '🌱', titleKey: 'progress_badge_cycles_3_logged_title', descKey: 'progress_badge_cycles_3_logged_desc' },
+      cycles_6_logged:        { icon: '🌿', titleKey: 'progress_badge_cycles_6_logged_title', descKey: 'progress_badge_cycles_6_logged_desc' },
+      consistent_logging_30d: { icon: '📖', titleKey: 'progress_badge_consistent_logging_30d_title', descKey: 'progress_badge_consistent_logging_30d_desc' },
+      pattern_emerging:       { icon: '✨', titleKey: 'progress_badge_pattern_emerging_title', descKey: 'progress_badge_pattern_emerging_desc' },
+    };
+
+    const earned = badges.filter(b => b && b.state === 'earned');
+    const inProgress = badges.filter(b => b && b.state === 'in_progress').slice(0, 2);
+
+    let badgeHtml = '';
+
+    if (earned.length === 0 && inProgress.length === 0) {
+      badgeHtml = `<p class="progress-empty-state">${esc(t('progress_empty_state'))}</p>`;
+    } else {
+      if (earned.length > 0) {
+        badgeHtml += earned.map(b => {
+          const meta = badgeMeta[b.key] || { icon: '🏅', titleKey: `progress_badge_${b.key}_title`, descKey: `progress_badge_${b.key}_desc` };
+          const title = t(meta.titleKey) || esc(b.key);
+          const desc = t(meta.descKey) || '';
+          const isNew = showHighlights && newThisWeek.has(b.key);
+          return `<div class="progress-badge progress-badge-earned${isNew ? ' progress-badge-new' : ''}" role="img" aria-label="${esc(title)}">
+            <span class="progress-badge-icon" aria-hidden="true">${meta.icon}</span>
+            <div class="progress-badge-body">
+              <span class="progress-badge-title">${esc(title)}</span>
+              ${desc ? `<span class="progress-badge-desc">${esc(desc)}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      if (inProgress.length > 0) {
+        badgeHtml += inProgress.map(b => {
+          const meta = badgeMeta[b.key] || { icon: '⏳', titleKey: `progress_badge_${b.key}_title`, descKey: `progress_badge_${b.key}_desc` };
+          const title = t(meta.titleKey) || esc(b.key);
+          const pv = Number(b.progress_value);
+          const pt = Number(b.progress_target);
+          const pct = (pt > 0 && Number.isFinite(pv) && Number.isFinite(pt))
+            ? Math.min(100, Math.round((pv / pt) * 100))
+            : 0;
+          return `<div class="progress-badge progress-badge-inprogress" role="img" aria-label="${esc(title)} – ${esc(t('progress_in_progress'))}">
+            <span class="progress-badge-icon" aria-hidden="true">${meta.icon}</span>
+            <div class="progress-badge-body">
+              <span class="progress-badge-title">${esc(title)}</span>
+              <div class="progress-bar-wrap" role="progressbar" aria-valuenow="${pv}" aria-valuemax="${pt}" aria-label="${esc(title)}">
+                <div class="progress-bar-fill" style="width:${pct}%"></div>
+              </div>
+              ${(pt > 0) ? `<span class="progress-badge-desc">${esc(String(pv))} / ${esc(String(pt))} · ${esc(t('progress_in_progress'))}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    return `
+      <div class="section progress-section">
+        <div class="section-header">
+          <span class="section-icon" aria-hidden="true">🌸</span>
+          <span>${esc(t('progress_section_title'))}</span>
+        </div>
+        <div class="progress-badge-list">${badgeHtml}</div>
       </div>`;
   }
 
@@ -2686,6 +2785,19 @@ class MenstruationStatisticsCard extends HTMLElement {
         .insight-card { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; }
         .insight-text { font-size: 12px; color: var(--primary-text-color); }
         .insight-meta { margin-top: 4px; font-size: 11px; color: var(--secondary-text-color, #888); }
+        .progress-section { }
+        .progress-badge-list { display: flex; flex-direction: column; gap: 8px; }
+        .progress-badge { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--divider-color, rgba(128,128,128,0.18)); background: var(--secondary-background-color, #f5f5f5); font-size: 12px; }
+        .progress-badge-earned { border-color: color-mix(in srgb, var(--success-color, #27ae60) 30%, transparent); background: color-mix(in srgb, var(--success-color, #27ae60) 8%, transparent); }
+        .progress-badge-new { outline: 2px solid color-mix(in srgb, var(--success-color, #27ae60) 50%, transparent); outline-offset: 1px; }
+        .progress-badge-inprogress { border-color: color-mix(in srgb, var(--primary-color, #c0392b) 22%, transparent); }
+        .progress-badge-icon { font-size: 18px; flex: 0 0 auto; margin-top: 1px; }
+        .progress-badge-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+        .progress-badge-title { font-weight: 600; color: var(--primary-text-color); font-size: 12px; }
+        .progress-badge-desc { color: var(--secondary-text-color, #888); font-size: 11px; }
+        .progress-bar-wrap { height: 6px; border-radius: 3px; background: var(--divider-color, rgba(128,128,128,0.2)); overflow: hidden; margin: 3px 0 1px; }
+        .progress-bar-fill { height: 100%; border-radius: 3px; background: var(--primary-color, #c0392b); transition: width 0.3s; }
+        .progress-empty-state { color: var(--secondary-text-color, #888); font-size: 12px; font-style: italic; padding: 4px 0; }
         ${productStyles}
         @media (max-width: 480px) {
           ha-card { padding: 12px; }

@@ -6,7 +6,6 @@
   "days_until_menarche": "Días hasta la menarquia",
   "menarche_expected_in": "Se espera la menarquia en {days} días",
   "menarche_overdue": "Menarquia con retraso de {days} días",
-
   "save": "Guardar",
   "cancel": "Cancelar",
   "close": "Cerrar",
@@ -23,7 +22,6 @@
   "unknown": "Desconocido",
   "entity_not_found": "Entidad no encontrada",
   "error_prefix": "Error",
-
   "pregnancy": "Embarazo",
   "week": "Semana",
   "month": "Mes",
@@ -39,11 +37,9 @@
   "menarche": "Menarquia",
   "menopause": "Menopausia",
   "in_menopause": "En menopausia",
-
   "modal_edit_day": "Editar día",
   "period_start": "Inicio del período",
   "basal_temp_label": "Temperatura basal (°C)",
-
   "previous_month": "Mes anterior",
   "next_month": "Mes siguiente",
   "cycle_day": "Día del ciclo",
@@ -55,7 +51,6 @@
   "discharge": "Flujo vaginal",
   "predicted": "Previsto",
   "predicted_period": "Período previsto",
-
   "due_date": "Fecha probable de parto",
   "estimated_date": "Fecha estimada",
   "days_until": "Días hasta la menarquia",
@@ -75,7 +70,6 @@
   "intercourse": "Relaciones sexuales",
   "tab_hygiene": "Higiene",
   "hygiene": "Higiene",
-
   "cat_test": "Prueba",
   "cat_smell": "Olor",
   "cat_clots": "Coágulos",
@@ -85,10 +79,9 @@
   "cat_cervix_texture": "Textura del cuello uterino",
   "cat_libido": "Libido",
   "cat_training_intensity": "Intensidad del entrenamiento",
-
   "opt_light": "Leve",
   "nfp_confidence_medium": "Media",
-"bleeding_heavy": "Abundante",
+  "bleeding_heavy": "Abundante",
   "opt_very_heavy": "Muy abundante",
   "bleeding_none": "Ninguno",
   "opt_red": "Rojo",
@@ -146,7 +139,6 @@
   "opt_preg_frequent_urination": "Micción frecuente",
   "opt_preg_braxton_hicks": "Contracciones de Braxton Hicks",
   "opt_preg_back_pain": "Dolor de espalda",
-
   "log_first_period": "Registrar primera menstruación",
   "log_first_period_symptoms": "Primera menstruación – Registrar síntomas",
   "first_period_description": "Selecciona tus síntomas de hoy y confirma el inicio de tu primera menstruación.",
@@ -157,7 +149,6 @@
   "welcome_period_features": "Nuevas funciones: predicción del ciclo, estadísticas, …",
   "welcome_period_contraception": "Ahora eres fértil: piensa en la anticoncepción si es necesario.",
   "welcome_period_return": "Siempre puedes volver al modo Pre-menarquia en Ajustes",
-
   "ob_explainer_label": "Tu cuerpo",
   "ob_puberty_label": "Cambios",
   "ob_puberty_desc": "Tu cuerpo está creciendo y cambiando. Esto es normal.",
@@ -167,7 +158,6 @@
   "ob_cycle_desc": "Lleva tiempo que tu ciclo se vuelva regular. Esta app aprenderá contigo.",
   "ob_symptoms_label": "Síntomas",
   "ob_symptoms_desc": "Podrías notar cambios de humor, cólicos leves o cansancio. Eso está bien.",
-
   "too_little_history": "No hay suficientes datos históricos en",
   "cycle_start": "Inicio",
   "end": "Fin",
@@ -179,7 +169,6 @@
   "legend_alignment_bottom": "Alineación: fin del ciclo (E/-días)",
   "legend_alignment_top": "Alineación: inicio del ciclo (día 1..X)",
   "scroll": "desplazar",
-
   "cycle": "Ciclo",
   "start_date": "Fecha de inicio",
   "end_date": "Fecha de fin",
@@ -189,7 +178,6 @@
   "actual_period": "Período real",
   "current_cycle": "Ciclo actual",
   "previous_cycles": "Ciclos anteriores",
-
   "members": "Miembros del hogar",
   "member": "Miembro",
   "all_members": "Todos",
@@ -224,7 +212,6 @@
   "cups": "Copas menstruales",
   "liners": "Protectores diarios",
   "underwears": "Bragas menstruales",
-
   "basal_temp": "Temperatura basal",
   "energy": "Energía",
   "notes": "Notas",
@@ -260,7 +247,6 @@
   "card_title": "Cuenta regresiva menstrual",
   "symptom_saved": "Síntomas guardados.",
   "symptom_save_error": "No se pudieron guardar los síntomas.",
-
   "nfp_method_nfp": "PFN",
   "doctor_report_title": "Informe médico",
   "filter": "Filtro",
@@ -407,7 +393,6 @@
   "total_owned": "Total en propiedad",
   "washing_threshold": "Umbral de lavado",
   "options": "Opciones",
-
   "last_n_days": "Últimos {n} días",
   "nfp_day_label": "Día {n}",
   "last_cycles": "{count} ciclos",
@@ -457,9 +442,7 @@
   "planning_range_marker_period": "menstruación",
   "planning_range_marker_fertile": "fértil",
   "planning_range_marker_ovulation": "ovulación",
-
   "ygs_title": "Apoyo para chicas jóvenes",
-
   "ygs_reminders_title": "Recordatorios para el día escolar",
   "ygs_reminders_desc": "Recordatorios discretos para ayudarte a sentirte preparada y cómoda en la escuela.",
   "ygs_rem_kit_check": "Revisar el kit",
@@ -477,7 +460,6 @@
   "ygs_rem_quiet_start": "Silencio desde",
   "ygs_rem_quiet_end": "Silencio hasta",
   "ygs_rem_disclaimer": "Los recordatorios se muestran como vista previa en esta tarjeta. Usa las automatizaciones de Home Assistant para enviar notificaciones reales.",
-
   "ygs_glossary_title": "Glosario",
   "ygs_glossary_desc": "Explicaciones sencillas de los términos comunes del ciclo.",
   "ygs_gloss_cycle": "Ciclo",
@@ -490,7 +472,6 @@
   "ygs_gloss_spotting_def": "El manchado es un sangrado leve que aparece como pequeñas manchas marrones o rosas entre períodos.",
   "ygs_gloss_spotting_more": "El manchado puede ser normal los primeros años o alrededor de la ovulación. Si tienes dudas, habla con un adulto de confianza.",
   "ygs_glossary_disclaimer": "Las definiciones son solo educativas y no constituyen asesoramiento médico.",
-
   "ygs_phases_title": "Fases del ciclo",
   "ygs_phases_desc": "Un ciclo típico de 28 días tiene cuatro fases principales. Tu propio ciclo puede ser más corto o más largo.",
   "ygs_phases_aria": "Diagrama que muestra las cuatro fases del ciclo menstrual en forma de anillo de colores",
@@ -500,7 +481,6 @@
   "ygs_phase_ovulation": "Ovulación",
   "ygs_phase_luteal": "Lútea",
   "ygs_phases_varies": "Cada ciclo es único — los tiempos y la duración pueden variar de mes a mes.",
-
   "ygs_hygiene_title": "Guías prácticas",
   "ygs_howto_underwear_tab": "Ropa interior menstrual",
   "ygs_howto_cup_tab": "Copa menstrual",
@@ -516,7 +496,6 @@
   "ygs_howto_cup_step4": "Esterilizar la copa en agua hirviendo al final de cada ciclo, según las indicaciones del fabricante.",
   "ygs_howto_cup_caution": "Deja de usarla y habla con un adulto de confianza o un médico si experimentas dolor persistente, molestias o síntomas inusuales.",
   "ygs_howto_disclaimer": "Guía educativa únicamente. Sigue siempre las instrucciones del producto y consulta a un médico si tienes dudas.",
-
   "ygs_reassure_title": "¿Es esto normal?",
   "ygs_reassure_desc": "Los primeros ciclos pueden ser impredecibles. Eso es completamente normal.",
   "ygs_reassure_irregular_timing_title": "Horario irregular",
@@ -526,5 +505,18 @@
   "ygs_reassure_spotting_title": "Manchado entre períodos",
   "ygs_reassure_spotting_body": "Un ligero manchado o flujo marrón puede ocurrir, especialmente los primeros años o alrededor de la ovulación.",
   "ygs_reassure_escalation": "Considera hablar con un adulto de confianza o un médico si te preocupa algo, si el dolor es intenso o si los patrones te parecen preocupantes.",
-  "ygs_reassure_disclaimer": "Estas tarjetas ofrecen solo tranquilidad general y no sustituyen al asesoramiento médico."
+  "ygs_reassure_disclaimer": "Estas tarjetas ofrecen solo tranquilidad general y no sustituyen al asesoramiento médico.",
+  "progress_section_title": "Progreso",
+  "progress_empty_state": "Tu progreso aparecerá aquí.",
+  "progress_badge_first_entry_title": "Primera entrada",
+  "progress_badge_first_entry_desc": "Registraste tu primer día de ciclo.",
+  "progress_badge_cycles_3_logged_title": "3 ciclos registrados",
+  "progress_badge_cycles_3_logged_desc": "Los patrones comienzan a emerger.",
+  "progress_badge_cycles_6_logged_title": "6 ciclos registrados",
+  "progress_badge_cycles_6_logged_desc": "Tienes una buena base de datos.",
+  "progress_badge_consistent_logging_30d_title": "Registro constante",
+  "progress_badge_consistent_logging_30d_desc": "Registraste regularmente en los últimos 30 días.",
+  "progress_badge_pattern_emerging_title": "Patrones emergentes",
+  "progress_badge_pattern_emerging_desc": "Tus datos de ciclo cuentan una historia.",
+  "progress_in_progress": "en progreso"
 }

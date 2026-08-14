@@ -993,6 +993,145 @@ test('BBT chart: intercourse as array is recognized', () => {
   assert.ok(html.includes('❤️'), 'heart marker missing when intercourse is an array value');
 });
 
+// ---------------------------------------------------------------------------
+// Progress badges – _renderProgressSection
+// ---------------------------------------------------------------------------
+
+console.log('\nProgress badge rendering');
+
+function makeAttrsWithBadges(badgeOverrides = {}) {
+  const defaults = {
+    progress_badges: [],
+    progress_badges_new_this_week: [],
+  };
+  return { ...defaults, ...badgeOverrides };
+}
+
+test('progress section renders in the stats tab HTML', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Progress') || html.includes('progress-section'), 'Progress section missing from stats tab');
+});
+
+test('shows empty state when no badges earned yet', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'first_entry', state: 'locked', earned_at: null },
+    ],
+    progress_badges_new_this_week: [],
+  });
+  const html = card._renderProgressSection(attrs);
+  assert.ok(html.includes('progress-empty-state'), 'empty state class missing');
+  assert.ok(html.includes('progress-section'), 'section wrapper missing');
+});
+
+test('renders earned badge with title and icon', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'first_entry', state: 'earned', earned_at: '2024-03-01' },
+    ],
+  });
+  const html = card._renderProgressSection(attrs);
+  assert.ok(html.includes('progress-badge-earned'), 'earned badge class missing');
+  assert.ok(html.includes('📅'), 'badge icon missing');
+  assert.ok(html.includes('First Entry'), 'badge title missing');
+});
+
+test('renders in-progress badge with progress bar', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'cycles_3_logged', state: 'in_progress', earned_at: null, progress_value: 1, progress_target: 3 },
+    ],
+  });
+  const html = card._renderProgressSection(attrs);
+  assert.ok(html.includes('progress-badge-inprogress'), 'in-progress badge class missing');
+  assert.ok(html.includes('progress-bar-fill'), 'progress bar fill missing');
+  assert.ok(html.includes('1 / 3'), 'progress value/target display missing');
+});
+
+test('renders new-this-week highlight on badge when highlights enabled (default)', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'first_entry', state: 'earned', earned_at: '2024-03-01' },
+    ],
+    progress_badges_new_this_week: ['first_entry'],
+  });
+  const html = card._renderProgressSection(attrs);
+  assert.ok(html.includes('progress-badge-new'), 'new badge highlight class missing');
+});
+
+test('suppresses new-this-week highlight when show_badge_highlights is false', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en', show_badge_highlights: false });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'first_entry', state: 'earned', earned_at: '2024-03-01' },
+    ],
+    progress_badges_new_this_week: ['first_entry'],
+  });
+  const html = card._renderProgressSection(attrs);
+  assert.ok(!html.includes('progress-badge-new'), 'highlight should be suppressed when show_badge_highlights=false');
+});
+
+test('shows multiple earned badges', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'first_entry', state: 'earned', earned_at: '2024-01-01' },
+      { key: 'cycles_3_logged', state: 'earned', earned_at: '2024-03-01' },
+    ],
+  });
+  const html = card._renderProgressSection(attrs);
+  const matches = (html.match(/progress-badge-earned/g) || []).length;
+  assert.ok(matches >= 2, `expected at least 2 earned badge elements, got ${matches}`);
+});
+
+test('limits in-progress badges to 2', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const attrs = makeAttrsWithBadges({
+    progress_badges: [
+      { key: 'cycles_3_logged', state: 'in_progress', earned_at: null, progress_value: 1, progress_target: 3 },
+      { key: 'cycles_6_logged', state: 'in_progress', earned_at: null, progress_value: 1, progress_target: 6 },
+      { key: 'consistent_logging_30d', state: 'in_progress', earned_at: null, progress_value: 2, progress_target: 10 },
+    ],
+  });
+  const html = card._renderProgressSection(attrs);
+  const matches = (html.match(/progress-badge-inprogress/g) || []).length;
+  assert.strictEqual(matches, 2, `expected exactly 2 in-progress badges, got ${matches}`);
+});
+
+test('regression: existing stats sections still present alongside progress section', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Cycle Length') || html.includes('cycle_length') || html.includes('stat-grid'), 'cycle length section missing');
+  assert.ok(html.includes('progress-section') || html.includes('Progress'), 'progress section missing');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);
