@@ -538,5 +538,15 @@
   "dashboard_not_set": "Nicht gesetzt",
   "dashboard_pronouns": "Pronomen",
   "dashboard_quick_log_no_changes": "Wähle Blutung oder Schmerzen, um einen Schnell-Eintrag zu speichern.",
-  "saving": "Speichern…"
+  "saving": "Speichern…",
+  "dashboard_saved": "Dashboard-Layout gespeichert.",
+  "dashboard_empty_state": "Alle Widgets sind ausgeblendet.",
+  "dashboard_empty_state_hint": "Öffne den Bearbeitungsmodus, um Widgets anzuzeigen oder auf die Standards zurückzusetzen.",
+  "dashboard_widget_order_label": "Widget-Reihenfolge und Sichtbarkeit",
+  "dashboard_toggle_widget_aria": "Sichtbarkeit des Widgets {widget} umschalten",
+  "dashboard_move_up_aria": "Widget {widget} nach oben verschieben",
+  "dashboard_move_down_aria": "Widget {widget} nach unten verschieben",
+  "dashboard_save_aria": "Dashboard-Layout speichern",
+  "dashboard_cancel_aria": "Dashboard-Bearbeitung abbrechen",
+  "dashboard_reset_aria": "Dashboard auf Standardeinstellungen zurücksetzen"
 }

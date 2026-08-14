@@ -538,5 +538,15 @@
   "dashboard_not_set": "Not set",
   "dashboard_pronouns": "Pronouns",
   "dashboard_quick_log_no_changes": "Select bleeding or pain to save a quick log entry.",
-  "saving": "Saving…"
+  "saving": "Saving…",
+  "dashboard_saved": "Dashboard layout saved.",
+  "dashboard_empty_state": "All widgets are hidden.",
+  "dashboard_empty_state_hint": "Open edit mode to show widgets or reset to defaults.",
+  "dashboard_widget_order_label": "Widget order and visibility",
+  "dashboard_toggle_widget_aria": "Toggle {widget} widget visibility",
+  "dashboard_move_up_aria": "Move {widget} widget up",
+  "dashboard_move_down_aria": "Move {widget} widget down",
+  "dashboard_save_aria": "Save dashboard layout",
+  "dashboard_cancel_aria": "Cancel dashboard edits",
+  "dashboard_reset_aria": "Reset dashboard to mode defaults"
 }

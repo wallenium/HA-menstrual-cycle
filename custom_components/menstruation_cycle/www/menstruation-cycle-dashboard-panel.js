@@ -59,6 +59,7 @@
       this._hass = null;
       this._lang = 'en';
       this._editMode = false;
+      this._editDraft = null;
       this._prefs = null;
       this._activeProfile = 'default';
       this._activeMode = 'general';
@@ -205,14 +206,16 @@
     }
 
     _moveWidget(id, direction) {
-      const idx = this._prefs.widgetOrder.indexOf(id);
+      const target = this._editMode ? this._editDraft : this._prefs;
+      if (!target) return;
+      const idx = target.widgetOrder.indexOf(id);
       if (idx < 0) return;
       const next = direction === 'up' ? idx - 1 : idx + 1;
-      if (next < 0 || next >= this._prefs.widgetOrder.length) return;
-      const order = [...this._prefs.widgetOrder];
+      if (next < 0 || next >= target.widgetOrder.length) return;
+      const order = [...target.widgetOrder];
       [order[idx], order[next]] = [order[next], order[idx]];
-      this._prefs.widgetOrder = order;
-      this._savePrefs();
+      target.widgetOrder = order;
+      if (!this._editMode) this._savePrefs();
       this.render();
     }
 
@@ -223,15 +226,40 @@
       const widget = target.dataset.widget;
 
       if (action === 'toggle-edit') {
-        this._editMode = !this._editMode;
+        if (!this._editMode) {
+          this._editDraft = JSON.parse(JSON.stringify({ ...this._prefs }));
+          this._editMode = true;
+        } else {
+          this._editDraft = null;
+          this._editMode = false;
+        }
+        this.render();
+      } else if (action === 'save-edit') {
+        if (this._editDraft) {
+          const { __profile, __mode, ...saved } = this._editDraft;
+          this._prefs = { ...this._prefs, ...saved };
+          this._savePrefs();
+          this._message = this._t('dashboard_saved');
+        }
+        this._editDraft = null;
+        this._editMode = false;
+        this.render();
+      } else if (action === 'cancel-edit') {
+        this._editDraft = null;
+        this._editMode = false;
         this.render();
       } else if (action === 'widget-up' && widget) {
         this._moveWidget(widget, 'up');
       } else if (action === 'widget-down' && widget) {
         this._moveWidget(widget, 'down');
       } else if (action === 'reset-preset') {
-        this._prefs = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
-        this._savePrefs();
+        const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
+        if (this._editMode) {
+          this._editDraft = reset;
+        } else {
+          this._prefs = reset;
+          this._savePrefs();
+        }
         this.render();
       }
     }
@@ -239,23 +267,25 @@
     _handleChange(event) {
       const target = event.target;
       if (!(target instanceof HTMLElement) || !this._prefs) return;
+      const draft = this._editMode ? this._editDraft : this._prefs;
+      if (!draft) return;
       if (target instanceof HTMLInputElement && target.dataset.widgetVisibility) {
-        this._prefs.widgetVisibility[target.dataset.widgetVisibility] = target.checked;
-        this._savePrefs();
+        draft.widgetVisibility[target.dataset.widgetVisibility] = target.checked;
+        if (!this._editMode) this._savePrefs();
         this.render();
       }
       if (target instanceof HTMLInputElement && target.dataset.pref === 'discreetMode') {
-        this._prefs.discreetMode = target.checked;
-        this._savePrefs();
+        draft.discreetMode = target.checked;
+        if (!this._editMode) this._savePrefs();
         this.render();
       }
       if (target instanceof HTMLInputElement && target.dataset.pref === 'displayName') {
-        this._prefs.myInfo.displayName = target.value.trim();
-        this._savePrefs();
+        draft.myInfo.displayName = target.value.trim();
+        if (!this._editMode) this._savePrefs();
       }
       if (target instanceof HTMLInputElement && target.dataset.pref === 'pronouns') {
-        this._prefs.myInfo.pronouns = target.value.trim();
-        this._savePrefs();
+        draft.myInfo.pronouns = target.value.trim();
+        if (!this._editMode) this._savePrefs();
       }
     }
 
@@ -353,16 +383,26 @@
     }
 
     _renderEditPanel() {
-      if (!this._editMode || !this._prefs) return '';
+      if (!this._editMode || !this._editDraft) return '';
+      const draft = this._editDraft;
       const rows = WIDGET_DEFS.map((widget) => {
-        const visible = this._prefs.widgetVisibility[widget.id] !== false;
-        const idx = this._prefs.widgetOrder.indexOf(widget.id);
+        const visible = draft.widgetVisibility[widget.id] !== false;
+        const idx = draft.widgetOrder.indexOf(widget.id);
+        const widgetLabel = this._t(widget.title);
         return `
           <div class="edit-row">
-            <label><input type="checkbox" data-widget-visibility="${widget.id}" ${visible ? 'checked' : ''}/> ${this._t(widget.title)}</label>
+            <label>
+              <input type="checkbox" data-widget-visibility="${widget.id}" ${visible ? 'checked' : ''}
+                aria-label="${this._t('dashboard_toggle_widget_aria').replace('{widget}', widgetLabel)}"/>
+              ${widgetLabel}
+            </label>
             <div class="edit-buttons">
-              <button type="button" data-action="widget-up" data-widget="${widget.id}" ${idx <= 0 ? 'disabled' : ''}>↑</button>
-              <button type="button" data-action="widget-down" data-widget="${widget.id}" ${idx >= this._prefs.widgetOrder.length - 1 ? 'disabled' : ''}>↓</button>
+              <button type="button" data-action="widget-up" data-widget="${widget.id}"
+                ${idx <= 0 ? 'disabled' : ''}
+                aria-label="${this._t('dashboard_move_up_aria').replace('{widget}', widgetLabel)}">↑</button>
+              <button type="button" data-action="widget-down" data-widget="${widget.id}"
+                ${idx >= draft.widgetOrder.length - 1 ? 'disabled' : ''}
+                aria-label="${this._t('dashboard_move_down_aria').replace('{widget}', widgetLabel)}">↓</button>
             </div>
           </div>
         `;
@@ -371,11 +411,16 @@
       return `
         <section class="edit-mode" aria-label="${this._t('dashboard_edit_mode')}">
           <h2>${this._t('dashboard_edit_mode')}</h2>
-          <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${this._prefs.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
-          <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(this._prefs.myInfo.displayName)}"/></label>
-          <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(this._prefs.myInfo.pronouns)}"/></label>
+          <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${draft.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
+          <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
+          <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
+          <p class="helper">${this._t('dashboard_widget_order_label')}</p>
           ${rows}
-          <button type="button" data-action="reset-preset">${this._t('dashboard_reset_preset')}</button>
+          <div class="edit-actions">
+            <button type="button" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
+            <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
+            <button type="button" data-action="reset-preset" aria-label="${this._t('dashboard_reset_aria')}">${this._t('dashboard_reset_preset')}</button>
+          </div>
         </section>
       `;
     }
@@ -401,9 +446,16 @@
       if (!this.shadowRoot) return;
       const stateObj = this._findPrimaryState();
       const discreetMode = !!this._prefs?.discreetMode;
-      const cardHtml = (this._prefs?.widgetOrder || WIDGET_IDS)
+      const cards = (this._prefs?.widgetOrder || WIDGET_IDS)
         .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
-        .join('');
+        .filter(Boolean);
+      const cardHtml = cards.length
+        ? cards.join('')
+        : `<div class="empty-state" role="status">
+            <p>${this._t('dashboard_empty_state')}</p>
+            <p class="helper">${this._t('dashboard_empty_state_hint')}</p>
+            <button type="button" data-action="toggle-edit">${this._t('dashboard_edit_mode')}</button>
+          </div>`;
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -422,6 +474,10 @@
           .edit-mode { border: 1px dashed var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
           .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
           .edit-buttons { display: flex; gap: 6px; }
+          .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+          .edit-actions button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; }
+          .empty-state { text-align: center; padding: 24px; }
+          .empty-state button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; margin-top: 8px; }
           .message { min-height: 1.2rem; font-size: .9rem; }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
@@ -430,7 +486,7 @@
         <main class="page">
           <header class="toolbar">
             <h1>${this._t('dashboard_page_title')}</h1>
-            <button type="button" data-action="toggle-edit">${this._editMode ? this._t('dashboard_done') : this._t('dashboard_edit_mode')}</button>
+            ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
           </header>
           <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
           ${this._renderEditPanel()}

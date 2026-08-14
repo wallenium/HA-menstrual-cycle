@@ -518,5 +518,15 @@
   "progress_badge_consistent_logging_30d_desc": "Registraste regularmente en los últimos 30 días.",
   "progress_badge_pattern_emerging_title": "Patrones emergentes",
   "progress_badge_pattern_emerging_desc": "Tus datos de ciclo cuentan una historia.",
-  "progress_in_progress": "en progreso"
+  "progress_in_progress": "en progreso",
+  "dashboard_saved": "Diseño del panel guardado.",
+  "dashboard_empty_state": "Todos los widgets están ocultos.",
+  "dashboard_empty_state_hint": "Abre el modo edición para mostrar widgets o restablecer los valores predeterminados.",
+  "dashboard_widget_order_label": "Orden y visibilidad de widgets",
+  "dashboard_toggle_widget_aria": "Alternar visibilidad del widget {widget}",
+  "dashboard_move_up_aria": "Mover el widget {widget} hacia arriba",
+  "dashboard_move_down_aria": "Mover el widget {widget} hacia abajo",
+  "dashboard_save_aria": "Guardar diseño del panel",
+  "dashboard_cancel_aria": "Cancelar ediciones del panel",
+  "dashboard_reset_aria": "Restablecer panel a los valores predeterminados del modo"
 }
