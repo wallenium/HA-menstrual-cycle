@@ -63,6 +63,7 @@
       this._prefs = null;
       this._activeProfile = 'default';
       this._activeMode = 'general';
+      this._selectedEntityId = null;
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
@@ -77,7 +78,23 @@
     set hass(hass) {
       this._hass = hass;
       this._lang = this._detectLang();
-      const stateObj = this._findPrimaryState();
+
+      // Resolve selected entity: prefer user-saved choice, fall back to first alphabetically
+      const userId = this._hass?.user?.id;
+      const available = this._getAvailableEntities();
+      let stateObj = null;
+
+      if (available.length > 0) {
+        const savedEntityId = userId ? this._getSelectedEntity(userId) : null;
+        const found = savedEntityId ? available.find((e) => e.entityId === savedEntityId) : null;
+        const chosen = found || available[0];
+        this._selectedEntityId = chosen.entityId;
+        stateObj = this._hass?.states?.[this._selectedEntityId] || null;
+      } else {
+        this._selectedEntityId = null;
+        stateObj = null;
+      }
+
       this._activeProfile = stateObj?.attributes?.profile || 'default';
       this._activeMode = this._resolveMode(stateObj);
       if (!this._prefs || this._prefs.__profile !== this._activeProfile || this._prefs.__mode !== this._activeMode) {
@@ -156,6 +173,54 @@
       return entries[0][1];
     }
 
+    _getAvailableEntities() {
+      return Object.entries(this._hass?.states || {})
+        .filter(([entityId, state]) =>
+          entityId.startsWith('sensor.') &&
+          state?.attributes?.entry_id &&
+          state?.attributes?.profile)
+        .map(([entityId, state]) => ({
+          entityId,
+          name: state.attributes?.friendly_name || state.attributes?.profile || entityId,
+          profile: state.attributes?.profile,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    _selectedEntityKey(userId) {
+      return `menstruation_cycle.dashboard_selected_entity.${userId}`;
+    }
+
+    _getSelectedEntity(userId) {
+      try {
+        const saved = localStorage.getItem(this._selectedEntityKey(userId));
+        return saved ? JSON.parse(saved) : null;
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    _setSelectedEntity(userId, entityId) {
+      try {
+        localStorage.setItem(this._selectedEntityKey(userId), JSON.stringify(entityId));
+      } catch (_error) {
+        // localStorage may be unavailable (e.g. Safari private mode)
+      }
+    }
+
+    _handleEntityChange(entityId) {
+      const userId = this._hass?.user?.id;
+      if (userId) {
+        this._setSelectedEntity(userId, entityId);
+      }
+      this._selectedEntityId = entityId;
+      const stateObj = this._hass?.states?.[entityId] || null;
+      this._activeProfile = stateObj?.attributes?.profile || 'default';
+      this._activeMode = this._resolveMode(stateObj);
+      this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
+      this.render();
+    }
+
     _t(key) {
       const dict = window.menstruationCycleI18n?.cache?.[this._lang] || window.menstruationCycleI18n?.cache?.en || {};
       return dict[key] ?? key;
@@ -170,7 +235,7 @@
     }
 
     async _saveQuickLog(form) {
-      const stateObj = this._findPrimaryState();
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       if (!this._hass || !stateObj) return;
       const entryId = stateObj.attributes.entry_id;
       const bleeding = String(form.get('bleeding') || '').trim();
@@ -267,6 +332,12 @@
     _handleChange(event) {
       const target = event.target;
       if (!(target instanceof HTMLElement) || !this._prefs) return;
+
+      if (target.tagName === 'SELECT' && target.classList.contains('entity-picker')) {
+        this._handleEntityChange(target.value);
+        return;
+      }
+
       const draft = this._editMode ? this._editDraft : this._prefs;
       if (!draft) return;
       if (target instanceof HTMLInputElement && target.dataset.widgetVisibility) {
@@ -442,9 +513,18 @@
       return `<article class="card ${sensitiveClass}"><h2>${title}</h2>${body}</article>`;
     }
 
+    _renderEntityPicker(availableEntities) {
+      if (availableEntities.length <= 1) return '';
+      const options = availableEntities
+        .map((e) => `<option value="${escapeHtml(e.entityId)}" ${e.entityId === this._selectedEntityId ? 'selected' : ''}>${escapeHtml(e.name)}</option>`)
+        .join('');
+      return `<select class="entity-picker" aria-label="${this._t('dashboard_entity_picker_aria')}">${options}</select>`;
+    }
+
     render() {
       if (!this.shadowRoot) return;
-      const stateObj = this._findPrimaryState();
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const availableEntities = this._getAvailableEntities();
       const discreetMode = !!this._prefs?.discreetMode;
       const cards = (this._prefs?.widgetOrder || WIDGET_IDS)
         .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
@@ -463,6 +543,7 @@
           .page { padding: 16px; display: grid; gap: 12px; }
           .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
           .toolbar button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 10px; cursor: pointer; }
+          .entity-picker { width: auto; border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; padding: 6px 10px; background: var(--card-background-color, #fff); color: inherit; cursor: pointer; }
           .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
           .card { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
           .card h2 { margin: 0; font-size: 1rem; }
@@ -486,7 +567,10 @@
         <main class="page">
           <header class="toolbar">
             <h1>${this._t('dashboard_page_title')}</h1>
-            ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              ${this._renderEntityPicker(availableEntities)}
+              ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
+            </div>
           </header>
           <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
           ${this._renderEditPanel()}
