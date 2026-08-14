@@ -1394,7 +1394,7 @@ class DashboardSidebarPanelTests(unittest.TestCase):
         registered_calls: list = []
 
         frontend_mod = types.ModuleType("homeassistant.components.frontend")
-        frontend_mod.async_register_built_in_panel = lambda **kwargs: registered_calls.append(kwargs)
+        frontend_mod.async_register_built_in_panel = lambda *args, **kwargs: registered_calls.append((args, kwargs))
         frontend_mod.async_remove_panel = lambda path: None
         sys.modules["homeassistant.components.frontend"] = frontend_mod
 
@@ -1404,13 +1404,15 @@ class DashboardSidebarPanelTests(unittest.TestCase):
         asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
 
         self.assertEqual(len(registered_calls), 1)
+        self.assertEqual(registered_calls[0][0], (hass,))
+        self.assertEqual(registered_calls[0][1]["component_name"], "custom")
         self.assertTrue(hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY])
 
     def test_registers_panel_only_once_for_multiple_entries(self) -> None:
         registered_calls: list = []
 
         frontend_mod = types.ModuleType("homeassistant.components.frontend")
-        frontend_mod.async_register_built_in_panel = lambda **kwargs: registered_calls.append(kwargs)
+        frontend_mod.async_register_built_in_panel = lambda *args, **kwargs: registered_calls.append((args, kwargs))
         frontend_mod.async_remove_panel = lambda path: None
         sys.modules["homeassistant.components.frontend"] = frontend_mod
 
@@ -1445,7 +1447,7 @@ class DashboardSidebarPanelTests(unittest.TestCase):
     def test_registration_exception_does_not_propagate(self) -> None:
         frontend_mod = types.ModuleType("homeassistant.components.frontend")
 
-        def _raise(**kwargs):
+        def _raise(*args, **kwargs):
             raise RuntimeError("panel already registered")
 
         frontend_mod.async_register_built_in_panel = _raise
@@ -1464,7 +1466,7 @@ class DashboardSidebarPanelTests(unittest.TestCase):
         removed: list = []
 
         frontend_mod = types.ModuleType("homeassistant.components.frontend")
-        frontend_mod.async_register_built_in_panel = lambda **kwargs: None
+        frontend_mod.async_register_built_in_panel = lambda *args, **kwargs: None
         frontend_mod.async_remove_panel = lambda path: removed.append(path)
         sys.modules["homeassistant.components.frontend"] = frontend_mod
 
@@ -1478,7 +1480,7 @@ class DashboardSidebarPanelTests(unittest.TestCase):
 
     def test_unload_panel_removal_exception_does_not_propagate(self) -> None:
         frontend_mod = types.ModuleType("homeassistant.components.frontend")
-        frontend_mod.async_register_built_in_panel = lambda **kwargs: None
+        frontend_mod.async_register_built_in_panel = lambda *args, **kwargs: None
 
         def _raise(path):
             raise RuntimeError("already gone")

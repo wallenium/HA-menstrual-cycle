@@ -2119,6 +2119,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
     if should_show_panel and not is_registered:
         try:
             frontend_component.async_register_built_in_panel(
+                hass,
                 component_name="custom",
                 sidebar_title=_DASHBOARD_PANEL_TITLE,
                 sidebar_icon=_DASHBOARD_PANEL_ICON,
