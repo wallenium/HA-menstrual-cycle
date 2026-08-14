@@ -33,10 +33,16 @@
           "menopause_start_date": "Klimakteriets startdatum (ÅÅÅÅ-MM-DD)",
           "cycle_length_override": "Åsidosätt cykellängd (dagar, 0 = automatiskt)",
           "nfp_analysis_mode": "NFP-analysläge",
-          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
-          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
-          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
+          "show_cycle_dashboard": "Visa cykel-dashboard i sidopanelen",
+          "cycle_dashboard_default_page": "Föredra cykel-dashboard som startsida",
+          "dashboard_discreet_mode": "Diskret läge (integritetsvänliga etiketter)",
+          "dashboard_widget_quick_log": "Widget: Snabbregistrering",
+          "dashboard_widget_today_status": "Widget: Status idag",
+          "dashboard_widget_upcoming_window": "Widget: Kommande fönster",
+          "dashboard_widget_reminders": "Widget: Påminnelser",
+          "dashboard_widget_progress": "Widget: Framsteg och märken",
+          "dashboard_enabled": "Visa cykel-dashboard i sidopanelen",
+          "dashboard_default_landing": "Föredra cykel-dashboard som startsida"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -49,10 +55,16 @@
           "menopause_start_date": "Datum då klimakteriet började (ÅÅÅÅ-MM-DD). Lämna tomt om okänt.",
           "cycle_length_override": "Åsidosätter den automatiskt beräknade genomsnittliga cykellängden. Sätt till 0 för att använda det automatiskt beräknade värdet från historiken (rekommenderas). Sätt till 20–38 för att manuellt fastställa cykellängden som används för beräkning av fertilt fönster och ägglossning.",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'Hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln vid behov. 'Strikt' visar endast ägglossning och fertilt fönster när en temperaturökning bekräftats i aktuell cykel.",
-          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
-          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "show_cycle_dashboard": "Lägger till en valfri, egen Cykel-dashboard-sida i Home Assistants sidopanel.",
+          "cycle_dashboard_default_page": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta.",
+          "dashboard_discreet_mode": "Använder neutrala, integritetsvänliga etiketter i hela dashboarden.",
+          "dashboard_widget_quick_log": "Visar widgeten för snabbregistrering.",
+          "dashboard_widget_today_status": "Visar dagens cykelstatus och dagnummer.",
+          "dashboard_widget_upcoming_window": "Visar kommande fertilt fönster eller mensprognos.",
+          "dashboard_widget_reminders": "Visar dagliga påminnelser och tips om att kontrollera förråd.",
+          "dashboard_widget_progress": "Visar intjänade framstegsmärken.",
+          "dashboard_enabled": "Lägger till en valfri, egen Cykel-dashboard-sida i Home Assistants sidopanel.",
+          "dashboard_default_landing": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta."
         }
       }
     },

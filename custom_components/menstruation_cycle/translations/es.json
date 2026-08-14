@@ -33,10 +33,16 @@
           "menopause_start_date": "Fecha de inicio de la menopausia (AAAA-MM-DD)",
           "cycle_length_override": "Anular duración del ciclo (días, 0 = automático)",
           "nfp_analysis_mode": "Modo de análisis PFN",
-          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
-          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
-          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
+          "show_cycle_dashboard": "Mostrar el panel del ciclo en la barra lateral",
+          "cycle_dashboard_default_page": "Preferir el panel del ciclo como página de inicio",
+          "dashboard_discreet_mode": "Modo discreto (etiquetas que priorizan la privacidad)",
+          "dashboard_widget_quick_log": "Widget: Registro rápido",
+          "dashboard_widget_today_status": "Widget: Estado de hoy",
+          "dashboard_widget_upcoming_window": "Widget: Próxima ventana",
+          "dashboard_widget_reminders": "Widget: Recordatorios",
+          "dashboard_widget_progress": "Widget: Progreso e insignias",
+          "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral",
+          "dashboard_default_landing": "Preferir el panel del ciclo como página de inicio"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar el período (1–14).",
@@ -49,10 +55,16 @@
           "menopause_start_date": "Fecha en que comenzó la menopausia (AAAA-MM-DD). Déjalo vacío si es desconocida.",
           "cycle_length_override": "Anula la duración media del ciclo calculada automáticamente. Ponlo en 0 para usar el valor calculado automáticamente a partir de tu historial (recomendado). Ponlo entre 20 y 38 para fijar manualmente la duración del ciclo utilizada en el cálculo de la ventana fértil y la ovulación.",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. El modo 'híbrido' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística cuando es necesario. El modo 'estricto' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
-          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
-          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "show_cycle_dashboard": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
+          "cycle_dashboard_default_page": "Opción para usar el panel del ciclo como página predeterminada/de inicio, si la configuración de Home Assistant lo permite.",
+          "dashboard_discreet_mode": "Usa etiquetas neutras que priorizan la privacidad en todo el panel.",
+          "dashboard_widget_quick_log": "Muestra el widget de registro rápido.",
+          "dashboard_widget_today_status": "Muestra el estado del ciclo y el número de día de hoy.",
+          "dashboard_widget_upcoming_window": "Muestra la próxima ventana fértil o la predicción de la menstruación.",
+          "dashboard_widget_reminders": "Muestra recordatorios diarios y avisos para revisar el kit.",
+          "dashboard_widget_progress": "Muestra las insignias de progreso obtenidas.",
+          "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
+          "dashboard_default_landing": "Opción para usar el panel del ciclo como página predeterminada/de inicio, si la configuración de Home Assistant lo permite."
         }
       }
     },

@@ -33,10 +33,16 @@
           "menopause_start_date": "Date de début de la ménopause (AAAA-MM-JJ)",
           "cycle_length_override": "Forcer la durée du cycle (jours, 0 = automatique)",
           "nfp_analysis_mode": "Mode d'analyse PFN",
-          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
-          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
-          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
+          "show_cycle_dashboard": "Afficher le tableau de bord du cycle dans la barre latérale",
+          "cycle_dashboard_default_page": "Préférer le tableau de bord du cycle comme page d'accueil",
+          "dashboard_discreet_mode": "Mode discret (libellés axés sur la confidentialité)",
+          "dashboard_widget_quick_log": "Widget : Saisie rapide",
+          "dashboard_widget_today_status": "Widget : Statut du jour",
+          "dashboard_widget_upcoming_window": "Widget : Prochaine fenêtre",
+          "dashboard_widget_reminders": "Widget : Rappels",
+          "dashboard_widget_progress": "Widget : Progression et badges",
+          "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
+          "dashboard_default_landing": "Préférer le tableau de bord du cycle comme page d'accueil"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours que durent habituellement les règles (1–14).",
@@ -49,10 +55,16 @@
           "menopause_start_date": "Date à laquelle la ménopause a commencé (AAAA-MM-JJ). Laissez vide si inconnue.",
           "cycle_length_override": "Remplace la durée moyenne du cycle calculée automatiquement. Mettez 0 pour utiliser la valeur calculée automatiquement à partir de votre historique (recommandé). Mettez une valeur entre 20 et 38 pour fixer manuellement la durée du cycle utilisée pour le calcul de la fenêtre fertile et de l'ovulation.",
           "nfp_analysis_mode": "Détermine la façon dont l'ovulation et la fenêtre fertile sont calculées. Le mode « hybride » (par défaut) apprend à partir des données de température observées et se rabat sur la formule statistique si besoin. Le mode « strict » n'affiche l'ovulation et la fenêtre fertile que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
-          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
-          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "show_cycle_dashboard": "Ajoute une page dédiée facultative « Tableau de bord du cycle » à la barre latérale de Home Assistant.",
+          "cycle_dashboard_default_page": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet.",
+          "dashboard_discreet_mode": "Utilise des libellés neutres et axés sur la confidentialité dans tout le tableau de bord.",
+          "dashboard_widget_quick_log": "Affiche le widget de saisie rapide.",
+          "dashboard_widget_today_status": "Affiche le statut du cycle et le numéro du jour actuel.",
+          "dashboard_widget_upcoming_window": "Affiche la prochaine fenêtre fertile ou la prévision des règles.",
+          "dashboard_widget_reminders": "Affiche les rappels quotidiens et les indications de vérification du nécessaire.",
+          "dashboard_widget_progress": "Affiche les badges de progression obtenus.",
+          "dashboard_enabled": "Ajoute une page dédiée facultative « Tableau de bord du cycle » à la barre latérale de Home Assistant.",
+          "dashboard_default_landing": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet."
         }
       }
     },
