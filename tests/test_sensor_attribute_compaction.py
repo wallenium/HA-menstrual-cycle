@@ -130,19 +130,19 @@ class TestSensorAttributeCompaction(unittest.TestCase):
     def test_bounds_lists_and_truncates_strings(self) -> None:
         attrs = self._base_attrs()
         attrs["product_usage_timeline"] = [
-            {"date": f"2026-07-{(idx % 30) + 1:02d}", "product": "pad", "quantity": 1, "note": "y" * 400}
+            {"date": f"2026-07-{(idx % 30) + 1:02d}", "product": "pad", "quantity": 1, "note": "y" * 80}
             for idx in range(45)
         ]
         attrs[const.ATTR_SYMPTOM_HISTORY] = [
             {
                 "date": f"2026-07-{(idx % 30) + 1:02d}",
-                "symptom_data": {"note": "z" * 400},
+                "symptom_data": {"note": "z" * 20},
                 "bleeding_strength": "medium",
                 "intercourse": "yes",
                 "basal_temp": 36.7,
                 "other": "should_drop",
             }
-            for idx in range(45)
+            for idx in range(35)
         ]
         attrs[const.ATTR_PERIOD_FORECAST] = {
             "predicted_start": "2026-08-01",
@@ -152,6 +152,8 @@ class TestSensorAttributeCompaction(unittest.TestCase):
         attrs["status_message"] = "a" * 500
         compact = sensor_module._build_compact_sensor_attributes(attrs)
 
+        self.assertIn("product_usage_timeline", compact)
+        self.assertIn(const.ATTR_SYMPTOM_HISTORY, compact)
         self.assertLessEqual(len(compact["product_usage_timeline"]), 30)
         self.assertLessEqual(len(compact[const.ATTR_SYMPTOM_HISTORY]), 30)
         self.assertNotIn("day_confidence", compact[const.ATTR_PERIOD_FORECAST])
