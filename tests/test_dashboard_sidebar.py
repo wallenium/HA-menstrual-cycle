@@ -147,6 +147,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: Any, frontend_component: Any
     if should_show and not is_registered:
         try:
             frontend_component.async_register_built_in_panel(
+                hass,
                 component_name="custom",
                 sidebar_title="Cycle Dashboard",
                 sidebar_icon="mdi:view-dashboard-outline",
@@ -246,6 +247,9 @@ class TestRegistrationLogic(unittest.TestCase):
         hass = _make_hass(_make_entry("e1", True), _make_entry("e2", False))
         _run(_async_sync_dashboard_sidebar_panel(hass, frontend))
         frontend.async_register_built_in_panel.assert_called_once()
+        args, kwargs = frontend.async_register_built_in_panel.call_args
+        self.assertEqual(args, (hass,))
+        self.assertEqual(kwargs["component_name"], "custom")
         self.assertTrue(hass.data.get(_DASHBOARD_PANEL_REGISTERED_KEY))
 
     def test_panel_registered_only_once_with_multiple_enabled(self) -> None:
