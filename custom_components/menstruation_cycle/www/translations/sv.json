@@ -518,5 +518,15 @@
   "progress_badge_consistent_logging_30d_desc": "Du loggade regelbundet de senaste 30 dagarna.",
   "progress_badge_pattern_emerging_title": "Mönster framträder",
   "progress_badge_pattern_emerging_desc": "Din cykeldata berättar en historia.",
-  "progress_in_progress": "pågår"
+  "progress_in_progress": "pågår",
+  "dashboard_saved": "Instrumentpanelslayout sparad.",
+  "dashboard_empty_state": "Alla widgets är dolda.",
+  "dashboard_empty_state_hint": "Öppna redigeringsläget för att visa widgets eller återställa standardinställningarna.",
+  "dashboard_widget_order_label": "Widgetordning och synlighet",
+  "dashboard_toggle_widget_aria": "Växla synlighet för widget {widget}",
+  "dashboard_move_up_aria": "Flytta widget {widget} uppåt",
+  "dashboard_move_down_aria": "Flytta widget {widget} nedåt",
+  "dashboard_save_aria": "Spara instrumentpanelslayout",
+  "dashboard_cancel_aria": "Avbryt instrumentpanelsredigering",
+  "dashboard_reset_aria": "Återställ instrumentpanel till lägesstandard"
 }

@@ -518,5 +518,15 @@
   "progress_badge_consistent_logging_30d_desc": "Tu as suivi régulièrement ces 30 derniers jours.",
   "progress_badge_pattern_emerging_title": "Tendances visibles",
   "progress_badge_pattern_emerging_desc": "Tes données de cycle racontent une histoire.",
-  "progress_in_progress": "en cours"
+  "progress_in_progress": "en cours",
+  "dashboard_saved": "Mise en page du tableau de bord enregistrée.",
+  "dashboard_empty_state": "Tous les widgets sont masqués.",
+  "dashboard_empty_state_hint": "Ouvrez le mode édition pour afficher les widgets ou réinitialiser aux valeurs par défaut.",
+  "dashboard_widget_order_label": "Ordre et visibilité des widgets",
+  "dashboard_toggle_widget_aria": "Basculer la visibilité du widget {widget}",
+  "dashboard_move_up_aria": "Déplacer le widget {widget} vers le haut",
+  "dashboard_move_down_aria": "Déplacer le widget {widget} vers le bas",
+  "dashboard_save_aria": "Enregistrer la mise en page du tableau de bord",
+  "dashboard_cancel_aria": "Annuler les modifications du tableau de bord",
+  "dashboard_reset_aria": "Réinitialiser le tableau de bord aux valeurs par défaut du mode"
 }
