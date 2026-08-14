@@ -2127,7 +2127,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
                 config={
                     "name": "menstruation-cycle-dashboard-panel",
                     "module_url": _build_card_resource_url("menstruation-cycle-dashboard-panel.js"),
-                    "trust_external_script": True,
+                    "trust_external_script": False,
                 },
                 require_admin=False,
             )
