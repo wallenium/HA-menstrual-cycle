@@ -2125,9 +2125,12 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
                 sidebar_icon=_DASHBOARD_PANEL_ICON,
                 frontend_url_path=_DASHBOARD_PANEL_URL_PATH,
                 config={
-                    "name": "menstruation-cycle-dashboard-panel",
-                    "module_url": _build_card_resource_url("menstruation-cycle-dashboard-panel.js"),
-                    "trust_external_script": False,
+                    "_panel_custom": {
+                        "name": "menstruation-cycle-dashboard-panel",
+                        "module_url": _build_card_resource_url("menstruation-cycle-dashboard-panel.js"),
+                        "trust_external_script": True,
+                        "embed_iframe": False,
+                    },
                 },
                 require_admin=False,
             )
