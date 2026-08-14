@@ -520,6 +520,7 @@
   "progress_badge_pattern_emerging_desc": "Deine Zyklus-Daten ergeben ein Bild.",
   "progress_in_progress": "im Gange",
   "dashboard_page_title": "Zyklus-Dashboard",
+  "dashboard_entity_picker_aria": "Profil auswählen",
   "dashboard_edit_mode": "Dashboard bearbeiten",
   "dashboard_done": "Fertig",
   "dashboard_discreet_mode": "Diskreter Modus",

@@ -520,6 +520,7 @@
   "progress_badge_pattern_emerging_desc": "Your cycle data is telling a story.",
   "progress_in_progress": "in progress",
   "dashboard_page_title": "Cycle Dashboard",
+  "dashboard_entity_picker_aria": "Select profile",
   "dashboard_edit_mode": "Edit dashboard",
   "dashboard_done": "Done",
   "dashboard_discreet_mode": "Discreet mode",
