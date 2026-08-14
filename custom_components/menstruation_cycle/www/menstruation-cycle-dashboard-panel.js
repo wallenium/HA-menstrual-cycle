@@ -467,7 +467,7 @@
 
     _renderProgressCard(stateObj) {
       const raw = Array.isArray(stateObj?.attributes?.progress_badges) ? stateObj.attributes.progress_badges : [];
-      const badges = raw.filter(Boolean).map(_normalizeItem);
+      const badges = raw.filter((item) => item && typeof item === 'object').map(_normalizeItem);
       if (!badges.length) return `<div class="helper">${this._t('progress_empty_state')}</div>`;
       const badgeRows = badges.slice(-4).reverse().map((item) => {
         const label = escapeHtml(item.title || this._t('progress_section_title'));
@@ -550,10 +550,17 @@
     }
 
     _renderEntityPicker(availableEntities) {
-      if (availableEntities.length <= 1) return '';
-      const options = availableEntities
+      const entities = Array.isArray(availableEntities) ? availableEntities.filter(Boolean) : [];
+      if (entities.length <= 1) return '';
+      const options = entities
+        .map((entity) => {
+          const entityId = String(entity?.entityId ?? '');
+          const name = String(entity?.name ?? entityId ?? 'Unknown');
+          if (!entityId) return '';
+          const selected = entityId === this._selectedEntityId ? 'selected' : '';
+          return `<option value="${escapeHtml(entityId)}" ${selected}>${escapeHtml(name)}</option>`;
+        })
         .filter(Boolean)
-        .map((e) => `<option value="${escapeHtml(e.entityId)}" ${e.entityId === this._selectedEntityId ? 'selected' : ''}>${escapeHtml(e.name)}</option>`)
         .join('');
       return `<select class="entity-picker" aria-label="${this._t('dashboard_entity_picker_aria')}">${options}</select>`;
     }
