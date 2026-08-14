@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from statistics import mean
+import json
+import logging
 import math
 import re
 from typing import Any
@@ -70,6 +72,8 @@ from .model import (
     predict_future_starts,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -96,6 +100,12 @@ BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "h
 CYCLE_STATS_MAX_CYCLES = 12
 CYCLE_RECENT_LIMIT = 12
 CYCLE_HISTORY_LIMIT_MONTHS = 18
+ATTR_MAX_STRING_LENGTH = 180
+ATTR_MAX_LIST_ITEMS = 30
+ATTR_MAX_DICT_ITEMS = 20
+ATTR_MAX_NESTING_DEPTH = 3
+ATTR_TARGET_SIZE_BYTES = 8 * 1024
+ATTR_HARD_LIMIT_BYTES = 15 * 1024
 PRODUCT_USAGE_PRODUCT_ALIASES = {
     "tampon": "tampon",
     "tampons": "tampon",
@@ -123,6 +133,251 @@ PRODUCT_USAGE_PRODUCT_ALIASES = {
     "periodenunterwaesche": "underwear",
     "periodenunterwäsche": "underwear",
 }
+
+_DROPPED_ATTRIBUTE_KEYS = {
+    ATTR_PREDICTION_DAY_CONFIDENCE,
+    "entry_id",
+    "friendly_name",
+    "menarche_data",
+    "noncycle_data",
+    "symptom_correlation_insights",
+    "symptom_correlation_insights_reason",
+}
+
+_SIZE_SHEDDING_ORDER = [
+    "product_usage_timeline",
+    ATTR_SYMPTOM_HISTORY,
+    "progress_badges",
+    "cycle_statistics",
+    ATTR_HISTORY,
+]
+
+
+def _debug_attr_drop(key: str, reason: str) -> None:
+    _LOGGER.debug("Dropping menstruation attribute '%s': %s", key, reason)
+
+
+def _debug_attr_trim(path: str, reason: str) -> None:
+    _LOGGER.debug("Compacting menstruation attribute '%s': %s", path, reason)
+
+
+def _trim_string(value: str, path: str) -> str:
+    if len(value) <= ATTR_MAX_STRING_LENGTH:
+        return value
+    _debug_attr_trim(path, f"truncated string from {len(value)} chars")
+    return f"{value[:ATTR_MAX_STRING_LENGTH]}…"
+
+
+def _sanitize_attr_value(value: Any, path: str, depth: int = 0) -> Any:
+    if value is None:
+        return None
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    if isinstance(value, str):
+        return _trim_string(value, path)
+
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+
+    if isinstance(value, date):
+        return value.isoformat()
+
+    if depth >= ATTR_MAX_NESTING_DEPTH:
+        _debug_attr_drop(path, "max nesting depth exceeded")
+        return None
+
+    if isinstance(value, (list, tuple)):
+        items = list(value)
+        if len(items) > ATTR_MAX_LIST_ITEMS:
+            _debug_attr_trim(path, f"capped list from {len(items)} to {ATTR_MAX_LIST_ITEMS} items")
+            items = items[-ATTR_MAX_LIST_ITEMS:]
+        return [
+            sanitized
+            for idx, item in enumerate(items)
+            if (sanitized := _sanitize_attr_value(item, f"{path}[{idx}]", depth + 1)) is not None
+        ]
+
+    if isinstance(value, dict):
+        keys = list(value.keys())
+        if len(keys) > ATTR_MAX_DICT_ITEMS:
+            _debug_attr_trim(path, f"capped dict keys from {len(keys)} to {ATTR_MAX_DICT_ITEMS}")
+            keys = keys[:ATTR_MAX_DICT_ITEMS]
+        compact: dict[str, Any] = {}
+        for key in keys:
+            sanitized = _sanitize_attr_value(value.get(key), f"{path}.{key}", depth + 1)
+            if sanitized is not None:
+                compact[str(key)] = sanitized
+        return compact
+
+    _debug_attr_drop(path, f"unsupported type {type(value).__name__}")
+    return None
+
+
+def _safe_attr_size(attrs: dict[str, Any]) -> int:
+    try:
+        return len(json.dumps(attrs, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    except (TypeError, ValueError):
+        return ATTR_HARD_LIMIT_BYTES + 1
+
+
+def _compact_forecast_payload(payload: Any) -> Any:
+    if not isinstance(payload, dict):
+        return payload
+    compact = dict(payload)
+    if "day_confidence" in compact:
+        _debug_attr_drop("forecast.day_confidence", "high-cardinality confidence map")
+        compact.pop("day_confidence", None)
+    return compact
+
+
+def _compact_bleeding_blocks(blocks: Any) -> Any:
+    if not isinstance(blocks, list):
+        return blocks
+    trimmed = blocks[-6:] if len(blocks) > 6 else blocks
+    if len(blocks) > 6:
+        _debug_attr_trim(ATTR_BLEEDING_BLOCKS, f"capped list from {len(blocks)} to {len(trimmed)}")
+    compact = []
+    for item in trimmed:
+        if not isinstance(item, dict):
+            continue
+        compact.append(
+            {
+                "start": item.get("start"),
+                "end": item.get("end"),
+                "length": item.get("length"),
+            }
+        )
+    return compact
+
+
+def _compact_cycle_statistics(stats: Any) -> Any:
+    if not isinstance(stats, dict):
+        return stats
+    compact = dict(stats)
+    recent = compact.get("recent_cycles")
+    if isinstance(recent, list) and len(recent) > 6:
+        compact["recent_cycles"] = recent[-6:]
+        _debug_attr_trim("cycle_statistics.recent_cycles", f"capped list from {len(recent)} to 6")
+    return compact
+
+
+def _compact_usage_timeline(timeline: Any) -> Any:
+    if not isinstance(timeline, list):
+        return timeline
+    trimmed = timeline[-ATTR_MAX_LIST_ITEMS:] if len(timeline) > ATTR_MAX_LIST_ITEMS else timeline
+    if len(timeline) > ATTR_MAX_LIST_ITEMS:
+        _debug_attr_trim("product_usage_timeline", f"capped list from {len(timeline)} to {ATTR_MAX_LIST_ITEMS}")
+    compact = []
+    for entry in trimmed:
+        if not isinstance(entry, dict):
+            continue
+        compact.append(
+            {
+                "date": entry.get("date"),
+                "product": entry.get("product"),
+                "quantity": entry.get("quantity"),
+            }
+        )
+    return compact
+
+
+def _compact_symptom_history_entries(entries: Any) -> Any:
+    if not isinstance(entries, list):
+        return entries
+    trimmed = entries[-ATTR_MAX_LIST_ITEMS:] if len(entries) > ATTR_MAX_LIST_ITEMS else entries
+    if len(entries) > ATTR_MAX_LIST_ITEMS:
+        _debug_attr_trim(ATTR_SYMPTOM_HISTORY, f"capped list from {len(entries)} to {ATTR_MAX_LIST_ITEMS}")
+    keep_keys = {
+        "date",
+        "symptom_data",
+        "bleeding_strength",
+        "intercourse",
+        "basal_temp",
+        "pain",
+        "cervical_mucus",
+        "discharge",
+        "mood",
+    }
+    compact = []
+    for entry in trimmed:
+        if not isinstance(entry, dict):
+            continue
+        compact.append({key: entry.get(key) for key in keep_keys if key in entry})
+    return compact
+
+
+def _build_compact_sensor_attributes(raw_attrs: dict[str, Any]) -> dict[str, StateType]:
+    attrs = dict(raw_attrs)
+    for key in _DROPPED_ATTRIBUTE_KEYS:
+        if key in attrs:
+            _debug_attr_drop(key, "optional verbose attribute")
+            attrs.pop(key, None)
+
+    attrs[ATTR_PERIOD_FORECAST] = _compact_forecast_payload(attrs.get(ATTR_PERIOD_FORECAST))
+    attrs[ATTR_FERTILITY_FORECAST] = _compact_forecast_payload(attrs.get(ATTR_FERTILITY_FORECAST))
+    attrs[ATTR_BLEEDING_BLOCKS] = _compact_bleeding_blocks(attrs.get(ATTR_BLEEDING_BLOCKS))
+    attrs["cycle_statistics"] = _compact_cycle_statistics(attrs.get("cycle_statistics"))
+    attrs["product_usage_timeline"] = _compact_usage_timeline(attrs.get("product_usage_timeline"))
+    attrs[ATTR_SYMPTOM_HISTORY] = _compact_symptom_history_entries(attrs.get(ATTR_SYMPTOM_HISTORY))
+
+    attrs["history_count"] = len(attrs.get(ATTR_HISTORY) or []) if isinstance(attrs.get(ATTR_HISTORY), list) else 0
+    attrs["last_cycle_start"] = (
+        attrs.get(ATTR_GROUPED_STARTS)[-1]
+        if isinstance(attrs.get(ATTR_GROUPED_STARTS), list) and attrs.get(ATTR_GROUPED_STARTS)
+        else None
+    )
+    attrs["predicted_starts_preview"] = (
+        attrs.get(ATTR_PREDICTED_CYCLE_STARTS)[:3]
+        if isinstance(attrs.get(ATTR_PREDICTED_CYCLE_STARTS), list)
+        else []
+    )
+
+    compact: dict[str, StateType] = {}
+    for key, value in attrs.items():
+        sanitized = _sanitize_attr_value(value, key)
+        if sanitized is not None:
+            compact[key] = sanitized
+
+    serialized_size = _safe_attr_size(compact)
+    if serialized_size > ATTR_TARGET_SIZE_BYTES:
+        for key in _SIZE_SHEDDING_ORDER:
+            if serialized_size <= ATTR_TARGET_SIZE_BYTES:
+                break
+            if key not in compact:
+                continue
+            _debug_attr_drop(key, f"serialized payload too large ({serialized_size} bytes)")
+            compact.pop(key, None)
+            serialized_size = _safe_attr_size(compact)
+
+    if serialized_size > ATTR_HARD_LIMIT_BYTES:
+        _debug_attr_trim("attributes", f"payload still large ({serialized_size} bytes), forcing hard-size summary")
+        compact = {
+            "profile": compact.get("profile"),
+            "cycle_day": compact.get("cycle_day"),
+            "cycle_start_date": compact.get("cycle_start_date"),
+            ATTR_NEXT_PREDICTED_START: compact.get(ATTR_NEXT_PREDICTED_START),
+            ATTR_DAYS_UNTIL_NEXT_START: compact.get(ATTR_DAYS_UNTIL_NEXT_START),
+            ATTR_FERTILE_WINDOW_START: compact.get(ATTR_FERTILE_WINDOW_START),
+            ATTR_FERTILE_WINDOW_END: compact.get(ATTR_FERTILE_WINDOW_END),
+            ATTR_OVULATION_DAY: compact.get(ATTR_OVULATION_DAY),
+            ATTR_PERIOD_FORECAST: compact.get(ATTR_PERIOD_FORECAST),
+            ATTR_FERTILITY_FORECAST: compact.get(ATTR_FERTILITY_FORECAST),
+            ATTR_PREGNANCY_DATA: compact.get(ATTR_PREGNANCY_DATA),
+            ATTR_ONBOARDING_STAGE: compact.get(ATTR_ONBOARDING_STAGE),
+            ATTR_ONBOARDING_STAGE_EFFECTIVE: compact.get(ATTR_ONBOARDING_STAGE_EFFECTIVE),
+            "history_count": compact.get("history_count"),
+            "last_cycle_start": compact.get("last_cycle_start"),
+            "predicted_starts_preview": compact.get("predicted_starts_preview"),
+        }
+    return compact
 
 
 def _group_product_usage_by_date(product_usage: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -852,7 +1107,7 @@ class MenstruationGaugeSensor(SensorEntity):
         self._state = model.state
         has_history = bool(model.history)
 
-        self._attrs = {
+        raw_attrs = {
             ATTR_HISTORY: sensor_history,
             ATTR_SYMPTOM_HISTORY: compact_symptom_history,
             ATTR_GROUPED_STARTS: sensor_grouped_starts,
@@ -914,6 +1169,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "progress_badges": progress_badges,
             "progress_badges_new_this_week": progress_badges_new_this_week,
         }
+        self._attrs = _build_compact_sensor_attributes(raw_attrs)
 
     def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:
         """Calculate days until estimated menarche."""
