@@ -25,6 +25,8 @@ CONF_CYCLE_LENGTH_OVERRIDE = "cycle_length_override"
 CONF_NUM_PREDICTIONS = "num_predictions"
 CONF_NFP_ANALYSIS_MODE = "nfp_analysis_mode"
 CONF_ONBOARDING_STAGE = "onboarding_stage"
+CONF_SHOW_CYCLE_DASHBOARD = "show_cycle_dashboard"
+CONF_CYCLE_DASHBOARD_DEFAULT_PAGE = "cycle_dashboard_default_page"
 
 ONBOARDING_STAGE_PRE_MENARCHE = "pre_menarche"
 ONBOARDING_STAGE_EARLY_MENARCHE = "early_menarche"

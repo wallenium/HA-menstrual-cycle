@@ -27,6 +27,8 @@ from .const import (
     CONF_PREGNANCY_START_DATE,
     CONF_PROFILE,
     CONF_CYCLE_LENGTH_OVERRIDE,
+    CONF_SHOW_CYCLE_DASHBOARD,
+    CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_NFP_ANALYSIS_MODE,
@@ -198,6 +200,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
         current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
         current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
+        current_show_dashboard = bool(self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, False))
+        current_dashboard_default_page = bool(self._entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False))
 
         if user_input is not None:
             # Validate optional date fields
@@ -344,6 +348,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         CONF_NUM_PREDICTIONS: new_num_predictions,
                         CONF_NFP_ANALYSIS_MODE: user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
                         CONF_ONBOARDING_STAGE: new_onboarding_stage,
+                        CONF_SHOW_CYCLE_DASHBOARD: bool(user_input.get(CONF_SHOW_CYCLE_DASHBOARD, False)),
+                        CONF_CYCLE_DASHBOARD_DEFAULT_PAGE: bool(user_input.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False)),
                     },
                 )
 
@@ -400,6 +406,14 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_ONBOARDING_STAGE,
                     default=current_onboarding_stage,
                 ): vol.In(ONBOARDING_STAGES),
+                vol.Optional(
+                    CONF_SHOW_CYCLE_DASHBOARD,
+                    default=current_show_dashboard,
+                ): bool,
+                vol.Optional(
+                    CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
+                    default=current_dashboard_default_page,
+                ): bool,
             }
         )
 

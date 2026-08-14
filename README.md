@@ -125,6 +125,39 @@ All user-facing strings in the Young Girls Support card use i18n keys (`ygs_*`).
 - Toggle controls use visible focus styles.
 - Reduced-motion: any future animations must respect `prefers-reduced-motion`; the current SVG graphic is static.
 
+## Cycle Dashboard (optional sidebar page)
+
+The integration now includes an optional **Cycle Dashboard** sidebar page for a fast daily workflow.
+
+### Enable / disable
+
+1. Open **Settings → Devices & Services → Menstruation Cycle → Configure**.
+2. Enable **Show Cycle Dashboard in sidebar**.
+3. (Optional) Set **Prefer Cycle Dashboard as start page** as a preference flag for setups that support default-page behavior.
+
+If the sidebar toggle is disabled, existing cards and views continue to work unchanged.
+
+### Dashboard customization
+
+- Use **Edit dashboard** to:
+  - show/hide cards
+  - reorder cards (up/down)
+  - toggle discreet mode
+  - optionally set display name/pronouns for the My Info mini-card
+- Preferences are stored per user and profile.
+
+### Mode presets
+
+- **Young mode** (`pre_menarche` / `early_menarche`): simpler default layout with discreet mode enabled.
+- **General mode** (`established_cycle`): richer default layout with more insight cards.
+- Users can reset back to mode defaults at any time from Edit mode.
+
+### Privacy / discreet behavior
+
+- Discreet mode uses more neutral wording in overview content.
+- Sensitive cards can be hidden individually.
+- My Info card is optional and can stay hidden.
+
 ## Translations
 
 | Language | Status |
