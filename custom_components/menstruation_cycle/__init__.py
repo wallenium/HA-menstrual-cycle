@@ -43,11 +43,15 @@ from .const import (
     CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
     CONF_DASHBOARD_DISCREET_MODE,
     CONF_DASHBOARD_WIDGETS,
+    CONF_DASHBOARD_ENABLED,
+    CONF_DASHBOARD_DEFAULT_LANDING,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_NAME,
     CONF_PROFILE,
     DASHBOARD_WIDGET_KEYS,
+    DEFAULT_DASHBOARD_ENABLED,
+    DEFAULT_DASHBOARD_DEFAULT_LANDING,
     DEFAULT_DASHBOARD_DISCREET_MODE,
     DEFAULT_DASHBOARD_WIDGETS,
     DEFAULT_NAME,
@@ -245,6 +249,7 @@ class MenstruationRuntime:
     noncycle_data: dict[str, Any] = field(default_factory=lambda: {"has_noncycle": False})
     onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
     unregister_midnight_listener: Callable[[], None] | None = None
+    options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
 
 
@@ -1178,7 +1183,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up menstruation gauge profile from config entry."""
     hass.data.setdefault(DOMAIN, {})
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     await _async_ensure_household_inventory_loaded(hass)
 
     profile = _profile_from_entry(entry)
@@ -1234,6 +1238,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     hass.data[DOMAIN][entry.entry_id] = runtime
+
+    # Register a lightweight options update listener that re-syncs the dashboard
+    # panel without a full reload. Stored on the runtime so it can be cleanly
+    # unsubscribed in async_unload_entry.
+    runtime.options_update_unsub = entry.add_update_listener(_async_options_update_listener)
+
     await _async_update_household_inventory_state(hass)
     await _async_load_timer_state(hass, profile)
 
@@ -1259,8 +1269,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     runtime: MenstruationRuntime | None = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    if runtime and runtime.unregister_midnight_listener:
-        runtime.unregister_midnight_listener()
+    if runtime:
+        if runtime.unregister_midnight_listener:
+            runtime.unregister_midnight_listener()
+        if runtime.options_update_unsub:
+            runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
 
     if not hass.data.get(DOMAIN):
@@ -1300,6 +1313,14 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
+
+
+async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options updates: sync dashboard panel non-fatally without a full reload."""
+    try:
+        await _async_sync_dashboard_sidebar_panel(hass)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Options update: dashboard sync failed (non-fatal): %s", err)
 
 
 async def _async_load_timer_state(hass: HomeAssistant, profile: str) -> None:
@@ -2026,8 +2047,14 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
 
 
 def _is_dashboard_enabled_for_entry(entry: ConfigEntry) -> bool:
-    """Return whether sidebar dashboard should be shown for this entry."""
-    return bool(entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, False))
+    """Return whether sidebar dashboard should be shown for this entry.
+
+    Checks the new ``dashboard_enabled`` key first, then falls back to the
+    legacy ``show_cycle_dashboard`` key for backward compatibility.
+    """
+    if CONF_DASHBOARD_ENABLED in entry.options:
+        return bool(entry.options[CONF_DASHBOARD_ENABLED])
+    return bool(entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED))
 
 
 def _get_effective_dashboard_config(hass: HomeAssistant) -> dict[str, Any]:
@@ -2050,14 +2077,21 @@ def _get_effective_dashboard_config(hass: HomeAssistant) -> dict[str, Any]:
             key: bool(raw_widgets.get(key, DEFAULT_DASHBOARD_WIDGETS[key]))
             for key in DASHBOARD_WIDGET_KEYS
         }
+        # Check new key first, fall back to legacy key for backward compat
+        if CONF_DASHBOARD_DEFAULT_LANDING in entry.options:
+            default_landing = bool(entry.options[CONF_DASHBOARD_DEFAULT_LANDING])
+        else:
+            default_landing = bool(entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, DEFAULT_DASHBOARD_DEFAULT_LANDING))
         return {
             "enabled": True,
             "discreet_mode": bool(entry.options.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)),
+            "default_landing": default_landing,
             "widgets": widgets,
         }
     return {
         "enabled": False,
         "discreet_mode": DEFAULT_DASHBOARD_DISCREET_MODE,
+        "default_landing": DEFAULT_DASHBOARD_DEFAULT_LANDING,
         "widgets": dict(DEFAULT_DASHBOARD_WIDGETS),
     }
 

@@ -40,7 +40,9 @@
           "dashboard_widget_today_status": "Widget: Today Status",
           "dashboard_widget_upcoming_window": "Widget: Upcoming Window",
           "dashboard_widget_reminders": "Widget: Reminders",
-          "dashboard_widget_progress": "Widget: Progress & Badges"
+          "dashboard_widget_progress": "Widget: Progress & Badges",
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -60,7 +62,9 @@
           "dashboard_widget_today_status": "Show today's cycle status and day number.",
           "dashboard_widget_upcoming_window": "Show the upcoming fertile window or period forecast.",
           "dashboard_widget_reminders": "Show daily reminders and kit-check cues.",
-          "dashboard_widget_progress": "Show earned progress badges."
+          "dashboard_widget_progress": "Show earned progress badges.",
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },

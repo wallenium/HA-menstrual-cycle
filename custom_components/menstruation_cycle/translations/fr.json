@@ -34,7 +34,9 @@
           "cycle_length_override": "Forcer la durée du cycle (jours, 0 = automatique)",
           "nfp_analysis_mode": "Mode d'analyse PFN",
           "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours que durent habituellement les règles (1–14).",
@@ -48,7 +50,9 @@
           "cycle_length_override": "Remplace la durée moyenne du cycle calculée automatiquement. Mettez 0 pour utiliser la valeur calculée automatiquement à partir de votre historique (recommandé). Mettez une valeur entre 20 et 38 pour fixer manuellement la durée du cycle utilisée pour le calcul de la fenêtre fertile et de l'ovulation.",
           "nfp_analysis_mode": "Détermine la façon dont l'ovulation et la fenêtre fertile sont calculées. Le mode « hybride » (par défaut) apprend à partir des données de température observées et se rabat sur la formule statistique si besoin. Le mode « strict » n'affiche l'ovulation et la fenêtre fertile que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },

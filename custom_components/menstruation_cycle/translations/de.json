@@ -34,7 +34,9 @@
           "cycle_length_override": "Zyklus-Länge überschreiben (Tage, 0 = automatisch)",
           "nfp_analysis_mode": "NFP-Analysemodus",
           "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Typische Anzahl der Periodentage (1–14).",
@@ -48,7 +50,9 @@
           "cycle_length_override": "Überschreibt die automatisch berechnete durchschnittliche Zykluslänge. 0 = automatisch aus dem Verlauf berechnen (empfohlen). 20–38 = feste Zykluslänge für Fruchtbarkeitsfenster und Eisprung-Berechnungen.",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },

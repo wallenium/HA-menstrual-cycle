@@ -30,6 +30,10 @@ CONF_CYCLE_DASHBOARD_DEFAULT_PAGE = "cycle_dashboard_default_page"
 CONF_DASHBOARD_DISCREET_MODE = "dashboard_discreet_mode"
 CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
 
+# New canonical dashboard option keys (preferred; old keys kept for backward compat)
+CONF_DASHBOARD_ENABLED = "dashboard_enabled"
+CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
+
 # Default widget visibility keys and their defaults (all enabled by default)
 DASHBOARD_WIDGET_KEYS: list[str] = [
     "quick_log",
@@ -39,7 +43,9 @@ DASHBOARD_WIDGET_KEYS: list[str] = [
     "progress",
 ]
 
+DEFAULT_DASHBOARD_ENABLED: bool = False
 DEFAULT_DASHBOARD_DISCREET_MODE: bool = True
+DEFAULT_DASHBOARD_DEFAULT_LANDING: bool = False
 DEFAULT_DASHBOARD_WIDGETS: dict[str, bool] = {key: True for key in DASHBOARD_WIDGET_KEYS}
 
 ONBOARDING_STAGE_PRE_MENARCHE = "pre_menarche"
