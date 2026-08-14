@@ -37,6 +37,8 @@ from .const import (
     CYCLE_LENGTH_OVERRIDE_MIN,
     DASHBOARD_WIDGET_KEYS,
     DEFAULT_DASHBOARD_DISCREET_MODE,
+    DEFAULT_DASHBOARD_ENABLED,
+    DEFAULT_DASHBOARD_DEFAULT_LANDING,
     DEFAULT_DASHBOARD_WIDGETS,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
@@ -207,8 +209,18 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
         current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
         current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
-        current_show_dashboard = bool(self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, False))
-        current_dashboard_default_page = bool(self._entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False))
+        current_show_dashboard = bool(
+            self._entry.options.get(
+                CONF_DASHBOARD_ENABLED,
+                self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED),
+            )
+        )
+        current_dashboard_default_page = bool(
+            self._entry.options.get(
+                CONF_DASHBOARD_DEFAULT_LANDING,
+                self._entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, DEFAULT_DASHBOARD_DEFAULT_LANDING),
+            )
+        )
         current_dashboard_discreet_mode = bool(
             self._entry.options.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)
         )
@@ -365,8 +377,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         CONF_NUM_PREDICTIONS: new_num_predictions,
                         CONF_NFP_ANALYSIS_MODE: user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
                         CONF_ONBOARDING_STAGE: new_onboarding_stage,
-                        CONF_SHOW_CYCLE_DASHBOARD: bool(user_input.get(CONF_SHOW_CYCLE_DASHBOARD, False)),
-                        CONF_CYCLE_DASHBOARD_DEFAULT_PAGE: bool(user_input.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False)),
+                        CONF_DASHBOARD_ENABLED: bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED)),
+                        CONF_DASHBOARD_DEFAULT_LANDING: bool(user_input.get(CONF_DASHBOARD_DEFAULT_LANDING, DEFAULT_DASHBOARD_DEFAULT_LANDING)),
                         CONF_DASHBOARD_DISCREET_MODE: bool(
                             user_input.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)
                         ),
@@ -431,11 +443,11 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     default=current_onboarding_stage,
                 ): vol.In(ONBOARDING_STAGES),
                 vol.Optional(
-                    CONF_SHOW_CYCLE_DASHBOARD,
+                    CONF_DASHBOARD_ENABLED,
                     default=current_show_dashboard,
                 ): bool,
                 vol.Optional(
-                    CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
+                    CONF_DASHBOARD_DEFAULT_LANDING,
                     default=current_dashboard_default_page,
                 ): bool,
                 vol.Optional(

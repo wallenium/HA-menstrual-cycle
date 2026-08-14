@@ -14,11 +14,15 @@ const initPy = fs.readFileSync(initPath, 'utf8');
 
 assert.ok(configFlow.includes('CONF_SHOW_CYCLE_DASHBOARD'));
 assert.ok(configFlow.includes('CONF_CYCLE_DASHBOARD_DEFAULT_PAGE'));
+assert.ok(configFlow.includes('CONF_DASHBOARD_ENABLED'));
+assert.ok(configFlow.includes('CONF_DASHBOARD_DEFAULT_LANDING'));
 assert.ok(initPy.includes('_async_sync_dashboard_sidebar_panel'));
 assert.ok(initPy.includes('menstruation-cycle-dashboard-panel.js'));
 
 const optionData = strings.options.step.init.data;
 assert.ok(optionData.show_cycle_dashboard);
 assert.ok(optionData.cycle_dashboard_default_page);
+assert.ok(optionData.dashboard_enabled);
+assert.ok(optionData.dashboard_default_landing);
 
 console.log('Dashboard config option tests passed.');

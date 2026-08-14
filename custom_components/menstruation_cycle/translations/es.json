@@ -34,7 +34,9 @@
           "cycle_length_override": "Anular duración del ciclo (días, 0 = automático)",
           "nfp_analysis_mode": "Modo de análisis PFN",
           "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar el período (1–14).",
@@ -48,7 +50,9 @@
           "cycle_length_override": "Anula la duración media del ciclo calculada automáticamente. Ponlo en 0 para usar el valor calculado automáticamente a partir de tu historial (recomendado). Ponlo entre 20 y 38 para fijar manualmente la duración del ciclo utilizada en el cálculo de la ventana fértil y la ovulación.",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. El modo 'híbrido' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística cuando es necesario. El modo 'estricto' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },
