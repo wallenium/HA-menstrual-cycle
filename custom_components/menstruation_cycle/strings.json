@@ -36,7 +36,13 @@
           "num_predictions": "Number of future cycle predictions",
           "onboarding_stage": "Onboarding stage",
           "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
+          "dashboard_discreet_mode": "Discreet mode (privacy-first labels)",
+          "dashboard_widget_quick_log": "Widget: Quick Log",
+          "dashboard_widget_today_status": "Widget: Today Status",
+          "dashboard_widget_upcoming_window": "Widget: Upcoming Window",
+          "dashboard_widget_reminders": "Widget: Reminders",
+          "dashboard_widget_progress": "Widget: Progress & Badges"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -51,7 +57,13 @@
           "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
           "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
           "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
+          "dashboard_discreet_mode": "Use neutral, privacy-first labels throughout the dashboard. Hides explicit cycle state names and sensitive widget content by default.",
+          "dashboard_widget_quick_log": "Show the Quick Log widget for rapid symptom and bleeding entry.",
+          "dashboard_widget_today_status": "Show today's cycle status and day number.",
+          "dashboard_widget_upcoming_window": "Show the upcoming fertile window or period forecast.",
+          "dashboard_widget_reminders": "Show daily reminders and kit-check cues.",
+          "dashboard_widget_progress": "Show earned progress badges and tracking milestones."
         }
       }
     },

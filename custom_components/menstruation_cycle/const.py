@@ -27,6 +27,20 @@ CONF_NFP_ANALYSIS_MODE = "nfp_analysis_mode"
 CONF_ONBOARDING_STAGE = "onboarding_stage"
 CONF_SHOW_CYCLE_DASHBOARD = "show_cycle_dashboard"
 CONF_CYCLE_DASHBOARD_DEFAULT_PAGE = "cycle_dashboard_default_page"
+CONF_DASHBOARD_DISCREET_MODE = "dashboard_discreet_mode"
+CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
+
+# Default widget visibility keys and their defaults (all enabled by default)
+DASHBOARD_WIDGET_KEYS: list[str] = [
+    "quick_log",
+    "today_status",
+    "upcoming_window",
+    "reminders",
+    "progress",
+]
+
+DEFAULT_DASHBOARD_DISCREET_MODE: bool = True
+DEFAULT_DASHBOARD_WIDGETS: dict[str, bool] = {key: True for key in DASHBOARD_WIDGET_KEYS}
 
 ONBOARDING_STAGE_PRE_MENARCHE = "pre_menarche"
 ONBOARDING_STAGE_EARLY_MENARCHE = "early_menarche"

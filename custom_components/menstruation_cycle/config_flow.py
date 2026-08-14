@@ -29,8 +29,13 @@ from .const import (
     CONF_CYCLE_LENGTH_OVERRIDE,
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
+    CONF_DASHBOARD_DISCREET_MODE,
+    CONF_DASHBOARD_WIDGETS,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
+    DASHBOARD_WIDGET_KEYS,
+    DEFAULT_DASHBOARD_DISCREET_MODE,
+    DEFAULT_DASHBOARD_WIDGETS,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
     DEFAULT_MENARCHE_AGE_MAX,
@@ -202,6 +207,16 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
         current_show_dashboard = bool(self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, False))
         current_dashboard_default_page = bool(self._entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False))
+        current_dashboard_discreet_mode = bool(
+            self._entry.options.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)
+        )
+        raw_dashboard_widgets = self._entry.options.get(CONF_DASHBOARD_WIDGETS)
+        if not isinstance(raw_dashboard_widgets, dict):
+            raw_dashboard_widgets = {}
+        current_dashboard_widgets: dict[str, bool] = {
+            key: bool(raw_dashboard_widgets.get(key, DEFAULT_DASHBOARD_WIDGETS[key]))
+            for key in DASHBOARD_WIDGET_KEYS
+        }
 
         if user_input is not None:
             # Validate optional date fields
@@ -350,6 +365,13 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         CONF_ONBOARDING_STAGE: new_onboarding_stage,
                         CONF_SHOW_CYCLE_DASHBOARD: bool(user_input.get(CONF_SHOW_CYCLE_DASHBOARD, False)),
                         CONF_CYCLE_DASHBOARD_DEFAULT_PAGE: bool(user_input.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, False)),
+                        CONF_DASHBOARD_DISCREET_MODE: bool(
+                            user_input.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)
+                        ),
+                        CONF_DASHBOARD_WIDGETS: {
+                            key: bool(user_input.get(f"dashboard_widget_{key}", current_dashboard_widgets[key]))
+                            for key in DASHBOARD_WIDGET_KEYS
+                        },
                     },
                 )
 
@@ -414,6 +436,17 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
                     default=current_dashboard_default_page,
                 ): bool,
+                vol.Optional(
+                    CONF_DASHBOARD_DISCREET_MODE,
+                    default=current_dashboard_discreet_mode,
+                ): bool,
+                **{
+                    vol.Optional(
+                        f"dashboard_widget_{key}",
+                        default=current_dashboard_widgets[key],
+                    ): bool
+                    for key in DASHBOARD_WIDGET_KEYS
+                },
             }
         )
 
