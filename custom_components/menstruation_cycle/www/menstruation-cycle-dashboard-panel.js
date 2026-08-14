@@ -52,6 +52,28 @@
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
+  /**
+   * Safe JSON.parse wrapper that never throws to the UI runtime.
+   * - Returns `fallback` for null, undefined, or non-string inputs that are not plain objects/arrays.
+   * - Returns the input unchanged when it is already an object or array.
+   * - Catches parse errors, logs a warning, and returns `fallback`.
+   * @param {*} value - The value to parse.
+   * @param {*} [fallback=null] - Value returned on failure.
+   * @returns {*} Parsed value or fallback.
+   */
+  const safeJsonParse = (value, fallback = null) => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'object') return value;
+    if (typeof value !== 'string') return fallback;
+    try {
+      return JSON.parse(value);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[menstruation-cycle] safeJsonParse failed:', err.message);
+      return fallback;
+    }
+  };
+
   class MenstruationCycleDashboardPanel extends HTMLElement {
     constructor() {
       super();
@@ -133,12 +155,8 @@
 
     _loadPrefs(profile, mode) {
       const preset = this._preset(mode);
-      try {
-        const raw = JSON.parse(localStorage.getItem(this._storageKey(profile)) || 'null');
-        return this._normalizePrefs(raw, profile, mode);
-      } catch (_error) {
-        return this._normalizePrefs(preset, profile, mode);
-      }
+      const raw = safeJsonParse(localStorage.getItem(this._storageKey(profile)));
+      return this._normalizePrefs(raw, profile, mode);
     }
 
     _savePrefs() {

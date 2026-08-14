@@ -8,6 +8,28 @@ if (typeof _mcHeatmapCardI18n.normalizeLang !== 'function') {
   _mcHeatmapCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
+/**
+ * Safe JSON.parse wrapper that never throws to the UI runtime.
+ * - Returns `fallback` for null, undefined, or non-string inputs that are not plain objects/arrays.
+ * - Returns the input unchanged when it is already an object or array.
+ * - Catches parse errors, logs a warning, and returns `fallback`.
+ * @param {*} value - The value to parse.
+ * @param {*} [fallback=null] - Value returned on failure.
+ * @returns {*} Parsed value or fallback.
+ */
+const _mcHeatmapSafeJsonParse = (value, fallback = null) => {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return fallback;
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[menstruation-cycle] safeJsonParse failed:', err.message);
+    return fallback;
+  }
+};
+
 
 
 
@@ -496,8 +518,8 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     const show = (cell) => {
       const tipJson = cell.getAttribute('data-tip');
       if (!tipJson) return;
-      let data;
-      try { data = JSON.parse(tipJson); } catch { return; }
+      const data = _mcHeatmapSafeJsonParse(tipJson);
+      if (!data) return;
       tooltip.innerHTML = '';
       this._buildTooltipHTML(tooltip, data);
       tooltip.style.display = 'block';
