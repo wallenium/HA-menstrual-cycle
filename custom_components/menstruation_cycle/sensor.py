@@ -987,11 +987,22 @@ class MenstruationGaugeSensor(SensorEntity):
         """Enable by default."""
         return True
 
+    def _safe_schedule_update(self) -> None:
+        """Schedule a state refresh on the HA event loop (thread-safe)."""
+        if not self.hass:
+            return
+
+        def _do_update() -> None:
+            if self.hass and self.hass.is_running:
+                self.async_schedule_update_ha_state(True)
+
+        self.hass.loop.call_soon_threadsafe(_do_update)
+
     def _handle_runtime_update(self) -> None:
-        self.async_schedule_update_ha_state(True)
+        self._safe_schedule_update()
 
     def _handle_daily_refresh(self, _now: datetime) -> None:
-        self.async_schedule_update_ha_state(True)
+        self._safe_schedule_update()
 
 
 class ProductUsageStatsConsolidatedSensor(SensorEntity):
@@ -1070,8 +1081,19 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
     def available(self) -> bool:
         return self._entry.entry_id in self.hass.data.get(DOMAIN, {})
 
+    def _safe_schedule_update(self) -> None:
+        """Schedule a state refresh on the HA event loop (thread-safe)."""
+        if not self.hass:
+            return
+
+        def _do_update() -> None:
+            if self.hass and self.hass.is_running:
+                self.async_schedule_update_ha_state(True)
+
+        self.hass.loop.call_soon_threadsafe(_do_update)
+
     def _handle_runtime_update(self) -> None:
-        self.async_schedule_update_ha_state(True)
+        self._safe_schedule_update()
 
     def _handle_daily_refresh(self, _now: datetime) -> None:
-        self.async_schedule_update_ha_state(True)
+        self._safe_schedule_update()
