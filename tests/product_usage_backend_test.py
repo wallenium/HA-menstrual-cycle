@@ -1350,5 +1350,150 @@ class HttpRouteHandlerTests(unittest.TestCase):
             asyncio.run(handler(_FakeRequest()))
 
 
+class DashboardSidebarPanelTests(unittest.TestCase):
+    """Tests for _async_sync_dashboard_sidebar_panel."""
+
+    def _make_entry(self, entry_id: str, show_dashboard: bool) -> object:
+        entry = types.SimpleNamespace(
+            entry_id=entry_id,
+            options={integration.const.CONF_SHOW_CYCLE_DASHBOARD: show_dashboard},
+        )
+        return entry
+
+    def _make_hass(self, entries, registered: bool = False) -> object:
+        hass = types.SimpleNamespace(
+            data={integration.DOMAIN: {e.entry_id: object() for e in entries}},
+            config_entries=types.SimpleNamespace(
+                async_entries=lambda domain: entries
+            ),
+        )
+        if registered:
+            hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY] = True
+        else:
+            hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY] = False
+        return hass
+
+    def test_no_hass_components_reference(self) -> None:
+        """_async_sync_dashboard_sidebar_panel must not reference hass.components."""
+        import ast
+        import inspect
+
+        source = inspect.getsource(integration._async_sync_dashboard_sidebar_panel)
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute):
+                # Detect hass.components access
+                if (
+                    isinstance(node.value, ast.Name)
+                    and node.value.id == "hass"
+                    and node.attr == "components"
+                ):
+                    self.fail("_async_sync_dashboard_sidebar_panel uses hass.components")
+
+    def test_registers_panel_when_enabled_and_not_yet_registered(self) -> None:
+        registered_calls: list = []
+
+        frontend_mod = types.ModuleType("homeassistant.components.frontend")
+        frontend_mod.async_register_built_in_panel = lambda **kwargs: registered_calls.append(kwargs)
+        frontend_mod.async_remove_panel = lambda path: None
+        sys.modules["homeassistant.components.frontend"] = frontend_mod
+
+        entry = self._make_entry("e1", show_dashboard=True)
+        hass = self._make_hass([entry], registered=False)
+
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+
+        self.assertEqual(len(registered_calls), 1)
+        self.assertTrue(hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY])
+
+    def test_registers_panel_only_once_for_multiple_entries(self) -> None:
+        registered_calls: list = []
+
+        frontend_mod = types.ModuleType("homeassistant.components.frontend")
+        frontend_mod.async_register_built_in_panel = lambda **kwargs: registered_calls.append(kwargs)
+        frontend_mod.async_remove_panel = lambda path: None
+        sys.modules["homeassistant.components.frontend"] = frontend_mod
+
+        entry1 = self._make_entry("e1", show_dashboard=True)
+        entry2 = self._make_entry("e2", show_dashboard=True)
+        hass = self._make_hass([entry1, entry2], registered=False)
+
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+        # Simulate second entry setup call when already registered
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+
+        # Should only register once
+        self.assertEqual(len(registered_calls), 1)
+
+    def test_skips_gracefully_when_frontend_unavailable(self) -> None:
+        saved = sys.modules.pop("homeassistant.components.frontend", None)
+        # Also remove from homeassistant.components namespace if present
+        components_mod = sys.modules.get("homeassistant.components")
+        if components_mod and hasattr(components_mod, "frontend"):
+            del components_mod.frontend
+
+        entry = self._make_entry("e1", show_dashboard=True)
+        hass = self._make_hass([entry], registered=False)
+
+        # Must not raise
+        try:
+            asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+        finally:
+            if saved is not None:
+                sys.modules["homeassistant.components.frontend"] = saved
+
+    def test_registration_exception_does_not_propagate(self) -> None:
+        frontend_mod = types.ModuleType("homeassistant.components.frontend")
+
+        def _raise(**kwargs):
+            raise RuntimeError("panel already registered")
+
+        frontend_mod.async_register_built_in_panel = _raise
+        frontend_mod.async_remove_panel = lambda path: None
+        sys.modules["homeassistant.components.frontend"] = frontend_mod
+
+        entry = self._make_entry("e1", show_dashboard=True)
+        hass = self._make_hass([entry], registered=False)
+
+        # Must not raise; warning is logged internally
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+        # Guard flag must remain False since registration failed
+        self.assertFalse(hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY])
+
+    def test_removes_panel_when_no_entry_wants_it(self) -> None:
+        removed: list = []
+
+        frontend_mod = types.ModuleType("homeassistant.components.frontend")
+        frontend_mod.async_register_built_in_panel = lambda **kwargs: None
+        frontend_mod.async_remove_panel = lambda path: removed.append(path)
+        sys.modules["homeassistant.components.frontend"] = frontend_mod
+
+        entry = self._make_entry("e1", show_dashboard=False)
+        hass = self._make_hass([entry], registered=True)
+
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+
+        self.assertEqual(removed, [integration._DASHBOARD_PANEL_URL_PATH])
+        self.assertFalse(hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY])
+
+    def test_unload_panel_removal_exception_does_not_propagate(self) -> None:
+        frontend_mod = types.ModuleType("homeassistant.components.frontend")
+        frontend_mod.async_register_built_in_panel = lambda **kwargs: None
+
+        def _raise(path):
+            raise RuntimeError("already gone")
+
+        frontend_mod.async_remove_panel = _raise
+        sys.modules["homeassistant.components.frontend"] = frontend_mod
+
+        entry = self._make_entry("e1", show_dashboard=False)
+        hass = self._make_hass([entry], registered=True)
+
+        # Must not raise
+        asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
+        # Guard flag cleared regardless
+        self.assertFalse(hass.data[integration._DASHBOARD_PANEL_REGISTERED_KEY])
+
+
 if __name__ == "__main__":
     unittest.main()

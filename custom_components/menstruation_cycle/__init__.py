@@ -1240,7 +1240,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_register_http_handlers(hass)
     _async_schedule_lovelace_resource_registration(hass)
-    await _async_sync_dashboard_sidebar_panel(hass)
+    try:
+        await _async_sync_dashboard_sidebar_panel(hass)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Dashboard sidebar panel sync failed (non-fatal): %s", err)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -2032,8 +2035,10 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
     should_show_panel = any(_is_dashboard_enabled_for_entry(entry) for entry in loaded_entries)
     is_registered = bool(hass.data.get(_DASHBOARD_PANEL_REGISTERED_KEY))
 
-    frontend_component = getattr(hass.components, "frontend", None)
-    if frontend_component is None:
+    try:
+        from homeassistant.components import frontend as frontend_component  # noqa: PLC0415
+    except ImportError:
+        _LOGGER.debug("Frontend component unavailable; skipping sidebar panel sync")
         return
 
     if should_show_panel and not is_registered:
@@ -2051,6 +2056,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
                 require_admin=False,
             )
             hass.data[_DASHBOARD_PANEL_REGISTERED_KEY] = True
+            _LOGGER.debug("Registered Cycle Dashboard sidebar panel")
         except Exception as err:
             _LOGGER.warning("Failed to register Cycle Dashboard sidebar panel: %s", err)
         return
@@ -2058,6 +2064,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
     if not should_show_panel and is_registered:
         try:
             frontend_component.async_remove_panel(_DASHBOARD_PANEL_URL_PATH)
+            _LOGGER.debug("Removed Cycle Dashboard sidebar panel")
         except Exception as err:
             _LOGGER.warning("Failed to remove Cycle Dashboard sidebar panel: %s", err)
         finally:
