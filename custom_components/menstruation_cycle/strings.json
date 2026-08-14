@@ -34,7 +34,9 @@
           "menopause_start_date": "Menopause start date (YYYY-MM-DD)",
           "cycle_length_override": "Cycle length override (days, 0 = auto)",
           "num_predictions": "Number of future cycle predictions",
-          "onboarding_stage": "Onboarding stage"
+          "onboarding_stage": "Onboarding stage",
+          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -47,7 +49,9 @@
           "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",
           "cycle_length_override": "Override the automatically calculated average cycle length. Set to 0 to use the auto-calculated value from your history (recommended). Set to 20–38 to manually fix the cycle length used for fertile window and ovulation calculations.",
           "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
-          "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle."
+          "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
+          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },

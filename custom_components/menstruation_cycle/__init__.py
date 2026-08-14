@@ -39,6 +39,8 @@ from .const import (
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
     CONF_ONBOARDING_STAGE,
+    CONF_SHOW_CYCLE_DASHBOARD,
+    CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_NAME,
@@ -133,6 +135,10 @@ _ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "s
 _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
+_DASHBOARD_PANEL_REGISTERED_KEY = f"{DOMAIN}_dashboard_panel_registered"
+_DASHBOARD_PANEL_URL_PATH = "cycle-dashboard"
+_DASHBOARD_PANEL_TITLE = "Cycle Dashboard"
+_DASHBOARD_PANEL_ICON = "mdi:view-dashboard-outline"
 
 # Domain that was used before the rename to menstruation_cycle
 OLD_DOMAIN = "menstruation_gauge"
@@ -174,6 +180,7 @@ CARD_FILES = [
     "menstruation-cycle-history-card-row.js",
     "menstruation-statistics-card.js",
     "menstruation-support-card.js",
+    "menstruation-cycle-dashboard-panel.js",
 ]
 LOVELACE_RESOURCES = [
     (
@@ -1165,6 +1172,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up menstruation gauge profile from config entry."""
     hass.data.setdefault(DOMAIN, {})
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     await _async_ensure_household_inventory_loaded(hass)
 
     profile = _profile_from_entry(entry)
@@ -1232,6 +1240,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_register_http_handlers(hass)
     _async_schedule_lovelace_resource_registration(hass)
+    await _async_sync_dashboard_sidebar_panel(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -1274,6 +1283,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if hass.services.has_service(DOMAIN, service):
                 hass.services.async_remove(DOMAIN, service)
 
+    await _async_sync_dashboard_sidebar_panel(hass)
     return unload_ok
 
 
@@ -2004,6 +2014,54 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
         _LOGGER.info("Registered HTTP route: /%s/ics/{token}.ics", DOMAIN)
     except Exception as err:
         _LOGGER.warning("Failed to register HTTP routes for card files: %s", err)
+
+
+def _is_dashboard_enabled_for_entry(entry: ConfigEntry) -> bool:
+    """Return whether sidebar dashboard should be shown for this entry."""
+    return bool(entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, False))
+
+
+async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
+    """Register or remove the optional dashboard sidebar panel."""
+    loaded_entry_ids = set(hass.data.get(DOMAIN, {}).keys())
+    loaded_entries = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.entry_id in loaded_entry_ids
+    ]
+    should_show_panel = any(_is_dashboard_enabled_for_entry(entry) for entry in loaded_entries)
+    is_registered = bool(hass.data.get(_DASHBOARD_PANEL_REGISTERED_KEY))
+
+    frontend_component = getattr(hass.components, "frontend", None)
+    if frontend_component is None:
+        return
+
+    if should_show_panel and not is_registered:
+        try:
+            frontend_component.async_register_built_in_panel(
+                component_name="custom",
+                sidebar_title=_DASHBOARD_PANEL_TITLE,
+                sidebar_icon=_DASHBOARD_PANEL_ICON,
+                frontend_url_path=_DASHBOARD_PANEL_URL_PATH,
+                config={
+                    "name": "menstruation-cycle-dashboard-panel",
+                    "module_url": _build_card_resource_url("menstruation-cycle-dashboard-panel.js"),
+                    "trust_external_script": True,
+                },
+                require_admin=False,
+            )
+            hass.data[_DASHBOARD_PANEL_REGISTERED_KEY] = True
+        except Exception as err:
+            _LOGGER.warning("Failed to register Cycle Dashboard sidebar panel: %s", err)
+        return
+
+    if not should_show_panel and is_registered:
+        try:
+            frontend_component.async_remove_panel(_DASHBOARD_PANEL_URL_PATH)
+        except Exception as err:
+            _LOGGER.warning("Failed to remove Cycle Dashboard sidebar panel: %s", err)
+        finally:
+            hass.data[_DASHBOARD_PANEL_REGISTERED_KEY] = False
 
 
 def _async_schedule_lovelace_resource_registration(hass: HomeAssistant) -> None:

@@ -32,7 +32,9 @@
           "menopause_enabled": "Aktivera klimakterieläge",
           "menopause_start_date": "Klimakteriets startdatum (ÅÅÅÅ-MM-DD)",
           "cycle_length_override": "Åsidosätt cykellängd (dagar, 0 = automatiskt)",
-          "nfp_analysis_mode": "NFP-analysläge"
+          "nfp_analysis_mode": "NFP-analysläge",
+          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
+          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -44,7 +46,9 @@
           "menopause_enabled": "Aktiverar spårningsläge för klimakteriet.",
           "menopause_start_date": "Datum då klimakteriet började (ÅÅÅÅ-MM-DD). Lämna tomt om okänt.",
           "cycle_length_override": "Åsidosätter den automatiskt beräknade genomsnittliga cykellängden. Sätt till 0 för att använda det automatiskt beräknade värdet från historiken (rekommenderas). Sätt till 20–38 för att manuellt fastställa cykellängden som används för beräkning av fertilt fönster och ägglossning.",
-          "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'Hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln vid behov. 'Strikt' visar endast ägglossning och fertilt fönster när en temperaturökning bekräftats i aktuell cykel."
+          "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'Hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln vid behov. 'Strikt' visar endast ägglossning och fertilt fönster när en temperaturökning bekräftats i aktuell cykel.",
+          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup."
         }
       }
     },
