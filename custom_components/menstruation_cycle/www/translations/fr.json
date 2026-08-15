@@ -528,5 +528,10 @@
   "dashboard_move_down_aria": "Déplacer le widget {widget} vers le bas",
   "dashboard_save_aria": "Enregistrer la mise en page du tableau de bord",
   "dashboard_cancel_aria": "Annuler les modifications du tableau de bord",
-  "dashboard_reset_aria": "Réinitialiser le tableau de bord aux valeurs par défaut du mode"
+  "dashboard_reset_aria": "Réinitialiser le tableau de bord aux valeurs par défaut du mode",
+  "dashboard_widget_gauge_card": "Jauge",
+  "dashboard_widget_calendar_card": "Calendrier",
+  "dashboard_widget_statistics_card": "Statistiques",
+  "dashboard_no_entity_selected": "Aucun profil sélectionné.",
+  "dashboard_component_unavailable": "Ce composant de carte n'est pas chargé. Assurez-vous que toutes les ressources du tableau de bord sont enregistrées."
 }

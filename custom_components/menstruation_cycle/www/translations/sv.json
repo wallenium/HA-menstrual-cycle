@@ -528,5 +528,10 @@
   "dashboard_move_down_aria": "Flytta widget {widget} nedåt",
   "dashboard_save_aria": "Spara instrumentpanelslayout",
   "dashboard_cancel_aria": "Avbryt instrumentpanelsredigering",
-  "dashboard_reset_aria": "Återställ instrumentpanel till lägesstandard"
+  "dashboard_reset_aria": "Återställ instrumentpanel till lägesstandard",
+  "dashboard_widget_gauge_card": "Mätare",
+  "dashboard_widget_calendar_card": "Kalender",
+  "dashboard_widget_statistics_card": "Statistik",
+  "dashboard_no_entity_selected": "Ingen profil vald.",
+  "dashboard_component_unavailable": "Den här kortkomponenten är inte laddad. Se till att alla instrumentpanelresurser är registrerade."
 }
