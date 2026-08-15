@@ -125,12 +125,25 @@
     { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
     { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
     { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
-    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false },
-    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false },
-    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false },
+    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false, wide: true },
+    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, wide: true },
+    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
     { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
     { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
     { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
+  ];
+
+  // Default widget order surfaces graph-first cards near the top
+  const WIDGET_IDS_GRAPH_FIRST = [
+    'gauge_card',
+    'calendar_card',
+    'statistics_card',
+    'today_status',
+    'upcoming_window',
+    'quick_log',
+    'reminders',
+    'progress',
+    'my_info',
   ];
 
   const WIDGET_IDS = WIDGET_DEFS.map((widget) => widget.id);
@@ -138,7 +151,7 @@
   const PRESETS = {
     young: {
       discreetMode: true,
-      widgetOrder: WIDGET_IDS,
+      widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
         quick_log: true,
         today_status: true,
@@ -157,7 +170,7 @@
     },
     general: {
       discreetMode: false,
-      widgetOrder: WIDGET_IDS,
+      widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
         quick_log: true,
         today_status: true,
@@ -698,6 +711,38 @@
       `;
     }
 
+    _renderTrendChips(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = attrs.cycle_day ?? null;
+      const cycleLengthAvg = attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      const forecast = attrs.period_forecast || {};
+      const confidence = forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
+      const windowStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+
+      const chips = [];
+
+      if (cycleDay !== null && cycleDay !== undefined) {
+        const progress = cycleLengthAvg && Number(cycleLengthAvg) > 0
+          ? Math.min(100, Math.round((Number(cycleDay) / Number(cycleLengthAvg)) * 100))
+          : null;
+        const progressBar = progress !== null
+          ? `<span class="trend-chip__bar" style="--p:${progress}%"></span>`
+          : '';
+        chips.push(`<div class="trend-chip">${this._t('cycle_day')} <strong>${escapeHtml(cycleDay)}</strong>${progressBar}</div>`);
+      }
+
+      if (confidence !== null && confidence !== undefined) {
+        chips.push(`<div class="trend-chip">${this._t('period_forecast_confidence')} <strong>${escapeHtml(confidence)}</strong></div>`);
+      }
+
+      if (windowStart !== null && windowStart !== undefined) {
+        chips.push(`<div class="trend-chip">${this._t('period_forecast_window')} <strong>${escapeHtml(windowStart)}</strong></div>`);
+      }
+
+      if (!chips.length) return '';
+      return `<div class="trend-chips" aria-label="Cycle summary">${chips.join('')}</div>`;
+    }
+
     _renderGaugeCard(stateObj) {
       if (!this._selectedEntityId) {
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
@@ -793,8 +838,13 @@
       if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);
 
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
+      const wideClass = def?.wide ? 'card--wide' : '';
+      const cardClasses = ['card', sensitiveClass, wideClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="card ${sensitiveClass}"><h2>${title}</h2>${body}</article>`;
+      const trendChips = ['gauge_card', 'calendar_card', 'statistics_card'].includes(widgetId) && stateObj
+        ? this._renderTrendChips(stateObj)
+        : '';
+      return `<article class="${cardClasses}"><h2>${title}</h2>${trendChips}${body}</article>`;
     }
 
     _renderEntityPicker(availableEntities) {
@@ -848,27 +898,184 @@
 
       this.shadowRoot.innerHTML = `
         <style>
-          :host { display: block; height: 100%; color: var(--primary-text-color, #1f2937); }
-          .page { padding: 16px; display: grid; gap: 12px; }
+          :host { display: block; height: 100%; color: var(--primary-text-color, #1f2937); font-family: var(--paper-font-body1_-_font-family, inherit); }
+          .page { padding: 16px; display: grid; gap: 16px; }
           .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-          .toolbar button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 10px; cursor: pointer; }
-          .entity-picker { width: auto; border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; padding: 6px 10px; background: var(--card-background-color, #fff); color: inherit; cursor: pointer; }
-          .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-          .card { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
-          .card h2 { margin: 0; font-size: 1rem; }
-          .kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-          .helper { font-size: .88rem; color: var(--secondary-text-color, #4b5563); }
-          .quick-log { display: grid; gap: 8px; }
-          select, input, textarea { width: 100%; border: 1px solid var(--divider-color, #d1d5db); border-radius: 8px; padding: 6px; background: var(--card-background-color, #fff); color: inherit; }
+          .toolbar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+          .toolbar button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.15s, border-color 0.15s;
+          }
+          .toolbar button:hover { background: var(--secondary-background-color, #f3f4f6); border-color: var(--primary-color, #2563eb); }
+          .entity-picker {
+            width: auto;
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            padding: 7px 12px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            cursor: pointer;
+            font-size: 0.875rem;
+          }
+          .grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          }
+          @media (min-width: 640px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (min-width: 900px) {
+            .grid { grid-template-columns: repeat(3, 1fr); }
+          }
+          .card {
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 16px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+            transition: box-shadow 0.15s;
+          }
+          .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.10), 0 4px 16px rgba(0,0,0,.06); }
+          .card h2 {
+            margin: 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--primary-text-color, #1f2937);
+            letter-spacing: -0.005em;
+          }
+          .card--wide { grid-column: 1 / -1; }
+          @media (min-width: 640px) {
+            .card--wide { grid-column: span 2; }
+          }
+          @media (min-width: 900px) {
+            .card--wide { grid-column: span 2; }
+          }
+          .trend-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 2px;
+          }
+          .trend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--secondary-background-color, #f3f4f6);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            font-size: 0.8125rem;
+            color: var(--secondary-text-color, #4b5563);
+            position: relative;
+            overflow: hidden;
+          }
+          .trend-chip strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
+          .trend-chip__bar {
+            display: block;
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: var(--p, 0%);
+            background: var(--primary-color, #2563eb);
+            opacity: 0.12;
+            border-radius: 20px;
+            pointer-events: none;
+          }
+          .kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6); }
+          .kv:last-child { border-bottom: none; }
+          .kv span { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); }
+          .kv strong { font-size: 0.875rem; font-weight: 600; }
+          .helper { font-size: .85rem; color: var(--secondary-text-color, #6b7280); line-height: 1.5; }
+          .quick-log { display: grid; gap: 10px; }
+          label { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); display: grid; gap: 4px; }
+          select, input[type="text"], textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 8px;
+            padding: 7px 10px;
+            background: var(--card-background-color, #fff);
+            color: var(--primary-text-color, #1f2937);
+            font-size: 0.875rem;
+            transition: border-color 0.15s;
+          }
+          select:hover, input[type="text"]:hover, textarea:hover { border-color: var(--primary-color, #2563eb); }
+          .quick-log button[type="submit"] {
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-color, #2563eb);
+            color: #fff;
+            padding: 9px 16px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: opacity 0.15s;
+          }
+          .quick-log button[type="submit"]:disabled { opacity: 0.55; cursor: not-allowed; }
           button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary-color, #2563eb); outline-offset: 2px; }
-          .edit-mode { border: 1px dashed var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
-          .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+          .edit-mode {
+            border: 1px dashed var(--divider-color, #d1d5db);
+            border-radius: 16px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+            background: var(--secondary-background-color, #f9fafb);
+          }
+          .edit-mode h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+          .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6); }
+          .edit-row:last-of-type { border-bottom: none; }
+          .edit-row label { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; }
           .edit-buttons { display: flex; gap: 6px; }
-          .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-          .edit-actions button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; }
-          .empty-state { text-align: center; padding: 24px; }
-          .empty-state button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; margin-top: 8px; }
-          .message { min-height: 1.2rem; font-size: .9rem; }
+          .edit-buttons button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 8px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+          }
+          .edit-buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
+          .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+          .edit-actions button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.875rem;
+          }
+          .edit-actions button:first-child { background: var(--primary-color, #2563eb); color: #fff; border-color: transparent; font-weight: 600; }
+          .empty-state { text-align: center; padding: 32px 16px; }
+          .empty-state p { margin: 0 0 8px; }
+          .empty-state button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 9px 16px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 0.875rem;
+          }
+          .message { min-height: 1.4rem; font-size: .875rem; color: var(--secondary-text-color, #4b5563); }
+          ul { margin: 4px 0 0; padding: 0 0 0 18px; }
+          ul li { font-size: 0.875rem; padding: 3px 0; }
+          @media (max-width: 480px) {
+            .page { padding: 10px; gap: 10px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .card--wide { grid-column: 1 / -1; }
+          }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
           }
