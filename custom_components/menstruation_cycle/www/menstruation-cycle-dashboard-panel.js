@@ -609,7 +609,7 @@
 
     _renderEntityPicker(availableEntities) {
       const entities = Array.isArray(availableEntities) ? availableEntities.filter(Boolean) : [];
-      if (entities.length <= 1) return '';
+      if (entities.length === 0) return '';
       const options = entities
         .map((entity) => {
           const entityId = String(entity?.entityId ?? '');
