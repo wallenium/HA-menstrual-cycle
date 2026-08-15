@@ -246,6 +246,10 @@
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
       this._i18nRenderToken = 0;
+      this._i18nLanguagePromises = {};
+      this._lastSelectedSignature = null;
+      this._lastAvailableEntitiesSignature = '';
+      this._debugEnabled = this._readDebugFlag();
     }
 
     connectedCallback() {
@@ -256,12 +260,17 @@
 
     set hass(hass) {
       this._hass = hass;
+      const previousLang = this._lang;
       this._lang = this._detectLang();
+      const languageChanged = previousLang !== this._lang;
 
       // Resolve selected entity: preserve existing selection if still valid,
       // only fall back when there is no selection or the selected entity disappeared.
       const userId = this._hass?.user?.id;
       const available = this._getAvailableEntities();
+      const availableSignature = available.map((entity) => `${entity.entityId}:${entity.name}`).join('|');
+      const availableChanged = availableSignature !== this._lastAvailableEntitiesSignature;
+      const selectedBefore = this._selectedEntityId;
       let stateObj = null;
 
       if (available.length > 0) {
@@ -277,21 +286,50 @@
         this._selectedEntityId = null;
         stateObj = null;
       }
+      const selectedChanged = selectedBefore !== this._selectedEntityId;
+      this._debug('available entities', available.map((entity) => entity.entityId));
+      this._debug('selected entity update', { before: selectedBefore, after: this._selectedEntityId });
 
+      const previousProfile = this._activeProfile;
+      const previousMode = this._activeMode;
       this._activeProfile = stateObj?.attributes?.profile || 'default';
       this._activeMode = this._resolveMode(stateObj);
+      const profileChanged = previousProfile !== this._activeProfile;
+      const modeChanged = previousMode !== this._activeMode;
+      let prefsChanged = false;
       if (!this._prefs || this._prefs.__profile !== this._activeProfile || this._prefs.__mode !== this._activeMode) {
         this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
+        prefsChanged = true;
       }
 
-      const renderToken = ++this._i18nRenderToken;
-      this._ensureI18nLoaded()
-        .then(() => this._loadI18nLanguage(this._lang))
-        .catch(() => null)
-        .finally(() => {
-          if (renderToken !== this._i18nRenderToken) return;
-          this.render();
-        });
+      const selectedSignature = this._buildSelectedEntitySignature(stateObj);
+      const signatureChanged = selectedSignature !== this._lastSelectedSignature;
+      const renderReasons = [];
+      if (languageChanged) renderReasons.push('language_changed');
+      if (selectedChanged) renderReasons.push('selected_entity_changed');
+      if (profileChanged) renderReasons.push('profile_changed');
+      if (modeChanged) renderReasons.push('mode_changed');
+      if (prefsChanged) renderReasons.push('prefs_changed');
+      if (signatureChanged) renderReasons.push('selected_state_changed');
+      if (availableChanged) renderReasons.push('available_entities_changed');
+      if (!renderReasons.length) return;
+
+      this._lastSelectedSignature = selectedSignature;
+      this._lastAvailableEntitiesSignature = availableSignature;
+      this._debug('render reason', renderReasons.join(','));
+
+      if (languageChanged) {
+        const renderToken = ++this._i18nRenderToken;
+        this._loadI18nLanguageOnce(this._lang)
+          .catch(() => null)
+          .finally(() => {
+            if (renderToken !== this._i18nRenderToken) return;
+            this.render();
+          });
+        return;
+      }
+
+      this.render();
     }
 
     _detectLang() {
@@ -361,6 +399,56 @@
       return i18n.load(lang).catch(() => i18n.cache?.[lang] || i18n.cache?.en || {});
     }
 
+    _loadI18nLanguageOnce(lang) {
+      if (!lang) return Promise.resolve();
+      if (this._i18nLanguagePromises[lang]) return this._i18nLanguagePromises[lang];
+      this._i18nLanguagePromises[lang] = this._ensureI18nLoaded()
+        .then(() => this._loadI18nLanguage(lang))
+        .catch(() => null);
+      return this._i18nLanguagePromises[lang];
+    }
+
+    _buildSelectedEntitySignature(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const relevantAttrs = {
+        profile: attrs.profile ?? null,
+        entry_id: attrs.entry_id ?? null,
+        friendly_name: attrs.friendly_name ?? null,
+        onboarding_stage_effective: attrs.onboarding_stage_effective ?? null,
+        onboarding_stage: attrs.onboarding_stage ?? null,
+        cycle_day: attrs.cycle_day ?? null,
+        days_until_next_start: attrs.days_until_next_start ?? null,
+        next_predicted_start: attrs.next_predicted_start ?? null,
+        period_forecast: attrs.period_forecast ?? null,
+        progress_badges: attrs.progress_badges ?? null,
+        average_cycle_length: attrs.average_cycle_length ?? null,
+        cycle_length_avg: attrs.cycle_length_avg ?? null,
+        prediction_gating: attrs.prediction_gating ?? null,
+      };
+      const signaturePayload = {
+        entityId: this._selectedEntityId || null,
+        state: stateObj?.state ?? null,
+        attrs: relevantAttrs,
+      };
+      return JSON.stringify(signaturePayload);
+    }
+
+    _readDebugFlag() {
+      try {
+        if (typeof window === 'undefined') return false;
+        if (window.MENSTRUATION_CYCLE_DASHBOARD_DEBUG === true) return true;
+        return window.localStorage?.getItem('menstruation_cycle.dashboard_debug') === '1';
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    _debug(message, payload) {
+      if (!this._debugEnabled) return;
+      // eslint-disable-next-line no-console
+      console.debug('[menstruation-cycle][dashboard]', message, payload);
+    }
+
     _resolveMode(stateObj) {
       const stage = String(
         stateObj?.attributes?.onboarding_stage_effective || stateObj?.attributes?.onboarding_stage || 'established_cycle',
@@ -418,15 +506,13 @@
     }
 
     _getAvailableEntities() {
-      const EXCLUDED_SUFFIXES = ['_inventory', '_products', '_product_count', '_support'];
-      const EXCLUDED_PATTERNS = [/inventory/i, /period.product/i, /hygiene.product/i, /product.stock/i];
+      const EXCLUDED_PERIOD_PRODUCTS = /_period_products(?:_|$)/i;
       return Object.entries(this._hass?.states || {})
         .filter(([entityId, state]) => {
-          if (!entityId.startsWith('sensor.')) return false;
+          const lowerEntityId = String(entityId || '').toLowerCase();
+          if (!lowerEntityId.startsWith('sensor.menstruation_')) return false;
           if (!state?.attributes?.entry_id || !state?.attributes?.profile) return false;
-          const lowerEntityId = entityId.toLowerCase();
-          if (EXCLUDED_SUFFIXES.some((suffix) => lowerEntityId.endsWith(suffix))) return false;
-          if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(lowerEntityId))) return false;
+          if (EXCLUDED_PERIOD_PRODUCTS.test(lowerEntityId)) return false;
           return true;
         })
         .map(([entityId, state]) => ({
