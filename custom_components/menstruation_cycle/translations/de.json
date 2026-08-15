@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Menstruation Cycle",
+        "title": "Menstruationszyklus",
         "description": "Erstelle ein Profil (Benutzername + Anzeigename) zur Zyklusverfolgung.",
         "data": {
           "profile": "Benutzername/Profil",
@@ -99,12 +99,12 @@
           "description": "Verbrauchsaktion, zum Beispiel benutzt oder geleert."
         },
         "quantity": {
-          "name": "Quantity",
-          "description": "How many products or emptying events to add."
+          "name": "Menge",
+          "description": "Anzahl der Produkte oder Entleerungsaktionen, die hinzugefügt werden sollen."
         },
         "date": {
-          "name": "Date",
-          "description": "Optional ISO date to backfill. Defaults to today."
+          "name": "Datum",
+          "description": "Optionales ISO-Datum zum Nachtragen. Standardmäßig heute."
         }
       }
     }
