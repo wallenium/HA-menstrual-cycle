@@ -3,6 +3,9 @@
     { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
     { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
     { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
+    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false },
+    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false },
+    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false },
     { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
     { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
     { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
@@ -18,6 +21,9 @@
         quick_log: true,
         today_status: true,
         upcoming_window: true,
+        gauge_card: false,
+        calendar_card: false,
+        statistics_card: false,
         reminders: true,
         progress: false,
         my_info: false,
@@ -34,6 +40,9 @@
         quick_log: true,
         today_status: true,
         upcoming_window: true,
+        gauge_card: true,
+        calendar_card: true,
+        statistics_card: true,
         reminders: true,
         progress: true,
         my_info: true,
@@ -113,16 +122,20 @@
       this._hass = hass;
       this._lang = this._detectLang();
 
-      // Resolve selected entity: prefer user-saved choice, fall back to first alphabetically
+      // Resolve selected entity: preserve existing selection if still valid,
+      // only fall back when there is no selection or the selected entity disappeared.
       const userId = this._hass?.user?.id;
       const available = this._getAvailableEntities();
       let stateObj = null;
 
       if (available.length > 0) {
-        const savedEntityId = userId ? this._getSelectedEntity(userId) : null;
-        const found = savedEntityId ? available.find((e) => e.entityId === savedEntityId) : null;
-        const chosen = found || available[0];
-        this._selectedEntityId = chosen.entityId;
+        const currentStillValid = this._selectedEntityId && available.some((e) => e.entityId === this._selectedEntityId);
+        if (!currentStillValid) {
+          // No valid selection yet — try to restore from localStorage, then fall back to first
+          const savedEntityId = userId ? this._getSelectedEntity(userId) : null;
+          const found = savedEntityId ? available.find((e) => e.entityId === savedEntityId) : null;
+          this._selectedEntityId = (found || available[0]).entityId;
+        }
         stateObj = this._hass?.states?.[this._selectedEntityId] || null;
       } else {
         this._selectedEntityId = null;
@@ -204,11 +217,17 @@
     }
 
     _getAvailableEntities() {
+      const EXCLUDED_SUFFIXES = ['_inventory', '_products', '_product_count', '_support'];
+      const EXCLUDED_PATTERNS = [/inventory/i, /period.product/i, /hygiene.product/i, /product.stock/i];
       return Object.entries(this._hass?.states || {})
-        .filter(([entityId, state]) =>
-          entityId.startsWith('sensor.') &&
-          state?.attributes?.entry_id &&
-          state?.attributes?.profile)
+        .filter(([entityId, state]) => {
+          if (!entityId.startsWith('sensor.')) return false;
+          if (!state?.attributes?.entry_id || !state?.attributes?.profile) return false;
+          const lowerEntityId = entityId.toLowerCase();
+          if (EXCLUDED_SUFFIXES.some((suffix) => lowerEntityId.endsWith(suffix))) return false;
+          if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(lowerEntityId))) return false;
+          return true;
+        })
         .map(([entityId, state]) => ({
           entityId,
           name: state.attributes?.friendly_name || state.attributes?.profile || entityId,
@@ -489,6 +508,42 @@
       `;
     }
 
+    _renderGaugeCard(stateObj) {
+      if (!this._selectedEntityId) {
+        return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
+      }
+      const tagName = 'menstruation-gauge-card';
+      if (!customElements.get(tagName)) {
+        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      }
+      const entityId = escapeHtml(this._selectedEntityId);
+      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+    }
+
+    _renderCalendarCard(stateObj) {
+      if (!this._selectedEntityId) {
+        return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
+      }
+      const tagName = 'menstruation-calendar-card';
+      if (!customElements.get(tagName)) {
+        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      }
+      const entityId = escapeHtml(this._selectedEntityId);
+      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+    }
+
+    _renderStatisticsCard(stateObj) {
+      if (!this._selectedEntityId) {
+        return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
+      }
+      const tagName = 'menstruation-statistics-card';
+      if (!customElements.get(tagName)) {
+        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      }
+      const entityId = escapeHtml(this._selectedEntityId);
+      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+    }
+
     _renderEditPanel() {
       if (!this._editMode || !this._editDraft) return '';
       const draft = this._editDraft;
@@ -540,6 +595,9 @@
       if (widgetId === 'quick_log') body = this._renderQuickLogCard(discreetMode);
       if (widgetId === 'today_status') body = this._renderTodayCard(stateObj, discreetMode);
       if (widgetId === 'upcoming_window') body = this._renderUpcomingCard(stateObj);
+      if (widgetId === 'gauge_card') body = this._renderGaugeCard(stateObj);
+      if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
+      if (widgetId === 'statistics_card') body = this._renderStatisticsCard(stateObj);
       if (widgetId === 'reminders') body = this._renderRemindersCard();
       if (widgetId === 'progress') body = this._renderProgressCard(stateObj);
       if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);

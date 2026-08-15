@@ -528,5 +528,10 @@
   "dashboard_move_down_aria": "Mover el widget {widget} hacia abajo",
   "dashboard_save_aria": "Guardar diseño del panel",
   "dashboard_cancel_aria": "Cancelar ediciones del panel",
-  "dashboard_reset_aria": "Restablecer panel a los valores predeterminados del modo"
+  "dashboard_reset_aria": "Restablecer panel a los valores predeterminados del modo",
+  "dashboard_widget_gauge_card": "Gauge",
+  "dashboard_widget_calendar_card": "Calendario",
+  "dashboard_widget_statistics_card": "Estadísticas",
+  "dashboard_no_entity_selected": "No hay perfil seleccionado.",
+  "dashboard_component_unavailable": "Este componente de tarjeta no está cargado. Asegúrese de que todos los recursos del panel estén registrados."
 }
