@@ -506,21 +506,47 @@
     }
 
     _getAvailableEntities() {
-      const EXCLUDED_PERIOD_PRODUCTS = '_period_products';
-      return Object.entries(this._hass?.states || {})
-        .filter(([entityId, state]) => {
-          const lowerEntityId = String(entityId || '').toLowerCase();
-          if (!lowerEntityId.startsWith('sensor.')) return false;
-          if (!state?.attributes?.entry_id || !state?.attributes?.profile) return false;
-          if (lowerEntityId.includes(EXCLUDED_PERIOD_PRODUCTS)) return false;
-          return true;
-        })
+      const states = this._hass?.states || {};
+      const allSensors = Object.entries(states).filter(([id]) => id.startsWith('sensor.'));
+
+      const isPeriodProducts = (id) => id.includes('period_products');
+
+      // Primary strategy: integration markers (best)
+      let entities = allSensors
+        .filter(([entityId, state]) =>
+          !isPeriodProducts(entityId) &&
+          !!state?.attributes?.entry_id &&
+          !!state?.attributes?.profile
+        )
         .map(([entityId, state]) => ({
           entityId,
           name: state.attributes?.friendly_name || state.attributes?.profile || entityId,
-          profile: state.attributes?.profile,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+          profile: state.attributes?.profile || '',
+        }));
+
+      // Fallback if markers are missing on your setup:
+      // keep non-period_products sensors that at least look cycle-related by attributes
+      if (entities.length === 0) {
+        entities = allSensors
+          .filter(([entityId, state]) => {
+            if (isPeriodProducts(entityId)) return false;
+            const a = state?.attributes || {};
+            return (
+              a.cycle_day !== undefined ||
+              a.days_until_next_start !== undefined ||
+              a.next_predicted_start !== undefined ||
+              a.onboarding_stage !== undefined ||
+              a.onboarding_stage_effective !== undefined
+            );
+          })
+          .map(([entityId, state]) => ({
+            entityId,
+            name: state?.attributes?.friendly_name || entityId,
+            profile: state?.attributes?.profile || '',
+          }));
+      }
+
+      return entities.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     _selectedEntityKey(userId) {
