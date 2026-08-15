@@ -506,13 +506,13 @@
     }
 
     _getAvailableEntities() {
-      const EXCLUDED_PERIOD_PRODUCTS = /_period_products(?:_|$)/i;
+      const EXCLUDED_PERIOD_PRODUCTS = '_period_products';
       return Object.entries(this._hass?.states || {})
         .filter(([entityId, state]) => {
           const lowerEntityId = String(entityId || '').toLowerCase();
-          if (!lowerEntityId.startsWith('sensor.menstruation_')) return false;
+          if (!lowerEntityId.startsWith('sensor.')) return false;
           if (!state?.attributes?.entry_id || !state?.attributes?.profile) return false;
-          if (EXCLUDED_PERIOD_PRODUCTS.test(lowerEntityId)) return false;
+          if (lowerEntityId.includes(EXCLUDED_PERIOD_PRODUCTS)) return false;
           return true;
         })
         .map(([entityId, state]) => ({
