@@ -1,4 +1,126 @@
 (() => {
+  const PANEL_FALLBACK_EN = {
+    save: 'Save',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    none: 'None',
+    unknown: 'Unknown',
+    friendly_name: 'Friendly Name',
+    onboarding_stage: 'Onboarding stage',
+    cycle_day: 'Cycle Day',
+    days_until_menarche: 'Days until menarche',
+    bleeding_strength: 'Bleeding',
+    bleeding_none: 'None',
+    bleeding_light: 'Light',
+    bleeding_medium: 'Medium',
+    bleeding_heavy: 'Heavy',
+    pain: 'Pain',
+    mood: 'Mood',
+    notes: 'Notes',
+    opt_cramps: 'Cramps',
+    opt_headache: 'Headache',
+    opt_lower_back: 'Lower Back',
+    period_forecast_window: 'Window',
+    period_forecast_confidence: 'Confidence',
+    symptom_saved: 'Saved',
+    symptom_save_error: 'Save failed',
+    progress_empty_state: 'No progress',
+    progress_section_title: 'Progress',
+    ygs_rem_kit_check: 'Kit',
+    ygs_rem_drink_water: 'Water',
+    ygs_rem_rest_cue: 'Rest',
+    dashboard_page_title: 'Cycle Dashboard',
+    dashboard_entity_picker_aria: 'Select profile',
+    dashboard_edit_mode: 'Edit dashboard',
+    dashboard_done: 'Done',
+    dashboard_discreet_mode: 'Discreet mode',
+    dashboard_reset_preset: 'Reset to mode preset',
+    dashboard_widget_quick_log: 'Quick Log',
+    dashboard_widget_today_status: 'Today Status',
+    dashboard_widget_upcoming_window: 'Upcoming Window',
+    dashboard_widget_gauge_card: 'Gauge',
+    dashboard_widget_calendar_card: 'Calendar',
+    dashboard_widget_statistics_card: 'Statistics',
+    dashboard_widget_reminders: 'Reminders Summary',
+    dashboard_widget_progress: 'Progress & Badges',
+    dashboard_widget_my_info: 'My Info',
+    dashboard_no_entity_selected: 'No profile selected.',
+    dashboard_component_unavailable: 'Card component not loaded.',
+    dashboard_label_state: 'State',
+    dashboard_neutral_state: 'Current status',
+    dashboard_discreet_note: 'Discreet mode note',
+    dashboard_quick_log_note: 'Quick log note',
+    dashboard_reminders_hint: 'Reminder hint',
+    dashboard_not_set: 'Not set',
+    dashboard_pronouns: 'Pronouns',
+    dashboard_quick_log_no_changes: 'No changes',
+    dashboard_saved: 'Dashboard layout saved.',
+    dashboard_empty_state: 'All widgets are hidden.',
+    dashboard_empty_state_hint: 'Open edit mode to show widgets or reset to defaults.',
+    dashboard_widget_order_label: 'Widget order and visibility',
+    dashboard_toggle_widget_aria: 'Toggle {widget} widget visibility',
+    dashboard_move_up_aria: 'Move {widget} widget up',
+    dashboard_move_down_aria: 'Move {widget} widget down',
+    dashboard_save_aria: 'Save dashboard layout',
+    dashboard_cancel_aria: 'Cancel dashboard edits',
+    dashboard_reset_aria: 'Reset dashboard to mode defaults',
+  };
+  const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
+  const I18N_SCRIPT_SELECTOR = 'script[src]';
+  let i18nScriptPromise = null;
+
+  const ensureI18nState = () => {
+    if (typeof window === 'undefined') {
+      return {
+        cache: { en: { ...PANEL_FALLBACK_EN } },
+        loading: {},
+        fallback: { en: { ...PANEL_FALLBACK_EN } },
+      };
+    }
+    const i18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {});
+    i18n.cache = i18n.cache || {};
+    i18n.loading = i18n.loading || {};
+    i18n.fallback = i18n.fallback || {};
+    i18n.fallback.en = { ...PANEL_FALLBACK_EN, ...(i18n.fallback.en || {}) };
+    i18n.cache.en = { ...(i18n.fallback.en || {}), ...(i18n.cache.en || {}) };
+    return i18n;
+  };
+
+  const normalizeLang = (language) => {
+    const normalized = String(language || 'en').toLowerCase();
+    return normalized.startsWith('de') ? 'de' : 'en';
+  };
+
+  const listDocumentScripts = () => {
+    if (typeof document === 'undefined') return [];
+    if (typeof document.querySelectorAll === 'function') {
+      return Array.from(document.querySelectorAll(I18N_SCRIPT_SELECTOR) || []);
+    }
+    return Array.from(document.scripts || []);
+  };
+
+  const matchesScriptPath = (script, scriptPath) => {
+    const source = script?.getAttribute?.('src') || script?.src || '';
+    return source.includes(scriptPath);
+  };
+
+  const extractResourceVersion = () => {
+    const scripts = listDocumentScripts();
+    for (const script of scripts) {
+      const source = script?.getAttribute?.('src') || script?.src || '';
+      if (!source.includes('/menstruation_cycle/')) continue;
+      try {
+        const url = new URL(source, typeof window !== 'undefined' ? window.location?.origin || 'http://localhost' : 'http://localhost');
+        const version = url.searchParams.get('v');
+        if (version) return version;
+      } catch (_error) {
+        const match = source.match(/[?&]v=([^&#]+)/);
+        if (match?.[1]) return match[1];
+      }
+    }
+    return null;
+  };
+
   const WIDGET_DEFS = [
     { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
     { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
@@ -110,6 +232,7 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
+      this._i18nRenderToken = 0;
     }
 
     connectedCallback() {
@@ -148,16 +271,81 @@
         this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
       }
 
-      const i18n = window.menstruationCycleI18n;
-      if (i18n?.load) {
-        i18n.load(this._lang).finally(() => this.render());
-      }
-      this.render();
+      const renderToken = ++this._i18nRenderToken;
+      this._ensureI18nLoaded()
+        .then(() => this._loadI18nLanguage(this._lang))
+        .catch(() => null)
+        .finally(() => {
+          if (renderToken !== this._i18nRenderToken) return;
+          this.render();
+        });
     }
 
     _detectLang() {
       const language = this._hass?.locale?.language || this._hass?.language || navigator.language || 'en';
-      return String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+      return ensureI18nState().normalizeLang?.(language) || normalizeLang(language);
+    }
+
+    _getI18n() {
+      return ensureI18nState();
+    }
+
+    _buildI18nScriptUrl() {
+      const resourceVersion = extractResourceVersion();
+      return resourceVersion ? `${I18N_SCRIPT_PATH}?v=${encodeURIComponent(resourceVersion)}` : I18N_SCRIPT_PATH;
+    }
+
+    _ensureI18nLoaded() {
+      const i18n = this._getI18n();
+      if (typeof i18n.load === 'function') return Promise.resolve(i18n);
+      if (i18nScriptPromise) return i18nScriptPromise;
+      if (typeof document === 'undefined') return Promise.resolve(i18n);
+
+      const existingScript = listDocumentScripts().find((script) => matchesScriptPath(script, I18N_SCRIPT_PATH));
+      const script = existingScript || document.createElement('script');
+      if (!existingScript) {
+        script.src = this._buildI18nScriptUrl();
+        script.async = true;
+        script.dataset.menstruationCycleI18n = 'true';
+      }
+
+      i18nScriptPromise = new Promise((resolve) => {
+        let timeoutId = null;
+        const finalize = () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          script.removeEventListener?.('load', handleLoad);
+          script.removeEventListener?.('error', handleDone);
+          resolve(this._getI18n());
+        };
+        const handleLoad = () => finalize();
+        const handleDone = () => finalize();
+
+        if (typeof this._getI18n().load === 'function') {
+          finalize();
+          return;
+        }
+
+        timeoutId = setTimeout(handleDone, 4000);
+        script.addEventListener?.('load', handleLoad, { once: true });
+        script.addEventListener?.('error', handleDone, { once: true });
+
+        if (!existingScript) {
+          (document.head || document.body || document.documentElement)?.appendChild?.(script);
+        }
+      }).finally(() => {
+        const latestI18n = this._getI18n();
+        if (typeof latestI18n.load !== 'function') {
+          i18nScriptPromise = null;
+        }
+      });
+
+      return i18nScriptPromise;
+    }
+
+    _loadI18nLanguage(lang) {
+      const i18n = this._getI18n();
+      if (typeof i18n.load !== 'function') return Promise.resolve(i18n.cache?.[lang] || i18n.cache?.en || {});
+      return i18n.load(lang).catch(() => i18n.cache?.[lang] || i18n.cache?.en || {});
     }
 
     _resolveMode(stateObj) {
@@ -271,8 +459,10 @@
     }
 
     _t(key) {
-      const dict = window.menstruationCycleI18n?.cache?.[this._lang] || window.menstruationCycleI18n?.cache?.en || {};
-      return dict[key] ?? key;
+      const i18n = this._getI18n();
+      const dict = i18n.cache?.[this._lang] || {};
+      const english = i18n.cache?.en || i18n.fallback?.en || PANEL_FALLBACK_EN;
+      return dict[key] ?? english[key] ?? key;
     }
 
     _todayIso() {
