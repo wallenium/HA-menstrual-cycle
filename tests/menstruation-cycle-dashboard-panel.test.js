@@ -353,6 +353,66 @@ const makeHass = (stateObj) => ({
   const panelNoState = await assignHass(new Panel(), { locale: { language: 'en' }, user: { id: 'user-ns' }, states: {}, callService: async () => {} });
   assert.ok(panelNoState.shadowRoot.innerHTML.includes('Cycle Dashboard'), 'panel renders even with no sensor state');
 
+  const stableHass = makeHass(makeState());
+  const panelStable = await assignHass(new Panel(), stableHass);
+  let stableRenderCount = 0;
+  panelStable.render = () => { stableRenderCount += 1; };
+  await assignHass(panelStable, makeHass(makeState()));
+  assert.strictEqual(stableRenderCount, 0, 'unchanged hass updates should not re-render');
+  await assignHass(panelStable, makeHass(makeState({ cycle_day: 8 })));
+  assert.strictEqual(stableRenderCount, 1, 'relevant attribute changes should trigger re-render');
+
+  const panelLang = new Panel();
+  const originalLoadI18nLanguageOnce = panelLang._loadI18nLanguageOnce.bind(panelLang);
+  let i18nLoadCount = 0;
+  panelLang._loadI18nLanguageOnce = (lang) => {
+    i18nLoadCount += 1;
+    return originalLoadI18nLanguageOnce(lang);
+  };
+  const hassDe = { ...makeHass(makeState()), locale: { language: 'de' } };
+  await assignHass(panelLang, hassDe);
+  await assignHass(panelLang, hassDe);
+  assert.strictEqual(i18nLoadCount, 1, 'i18n language load should be memoized per language');
+
+  const selectionUser = 'user-selection-stable';
+  storage.set(
+    `menstruation_cycle.dashboard_selected_entity.${selectionUser}`,
+    JSON.stringify('sensor.menstruation_saved'),
+  );
+  const panelSelection = await assignHass(new Panel(), {
+    locale: { language: 'en' },
+    user: { id: selectionUser },
+    states: {
+      'sensor.menstruation_saved': makeState({ friendly_name: 'Saved profile', profile: 'saved' }),
+      'sensor.menstruation_current': makeState({ friendly_name: 'Current profile', profile: 'current' }),
+    },
+    callService: async () => {},
+  });
+  panelSelection._handleEntityChange('sensor.menstruation_current');
+  await assignHass(panelSelection, {
+    locale: { language: 'en' },
+    user: { id: selectionUser },
+    states: {
+      'sensor.menstruation_saved': makeState({ friendly_name: 'Saved profile', profile: 'saved' }),
+      'sensor.menstruation_current': makeState({ friendly_name: 'Current profile', profile: 'current' }),
+    },
+    callService: async () => {},
+  });
+  assert.strictEqual(panelSelection._selectedEntityId, 'sensor.menstruation_current', 'hass updates should preserve valid user-selected entity');
+
+  const panelEntityFilter = await assignHass(new Panel(), {
+    locale: { language: 'en' },
+    user: { id: 'user-entity-filter' },
+    states: {
+      'sensor.menstruation_anna': makeState({ profile: 'anna', friendly_name: 'Anna' }),
+      'sensor.menstruation_anna_period_products_today': makeState({ profile: 'anna', friendly_name: 'Anna products' }),
+    },
+    callService: async () => {},
+  });
+  const availableEntityIds = panelEntityFilter._getAvailableEntities().map((entity) => entity.entityId);
+  assert.deepStrictEqual(availableEntityIds, ['sensor.menstruation_anna'], 'period-products helpers should be excluded from entity picker');
+  assert.ok(panelEntityFilter.shadowRoot.innerHTML.includes('class="entity-picker"'), 'entity picker should remain visible with one entity');
+
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {
   console.error(error);
