@@ -1,14 +1,149 @@
 (() => {
+  const PANEL_FALLBACK_EN = {
+    save: 'Save',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    none: 'None',
+    unknown: 'Unknown',
+    friendly_name: 'Friendly Name',
+    onboarding_stage: 'Onboarding stage',
+    cycle_day: 'Cycle Day',
+    days_until_menarche: 'Days until menarche',
+    bleeding_strength: 'Bleeding',
+    bleeding_none: 'None',
+    bleeding_light: 'Light',
+    bleeding_medium: 'Medium',
+    bleeding_heavy: 'Heavy',
+    pain: 'Pain',
+    mood: 'Mood',
+    notes: 'Notes',
+    opt_cramps: 'Cramps',
+    opt_headache: 'Headache',
+    opt_lower_back: 'Lower Back',
+    period_forecast_window: 'Window',
+    period_forecast_confidence: 'Confidence',
+    symptom_saved: 'Saved',
+    symptom_save_error: 'Save failed',
+    progress_empty_state: 'No progress',
+    progress_section_title: 'Progress',
+    ygs_rem_kit_check: 'Kit',
+    ygs_rem_drink_water: 'Water',
+    ygs_rem_rest_cue: 'Rest',
+    dashboard_page_title: 'Cycle Dashboard',
+    dashboard_entity_picker_aria: 'Select profile',
+    dashboard_edit_mode: 'Edit dashboard',
+    dashboard_done: 'Done',
+    dashboard_discreet_mode: 'Discreet mode',
+    dashboard_reset_preset: 'Reset to mode preset',
+    dashboard_widget_quick_log: 'Quick Log',
+    dashboard_widget_today_status: 'Today Status',
+    dashboard_widget_upcoming_window: 'Upcoming Window',
+    dashboard_widget_gauge_card: 'Gauge',
+    dashboard_widget_calendar_card: 'Calendar',
+    dashboard_widget_statistics_card: 'Statistics',
+    dashboard_widget_reminders: 'Reminders Summary',
+    dashboard_widget_progress: 'Progress & Badges',
+    dashboard_widget_my_info: 'My Info',
+    dashboard_no_entity_selected: 'No profile selected.',
+    dashboard_component_unavailable: 'Card component not loaded.',
+    dashboard_label_state: 'State',
+    dashboard_neutral_state: 'Current status',
+    dashboard_discreet_note: 'Discreet mode note',
+    dashboard_quick_log_note: 'Quick log note',
+    dashboard_reminders_hint: 'Reminder hint',
+    dashboard_not_set: 'Not set',
+    dashboard_pronouns: 'Pronouns',
+    dashboard_quick_log_no_changes: 'No changes',
+    dashboard_saved: 'Dashboard layout saved.',
+    dashboard_empty_state: 'All widgets are hidden.',
+    dashboard_empty_state_hint: 'Open edit mode to show widgets or reset to defaults.',
+    dashboard_widget_order_label: 'Widget order and visibility',
+    dashboard_toggle_widget_aria: 'Toggle {widget} widget visibility',
+    dashboard_move_up_aria: 'Move {widget} widget up',
+    dashboard_move_down_aria: 'Move {widget} widget down',
+    dashboard_save_aria: 'Save dashboard layout',
+    dashboard_cancel_aria: 'Cancel dashboard edits',
+    dashboard_reset_aria: 'Reset dashboard to mode defaults',
+  };
+  const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
+  const I18N_SCRIPT_SELECTOR = 'script[src]';
+  let i18nScriptPromise = null;
+
+  const ensureI18nState = () => {
+    if (typeof window === 'undefined') {
+      return {
+        cache: { en: { ...PANEL_FALLBACK_EN } },
+        loading: {},
+        fallback: { en: { ...PANEL_FALLBACK_EN } },
+      };
+    }
+    const i18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = {});
+    i18n.cache = i18n.cache || {};
+    i18n.loading = i18n.loading || {};
+    i18n.fallback = i18n.fallback || {};
+    i18n.fallback.en = { ...PANEL_FALLBACK_EN, ...(i18n.fallback.en || {}) };
+    i18n.cache.en = { ...(i18n.fallback.en || {}), ...(i18n.cache.en || {}) };
+    return i18n;
+  };
+
+  const normalizeLang = (language) => {
+    const normalized = String(language || 'en').toLowerCase();
+    return normalized.startsWith('de') ? 'de' : 'en';
+  };
+
+  const listDocumentScripts = () => {
+    if (typeof document === 'undefined') return [];
+    if (typeof document.querySelectorAll === 'function') {
+      return Array.from(document.querySelectorAll(I18N_SCRIPT_SELECTOR) || []);
+    }
+    return Array.from(document.scripts || []);
+  };
+
+  const matchesScriptPath = (script, scriptPath) => {
+    const source = script?.getAttribute?.('src') || script?.src || '';
+    return source.includes(scriptPath);
+  };
+
+  const extractResourceVersion = () => {
+    const scripts = listDocumentScripts();
+    for (const script of scripts) {
+      const source = script?.getAttribute?.('src') || script?.src || '';
+      if (!source.includes('/menstruation_cycle/')) continue;
+      try {
+        const url = new URL(source, typeof window !== 'undefined' ? window.location?.origin || 'http://localhost' : 'http://localhost');
+        const version = url.searchParams.get('v');
+        if (version) return version;
+      } catch (_error) {
+        const match = source.match(/[?&]v=([^&#]+)/);
+        if (match?.[1]) return match[1];
+      }
+    }
+    return null;
+  };
+
   const WIDGET_DEFS = [
     { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
     { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
     { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
-    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false },
-    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false },
-    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false },
+    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false, wide: true },
+    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, wide: true },
+    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
     { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
     { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
     { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
+  ];
+
+  // Default widget order surfaces graph-first cards near the top
+  const WIDGET_IDS_GRAPH_FIRST = [
+    'gauge_card',
+    'calendar_card',
+    'statistics_card',
+    'today_status',
+    'upcoming_window',
+    'quick_log',
+    'reminders',
+    'progress',
+    'my_info',
   ];
 
   const WIDGET_IDS = WIDGET_DEFS.map((widget) => widget.id);
@@ -16,7 +151,7 @@
   const PRESETS = {
     young: {
       discreetMode: true,
-      widgetOrder: WIDGET_IDS,
+      widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
         quick_log: true,
         today_status: true,
@@ -35,7 +170,7 @@
     },
     general: {
       discreetMode: false,
-      widgetOrder: WIDGET_IDS,
+      widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
         quick_log: true,
         today_status: true,
@@ -110,6 +245,11 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
+      this._i18nRenderToken = 0;
+      this._i18nLanguagePromises = {};
+      this._lastSelectedSignature = null;
+      this._lastAvailableEntitiesSignature = '';
+      this._debugEnabled = this._readDebugFlag();
     }
 
     connectedCallback() {
@@ -120,12 +260,17 @@
 
     set hass(hass) {
       this._hass = hass;
+      const previousLang = this._lang;
       this._lang = this._detectLang();
+      const languageChanged = previousLang !== this._lang;
 
       // Resolve selected entity: preserve existing selection if still valid,
       // only fall back when there is no selection or the selected entity disappeared.
       const userId = this._hass?.user?.id;
       const available = this._getAvailableEntities();
+      const availableSignature = available.map((entity) => `${entity.entityId}:${entity.name}`).join('|');
+      const availableChanged = availableSignature !== this._lastAvailableEntitiesSignature;
+      const selectedBefore = this._selectedEntityId;
       let stateObj = null;
 
       if (available.length > 0) {
@@ -141,23 +286,167 @@
         this._selectedEntityId = null;
         stateObj = null;
       }
+      const selectedChanged = selectedBefore !== this._selectedEntityId;
+      this._debug('available entities', available.map((entity) => entity.entityId));
+      this._debug('selected entity update', { before: selectedBefore, after: this._selectedEntityId });
 
+      const previousProfile = this._activeProfile;
+      const previousMode = this._activeMode;
       this._activeProfile = stateObj?.attributes?.profile || 'default';
       this._activeMode = this._resolveMode(stateObj);
+      const profileChanged = previousProfile !== this._activeProfile;
+      const modeChanged = previousMode !== this._activeMode;
+      let prefsChanged = false;
       if (!this._prefs || this._prefs.__profile !== this._activeProfile || this._prefs.__mode !== this._activeMode) {
         this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
+        prefsChanged = true;
       }
 
-      const i18n = window.menstruationCycleI18n;
-      if (i18n?.load) {
-        i18n.load(this._lang).finally(() => this.render());
+      const selectedSignature = this._buildSelectedEntitySignature(stateObj);
+      const signatureChanged = selectedSignature !== this._lastSelectedSignature;
+      const renderReasons = [];
+      if (languageChanged) renderReasons.push('language_changed');
+      if (selectedChanged) renderReasons.push('selected_entity_changed');
+      if (profileChanged) renderReasons.push('profile_changed');
+      if (modeChanged) renderReasons.push('mode_changed');
+      if (prefsChanged) renderReasons.push('prefs_changed');
+      if (signatureChanged) renderReasons.push('selected_state_changed');
+      if (availableChanged) renderReasons.push('available_entities_changed');
+      if (!renderReasons.length) return;
+
+      this._lastSelectedSignature = selectedSignature;
+      this._lastAvailableEntitiesSignature = availableSignature;
+      this._debug('render reason', renderReasons.join(','));
+
+      if (languageChanged) {
+        const renderToken = ++this._i18nRenderToken;
+        this._loadI18nLanguageOnce(this._lang)
+          .catch(() => null)
+          .finally(() => {
+            if (renderToken !== this._i18nRenderToken) return;
+            this.render();
+          });
+        return;
       }
+
       this.render();
     }
 
     _detectLang() {
       const language = this._hass?.locale?.language || this._hass?.language || navigator.language || 'en';
-      return String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+      return ensureI18nState().normalizeLang?.(language) || normalizeLang(language);
+    }
+
+    _getI18n() {
+      return ensureI18nState();
+    }
+
+    _buildI18nScriptUrl() {
+      const resourceVersion = extractResourceVersion();
+      return resourceVersion ? `${I18N_SCRIPT_PATH}?v=${encodeURIComponent(resourceVersion)}` : I18N_SCRIPT_PATH;
+    }
+
+    _ensureI18nLoaded() {
+      const i18n = this._getI18n();
+      if (typeof i18n.load === 'function') return Promise.resolve(i18n);
+      if (i18nScriptPromise) return i18nScriptPromise;
+      if (typeof document === 'undefined') return Promise.resolve(i18n);
+
+      const existingScript = listDocumentScripts().find((script) => matchesScriptPath(script, I18N_SCRIPT_PATH));
+      const script = existingScript || document.createElement('script');
+      if (!existingScript) {
+        script.src = this._buildI18nScriptUrl();
+        script.async = true;
+        script.dataset.menstruationCycleI18n = 'true';
+      }
+
+      i18nScriptPromise = new Promise((resolve) => {
+        let timeoutId = null;
+        const finalize = () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          script.removeEventListener?.('load', handleLoad);
+          script.removeEventListener?.('error', handleDone);
+          resolve(this._getI18n());
+        };
+        const handleLoad = () => finalize();
+        const handleDone = () => finalize();
+
+        if (typeof this._getI18n().load === 'function') {
+          finalize();
+          return;
+        }
+
+        timeoutId = setTimeout(handleDone, 4000);
+        script.addEventListener?.('load', handleLoad, { once: true });
+        script.addEventListener?.('error', handleDone, { once: true });
+
+        if (!existingScript) {
+          (document.head || document.body || document.documentElement)?.appendChild?.(script);
+        }
+      }).finally(() => {
+        const latestI18n = this._getI18n();
+        if (typeof latestI18n.load !== 'function') {
+          i18nScriptPromise = null;
+        }
+      });
+
+      return i18nScriptPromise;
+    }
+
+    _loadI18nLanguage(lang) {
+      const i18n = this._getI18n();
+      if (typeof i18n.load !== 'function') return Promise.resolve(i18n.cache?.[lang] || i18n.cache?.en || {});
+      return i18n.load(lang).catch(() => i18n.cache?.[lang] || i18n.cache?.en || {});
+    }
+
+    _loadI18nLanguageOnce(lang) {
+      if (!lang) return Promise.resolve();
+      if (this._i18nLanguagePromises[lang]) return this._i18nLanguagePromises[lang];
+      this._i18nLanguagePromises[lang] = this._ensureI18nLoaded()
+        .then(() => this._loadI18nLanguage(lang))
+        .catch(() => null);
+      return this._i18nLanguagePromises[lang];
+    }
+
+    _buildSelectedEntitySignature(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const relevantAttrs = {
+        profile: attrs.profile ?? null,
+        entry_id: attrs.entry_id ?? null,
+        friendly_name: attrs.friendly_name ?? null,
+        onboarding_stage_effective: attrs.onboarding_stage_effective ?? null,
+        onboarding_stage: attrs.onboarding_stage ?? null,
+        cycle_day: attrs.cycle_day ?? null,
+        days_until_next_start: attrs.days_until_next_start ?? null,
+        next_predicted_start: attrs.next_predicted_start ?? null,
+        period_forecast: attrs.period_forecast ?? null,
+        progress_badges: attrs.progress_badges ?? null,
+        average_cycle_length: attrs.average_cycle_length ?? null,
+        cycle_length_avg: attrs.cycle_length_avg ?? null,
+        prediction_gating: attrs.prediction_gating ?? null,
+      };
+      const signaturePayload = {
+        entityId: this._selectedEntityId || null,
+        state: stateObj?.state ?? null,
+        attrs: relevantAttrs,
+      };
+      return JSON.stringify(signaturePayload);
+    }
+
+    _readDebugFlag() {
+      try {
+        if (typeof window === 'undefined') return false;
+        if (window.MENSTRUATION_CYCLE_DASHBOARD_DEBUG === true) return true;
+        return window.localStorage?.getItem('menstruation_cycle.dashboard_debug') === '1';
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    _debug(message, payload) {
+      if (!this._debugEnabled) return;
+      // eslint-disable-next-line no-console
+      console.debug('[menstruation-cycle][dashboard]', message, payload);
     }
 
     _resolveMode(stateObj) {
@@ -217,15 +506,13 @@
     }
 
     _getAvailableEntities() {
-      const EXCLUDED_SUFFIXES = ['_inventory', '_products', '_product_count', '_support'];
-      const EXCLUDED_PATTERNS = [/inventory/i, /period.product/i, /hygiene.product/i, /product.stock/i];
+      const EXCLUDED_PERIOD_PRODUCTS = '_period_products';
       return Object.entries(this._hass?.states || {})
         .filter(([entityId, state]) => {
-          if (!entityId.startsWith('sensor.')) return false;
+          const lowerEntityId = String(entityId || '').toLowerCase();
+          if (!lowerEntityId.startsWith('sensor.')) return false;
           if (!state?.attributes?.entry_id || !state?.attributes?.profile) return false;
-          const lowerEntityId = entityId.toLowerCase();
-          if (EXCLUDED_SUFFIXES.some((suffix) => lowerEntityId.endsWith(suffix))) return false;
-          if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(lowerEntityId))) return false;
+          if (lowerEntityId.includes(EXCLUDED_PERIOD_PRODUCTS)) return false;
           return true;
         })
         .map(([entityId, state]) => ({
@@ -271,8 +558,10 @@
     }
 
     _t(key) {
-      const dict = window.menstruationCycleI18n?.cache?.[this._lang] || window.menstruationCycleI18n?.cache?.en || {};
-      return dict[key] ?? key;
+      const i18n = this._getI18n();
+      const dict = i18n.cache?.[this._lang] || {};
+      const english = i18n.cache?.en || i18n.fallback?.en || PANEL_FALLBACK_EN;
+      return dict[key] ?? english[key] ?? key;
     }
 
     _todayIso() {
@@ -508,6 +797,38 @@
       `;
     }
 
+    _renderTrendChips(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = attrs.cycle_day ?? null;
+      const cycleLengthAvg = attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      const forecast = attrs.period_forecast || {};
+      const confidence = forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
+      const windowStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+
+      const chips = [];
+
+      if (cycleDay !== null && cycleDay !== undefined) {
+        const progress = cycleLengthAvg && Number(cycleLengthAvg) > 0
+          ? Math.min(100, Math.round((Number(cycleDay) / Number(cycleLengthAvg)) * 100))
+          : null;
+        const progressBar = progress !== null
+          ? `<span class="trend-chip__bar" style="--p:${progress}%"></span>`
+          : '';
+        chips.push(`<div class="trend-chip">${this._t('cycle_day')} <strong>${escapeHtml(cycleDay)}</strong>${progressBar}</div>`);
+      }
+
+      if (confidence !== null && confidence !== undefined) {
+        chips.push(`<div class="trend-chip">${this._t('period_forecast_confidence')} <strong>${escapeHtml(confidence)}</strong></div>`);
+      }
+
+      if (windowStart !== null && windowStart !== undefined) {
+        chips.push(`<div class="trend-chip">${this._t('period_forecast_window')} <strong>${escapeHtml(windowStart)}</strong></div>`);
+      }
+
+      if (!chips.length) return '';
+      return `<div class="trend-chips" aria-label="Cycle summary">${chips.join('')}</div>`;
+    }
+
     _renderGaugeCard(stateObj) {
       if (!this._selectedEntityId) {
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
@@ -603,13 +924,18 @@
       if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);
 
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
+      const wideClass = def?.wide ? 'card--wide' : '';
+      const cardClasses = ['card', sensitiveClass, wideClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="card ${sensitiveClass}"><h2>${title}</h2>${body}</article>`;
+      const trendChips = ['gauge_card', 'calendar_card', 'statistics_card'].includes(widgetId) && stateObj
+        ? this._renderTrendChips(stateObj)
+        : '';
+      return `<article class="${cardClasses}"><h2>${title}</h2>${trendChips}${body}</article>`;
     }
 
     _renderEntityPicker(availableEntities) {
       const entities = Array.isArray(availableEntities) ? availableEntities.filter(Boolean) : [];
-      if (entities.length <= 1) return '';
+      if (entities.length === 0) return '';
       const options = entities
         .map((entity) => {
           const entityId = String(entity?.entityId ?? '');
@@ -658,27 +984,184 @@
 
       this.shadowRoot.innerHTML = `
         <style>
-          :host { display: block; height: 100%; color: var(--primary-text-color, #1f2937); }
-          .page { padding: 16px; display: grid; gap: 12px; }
+          :host { display: block; height: 100%; color: var(--primary-text-color, #1f2937); font-family: var(--paper-font-body1_-_font-family, inherit); }
+          .page { padding: 16px; display: grid; gap: 16px; }
           .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-          .toolbar button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 10px; cursor: pointer; }
-          .entity-picker { width: auto; border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; padding: 6px 10px; background: var(--card-background-color, #fff); color: inherit; cursor: pointer; }
-          .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-          .card { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
-          .card h2 { margin: 0; font-size: 1rem; }
-          .kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-          .helper { font-size: .88rem; color: var(--secondary-text-color, #4b5563); }
-          .quick-log { display: grid; gap: 8px; }
-          select, input, textarea { width: 100%; border: 1px solid var(--divider-color, #d1d5db); border-radius: 8px; padding: 6px; background: var(--card-background-color, #fff); color: inherit; }
+          .toolbar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+          .toolbar button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.15s, border-color 0.15s;
+          }
+          .toolbar button:hover { background: var(--secondary-background-color, #f3f4f6); border-color: var(--primary-color, #2563eb); }
+          .entity-picker {
+            width: auto;
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            padding: 7px 12px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            cursor: pointer;
+            font-size: 0.875rem;
+          }
+          .grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          }
+          @media (min-width: 640px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (min-width: 900px) {
+            .grid { grid-template-columns: repeat(3, 1fr); }
+          }
+          .card {
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 16px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+            transition: box-shadow 0.15s;
+          }
+          .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.10), 0 4px 16px rgba(0,0,0,.06); }
+          .card h2 {
+            margin: 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--primary-text-color, #1f2937);
+            letter-spacing: -0.005em;
+          }
+          .card--wide { grid-column: 1 / -1; }
+          @media (min-width: 640px) {
+            .card--wide { grid-column: span 2; }
+          }
+          @media (min-width: 900px) {
+            .card--wide { grid-column: span 2; }
+          }
+          .trend-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 2px;
+          }
+          .trend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--secondary-background-color, #f3f4f6);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            font-size: 0.8125rem;
+            color: var(--secondary-text-color, #4b5563);
+            position: relative;
+            overflow: hidden;
+          }
+          .trend-chip strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
+          .trend-chip__bar {
+            display: block;
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: var(--p, 0%);
+            background: var(--primary-color, #2563eb);
+            opacity: 0.12;
+            border-radius: 20px;
+            pointer-events: none;
+          }
+          .kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6); }
+          .kv:last-child { border-bottom: none; }
+          .kv span { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); }
+          .kv strong { font-size: 0.875rem; font-weight: 600; }
+          .helper { font-size: .85rem; color: var(--secondary-text-color, #6b7280); line-height: 1.5; }
+          .quick-log { display: grid; gap: 10px; }
+          label { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); display: grid; gap: 4px; }
+          select, input[type="text"], textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 8px;
+            padding: 7px 10px;
+            background: var(--card-background-color, #fff);
+            color: var(--primary-text-color, #1f2937);
+            font-size: 0.875rem;
+            transition: border-color 0.15s;
+          }
+          select:hover, input[type="text"]:hover, textarea:hover { border-color: var(--primary-color, #2563eb); }
+          .quick-log button[type="submit"] {
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-color, #2563eb);
+            color: #fff;
+            padding: 9px 16px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: opacity 0.15s;
+          }
+          .quick-log button[type="submit"]:disabled { opacity: 0.55; cursor: not-allowed; }
           button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary-color, #2563eb); outline-offset: 2px; }
-          .edit-mode { border: 1px dashed var(--divider-color, #d1d5db); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
-          .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+          .edit-mode {
+            border: 1px dashed var(--divider-color, #d1d5db);
+            border-radius: 16px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+            background: var(--secondary-background-color, #f9fafb);
+          }
+          .edit-mode h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+          .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6); }
+          .edit-row:last-of-type { border-bottom: none; }
+          .edit-row label { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; }
           .edit-buttons { display: flex; gap: 6px; }
-          .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-          .edit-actions button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; }
-          .empty-state { text-align: center; padding: 24px; }
-          .empty-state button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 8px 12px; cursor: pointer; margin-top: 8px; }
-          .message { min-height: 1.2rem; font-size: .9rem; }
+          .edit-buttons button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 8px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+          }
+          .edit-buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
+          .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+          .edit-actions button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.875rem;
+          }
+          .edit-actions button:first-child { background: var(--primary-color, #2563eb); color: #fff; border-color: transparent; font-weight: 600; }
+          .empty-state { text-align: center; padding: 32px 16px; }
+          .empty-state p { margin: 0 0 8px; }
+          .empty-state button {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 10px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 9px 16px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 0.875rem;
+          }
+          .message { min-height: 1.4rem; font-size: .875rem; color: var(--secondary-text-color, #4b5563); }
+          ul { margin: 4px 0 0; padding: 0 0 0 18px; }
+          ul li { font-size: 0.875rem; padding: 3px 0; }
+          @media (max-width: 480px) {
+            .page { padding: 10px; gap: 10px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .card--wide { grid-column: 1 / -1; }
+          }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
           }
