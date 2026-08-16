@@ -22,7 +22,7 @@ add_cycle_start:
       required: true
       example: "2026-03-01"
       selector:
-        text:
+        date: {}
 
 remove_cycle_start:
   name: Remove cycle start day
@@ -48,7 +48,7 @@ remove_cycle_start:
       required: true
       example: "2026-03-01"
       selector:
-        text:
+        date: {}
 
 set_cycle_history:
   name: Replace full cycle history
@@ -248,7 +248,7 @@ log_product_usage:
       example: "2026-07-15"
       description: Optional backfill date in YYYY-MM-DD format. Defaults to today.
       selector:
-        text:
+        date: {}
 
 manage_household_inventory:
   name: Manage household inventory
@@ -342,7 +342,7 @@ add_symptom:
       example: "2026-03-15"
       description: Date in YYYY-MM-DD format
       selector:
-        text:
+        date: {}
     symptom_data:
       required: true
       description: Dictionary with symptom fields. Optional fields - bleeding_strength, spotting, intercourse, pain (list), basal_temp (number), hygiene (list), test
@@ -374,7 +374,7 @@ remove_symptom:
       example: "2026-03-15"
       description: Date in YYYY-MM-DD format
       selector:
-        text:
+        date: {}
 
 get_symptom:
   name: Get symptom data for a date
@@ -401,7 +401,7 @@ get_symptom:
       example: "2026-03-15"
       description: Date in YYYY-MM-DD format
       selector:
-        text:
+        date: {}
 
 set_pregnancy_mode:
   name: Set pregnancy mode
@@ -434,7 +434,7 @@ set_pregnancy_mode:
       example: "2026-01-15"
       description: First day of last menstrual period (YYYY-MM-DD). Defaults to last known period start.
       selector:
-        text:
+        date: {}
 
 update_pregnancy_date:
   name: Update pregnancy start date
@@ -461,7 +461,7 @@ update_pregnancy_date:
       example: "2026-01-15"
       description: First day of last menstrual period in YYYY-MM-DD format.
       selector:
-        text:
+        date: {}
 
 set_menarche_mode:
   name: Set menarche mode
@@ -494,7 +494,7 @@ set_menarche_mode:
       example: "2026-12-01"
       description: Estimated date when menarche is expected (YYYY-MM-DD).
       selector:
-        text:
+        date: {}
     family_menarche_age:
       required: false
       example: 12
@@ -530,7 +530,7 @@ update_menarche_date:
       example: "2026-06-15"
       description: Date when menarche occurred (YYYY-MM-DD).
       selector:
-        text:
+        date: {}
 
 log_first_period:
   name: Log first period
@@ -557,7 +557,7 @@ log_first_period:
       example: "2026-06-15"
       description: Date of the first period (YYYY-MM-DD).
       selector:
-        text:
+        date: {}
 
 get_menarche_info:
   name: Get menarche information
@@ -687,7 +687,7 @@ set_menopause_mode:
       example: "2024-06-01"
       description: Date when menopause started (YYYY-MM-DD). Optional.
       selector:
-        text:
+        date: {}
 
 update_menopause_date:
   name: Update menopause date
@@ -714,7 +714,7 @@ update_menopause_date:
       example: "2024-06-01"
       description: Date when menopause started (YYYY-MM-DD).
       selector:
-        text:
+        date: {}
 
 save_timer_state:
   name: Save timer state
@@ -823,7 +823,7 @@ export_doctor_report:
       example: "1995-06-15"
       description: Patient date of birth in YYYY-MM-DD format (optional).
       selector:
-        text:
+        date: {}
     language:
       required: false
       example: "de"

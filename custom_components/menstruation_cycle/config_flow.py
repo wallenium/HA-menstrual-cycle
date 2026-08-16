@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import slugify
 
@@ -240,10 +241,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             # Validate optional date fields
-            preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE, "")).strip()
-            men_date_raw = str(user_input.get(CONF_ESTIMATED_MENARCHE_DATE, "")).strip()
-            meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE, "")).strip()
-            birth_date_raw = str(user_input.get(CONF_BIRTH_DATE, "")).strip()
+            preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE) or "").strip()
+            men_date_raw = str(user_input.get(CONF_ESTIMATED_MENARCHE_DATE) or "").strip()
+            meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE) or "").strip()
+            birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
 
             preg_date_parsed = _parse_date_opt(preg_date_raw)
             men_date_parsed = _parse_date_opt(men_date_raw)
@@ -409,7 +410,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
                 vol.Optional(CONF_ICON, default=current_icon): str,
-                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date): str,
+                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date or None): selector.DateSelector(),
                 vol.Required(
                     CONF_PERIOD_DURATION_DAYS,
                     default=current_period_duration,
@@ -420,8 +421,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ): bool,
                 vol.Optional(
                     CONF_PREGNANCY_START_DATE,
-                    default=pregnancy_data.get("start_date") or "",
-                ): str,
+                    default=pregnancy_data.get("start_date") or None,
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_PREGNANCY_HIGH_RISK,
                     default=current_pregnancy_high_risk,
@@ -436,8 +437,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ): bool,
                 vol.Optional(
                     CONF_ESTIMATED_MENARCHE_DATE,
-                    default=menarche_data.get("estimated_date") or "",
-                ): str,
+                    default=menarche_data.get("estimated_date") or None,
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_FAMILY_MENARCHE_AGE,
                     default=str(menarche_data.get("family_menarche_age") or ""),
@@ -448,8 +449,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ): bool,
                 vol.Optional(
                     CONF_MENOPAUSE_START_DATE,
-                    default=menopause_data.get("start_date") or "",
-                ): str,
+                    default=menopause_data.get("start_date") or None,
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_CYCLE_LENGTH_OVERRIDE,
                     default=current_cycle_length_override,
