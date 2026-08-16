@@ -756,5 +756,15 @@
   "opt_none": "Keine",
   "dashboard_past_fertile_disclaimer": "Fruchtbare Fenster außerhalb des aktuellen Zyklus sind geschätzt (Kalendermethode), keine gemessenen oder garantierten Werte.",
   "dashboard_year_prev": "Vorheriges Jahr",
-  "dashboard_year_next": "Nächstes Jahr"
+  "dashboard_year_next": "Nächstes Jahr",
+  "pre_menarche_desc_pubic_hair_growth_stage_1": "Noch keine Schambehaarung sichtbar (vorpubertär).",
+  "pre_menarche_desc_pubic_hair_growth_stage_2": "Wenige, feine, leicht gekräuselte Haare, meist an den Schamlippen.",
+  "pre_menarche_desc_pubic_hair_growth_stage_3": "Haare werden dunkler und gröber, breiten sich über den Venushügel aus.",
+  "pre_menarche_desc_pubic_hair_growth_stage_4": "Erwachsenenähnliches Haar, reicht aber noch nicht bis zu den Oberschenkeln.",
+  "pre_menarche_desc_pubic_hair_growth_stage_5": "Erwachsenenmuster, breitet sich auf die Innenseite der Oberschenkel aus.",
+  "pre_menarche_desc_breast_development_stage_1": "Noch keine sichtbare Brustentwicklung (vorpubertär, flach).",
+  "pre_menarche_desc_breast_development_stage_2": "Knospenstadium — kleine Erhebung, Brustwarzenhof beginnt sich zu vergrößern.",
+  "pre_menarche_desc_breast_development_stage_3": "Brust und Brustwarzenhof vergrößern sich weiter, noch ohne getrennte Kontur.",
+  "pre_menarche_desc_breast_development_stage_4": "Brustwarzenhof und Brustwarze bilden eine zweite, abgesetzte Erhebung.",
+  "pre_menarche_desc_breast_development_stage_5": "Reifestadium — Brustwarzenhof fügt sich wieder in die Gesamtform der Brust ein."
 }

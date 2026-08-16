@@ -723,5 +723,15 @@
   "opt_none": "Inga",
   "dashboard_past_fertile_disclaimer": "Fertila fönster utanför den aktuella cykeln är uppskattade (kalendermetoden), inte uppmätta eller garanterade värden.",
   "dashboard_year_prev": "Föregående år",
-  "dashboard_year_next": "Nästa år"
+  "dashboard_year_next": "Nästa år",
+  "pre_menarche_desc_pubic_hair_growth_stage_1": "Inga könshår syns ännu (förpubertal).",
+  "pre_menarche_desc_pubic_hair_growth_stage_2": "Några få glesa, fina, lätt lockiga hår, mest längs blygdläpparna.",
+  "pre_menarche_desc_pubic_hair_growth_stage_3": "Håret blir mörkare och grövre, sprider sig över blygdbenet.",
+  "pre_menarche_desc_pubic_hair_growth_stage_4": "Vuxenliknande hår, men når ännu inte insidan av låren.",
+  "pre_menarche_desc_pubic_hair_growth_stage_5": "Vuxenmönster, sprider sig till insidan av låren.",
+  "pre_menarche_desc_breast_development_stage_1": "Ingen synlig bröstutveckling ännu (förpubertal, platt).",
+  "pre_menarche_desc_breast_development_stage_2": "Knoppstadiet — liten upphöjning, vårtgården börjar bli bredare.",
+  "pre_menarche_desc_breast_development_stage_3": "Bröstet och vårtgården fortsätter att växa, ännu utan separat kontur.",
+  "pre_menarche_desc_breast_development_stage_4": "Vårtgården och bröstvårtan bildar en andra, avskild upphöjning ovanför bröstet.",
+  "pre_menarche_desc_breast_development_stage_5": "Moget stadium — vårtgården sjunker tillbaka in i bröstets övergripande kontur."
 }

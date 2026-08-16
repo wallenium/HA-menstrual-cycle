@@ -344,8 +344,8 @@ class MenstruationCalendarCard extends HTMLElement {
     });
   }
 
-  _monthLabel(locale) {
-    return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(this._viewDate);
+  _monthLabel(locale, viewDate = this._viewDate) {
+    return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(viewDate);
   }
 
   _allCycleStarts(attrs) {
@@ -1000,9 +1000,9 @@ class MenstruationCalendarCard extends HTMLElement {
     }
   }
 
-  _calendarGrid(model, locale) {
-    const y = this._viewDate.getFullYear();
-    const m = this._viewDate.getMonth();
+  _calendarGrid(model, locale, viewDate = this._viewDate) {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
     const first = new Date(y, m, 1, 12, 0, 0, 0);
     const count = new Date(y, m + 1, 0).getDate();
     const weekStart = String(this._config?.week_start || 'monday').toLowerCase();
@@ -1159,6 +1159,10 @@ class MenstruationCalendarCard extends HTMLElement {
     this._focusedIso = this._isoFromDate(this._viewDate);
   }
 
+  _nextMonthDate() {
+    return new Date(this._viewDate.getFullYear(), this._viewDate.getMonth() + 1, 1, 12, 0, 0, 0);
+  }
+
   _changeMonth(offset) {
     this._viewDate = new Date(this._viewDate.getFullYear(), this._viewDate.getMonth() + offset, 1, 12, 0, 0, 0);
     this._focusedIso = null;
@@ -1230,7 +1234,20 @@ class MenstruationCalendarCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; position: relative; }
-        .wrap { padding: 12px; display: grid; gap: 10px; }
+        .wrap { padding: 12px; display: grid; gap: 10px; container-type: inline-size; container-name: mc-cal; }
+        .months-row { display: flex; gap: 20px; align-items: flex-start; }
+        .month-col { flex: 1 1 100%; min-width: 0; }
+        .month-col-next { display: none; }
+        .month-next-label { margin-bottom: 6px; }
+        /* Show the next month alongside the current one once the card itself is
+           wide enough for two comfortable month grids — based on the card's own
+           rendered width via a container query, not the viewport, so this works
+           correctly regardless of where the card is embedded (narrow sidebar,
+           wide dashboard grid column, etc). */
+        @container mc-cal (min-width: 620px) {
+          .month-col-next { display: block; }
+          .month-col { flex: 1 1 50%; }
+        }
         .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
         .title { font-size: 1rem; font-weight: 700; color: var(--primary-text-color); }
         .month { font-size: .95rem; font-weight: 600; color: var(--primary-text-color); text-transform: capitalize; }
@@ -1404,7 +1421,15 @@ class MenstruationCalendarCard extends HTMLElement {
                 : ''}
             </div>
           ` : ''}
-          <div class="grid" role="grid" aria-label="calendar">${this._calendarGrid(model, locale)}</div>
+          <div class="months-row">
+            <div class="month-col">
+              <div class="grid" role="grid" aria-label="${this._monthLabel(locale)}">${this._calendarGrid(model, locale)}</div>
+            </div>
+            <div class="month-col month-col-next">
+              <div class="month month-next-label">${this._monthLabel(locale, this._nextMonthDate())}</div>
+              <div class="grid" role="grid" aria-label="${this._monthLabel(locale, this._nextMonthDate())}">${this._calendarGrid(model, locale, this._nextMonthDate())}</div>
+            </div>
+          </div>
           <div class="legend">
             <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}<</span>
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}

@@ -723,5 +723,15 @@
   "opt_none": "Ninguno",
   "dashboard_past_fertile_disclaimer": "Las ventanas fértiles fuera del ciclo actual son estimadas (método del calendario), no son valores medidos ni garantizados.",
   "dashboard_year_prev": "Año anterior",
-  "dashboard_year_next": "Año siguiente"
+  "dashboard_year_next": "Año siguiente",
+  "pre_menarche_desc_pubic_hair_growth_stage_1": "Aún no hay vello púbico visible (prepuberal).",
+  "pre_menarche_desc_pubic_hair_growth_stage_2": "Unos pocos pelos finos, escasos y ligeramente rizados, principalmente en los labios.",
+  "pre_menarche_desc_pubic_hair_growth_stage_3": "El vello se vuelve más oscuro y grueso, extendiéndose sobre el monte de Venus.",
+  "pre_menarche_desc_pubic_hair_growth_stage_4": "Vello de tipo adulto, pero que aún no llega a la parte interna de los muslos.",
+  "pre_menarche_desc_pubic_hair_growth_stage_5": "Patrón adulto, extendiéndose hacia la parte interna de los muslos.",
+  "pre_menarche_desc_breast_development_stage_1": "Aún no hay desarrollo mamario visible (prepuberal, plano).",
+  "pre_menarche_desc_breast_development_stage_2": "Estadio de botón — pequeña elevación, la areola empieza a ensancharse.",
+  "pre_menarche_desc_breast_development_stage_3": "El pecho y la areola siguen agrandándose, aún sin un contorno separado.",
+  "pre_menarche_desc_breast_development_stage_4": "La areola y el pezón forman una segunda elevación separada sobre el pecho.",
+  "pre_menarche_desc_breast_development_stage_5": "Estadio maduro — la areola vuelve a integrarse en el contorno general del pecho."
 }

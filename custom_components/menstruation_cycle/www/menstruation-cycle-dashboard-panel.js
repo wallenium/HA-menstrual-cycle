@@ -187,6 +187,16 @@
     opt_significant_changes: 'Significant changes',
     opt_clear_to_white: 'Clear to white',
     opt_none: 'None',
+    pre_menarche_desc_pubic_hair_growth_stage_1: 'No pubic hair visible yet (pre-pubertal).',
+    pre_menarche_desc_pubic_hair_growth_stage_2: 'A few sparse, fine, slightly curled hairs, mainly along the labia.',
+    pre_menarche_desc_pubic_hair_growth_stage_3: 'Hair becomes darker and coarser, spreading over the pubic mound.',
+    pre_menarche_desc_pubic_hair_growth_stage_4: 'Adult-like hair, but not yet reaching the inner thighs.',
+    pre_menarche_desc_pubic_hair_growth_stage_5: 'Adult pattern, spreading onto the inner thighs.',
+    pre_menarche_desc_breast_development_stage_1: 'No visible breast development yet (pre-pubertal, flat).',
+    pre_menarche_desc_breast_development_stage_2: 'Bud stage — a small raised mound, areola starts to widen.',
+    pre_menarche_desc_breast_development_stage_3: 'Breast and areola continue enlarging, without a separate contour yet.',
+    pre_menarche_desc_breast_development_stage_4: 'Areola and nipple form a second, raised mound above the breast.',
+    pre_menarche_desc_breast_development_stage_5: 'Mature stage — areola settles back into the overall breast contour.',
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_support_card: 'Support & Education',
@@ -2600,16 +2610,29 @@
           return `<button type="button" class="sym-opt-btn${selected ? ' sym-selected' : ''}" data-action="log-sign" data-sign="${signKey}" data-stage="${opt}" style="padding:6px 12px;border-radius:10px;border:1px solid ${selected ? 'var(--mc-rose-deep)' : 'var(--divider-color,#d1d5db)'};background:${selected ? 'var(--mc-rose-tint)' : 'var(--card-background-color,#fff)'};font-size:12px;cursor:pointer;">${escapeHtml(optLabel)}</button>`;
         }).join('');
 
+        const stageDescriptions = (isExpanded && (signKey === 'pubic_hair_growth' || signKey === 'breast_development'))
+          ? `<div style="padding:2px 14px 10px 46px;display:grid;gap:3px;">
+              ${meta.options.map((opt) => {
+                const descKey = `pre_menarche_desc_${signKey}_${opt}`;
+                const desc = this._t(descKey);
+                if (desc === descKey) return '';
+                const optLabel = this._t('opt_' + opt) !== ('opt_' + opt) ? this._t('opt_' + opt) : opt;
+                return `<p style="margin:0;font-size:11px;color:var(--secondary-text-color,#6b7280);"><strong style="color:var(--primary-text-color,inherit);">${escapeHtml(optLabel)}:</strong> ${escapeHtml(desc)}</p>`;
+              }).join('')}
+            </div>`
+          : '';
+
         const picker = isExpanded ? `
           <div style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px 4px 46px;">
             ${optionButtons}
             ${done ? `<button type="button" data-action="remove-sign" data-sign="${signKey}" style="padding:6px 12px;border-radius:10px;border:1px solid var(--divider-color,#d1d5db);background:transparent;font-size:12px;color:var(--secondary-text-color,#6b7280);cursor:pointer;">${this._t('remove') || 'Entfernen'}</button>` : ''}
-          </div>` : '';
+          </div>
+          ${stageDescriptions}` : '';
 
         return `<div style="border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;overflow:hidden;">
           <div data-action="toggle-sign-picker" data-sign="${signKey}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;">
             <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
-            <div style="flex:1;font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(meta.checklistLabelKey))}${done ? ` — ${detail}` : ''}</div>
+            <div style="flex:1;font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(meta.labelKey))}${done ? ` — ${detail}` : ''}</div>
             <div style="color:var(--secondary-text-color,#6b7280);font-size:11px;transform:rotate(${isExpanded ? '180deg' : '0deg'});transition:transform 0.15s;">▾</div>
           </div>
           ${picker}
