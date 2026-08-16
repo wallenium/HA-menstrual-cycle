@@ -672,5 +672,14 @@
   "badge_pattern_emerging": "Patrón emergente",
   "dashboard_loading": "Cargando…",
   "dashboard_onboarding_title": "¡Bienvenida! Aún no hay datos registrados.",
-  "dashboard_onboarding_hint": "Registra tu primer día de ciclo para ver predicciones, gráficos y análisis."
+  "dashboard_onboarding_hint": "Registra tu primer día de ciclo para ver predicciones, gráficos y análisis.",
+  "badge_cycles_12": "12 ciclos registrados",
+  "badge_symptom_variety": "5+ categorías de síntomas exploradas",
+  "badge_nfp_confirmed_ovulation": "Ovulación confirmada por PFN",
+  "badge_insights_unlocked": "Perspectivas de síntomas desbloqueadas",
+  "badge_temperature_tracker": "Temperatura basal registrada (10+ días en un ciclo)",
+  "badge_doctor_report_exported": "Informe médico exportado",
+  "badge_profile_personalized": "Perfil personalizado (fecha de nacimiento + antecedentes familiares)",
+  "badge_first_sign_logged": "Primer signo corporal registrado",
+  "badge_signs_explored": "Todos los signos corporales explorados"
 }

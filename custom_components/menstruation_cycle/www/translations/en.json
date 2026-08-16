@@ -705,5 +705,14 @@
   "badge_pattern_emerging": "Pattern emerging",
   "dashboard_loading": "Loading…",
   "dashboard_onboarding_title": "Welcome! No data logged yet.",
-  "dashboard_onboarding_hint": "Log your first cycle day to see predictions, charts, and insights."
+  "dashboard_onboarding_hint": "Log your first cycle day to see predictions, charts, and insights.",
+  "badge_cycles_12": "12 cycles logged",
+  "badge_symptom_variety": "Explored 5+ symptom categories",
+  "badge_nfp_confirmed_ovulation": "NFP-confirmed ovulation",
+  "badge_insights_unlocked": "Symptom insights unlocked",
+  "badge_temperature_tracker": "Basal temperature tracked (10+ days in a cycle)",
+  "badge_doctor_report_exported": "Doctor report exported",
+  "badge_profile_personalized": "Profile personalized (birth date + family history)",
+  "badge_first_sign_logged": "First body sign logged",
+  "badge_signs_explored": "All body signs explored"
 }

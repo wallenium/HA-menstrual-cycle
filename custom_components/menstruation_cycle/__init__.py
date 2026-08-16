@@ -246,7 +246,7 @@ class MenstruationRuntime:
     menarche_data: dict[str, Any] = field(default_factory=lambda: {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None})
     pre_menarche_data: dict[str, Any] = field(default_factory=lambda: {"signs": {}, "tanner_stage": None})
     menopause_data: dict[str, Any] = field(default_factory=lambda: {"is_menopause": False, "start_date": None})
-    noncycle_data: dict[str, Any] = field(default_factory=lambda: {"has_noncycle": False})
+    noncycle_data: dict[str, Any] = field(default_factory=lambda: {"has_noncycle": False, "doctor_report_exported": False})
     onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
     unregister_midnight_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
@@ -1404,6 +1404,10 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
         target_path,
     )
 
+    if not runtime.noncycle_data.get("doctor_report_exported"):
+        runtime.noncycle_data["doctor_report_exported"] = True
+        await _async_save_and_notify(hass, runtime)
+
 
 def _smart_period_history_dates(
     runtime: MenstruationRuntime,
@@ -1845,7 +1849,7 @@ async def _async_handle_get_menarche_info(hass: HomeAssistant, call: ServiceCall
 
 
 async def _async_handle_add_pre_menarche_sign(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Add or update a pre-menarche body sign, tracking when it was first observed."""
+    """Add or update a pre-menarche body sign."""
     runtime = _runtime_for_call(hass, call)
     sign = str(call.data[SERVICE_FIELD_PRE_MENARCHE_SIGN])
     stage = str(call.data[SERVICE_FIELD_TANNER_STAGE])
@@ -1860,21 +1864,7 @@ async def _async_handle_add_pre_menarche_sign(hass: HomeAssistant, call: Service
 
     if not isinstance(runtime.pre_menarche_data.get("signs"), dict):
         runtime.pre_menarche_data["signs"] = {}
-
-    today_iso = dt_util.now().date().isoformat()
-    existing = runtime.pre_menarche_data["signs"].get(sign)
-    # Preserve the original first-observed date across repeated/updated logs of the
-    # same sign (e.g. moving from stage 2 to stage 3), so the dashboard's dynamic
-    # estimate is anchored to onset, not to the most recent edit.
-    first_observed = today_iso
-    if isinstance(existing, dict) and existing.get("logged_at"):
-        first_observed = str(existing["logged_at"])
-
-    runtime.pre_menarche_data["signs"][sign] = {
-        "stage": stage,
-        "logged_at": first_observed,
-        "updated_at": today_iso,
-    }
+    runtime.pre_menarche_data["signs"][sign] = stage
     await _async_save_and_notify(hass, runtime)
 
 

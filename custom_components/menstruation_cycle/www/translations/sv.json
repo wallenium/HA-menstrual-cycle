@@ -672,5 +672,14 @@
   "badge_pattern_emerging": "Mönster framträder",
   "dashboard_loading": "Laddar…",
   "dashboard_onboarding_title": "Välkommen! Ingen data har loggats än.",
-  "dashboard_onboarding_hint": "Logga din första cykeldag för att se prognoser, diagram och insikter."
+  "dashboard_onboarding_hint": "Logga din första cykeldag för att se prognoser, diagram och insikter.",
+  "badge_cycles_12": "12 cykler loggade",
+  "badge_symptom_variety": "5+ symtomkategorier utforskade",
+  "badge_nfp_confirmed_ovulation": "NFP-bekräftad ägglossning",
+  "badge_insights_unlocked": "Symtominsikter upplåsta",
+  "badge_temperature_tracker": "Basaltemperatur spårad (10+ dagar i en cykel)",
+  "badge_doctor_report_exported": "Läkarrapport exporterad",
+  "badge_profile_personalized": "Profil personifierad (födelsedatum + familjehistorik)",
+  "badge_first_sign_logged": "Första kroppstecknet loggat",
+  "badge_signs_explored": "Alla kroppstecken utforskade"
 }

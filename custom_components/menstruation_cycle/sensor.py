@@ -1107,6 +1107,11 @@ class MenstruationGaugeSensor(SensorEntity):
             avg_cycle_length=model.avg_cycle_length,
             today=today,
             existing_badges=existing_badges,
+            symptom_correlation_insights=model.symptom_correlation_insights,
+            birth_date=self._entry.data.get(CONF_BIRTH_DATE),
+            family_menarche_age=model.menarche_data.get("family_menarche_age"),
+            pre_menarche_signs=(model.pre_menarche_data or {}).get("signs"),
+            doctor_report_exported=bool((runtime.noncycle_data or {}).get("doctor_report_exported")),
         )
         progress_badges_new_this_week = new_badges_this_week(progress_badges, today=today)
 

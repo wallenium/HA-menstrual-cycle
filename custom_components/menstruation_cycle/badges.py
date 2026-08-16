@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
+from .model import SYMPTOM_MULTI_VALUE_KEYS, SYMPTOM_SINGLE_VALUE_KEYS
+
 # Tuneable constant: minimum number of distinct log days in the last 30 days
 # required to earn the consistent_logging_30d badge.
 CONSISTENT_LOGGING_MIN_DAYS = 10
@@ -26,6 +28,34 @@ _V1_BADGE_KEYS = [
     "consistent_logging_30d",
     "pattern_emerging",
 ]
+
+_V2_BADGE_KEYS = [
+    "symptom_variety",
+    "nfp_confirmed_ovulation",
+    "insights_unlocked",
+    "temperature_tracker",
+    "cycles_12_logged",
+    "doctor_report_exported",
+    "profile_personalized",
+    "first_sign_logged",
+    "signs_explored",
+]
+
+# All category keys that count toward "symptom_variety" — mirrors the same
+# categories used by compute_symptom_correlation_insights in model.py, minus
+# bleeding_strength (that's just period logging, not a distinct symptom).
+_VARIETY_CATEGORY_KEYS = tuple(
+    key for key in (*SYMPTOM_MULTI_VALUE_KEYS, *SYMPTOM_SINGLE_VALUE_KEYS) if key != "bleeding_strength"
+)
+_SYMPTOM_VARIETY_MIN_CATEGORIES = 5
+
+# The 7 pre-menarche body-sign categories tracked via add_pre_menarche_sign.
+_PRE_MENARCHE_SIGN_KEYS = (
+    "pubic_hair", "breast", "height_spurt", "mood", "acne", "body_odor", "discharge",
+)
+
+_BASAL_TEMP_TRACKER_MIN_DAYS = 10
+_CYCLES_LOGGED_EXTENDED = 12
 
 
 def _parse_iso(value: Any) -> date | None:
@@ -88,8 +118,13 @@ def evaluate_badges(
     today: date | None = None,
     existing_badges: list[dict[str, Any]] | None = None,
     consistent_logging_min_days: int = CONSISTENT_LOGGING_MIN_DAYS,
+    symptom_correlation_insights: list[dict[str, Any]] | None = None,
+    birth_date: str | None = None,
+    family_menarche_age: int | float | None = None,
+    pre_menarche_signs: dict[str, Any] | None = None,
+    doctor_report_exported: bool = False,
 ) -> list[dict[str, Any]]:
-    """Evaluate v1 progress badges from cycle data.
+    """Evaluate v1 + v2 progress badges from cycle data.
 
     Deterministic and idempotent: already-earned badges keep their original
     earned_at timestamp.  New badges are stamped with today's ISO date.
@@ -186,7 +221,133 @@ def evaluate_badges(
     # pattern_emerging
     badges.append(_make_badge("pattern_emerging", pattern_available))
 
+    # --- v2 badges -----------------------------------------------------
+
+    # symptom_variety — distinct symptom categories ever logged (not values,
+    # just categories: e.g. logging "pain" once counts, regardless of which
+    # pain type). Naturally monotonic under normal use.
+    variety_categories = set()
+    for entry in symptom_history:
+        if not isinstance(entry, dict):
+            continue
+        for key in _VARIETY_CATEGORY_KEYS:
+            value = entry.get(key)
+            if isinstance(value, list):
+                if any(str(v).strip() for v in value):
+                    variety_categories.add(key)
+            elif value not in (None, "", "none"):
+                variety_categories.add(key)
+    if len(variety_categories) >= _SYMPTOM_VARIETY_MIN_CATEGORIES:
+        badges.append(_make_badge("symptom_variety", True))
+    else:
+        badges.append(_make_badge(
+            "symptom_variety", False, len(variety_categories), _SYMPTOM_VARIETY_MIN_CATEGORIES,
+        ))
+
+    # nfp_confirmed_ovulation — sticky: NFP confidence fluctuates cycle to
+    # cycle, but reaching "high" confidence once is a genuine milestone worth
+    # keeping, not something that should disappear next cycle.
+    nfp_high_now = isinstance(nfp_analysis, dict) and str(nfp_analysis.get("confidence_level")) == "high"
+    badges.append(_make_badge("nfp_confirmed_ovulation", nfp_high_now or "nfp_confirmed_ovulation" in prev_earned))
+
+    # insights_unlocked — sticky for the same reason (insights availability
+    # depends on recent data density and disappears e.g. during pregnancy).
+    insights_now = bool(symptom_correlation_insights)
+    badges.append(_make_badge("insights_unlocked", insights_now or "insights_unlocked" in prev_earned))
+
+    # temperature_tracker — basal temperature logged on enough distinct days
+    # within any single tracked cycle (not just anywhere in history).
+    max_temp_days = _max_basal_temp_days_in_any_cycle(symptom_history, grouped_starts, today)
+    if max_temp_days >= _BASAL_TEMP_TRACKER_MIN_DAYS:
+        badges.append(_make_badge("temperature_tracker", True))
+    else:
+        badges.append(_make_badge(
+            "temperature_tracker", False, max_temp_days, _BASAL_TEMP_TRACKER_MIN_DAYS,
+        ))
+
+    # cycles_12_logged — natural extension of cycles_3/6_logged.
+    if num_starts >= _CYCLES_LOGGED_EXTENDED:
+        badges.append(_make_badge("cycles_12_logged", True))
+    else:
+        badges.append(_make_badge("cycles_12_logged", False, num_starts, _CYCLES_LOGGED_EXTENDED))
+
+    # doctor_report_exported — one-time action flag, sticky by nature (the
+    # flag itself is already persistent, but OR with prev_earned for safety).
+    badges.append(_make_badge(
+        "doctor_report_exported", bool(doctor_report_exported) or "doctor_report_exported" in prev_earned,
+    ))
+
+    # profile_personalized — both birth_date and family_menarche_age set,
+    # which sharpens every menarche-related estimate the app makes.
+    has_birth_date = bool(birth_date)
+    has_family_age = family_menarche_age not in (None, "", 0)
+    profile_personalized_now = has_birth_date and has_family_age
+    badges.append(_make_badge(
+        "profile_personalized", profile_personalized_now or "profile_personalized" in prev_earned,
+    ))
+
+    # Pre-menarche body-sign badges (only meaningful in pre-menarche mode, but
+    # harmless/locked elsewhere since pre_menarche_signs will simply be empty).
+    signs = pre_menarche_signs if isinstance(pre_menarche_signs, dict) else {}
+    logged_sign_keys = {
+        key for key in _PRE_MENARCHE_SIGN_KEYS
+        if _pre_menarche_sign_is_logged(signs.get(key))
+    }
+    first_sign_now = len(logged_sign_keys) >= 1
+    badges.append(_make_badge("first_sign_logged", first_sign_now or "first_sign_logged" in prev_earned))
+
+    if len(logged_sign_keys) >= len(_PRE_MENARCHE_SIGN_KEYS):
+        badges.append(_make_badge("signs_explored", True))
+    else:
+        badges.append(_make_badge(
+            "signs_explored", False, len(logged_sign_keys), len(_PRE_MENARCHE_SIGN_KEYS),
+        ))
+
     return badges
+
+
+def _pre_menarche_sign_is_logged(raw: Any) -> bool:
+    """A pre-menarche sign entry counts as logged in either the legacy plain-string
+    format or the current {stage, logged_at, updated_at} dict format."""
+    if raw is None or raw == "" or raw == "none":
+        return False
+    if isinstance(raw, dict):
+        stage = raw.get("stage")
+        return stage not in (None, "", "none")
+    return True
+
+
+def _max_basal_temp_days_in_any_cycle(
+    symptom_history: list[dict[str, Any]],
+    grouped_starts: list[str],
+    today: date,
+) -> int:
+    """Return the highest count of distinct days with a logged basal_temp value
+    within any single cycle window (bounded by consecutive grouped_starts, or by
+    today for the current in-progress cycle)."""
+    temp_days: set[date] = set()
+    for entry in symptom_history:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("basal_temp") in (None, ""):
+            continue
+        d = _parse_iso(entry.get("date"))
+        if d is not None:
+            temp_days.add(d)
+    if not temp_days:
+        return 0
+
+    starts = sorted(d for d in (_parse_iso(s) for s in grouped_starts) if d is not None)
+    if not starts:
+        return len(temp_days)
+
+    boundaries = starts + [today + timedelta(days=1)]
+    best = 0
+    for i in range(len(boundaries) - 1):
+        window_start, window_end = boundaries[i], boundaries[i + 1]
+        count = sum(1 for d in temp_days if window_start <= d < window_end)
+        best = max(best, count)
+    return best
 
 
 def new_badges_this_week(

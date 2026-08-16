@@ -672,5 +672,14 @@
   "badge_pattern_emerging": "Tendance émergente",
   "dashboard_loading": "Chargement…",
   "dashboard_onboarding_title": "Bienvenue ! Aucune donnée enregistrée pour l'instant.",
-  "dashboard_onboarding_hint": "Enregistrez votre premier jour de cycle pour voir les prévisions, graphiques et analyses."
+  "dashboard_onboarding_hint": "Enregistrez votre premier jour de cycle pour voir les prévisions, graphiques et analyses.",
+  "badge_cycles_12": "12 cycles enregistrés",
+  "badge_symptom_variety": "5+ catégories de symptômes explorées",
+  "badge_nfp_confirmed_ovulation": "Ovulation confirmée par MNF",
+  "badge_insights_unlocked": "Analyses des symptômes débloquées",
+  "badge_temperature_tracker": "Température basale suivie (10+ jours dans un cycle)",
+  "badge_doctor_report_exported": "Rapport médical exporté",
+  "badge_profile_personalized": "Profil personnalisé (date de naissance + antécédents familiaux)",
+  "badge_first_sign_logged": "Premier signe corporel enregistré",
+  "badge_signs_explored": "Tous les signes corporels explorés"
 }

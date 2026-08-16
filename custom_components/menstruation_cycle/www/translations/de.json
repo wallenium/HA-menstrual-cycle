@@ -705,5 +705,14 @@
   "badge_pattern_emerging": "Muster erkennbar",
   "dashboard_loading": "Wird geladen…",
   "dashboard_onboarding_title": "Willkommen! Noch keine Daten erfasst.",
-  "dashboard_onboarding_hint": "Trage deinen ersten Zyklustag ein, um Vorhersagen, Diagramme und Auswertungen zu sehen."
+  "dashboard_onboarding_hint": "Trage deinen ersten Zyklustag ein, um Vorhersagen, Diagramme und Auswertungen zu sehen.",
+  "badge_cycles_12": "12 Zyklen erfasst",
+  "badge_symptom_variety": "5+ Symptomkategorien erkundet",
+  "badge_nfp_confirmed_ovulation": "NFP-bestätigter Eisprung",
+  "badge_insights_unlocked": "Symptom-Einsichten freigeschaltet",
+  "badge_temperature_tracker": "Basaltemperatur erfasst (10+ Tage in einem Zyklus)",
+  "badge_doctor_report_exported": "Arztbericht exportiert",
+  "badge_profile_personalized": "Profil personalisiert (Geburtsdatum + Familienangabe)",
+  "badge_first_sign_logged": "Erstes Körperzeichen erfasst",
+  "badge_signs_explored": "Alle Körperzeichen erkundet"
 }
