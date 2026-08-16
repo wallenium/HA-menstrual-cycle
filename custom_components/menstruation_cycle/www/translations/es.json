@@ -669,5 +669,8 @@
   "badge_cycles_3": "3 ciclos registrados",
   "badge_cycles_6": "6 ciclos registrados",
   "badge_consistent_logging": "Registro constante (30 días)",
-  "badge_pattern_emerging": "Patrón emergente"
+  "badge_pattern_emerging": "Patrón emergente",
+  "dashboard_loading": "Cargando…",
+  "dashboard_onboarding_title": "¡Bienvenida! Aún no hay datos registrados.",
+  "dashboard_onboarding_hint": "Registra tu primer día de ciclo para ver predicciones, gráficos y análisis."
 }

@@ -669,5 +669,8 @@
   "badge_cycles_3": "3 cykler loggade",
   "badge_cycles_6": "6 cykler loggade",
   "badge_consistent_logging": "Regelbunden loggning (30 dagar)",
-  "badge_pattern_emerging": "Mönster framträder"
+  "badge_pattern_emerging": "Mönster framträder",
+  "dashboard_loading": "Laddar…",
+  "dashboard_onboarding_title": "Välkommen! Ingen data har loggats än.",
+  "dashboard_onboarding_hint": "Logga din första cykeldag för att se prognoser, diagram och insikter."
 }

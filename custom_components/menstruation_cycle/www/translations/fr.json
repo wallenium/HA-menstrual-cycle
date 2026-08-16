@@ -669,5 +669,8 @@
   "badge_cycles_3": "3 cycles enregistrés",
   "badge_cycles_6": "6 cycles enregistrés",
   "badge_consistent_logging": "Enregistrement régulier (30 jours)",
-  "badge_pattern_emerging": "Tendance émergente"
+  "badge_pattern_emerging": "Tendance émergente",
+  "dashboard_loading": "Chargement…",
+  "dashboard_onboarding_title": "Bienvenue ! Aucune donnée enregistrée pour l'instant.",
+  "dashboard_onboarding_hint": "Enregistrez votre premier jour de cycle pour voir les prévisions, graphiques et analyses."
 }

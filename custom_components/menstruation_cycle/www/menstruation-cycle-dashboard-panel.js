@@ -142,6 +142,9 @@
     badge_cycles_6: '6 cycles logged',
     badge_consistent_logging: 'Consistent logging (30 days)',
     badge_pattern_emerging: 'Pattern emerging',
+    dashboard_loading: 'Loading…',
+    dashboard_onboarding_title: 'Welcome! No data logged yet.',
+    dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
     dashboard_calendar_day_added: 'Marked',
     dashboard_calendar_day_removed: 'Removed',
     dashboard_week_unit: 'Week',
@@ -1743,14 +1746,14 @@
           <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
           <div class="hw-sub">${escapeHtml(weekUnit)}</div>
           <div class="hw-tag">${this._t('trimester_' + trimester)}</div>
-          ${isHighRisk ? `<div class="hw-tag" style="margin-top:5px;background:var(--mc-amber-tint,#FBEEDC);color:#8a5a12;">⚠ ${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</div>` : ''}
+          ${isHighRisk ? `<div class="hw-tag" style="margin-top:5px;background:var(--mc-amber-tint,#FBEEDC);color:var(--mc-amber-deep,#8a5a12);">⚠ ${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</div>` : ''}
         </div>`;
 
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
       kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
       if (isHighRisk) {
-        kpis.push(`<div class="kpi-item" style="background:var(--mc-amber-tint,#FBEEDC);"><span class="kpi-icon" aria-hidden="true">⚠️</span><span class="kpi-value" style="color:#8a5a12;">${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</span><span class="kpi-label">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</span></div>`);
+        kpis.push(`<div class="kpi-item" style="background:var(--mc-amber-tint,#FBEEDC);"><span class="kpi-icon" aria-hidden="true">⚠️</span><span class="kpi-value" style="color:var(--mc-amber-deep,#8a5a12);">${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</span><span class="kpi-label">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</span></div>`);
       }
 
       return `
@@ -2762,8 +2765,60 @@
       }
     }
 
+    _renderLoadingState() {
+      const skeletonCards = Array.from({ length: 4 }).map((_, i) => `
+        <div class="mc-skel-card" style="animation-delay:${i * 80}ms;"></div>
+      `).join('');
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block; height: 100%;
+            color: var(--primary-text-color, #1f2937);
+            font-family: 'Inter', var(--paper-font-body1_-_font-family, sans-serif);
+          }
+          .mc-loading-page { padding: 16px; display: grid; gap: 16px; }
+          .mc-loading-spin {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.875rem; color: var(--secondary-text-color, #6b7280);
+          }
+          .mc-spinner {
+            width: 16px; height: 16px; border-radius: 50%;
+            border: 2px solid var(--divider-color, #e5e7eb);
+            border-top-color: #C43F5E;
+            animation: mc-spin 0.8s linear infinite;
+          }
+          @keyframes mc-spin { to { transform: rotate(360deg); } }
+          .mc-skel-grid {
+            display: grid; gap: 16px;
+            grid-template-columns: repeat(12, 1fr);
+          }
+          @media (max-width: 900px) { .mc-skel-grid { grid-template-columns: 1fr; } }
+          .mc-skel-card {
+            grid-column: span 6;
+            height: 140px; border-radius: 20px;
+            background: linear-gradient(90deg, var(--divider-color, #e5e7eb) 25%, var(--card-background-color, #f3f4f6) 50%, var(--divider-color, #e5e7eb) 75%);
+            background-size: 200% 100%;
+            animation: mc-shimmer 1.4s ease-in-out infinite;
+          }
+          @media (max-width: 900px) { .mc-skel-card { grid-column: span 1; } }
+          @keyframes mc-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+          @media (prefers-reduced-motion: reduce) {
+            .mc-spinner, .mc-skel-card { animation: none; }
+          }
+        </style>
+        <div class="mc-loading-page">
+          <div class="mc-loading-spin"><span class="mc-spinner"></span><span>${this._t('dashboard_loading')}</span></div>
+          <div class="mc-skel-grid">${skeletonCards}</div>
+        </div>
+      `;
+    }
+
     _renderContent() {
       if (!this.shadowRoot) return;
+      if (!this._hass) {
+        this._renderLoadingState();
+        return;
+      }
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       const availableEntities = this._availableEntities || this._getAvailableEntitiesFallback();
       const discreetMode = !!this._prefs?.discreetMode;
@@ -2802,13 +2857,29 @@
       const cards = order
         .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
         .filter(Boolean);
-      const cardHtml = cards.length
-        ? cards.join('')
-        : `<div class="empty-state" role="status">
-            <p>${this._t('dashboard_empty_state')}</p>
-            <p class="helper">${this._t('dashboard_empty_state_hint')}</p>
-            <button type="button" data-action="toggle-edit">${this._t('dashboard_edit_mode')}</button>
+
+      const attrsForEmptyCheck = stateObj?.attributes || {};
+      const hasAnyHistory = (Array.isArray(attrsForEmptyCheck.history) && attrsForEmptyCheck.history.length > 0)
+        || (Array.isArray(attrsForEmptyCheck.grouped_starts) && attrsForEmptyCheck.grouped_starts.length > 0);
+      const isFreshProfile = mode === 'cycle' && stateObj && !hasAnyHistory && !attrsForEmptyCheck.cycle_day;
+
+      let cardHtml;
+      if (isFreshProfile) {
+        cardHtml = `
+          <div class="empty-state mc-onboarding" role="status">
+            <div class="mc-onboarding-icon" aria-hidden="true">🌱</div>
+            <p class="mc-onboarding-title">${this._t('dashboard_onboarding_title') || 'Willkommen! Noch keine Daten erfasst.'}</p>
+            <p class="helper">${this._t('dashboard_onboarding_hint') || 'Trage deinen ersten Zyklustag ein, um Vorhersagen, Diagramme und Auswertungen zu sehen.'}</p>
           </div>`;
+      } else {
+        cardHtml = cards.length
+          ? cards.join('')
+          : `<div class="empty-state" role="status">
+              <p>${this._t('dashboard_empty_state')}</p>
+              <p class="helper">${this._t('dashboard_empty_state_hint')}</p>
+              <button type="button" data-action="toggle-edit">${this._t('dashboard_edit_mode')}</button>
+            </div>`;
+      }
 
       this.shadowRoot.innerHTML = `
         <style>
@@ -2817,10 +2888,21 @@
             display: block; height: 100%;
             color: var(--primary-text-color, #1f2937);
             font-family: 'Inter', var(--paper-font-body1_-_font-family, sans-serif);
-            --mc-rose: #E8637D; --mc-rose-deep: #C43F5E; --mc-rose-tint: #FBE1E6;
-            --mc-plum: #6B3654; --mc-plum-tint: #EDE0E8;
-            --mc-sage: #7C9885; --mc-sage-deep: #3F5A47; --mc-sage-tint: #E6EDE7;
-            --mc-amber: #E3A23D; --mc-amber-tint: #FBEEDC;
+            /* Base hues stay fixed (brand identity); "-deep" text variants blend toward
+               --primary-text-color and "-tint" backgrounds blend toward
+               --card-background-color, so both automatically adapt to the active HA
+               theme (light or dark) instead of being fixed light-mode pastels. */
+            --mc-rose: #E8637D;
+            --mc-rose-deep: color-mix(in srgb, #C43F5E 78%, var(--primary-text-color, #000) 22%);
+            --mc-rose-tint: color-mix(in srgb, var(--card-background-color, #fff) 84%, #E8637D 16%);
+            --mc-plum: color-mix(in srgb, #6B3654 78%, var(--primary-text-color, #000) 22%);
+            --mc-plum-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #6B3654 12%);
+            --mc-sage: #7C9885;
+            --mc-sage-deep: color-mix(in srgb, #3F5A47 78%, var(--primary-text-color, #000) 22%);
+            --mc-sage-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #7C9885 12%);
+            --mc-amber: #E3A23D;
+            --mc-amber-deep: color-mix(in srgb, #8a5a12 78%, var(--primary-text-color, #000) 22%);
+            --mc-amber-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #E3A23D 12%);
             --mc-sand: color-mix(in srgb, var(--card-background-color, #fff) 88%, var(--mc-rose) 12%);
             --mc-font-display: 'Fraunces', serif;
             --mc-font-mono: 'IBM Plex Mono', monospace;
@@ -3044,6 +3126,20 @@
           .edit-actions button:first-child { background: var(--primary-color, #2563eb); color: #fff; border-color: transparent; font-weight: 600; }
           .empty-state { text-align: center; padding: 32px 16px; }
           .empty-state p { margin: 0 0 8px; }
+          .mc-onboarding {
+            grid-column: 1 / -1;
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 20px;
+            padding: 48px 24px;
+          }
+          .mc-onboarding-icon { font-size: 2.5rem; margin-bottom: 12px; }
+          .mc-onboarding-title {
+            font-family: var(--mc-font-display, serif);
+            font-size: 1.25rem; font-weight: 500;
+            color: var(--mc-rose-deep, #C43F5E);
+            margin: 0 0 8px;
+          }
           .empty-state button {
             border: 1px solid var(--divider-color, #d1d5db);
             border-radius: 10px;

@@ -702,5 +702,8 @@
   "badge_cycles_3": "3 cycles logged",
   "badge_cycles_6": "6 cycles logged",
   "badge_consistent_logging": "Consistent logging (30 days)",
-  "badge_pattern_emerging": "Pattern emerging"
+  "badge_pattern_emerging": "Pattern emerging",
+  "dashboard_loading": "Loading…",
+  "dashboard_onboarding_title": "Welcome! No data logged yet.",
+  "dashboard_onboarding_hint": "Log your first cycle day to see predictions, charts, and insights."
 }

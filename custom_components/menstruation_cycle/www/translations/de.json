@@ -702,5 +702,8 @@
   "badge_cycles_3": "3 Zyklen erfasst",
   "badge_cycles_6": "6 Zyklen erfasst",
   "badge_consistent_logging": "Regelmäßig erfasst (30 Tage)",
-  "badge_pattern_emerging": "Muster erkennbar"
+  "badge_pattern_emerging": "Muster erkennbar",
+  "dashboard_loading": "Wird geladen…",
+  "dashboard_onboarding_title": "Willkommen! Noch keine Daten erfasst.",
+  "dashboard_onboarding_hint": "Trage deinen ersten Zyklustag ein, um Vorhersagen, Diagramme und Auswertungen zu sehen."
 }
