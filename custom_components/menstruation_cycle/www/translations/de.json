@@ -718,5 +718,11 @@
   "dashboard_pain_frequency": "Zyklen mit Schmerzen",
   "dashboard_most_common": "häufigste Art",
   "dashboard_typical_bleeding": "typische Stärke",
-  "dashboard_avg_basal_temp": "Ø Basaltemperatur"
+  "dashboard_avg_basal_temp": "Ø Basaltemperatur",
+  "dashboard_widget_product_usage": "Produktverbrauch",
+  "dashboard_stock": "Bestand",
+  "dashboard_today_short": "Heute",
+  "dashboard_this_cycle": "Zyklus",
+  "dashboard_avg_short": "Ø",
+  "dashboard_stock_hint": "Bestand aus dem Haushalts-Inventar (gemeinsam für alle Profile)."
 }

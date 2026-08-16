@@ -685,5 +685,11 @@
   "dashboard_pain_frequency": "Ciclos con dolor",
   "dashboard_most_common": "más frecuente",
   "dashboard_typical_bleeding": "intensidad típica",
-  "dashboard_avg_basal_temp": "Temp. basal media"
+  "dashboard_avg_basal_temp": "Temp. basal media",
+  "dashboard_widget_product_usage": "Uso de productos",
+  "dashboard_stock": "Existencias",
+  "dashboard_today_short": "Hoy",
+  "dashboard_this_cycle": "Este ciclo",
+  "dashboard_avg_short": "Prom.",
+  "dashboard_stock_hint": "Existencias del inventario del hogar (compartido entre todos los perfiles)."
 }

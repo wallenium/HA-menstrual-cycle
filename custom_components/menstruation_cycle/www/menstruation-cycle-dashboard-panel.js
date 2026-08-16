@@ -155,6 +155,12 @@
     dashboard_most_common: 'most common',
     dashboard_typical_bleeding: 'typical strength',
     dashboard_avg_basal_temp: 'Avg. basal temp.',
+    dashboard_widget_product_usage: 'Product Usage',
+    dashboard_stock: 'Stock',
+    dashboard_today_short: 'Today',
+    dashboard_this_cycle: 'This cycle',
+    dashboard_avg_short: 'Avg.',
+    dashboard_stock_hint: 'Stock from the household inventory (shared across all profiles).',
     dashboard_loading: 'Loading…',
     dashboard_onboarding_title: 'Welcome! No data logged yet.',
     dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
@@ -302,6 +308,7 @@
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
     { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, span: 7 },
     { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, span: 12 },
+    { id: 'product_usage', title: 'dashboard_widget_product_usage', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
@@ -320,6 +327,7 @@
     'phase_donut',
     'cycle_history',
     'calendar_card',
+    'product_usage',
     'symptom_heatmap',
     'anomaly_insights',
     'symptom_insights',
@@ -342,6 +350,7 @@
         phase_donut: true,
         basal_temp: false,
         calendar_card: false,
+        product_usage: true,
         symptom_heatmap: false,
         anomaly_insights: false,
         symptom_insights: false,
@@ -365,6 +374,7 @@
         phase_donut: true,
         basal_temp: true,
         calendar_card: true,
+        product_usage: true,
         symptom_heatmap: true,
         anomaly_insights: true,
         symptom_insights: true,
@@ -1366,6 +1376,86 @@
           ${phase ? `<div class="helper" style="text-align:center">${escapeHtml(phase)}</div>` : ''}
         </div>
       `;
+    }
+
+    // Real bundled product illustrations from assets/period/, served via the same
+    // existing HTTP route already used for the pregnancy silhouettes
+    // (/menstruation_cycle/assets/{subfolder}/{filename}).
+    _productIconSvg(key) {
+      const files = {
+        pad: 'pad.svg',
+        tampon: 'tampon.svg',
+        cup: 'menstrual_cup.svg',
+        liner: 'pantyliner.svg',
+        underwear: 'period_panty.svg',
+      };
+      const file = files[key];
+      if (!file) return '';
+      return `<img src="/menstruation_cycle/assets/period/${file}" width="22" height="22"
+                   alt="${escapeHtml(this._t('opt_' + key) !== ('opt_' + key) ? this._t('opt_' + key) : this._t(key))}"
+                   style="display:block;" loading="lazy" onerror="this.style.display='none';"/>`;
+    }
+
+    _renderProductUsage(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const today = attrs.product_usage_today || {};
+      const thisCycle = attrs.product_usage_this_cycle || {};
+      const stats = attrs.product_usage_stats && typeof attrs.product_usage_stats === 'object' ? attrs.product_usage_stats : {};
+      const averagePerCycle = stats.average_per_cycle || {};
+
+      const hasAnyData = ['tampon', 'pad', 'cup', 'liner', 'underwear'].some(
+        (p) => (today[p] || thisCycle[p] || averagePerCycle[p]) > 0
+      );
+
+      // Household inventory lives on its own, profile-independent entity, set up by
+      // the household-inventory feature (fixed entity id, not per selected profile).
+      const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
+      const inventory = inventoryState?.attributes?.inventory || null;
+      const thresholds = inventoryState?.attributes?.thresholds || {};
+
+      if (!hasAnyData && !inventory) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      const products = ['tampon', 'pad', 'cup', 'liner', 'underwear'];
+      const rows = products.map((key) => {
+        const label = this._t('opt_' + key) !== ('opt_' + key) ? this._t('opt_' + key) : this._t(key);
+        const t = Number(today[key] || 0);
+        const c = Number(thisCycle[key] || 0);
+        const a = averagePerCycle[key] !== undefined ? Number(averagePerCycle[key]) : null;
+
+        let stockBadge = '';
+        if (inventory && key in inventory) {
+          const stock = Number(inventory[key] || 0);
+          const th = thresholds[key] || {};
+          const critical = Number(th.critical ?? 0);
+          const warning = Number(th.warning ?? 0);
+          let stockColor = 'var(--mc-sage)';
+          if (stock <= critical) stockColor = 'var(--mc-rose-deep)';
+          else if (stock <= warning) stockColor = 'var(--mc-amber)';
+          stockBadge = `<span style="font-family:var(--mc-font-mono);font-size:11px;color:${stockColor};font-weight:600;white-space:nowrap;">${this._t('dashboard_stock') || 'Bestand'}: ${escapeHtml(stock)}</span>`;
+        }
+
+        return `
+          <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
+            <div style="color:var(--mc-rose-deep);flex:none;">${this._productIconSvg(key)}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;">${escapeHtml(label)}</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;font-family:var(--mc-font-mono);font-size:10.5px;color:var(--secondary-text-color,#6b7280);">
+                <span>${this._t('dashboard_today_short') || 'Heute'}: ${t}</span>
+                <span>${this._t('dashboard_this_cycle') || 'Zyklus'}: ${c}</span>
+                ${a !== null ? `<span>${this._t('dashboard_avg_short') || 'Ø'}: ${a}</span>` : ''}
+              </div>
+            </div>
+            ${stockBadge}
+          </div>`;
+      }).join('');
+
+      const inventoryHint = inventory
+        ? `<p class="helper" style="margin-top:10px;font-size:0.7rem;">${this._t('dashboard_stock_hint') || 'Bestand aus dem Haushalts-Inventar (gemeinsam für alle Profile).'}</p>`
+        : '';
+
+      return `<div style="display:grid;gap:8px;">${rows}</div>${inventoryHint}`;
     }
 
     _renderCalendarCard(stateObj) {
@@ -2777,6 +2867,7 @@
       }
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
       if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
+      if (widgetId === 'product_usage') body = this._renderProductUsage(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);

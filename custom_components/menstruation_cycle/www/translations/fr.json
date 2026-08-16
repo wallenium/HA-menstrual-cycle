@@ -685,5 +685,11 @@
   "dashboard_pain_frequency": "Cycles avec douleurs",
   "dashboard_most_common": "la plus fréquente",
   "dashboard_typical_bleeding": "intensité habituelle",
-  "dashboard_avg_basal_temp": "Temp. basale moy."
+  "dashboard_avg_basal_temp": "Temp. basale moy.",
+  "dashboard_widget_product_usage": "Utilisation des produits",
+  "dashboard_stock": "Stock",
+  "dashboard_today_short": "Aujourd'hui",
+  "dashboard_this_cycle": "Ce cycle",
+  "dashboard_avg_short": "Moy.",
+  "dashboard_stock_hint": "Stock provenant de l'inventaire du foyer (partagé entre tous les profils)."
 }

@@ -685,5 +685,11 @@
   "dashboard_pain_frequency": "Cykler med smärta",
   "dashboard_most_common": "vanligast",
   "dashboard_typical_bleeding": "typisk styrka",
-  "dashboard_avg_basal_temp": "Genomsn. basaltemp."
+  "dashboard_avg_basal_temp": "Genomsn. basaltemp.",
+  "dashboard_widget_product_usage": "Produktanvändning",
+  "dashboard_stock": "Lager",
+  "dashboard_today_short": "Idag",
+  "dashboard_this_cycle": "Denna cykel",
+  "dashboard_avg_short": "Genomsn.",
+  "dashboard_stock_hint": "Lager från hushållsinventeringen (delat mellan alla profiler)."
 }

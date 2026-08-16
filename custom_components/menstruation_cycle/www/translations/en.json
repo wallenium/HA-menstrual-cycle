@@ -718,5 +718,11 @@
   "dashboard_pain_frequency": "Cycles with pain",
   "dashboard_most_common": "most common",
   "dashboard_typical_bleeding": "typical strength",
-  "dashboard_avg_basal_temp": "Avg. basal temp."
+  "dashboard_avg_basal_temp": "Avg. basal temp.",
+  "dashboard_widget_product_usage": "Product Usage",
+  "dashboard_stock": "Stock",
+  "dashboard_today_short": "Today",
+  "dashboard_this_cycle": "This cycle",
+  "dashboard_avg_short": "Avg.",
+  "dashboard_stock_hint": "Stock from the household inventory (shared across all profiles)."
 }
