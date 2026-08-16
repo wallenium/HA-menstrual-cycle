@@ -1364,8 +1364,14 @@
       }
       const tagName = 'menstruation-calendar-card';
       if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
-        const entityId = escapeHtml(this._selectedEntityId);
-        return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+        // This is a standard Lovelace-style card: it needs `.hass` and `.setConfig()`
+        // assigned as real JS properties, not HTML attributes (it has no
+        // observedAttributes/getAttribute fallback at all). A raw
+        // `<menstruation-calendar-card entity-id="...">` string would render blank
+        // forever, since its internal _config/hass would never be set. Instead we
+        // render an empty mount point here and attach the real element to it via
+        // DOM APIs in _mountEmbeddedCards(), which runs after every innerHTML update.
+        return `<div class="calendar-card-mount" data-mount="calendar-card"></div>`;
       }
       // Native fallback: mini calendar showing current month with period-start markers
       const attrs = stateObj?.attributes || {};
@@ -2320,8 +2326,7 @@
       }
       const tagName = 'menstruation-cycle-heatmap-card';
       if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
-        const entityId = escapeHtml(this._selectedEntityId);
-        return `<${tagName} entity-id="${entityId}" max_cycles="6"></${tagName}>`;
+        return `<div class="calendar-card-mount" data-mount="heatmap-card"></div>`;
       }
       // Native fallback: simple 4-week × symptom grid
       const attrs = stateObj?.attributes || {};
@@ -3051,6 +3056,8 @@
           .anomaly-text { margin: 0; font-size: 0.8125rem; line-height: 1.45; }
           /* Pain & mood trend */
           .pain-mood-wrap { width: 100%; }
+          .calendar-card-mount { width: 100%; min-height: 40px; }
+          .calendar-card-mount ha-card { box-shadow: none; border: none; background: transparent; }
           /* Year overview */
           .year-overview-wrap { width: 100%; }
           .year-months-grid {
@@ -3093,6 +3100,35 @@
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
         </main>
       `;
+      this._mountEmbeddedCards();
+    }
+
+    /**
+     * Attaches real Lovelace-style child card elements (menstruation-calendar-card,
+     * menstruation-cycle-heatmap-card) to their mount-point placeholders via DOM APIs.
+     * These cards require `.hass` and `.setConfig()` to be assigned as JS properties —
+     * they have no HTML-attribute fallback — so they cannot be embedded as innerHTML
+     * strings. Runs after every render() since the whole shadow DOM is rebuilt each time.
+     */
+    _mountEmbeddedCards() {
+      if (!this._selectedEntityId || !this._hass) return;
+      const mounts = [
+        { selector: '[data-mount="calendar-card"]', tag: 'menstruation-calendar-card' },
+        { selector: '[data-mount="heatmap-card"]', tag: 'menstruation-cycle-heatmap-card' },
+      ];
+      mounts.forEach(({ selector, tag }) => {
+        const host = this.shadowRoot?.querySelector(selector);
+        if (!host || typeof customElements === 'undefined' || !customElements.get(tag)) return;
+        try {
+          const el = document.createElement(tag);
+          el.setConfig({ entity: this._selectedEntityId });
+          el.hass = this._hass;
+          host.appendChild(el);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error(`[menstruation-cycle] Failed to mount ${tag}:`, err);
+        }
+      });
     }
   }
 
