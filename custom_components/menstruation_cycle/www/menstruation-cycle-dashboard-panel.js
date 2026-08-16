@@ -101,10 +101,83 @@
     dashboard_fetal_size_label: 'Size comparison',
     dashboard_menarche_estimate_from: 'Estimate based on',
     dashboard_menarche_estimate_generic: 'Rough estimate — becomes more precise once dated signs are logged',
-    discharge: 'discharge',
+    dashboard_week_unit: 'Week',
+    dashboard_due_date_short: 'Due',
+    trimester_1: '1st Trimester',
+    trimester_2: '2nd Trimester',
+    trimester_3: '3rd Trimester',
     height_spurt: 'growth spurt',
     breast: 'breast development',
     pubic_hair: 'pubic hair',
+    milestone_heartbeat: 'Heartbeat audible',
+    milestone_first_trimester_screening: 'First-trimester screening',
+    milestone_organ_screening: 'Organ screening',
+    milestone_viability: 'Viability threshold',
+    milestone_third_trimester: '3rd trimester begins',
+    milestone_position_check: 'Position check',
+    milestone_due_date: 'Due date',
+    menarche_sign_height_spurt: 'Growth spurt',
+    menarche_sign_breast: 'Physical changes',
+    menarche_sign_pubic_hair: 'Further physical maturity signs',
+    menarche_sign_discharge: 'First observed discharge',
+    menarche_sign_mood: 'Mood changes',
+    menarche_sign_acne: 'Skin changes',
+    menarche_sign_body_odor: 'Body odor changes',
+    fetal_size_5: 'Poppy seed',
+    fetal_skill_5_1: 'Heart begins to form',
+    fetal_skill_5_2: 'Neural tube develops',
+    fetal_size_7: 'Blueberry',
+    fetal_skill_7_1: 'Heartbeat measurable',
+    fetal_skill_7_2: 'Arm and leg buds form',
+    fetal_size_9: 'Raspberry',
+    fetal_skill_9_1: 'Finger and toe buds visible',
+    fetal_skill_9_2: 'First movements (not yet felt)',
+    fetal_size_11: 'Lime',
+    fetal_skill_11_1: 'All major organs formed',
+    fetal_skill_11_2: 'Can make a fist',
+    fetal_size_13: 'Peach',
+    fetal_skill_13_1: 'Reflexes developing',
+    fetal_skill_13_2: 'Fingernails begin to grow',
+    fetal_size_15: 'Apple',
+    fetal_skill_15_1: 'Can frown and grimace',
+    fetal_skill_15_2: 'Hears first muffled sounds',
+    fetal_size_17: 'Avocado',
+    fetal_skill_17_1: 'Practices sucking and swallowing',
+    fetal_skill_17_2: 'Skeleton continues to harden',
+    fetal_size_19: 'Sweet potato',
+    fetal_skill_19_1: 'Movements often first felt',
+    fetal_skill_19_2: 'Develops sleep-wake rhythm',
+    fetal_size_21: 'Banana',
+    fetal_skill_21_1: 'Responds to sounds from outside',
+    fetal_skill_21_2: 'Eyelashes and eyebrows visible',
+    fetal_size_23: 'Papaya',
+    fetal_skill_23_1: 'Facial features clearly recognizable',
+    fetal_skill_23_2: 'Practices breathing movements (still without air)',
+    fetal_size_25: 'Eggplant',
+    fetal_skill_25_1: 'Responds to light',
+    fetal_skill_25_2: 'Fat layers begin to form',
+    fetal_size_27: 'Cauliflower',
+    fetal_skill_27_1: 'Eyes open occasionally',
+    fetal_skill_27_2: 'Can have hiccups',
+    fetal_size_29: 'Butternut squash',
+    fetal_skill_29_1: 'Brain developing rapidly',
+    fetal_skill_29_2: 'Responds more strongly to voices',
+    fetal_size_31: 'Coconut',
+    fetal_skill_31_1: 'Stronger, more coordinated movements',
+    fetal_skill_31_2: 'Shows recognizable wake/sleep phases',
+    fetal_size_33: 'Pineapple',
+    fetal_skill_33_1: 'Bones continue to harden (except skull)',
+    fetal_skill_33_2: 'Practices regular breathing',
+    fetal_size_35: 'Honeydew melon',
+    fetal_skill_35_1: 'Immune system continues to mature',
+    fetal_skill_35_2: 'Usually turns head-down',
+    fetal_size_37: 'Savoy cabbage',
+    fetal_skill_37_1: 'Grasp reflex well developed',
+    fetal_skill_37_2: 'Lungs approaching maturity',
+    fetal_size_40: 'Pumpkin',
+    fetal_skill_40_1: 'Considered full-term ("term" from week 39)',
+    fetal_skill_40_2: 'Ready for birth',
+    discharge: 'discharge',
   };
   const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
   const I18N_SCRIPT_SELECTOR = 'script[src]';
@@ -237,24 +310,24 @@
 
   // General pregnancy-education milestones by week — original wording, illustrative only, not medical advice.
   const FETAL_DEVELOPMENT_STAGES = [
-    { maxWeek: 5, size: 'Mohnsamen', skills: ['Herz beginnt sich zu bilden', 'Neuralrohr entsteht'] },
-    { maxWeek: 7, size: 'Heidelbeere', skills: ['Herzschlag messbar', 'Arm- und Beinansätze bilden sich'] },
-    { maxWeek: 9, size: 'Himbeere', skills: ['Finger- und Zehenansätze erkennbar', 'Erste Bewegungen (noch nicht spürbar)'] },
-    { maxWeek: 11, size: 'Limette', skills: ['Alle wichtigen Organe angelegt', 'Kann die Faust ballen'] },
-    { maxWeek: 13, size: 'Pfirsich', skills: ['Reflexe entwickeln sich', 'Fingernägel beginnen zu wachsen'] },
-    { maxWeek: 15, size: 'Apfel', skills: ['Kann Gesicht runzeln und grimassieren', 'Hört erste gedämpfte Geräusche'] },
-    { maxWeek: 17, size: 'Avocado', skills: ['Übt Saug- und Schluckbewegungen', 'Skelett verhärtet sich zunehmend'] },
-    { maxWeek: 19, size: 'Süßkartoffel', skills: ['Bewegungen oft erstmals spürbar', 'Entwickelt Schlaf-Wach-Rhythmus'] },
-    { maxWeek: 21, size: 'Banane', skills: ['Reagiert auf Geräusche von außen', 'Wimpern und Augenbrauen sichtbar'] },
-    { maxWeek: 23, size: 'Papaya', skills: ['Gesichtszüge deutlich erkennbar', 'Übt Atembewegungen (noch ohne Luft)'] },
-    { maxWeek: 25, size: 'Aubergine', skills: ['Reagiert auf Licht', 'Fettpölsterchen beginnen sich zu bilden'] },
-    { maxWeek: 27, size: 'Blumenkohl', skills: ['Augen öffnen sich zeitweise', 'Kann Schluckauf haben'] },
-    { maxWeek: 29, size: 'Butternusskürbis', skills: ['Gehirn entwickelt sich rasant weiter', 'Reagiert stärker auf Stimmen'] },
-    { maxWeek: 31, size: 'Kokosnuss', skills: ['Kräftigere, koordiniertere Bewegungen', 'Regt sich in erkennbaren Wach-/Schlafphasen'] },
-    { maxWeek: 33, size: 'Ananas', skills: ['Knochen härten weiter aus (außer Schädel)', 'Übt regelmäßiges Atmen'] },
-    { maxWeek: 35, size: 'Honigmelone', skills: ['Immunsystem reift weiter', 'Dreht sich meist in Kopflage'] },
-    { maxWeek: 37, size: 'Wirsingkohl', skills: ['Greifreflex gut ausgeprägt', 'Lunge nähert sich der Reife'] },
-    { maxWeek: 40, size: 'Kürbis', skills: ['Gilt als ausgereift (\u201Ereif\u201C ab SSW 39)', 'Bereit für die Geburt'] },
+    { maxWeek: 5, sizeKey: 'fetal_size_5', skillKeys: ['fetal_skill_5_1', 'fetal_skill_5_2'] },
+    { maxWeek: 7, sizeKey: 'fetal_size_7', skillKeys: ['fetal_skill_7_1', 'fetal_skill_7_2'] },
+    { maxWeek: 9, sizeKey: 'fetal_size_9', skillKeys: ['fetal_skill_9_1', 'fetal_skill_9_2'] },
+    { maxWeek: 11, sizeKey: 'fetal_size_11', skillKeys: ['fetal_skill_11_1', 'fetal_skill_11_2'] },
+    { maxWeek: 13, sizeKey: 'fetal_size_13', skillKeys: ['fetal_skill_13_1', 'fetal_skill_13_2'] },
+    { maxWeek: 15, sizeKey: 'fetal_size_15', skillKeys: ['fetal_skill_15_1', 'fetal_skill_15_2'] },
+    { maxWeek: 17, sizeKey: 'fetal_size_17', skillKeys: ['fetal_skill_17_1', 'fetal_skill_17_2'] },
+    { maxWeek: 19, sizeKey: 'fetal_size_19', skillKeys: ['fetal_skill_19_1', 'fetal_skill_19_2'] },
+    { maxWeek: 21, sizeKey: 'fetal_size_21', skillKeys: ['fetal_skill_21_1', 'fetal_skill_21_2'] },
+    { maxWeek: 23, sizeKey: 'fetal_size_23', skillKeys: ['fetal_skill_23_1', 'fetal_skill_23_2'] },
+    { maxWeek: 25, sizeKey: 'fetal_size_25', skillKeys: ['fetal_skill_25_1', 'fetal_skill_25_2'] },
+    { maxWeek: 27, sizeKey: 'fetal_size_27', skillKeys: ['fetal_skill_27_1', 'fetal_skill_27_2'] },
+    { maxWeek: 29, sizeKey: 'fetal_size_29', skillKeys: ['fetal_skill_29_1', 'fetal_skill_29_2'] },
+    { maxWeek: 31, sizeKey: 'fetal_size_31', skillKeys: ['fetal_skill_31_1', 'fetal_skill_31_2'] },
+    { maxWeek: 33, sizeKey: 'fetal_size_33', skillKeys: ['fetal_skill_33_1', 'fetal_skill_33_2'] },
+    { maxWeek: 35, sizeKey: 'fetal_size_35', skillKeys: ['fetal_skill_35_1', 'fetal_skill_35_2'] },
+    { maxWeek: 37, sizeKey: 'fetal_size_37', skillKeys: ['fetal_skill_37_1', 'fetal_skill_37_2'] },
+    { maxWeek: 40, sizeKey: 'fetal_size_40', skillKeys: ['fetal_skill_40_1', 'fetal_skill_40_2'] },
   ];
 
   // Reads a single pre-menarche sign entry in either the legacy plain-string format
@@ -1609,6 +1682,7 @@
         if (!Number.isNaN(due.getTime())) daysUntilDue = Math.round((due - today) / 86400000);
       }
       const trimester = weeksPregnantRaw < 13 ? 1 : (weeksPregnantRaw < 27 ? 2 : 3);
+      const weekUnit = this._t('dashboard_week_unit');
 
       const cx = 100, cy = 100, r = 82, sw = 15;
       const circumference = 2 * Math.PI * r;
@@ -1630,7 +1704,7 @@
       const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
 
       const wheelSvg = `
-        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="SSW ${escapeHtml(weeks)}+${escapeHtml(days)}">
+        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="${escapeHtml(weekUnit)} ${escapeHtml(weeks)}+${escapeHtml(days)}">
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
           ${ringSegs}
           ${marker}
@@ -1639,13 +1713,13 @@
       const centerHtml = `
         <div class="hero-wheel-center">
           <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
-          <div class="hw-sub">SSW</div>
-          <div class="hw-tag">${trimester}. Trimester</div>
+          <div class="hw-sub">${escapeHtml(weekUnit)}</div>
+          <div class="hw-tag">${this._t('trimester_' + trimester)}</div>
         </div>`;
 
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
-      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">ET</span></div>`);
+      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
 
       return `
         <div class="hero-layout" role="region" aria-label="Pregnancy at a glance">
@@ -1831,21 +1905,22 @@
     _renderPregnancyMilestones(stateObj) {
       const attrs = stateObj?.attributes || {};
       const weeksPregnantRaw = Number(attrs.weeks_pregnant ?? 0) || 0;
+      const weekUnit = this._t('dashboard_week_unit');
       const milestones = [
-        { week: 6, label: 'Herzschlag hörbar' },
-        { week: 12, label: 'Ersttrimester-Screening' },
-        { week: 20, label: 'Organscreening' },
-        { week: 24, label: 'Lebensfähigkeitsgrenze' },
-        { week: 28, label: '3. Trimester beginnt' },
-        { week: 36, label: 'Kindslage-Kontrolle' },
-        { week: 40, label: 'Entbindungstermin' },
+        { week: 6, labelKey: 'milestone_heartbeat' },
+        { week: 12, labelKey: 'milestone_first_trimester_screening' },
+        { week: 20, labelKey: 'milestone_organ_screening' },
+        { week: 24, labelKey: 'milestone_viability' },
+        { week: 28, labelKey: 'milestone_third_trimester' },
+        { week: 36, labelKey: 'milestone_position_check' },
+        { week: 40, labelKey: 'milestone_due_date' },
       ];
       const items = milestones.map((m) => {
         const state = weeksPregnantRaw >= m.week ? 'done' : (Math.abs(weeksPregnantRaw - m.week) < 1 ? 'current' : '');
         return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;min-width:88px;flex:1;">
           <div style="width:12px;height:12px;border-radius:50%;background:${state === 'done' ? 'var(--mc-sage)' : (state === 'current' ? 'var(--mc-rose-deep)' : 'var(--card-background-color,#fff)')};border:2.5px solid ${state === 'current' ? 'var(--mc-rose-deep)' : 'var(--mc-sage)'};${state === 'current' ? 'box-shadow:0 0 0 4px var(--mc-rose-tint);' : ''}"></div>
-          <div style="font-size:11px;font-weight:600;">${escapeHtml(m.label)}</div>
-          <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">SSW ${m.week}</div>
+          <div style="font-size:11px;font-weight:600;">${escapeHtml(this._t(m.labelKey))}</div>
+          <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(weekUnit)} ${m.week}</div>
         </div>`;
       }).join('<div style="flex:0.4;height:2px;background:var(--divider-color,#e5e7eb);align-self:flex-start;margin-top:6px;"></div>');
       return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>`;
@@ -1860,20 +1935,21 @@
       const week = Math.max(4, Math.min(40, Math.round(weeksPregnantRaw)));
       const stage = _fetalStageForWeek(week);
 
-      const skillItems = stage.skills.map((s) => `
+      const skillItems = stage.skillKeys.map((k) => `
         <div class="anomaly-item info">
           <span class="anomaly-dot"></span>
           <div class="anomaly-body">
-            <p class="anomaly-text">${escapeHtml(s)}</p>
+            <p class="anomaly-text">${escapeHtml(this._t(k))}</p>
           </div>
         </div>
       `).join('');
 
       const assetIdx = _pregnancyAssetIndex(week);
+      const weekUnit = this._t('dashboard_week_unit');
       const illustration = `
         <div style="width:110px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;">
           <img src="/menstruation_cycle/assets/pregnancy/preg_${assetIdx}.svg" width="84" height="172"
-               alt="Silhouette SSW ${week}" style="max-width:100%;height:auto;" loading="lazy"
+               alt="${escapeHtml(weekUnit)} ${week}" style="max-width:100%;height:auto;" loading="lazy"
                onerror="this.style.display='none';"/>
         </div>`;
 
@@ -1882,8 +1958,8 @@
           ${illustration}
           <div class="kpi-item mc-rose" style="min-width:150px;">
             <span class="kpi-icon" aria-hidden="true">🌱</span>
-            <span class="kpi-value">SSW ${week}</span>
-            <span class="kpi-label">${this._t('dashboard_fetal_size_label')}: ${escapeHtml(stage.size)}</span>
+            <span class="kpi-value">${escapeHtml(weekUnit)} ${week}</span>
+            <span class="kpi-label">${this._t('dashboard_fetal_size_label')}: ${escapeHtml(this._t(stage.sizeKey))}</span>
           </div>
           <div style="flex:1;min-width:220px;display:grid;gap:8px;">${skillItems}</div>
         </div>
@@ -1896,13 +1972,13 @@
       const preMenData = attrs.pre_menarche_data || {};
       const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
       const signDefs = [
-        { key: 'height_spurt', label: 'Wachstumsschub' },
-        { key: 'breast', label: 'Körperliche Veränderungen' },
-        { key: 'pubic_hair', label: 'Weitere körperliche Reifezeichen' },
-        { key: 'discharge', label: 'Erste Beobachtung von Ausfluss' },
-        { key: 'mood', label: 'Stimmungsveränderungen' },
-        { key: 'acne', label: 'Hautveränderungen' },
-        { key: 'body_odor', label: 'Körpergeruch-Veränderung' },
+        { key: 'height_spurt', labelKey: 'menarche_sign_height_spurt' },
+        { key: 'breast', labelKey: 'menarche_sign_breast' },
+        { key: 'pubic_hair', labelKey: 'menarche_sign_pubic_hair' },
+        { key: 'discharge', labelKey: 'menarche_sign_discharge' },
+        { key: 'mood', labelKey: 'menarche_sign_mood' },
+        { key: 'acne', labelKey: 'menarche_sign_acne' },
+        { key: 'body_odor', labelKey: 'menarche_sign_body_odor' },
       ];
       const items = signDefs.map((s) => {
         const entry = _normalizeSignEntry(signs[s.key]);
@@ -1910,7 +1986,7 @@
         const detail = done ? `${escapeHtml(entry.stage)}${entry.loggedAt ? ` · ${escapeHtml(entry.loggedAt)}` : ''}` : '';
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
           <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
-          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(s.label)}${done ? ` — ${detail}` : ''}</div>
+          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(s.labelKey))}${done ? ` — ${detail}` : ''}</div>
         </div>`;
       }).join('');
       return `<div>${items}</div>`;
