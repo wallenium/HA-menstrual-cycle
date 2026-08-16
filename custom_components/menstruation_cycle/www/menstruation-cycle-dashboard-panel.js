@@ -252,6 +252,7 @@
       this._debugEnabled = this._readDebugFlag();
       this._availableEntities = null;
       this._entitiesPromise = null;
+      this._registryLoaded = false;
     }
 
     connectedCallback() {
@@ -266,22 +267,35 @@
       this._lang = this._detectLang();
       const languageChanged = previousLang !== this._lang;
 
-      // Trigger entity discovery once (or re-trigger if hass connection changed).
-      if (!this._entitiesPromise) {
+      // Trigger entity discovery once per component lifetime; do not re-fetch on every hass tick.
+      if (!this._registryLoaded && !this._entitiesPromise) {
         this._entitiesPromise = this._loadEntitiesFromRegistry()
           .then((entities) => {
             this._availableEntities = entities;
-            this._entitiesPromise = null; // allow refresh on next hass set if needed
+            this._registryLoaded = true;
+            this._entitiesPromise = null;
             this._applyEntitySelection();
-            this.render();
+            // Only render when the loaded registry actually changes the visible signature.
+            const stateObjAfter = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+            const sigAfter = this._buildSelectedEntitySignature(stateObjAfter);
+            if (sigAfter !== this._lastSelectedSignature) {
+              this._lastSelectedSignature = sigAfter;
+              this.render();
+            }
           })
           .catch((err) => {
             // eslint-disable-next-line no-console
             console.warn('[menstruation-cycle] Entity registry load failed, falling back to state scan:', err);
             this._availableEntities = this._getAvailableEntitiesFallback();
+            this._registryLoaded = true;
             this._entitiesPromise = null;
             this._applyEntitySelection();
-            this.render();
+            const stateObjAfter = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+            const sigAfter = this._buildSelectedEntitySignature(stateObjAfter);
+            if (sigAfter !== this._lastSelectedSignature) {
+              this._lastSelectedSignature = sigAfter;
+              this.render();
+            }
           });
       }
 
@@ -333,7 +347,10 @@
       if (prefsChanged) renderReasons.push('prefs_changed');
       if (signatureChanged) renderReasons.push('selected_state_changed');
       if (availableChanged) renderReasons.push('available_entities_changed');
-      if (!renderReasons.length) return;
+      if (!renderReasons.length) {
+        this._debug('render skipped: signature unchanged');
+        return;
+      }
 
       this._lastSelectedSignature = selectedSignature;
       this._lastAvailableEntitiesSignature = availableSignature;
