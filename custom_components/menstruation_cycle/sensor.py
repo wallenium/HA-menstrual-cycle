@@ -1203,25 +1203,42 @@ class MenstruationGaugeSensor(SensorEntity):
         except (TypeError, ValueError):
             return None
 
+    # Mother-daughter menarche-age correlation from meta-analytic literature
+    # (Towne et al. 2005; pooled meta-analyses report r≈0.27, 95% CI 0.17-0.36).
+    # Twin studies find higher heritability (50-80%), but the simple mother-daughter
+    # correlation is the right coefficient here since we only have one data point
+    # (the mother's age), not a full family/genetic model.
+    _MENARCHE_MOTHER_CORRELATION = 0.27
+
     def _calculate_estimated_menarche_date(
         self, birth_date: str | None, family_menarche_age: int | float | None
     ) -> str | None:
         """Estimate menarche date from birth_date + family_menarche_age (mother's age at
-        menarche). Falls back to the population-typical menarche age when no family
-        value has been recorded, so the estimate still improves once a birth_date is
-        set even before a family history value is entered."""
+        menarche), regressed toward the population-typical age rather than copied
+        directly. A raw 1:1 copy would systematically predict too late: the
+        mother-daughter correlation is only moderate (r≈0.27), and there's a well
+        documented secular trend of daughters reaching menarche earlier than their
+        mothers (better nutrition across generations). Regression to the mean captures
+        both effects without needing separate secular-trend bookkeeping. Falls back to
+        the population-typical age alone when no family value has been recorded."""
         if not birth_date:
             return None
         try:
             born = date.fromisoformat(str(birth_date))
         except (TypeError, ValueError):
             return None
-        try:
-            age_years = float(family_menarche_age) if family_menarche_age else DEFAULT_MENARCHE_AGE_TYPICAL
-        except (TypeError, ValueError):
-            age_years = DEFAULT_MENARCHE_AGE_TYPICAL
-        if not (DEFAULT_MENARCHE_AGE_MIN <= age_years <= DEFAULT_MENARCHE_AGE_MAX):
-            age_years = DEFAULT_MENARCHE_AGE_TYPICAL
+
+        age_years = DEFAULT_MENARCHE_AGE_TYPICAL
+        if family_menarche_age:
+            try:
+                mother_age = float(family_menarche_age)
+                if DEFAULT_MENARCHE_AGE_MIN <= mother_age <= DEFAULT_MENARCHE_AGE_MAX:
+                    age_years = DEFAULT_MENARCHE_AGE_TYPICAL + self._MENARCHE_MOTHER_CORRELATION * (
+                        mother_age - DEFAULT_MENARCHE_AGE_TYPICAL
+                    )
+            except (TypeError, ValueError):
+                pass
+
         whole_years = int(age_years)
         extra_days = round((age_years - whole_years) * 365)
         try:
