@@ -92,6 +92,11 @@
     dashboard_anomaly_consistency: 'Consistency',
     dashboard_pain_no_data: 'No symptom data available.',
     dashboard_year_overview_title: 'Year at a glance',
+    severity_info: 'Info',
+    severity_alert: 'Alert',
+    phase_menstruation: 'Menstruation',
+    phase_follicular: 'Follicular',
+    phase_luteal: 'Luteal',
   };
   const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
   const I18N_SCRIPT_SELECTOR = 'script[src]';
@@ -1340,7 +1345,7 @@
       // Y-axis labels
       const yLabels = [minY, Math.round((minY + maxY) / 2), maxY].map((v) => {
         const yPos = padTop + chartH - ((v - minY) / yRange) * chartH;
-        return `<text x="${padLeft - 3}" y="${Math.round(yPos + 3)}" text-anchor="end" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${v}</text>`;
+        return `<text x="${padLeft - 3}" y="${Math.round(yPos + 3)}" text-anchor="end" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v}</text>`;
       }).join('');
 
       // X-axis labels (first and last)
@@ -1348,12 +1353,12 @@
         const x = padLeft + idx * (barW + gap) + barW / 2;
         const dateStr = recent[idx].start ? recent[idx].start.slice(5) : String(idx + 1);
         const anchor = idx === 0 ? 'start' : 'end';
-        return `<text x="${Math.round(x)}" y="${H - 4}" text-anchor="${anchor}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(dateStr)}</text>`;
+        return `<text x="${Math.round(x)}" y="${H - 4}" text-anchor="${anchor}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(dateStr)}</text>`;
       }).join('') : '';
 
       const avgLine = avg !== null
-        ? `<line x1="${avgX1}" y1="${Math.round(avgYPos)}" x2="${avgX2}" y2="${Math.round(avgYPos)}" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-dasharray="4 3"/>
-           <text x="${avgX2 + 2}" y="${Math.round(avgYPos + 3)}" font-size="8" fill="var(--accent-color,#10b981)">${this._t('dashboard_cycle_history_avg')}</text>`
+        ? `<line x1="${avgX1}" y1="${Math.round(avgYPos)}" x2="${avgX2}" y2="${Math.round(avgYPos)}" stroke="var(--mc-plum,#6B3654)" stroke-width="1.5" stroke-dasharray="4 3"/>
+           <text x="${avgX2 + 2}" y="${Math.round(avgYPos + 3)}" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--mc-plum,#6B3654)">${this._t('dashboard_cycle_history_avg')}</text>`
         : '';
 
       const titleText = `${this._t('dashboard_widget_cycle_history')} — ${this._t('dashboard_cycle_history_length')}`;
@@ -1368,9 +1373,9 @@
             ${xLabels}
           </svg>
           <div class="cycle-history-legend">
-            <span class="legend-dot" style="background:var(--primary-color,#2563eb)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
+            <span class="legend-dot" style="background:var(--mc-rose-deep,#C43F5E)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
             <span class="legend-dot" style="background:var(--mc-amber)"></span><span>${this._t('dashboard_cycle_history_outlier')}</span>
-            <span class="legend-dash" style="background:var(--accent-color,#10b981)"></span><span>${this._t('dashboard_cycle_history_avg')}</span>
+            <span class="legend-dash" style="background:var(--mc-plum,#6B3654)"></span><span>${this._t('dashboard_cycle_history_avg')}</span>
           </div>
         </div>
       `;
@@ -1655,79 +1660,110 @@
       const attrs = stateObj?.attributes || {};
       const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
       const cycleLength = Number(attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
-      const currentPhase = String(attrs.current_phase ?? stateObj?.state ?? '').toLowerCase();
+      const fertility = attrs.fertility_forecast || {};
+      let ovulationDay = null;
+      if (fertility.ovulation_estimate && attrs.cycle_start_date) {
+        const diff = Math.round((new Date(fertility.ovulation_estimate) - new Date(attrs.cycle_start_date)) / 86400000) + 1;
+        if (diff > 0 && diff <= cycleLength) ovulationDay = diff;
+      }
+      if (ovulationDay === null && attrs.ovulation_day) ovulationDay = Number(attrs.ovulation_day);
+      if (ovulationDay === null) ovulationDay = Math.round(cycleLength * 0.5);
 
+      const W = 1180, H = 260;
+      const padL = 40, padR = 20, padT = 20, padB = 44;
+      const bandH = 20, bandGap = 8;
+      const plotB = H - padB - bandH - bandGap;
+      const plotT = padT;
+      const x = (d) => padL + (d - 1) / (cycleLength - 1 || 1) * (W - padL - padR);
+
+      const menstrualEnd = Math.max(2, Math.round(cycleLength * 0.179));
+      const follicularEnd = Math.max(menstrualEnd + 1, ovulationDay - 2);
+      const ovulationEnd = Math.min(cycleLength - 1, ovulationDay + 1);
       const phases = [
-        { id: 'menstrual',   label: 'Menstrual',   start: 0,      end: 0.179, color: '#E8637D' },
-        { id: 'follicular',  label: 'Follicular',  start: 0.179,  end: 0.464, color: '#7C9885' },
-        { id: 'ovulation',   label: 'Ovulation',   start: 0.464,  end: 0.536, color: '#3F5A47' },
-        { id: 'luteal',      label: 'Luteal',      start: 0.536,  end: 1.0,   color: '#6B3654' },
+        { from: 1, to: menstrualEnd, label: this._t('phase_menstruation') || 'Menstruation', color: '#E8637D' },
+        { from: menstrualEnd, to: follicularEnd, label: this._t('phase_follicular') || 'Follikulär', color: '#7C9885' },
+        { from: follicularEnd, to: ovulationEnd, label: 'Eisprung', color: '#3F5A47' },
+        { from: ovulationEnd, to: cycleLength + 1, label: this._t('phase_luteal') || 'Luteal', color: '#6B3654' },
       ];
 
-      const W = 400;
-      const H = 56;
-      const trackY = 22;
-      const trackH = 14;
-      const labelY = H - 4;
-      const tickY2 = trackY + trackH + 6;
-
-      const matchPhase = (ph) => {
-        const p = ph.id;
-        if (currentPhase.includes(p)) return true;
-        if (p === 'menstrual' && (currentPhase.includes('period') || currentPhase.includes('bleeding'))) return true;
-        if (p === 'ovulation' && currentPhase.includes('ovulat')) return true;
-        return false;
-      };
-      const activePhaseIdx = phases.findIndex(matchPhase);
-
-      const todayFrac = cycleLength > 0 ? Math.min(1, Math.max(0, (cycleDay - 1) / cycleLength)) : 0;
-      const todayX = Math.round(todayFrac * W);
-
-      const segmentRects = phases.map((ph, idx) => {
-        const x = Math.round(ph.start * W);
-        const w = Math.max(1, Math.round((ph.end - ph.start) * W));
-        const isActive = idx === activePhaseIdx;
-        const opacity = isActive ? '1' : '0.4';
-        const stroke = isActive ? 'rgba(255,255,255,0.6)' : 'none';
-        return `<rect x="${x}" y="${trackY}" width="${w}" height="${trackH}" fill="${ph.color}" opacity="${opacity}" stroke="${stroke}" stroke-width="${isActive ? 1.5 : 0}" rx="0"/>`;
+      const bandY = plotB + bandGap;
+      const bands = phases.map((p) => {
+        const bx = x(p.from), bw = Math.max(2, x(p.to) - x(p.from));
+        return `<rect x="${bx.toFixed(1)}" y="${bandY}" width="${bw.toFixed(1)}" height="${bandH}" fill="${p.color}" opacity="0.85" rx="4"/>
+                <text x="${(bx + bw / 2).toFixed(1)}" y="${bandY + bandH / 2 + 4}" text-anchor="middle" font-size="10" font-family="Inter, sans-serif" font-weight="600" fill="#FFFDFB">${escapeHtml(p.label)}</text>`;
       }).join('');
 
-      const trackBorder = `<rect x="0" y="${trackY}" width="${W}" height="${trackH}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="1" rx="7"/>`;
+      const gridTicks = [1, Math.round(cycleLength * 0.25), Math.round(cycleLength * 0.5), Math.round(cycleLength * 0.75), cycleLength]
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .map((d) => `<line x1="${x(d).toFixed(1)}" x2="${x(d).toFixed(1)}" y1="${plotT}" y2="${plotB}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
+                      <text x="${x(d).toFixed(1)}" y="${H - 20}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${this._t('cycle_day')} ${d}</text>`)
+        .join('');
 
-      const phaseLabels = phases.map((ph, idx) => {
-        const cx = Math.round((ph.start + ph.end) / 2 * W);
-        const isActive = idx === activePhaseIdx;
-        const shortLabel = ph.label.slice(0, 3);
-        return `<text x="${cx}" y="${labelY}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'}" font-weight="${isActive ? '700' : '400'}">${shortLabel}</text>`;
-      }).join('');
+      // idealized relative curves, scaled to real cycleLength/ovulationDay — not measured biomarkers
+      const points = [];
+      for (let d = 1; d <= cycleLength; d++) {
+        const relToOv = (d - ovulationDay) / cycleLength;
+        let endo;
+        if (d <= menstrualEnd) endo = 0.08 + (d - 1) * (0.1 / Math.max(1, menstrualEnd - 1));
+        else if (d <= ovulationDay) endo = 0.18 + (d - menstrualEnd) * (0.6 / Math.max(1, ovulationDay - menstrualEnd));
+        else if (d <= cycleLength - 2) endo = 0.82 - (d - ovulationDay) * 0.005;
+        else endo = 0.7 - (d - (cycleLength - 2)) * 0.3;
+        endo = Math.max(0.05, Math.min(1, endo));
 
-      const ticks = [7, 14, 21].map((day) => {
-        const x = Math.round((day / cycleLength) * W);
-        return `<line x1="${x}" y1="${trackY + trackH}" x2="${x}" y2="${tickY2}" stroke="var(--divider-color,#d1d5db)" stroke-width="1"/>
-                <text x="${x}" y="${tickY2 + 8}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${day}</text>`;
-      }).join('');
+        let est;
+        if (d <= ovulationDay) est = 0.1 + Math.pow(d / ovulationDay, 1.6) * 0.85;
+        else if (d <= ovulationDay + 4) est = 1.0 - (d - ovulationDay) * 0.16;
+        else est = Math.max(0.15, 0.4 - (d - ovulationDay - 4) * 0.02);
+        est = Math.max(0.05, Math.min(1, est));
 
-      const markerColor = 'var(--mc-rose-deep,#C43F5E)';
-      const markerLine = `<line x1="${todayX}" y1="${trackY - 1}" x2="${todayX}" y2="${trackY + trackH + 1}" stroke="${markerColor}" stroke-width="2"/>`;
-      const markerTri = `<polygon points="${todayX},${trackY - 7} ${todayX - 5},${trackY - 1} ${todayX + 5},${trackY - 1}" fill="${markerColor}"/>`;
-      const markerLabel = cycleDay > 0
-        ? `<text x="${Math.min(W - 10, Math.max(10, todayX))}" y="${trackY - 10}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="${markerColor}" font-weight="600">${this._t('cycle_day')} ${escapeHtml(cycleDay)}</text>`
-        : '';
+        let prog;
+        if (d <= ovulationDay) prog = 0.04;
+        else if (d <= cycleLength - 4) prog = 0.04 + (d - ovulationDay) * (0.92 / Math.max(1, cycleLength - 4 - ovulationDay));
+        else prog = Math.max(0.05, 0.9 - (d - (cycleLength - 4)) * 0.2);
+        prog = Math.max(0.03, Math.min(1, prog));
 
-      const titleText = `Cycle phase timeline – day ${cycleDay} of ${cycleLength}`;
+        points.push({ d, endo, est, prog });
+      }
+      const yCurve = (v) => plotT + (1 - v) * (plotB - plotT - 10) + 6;
+      const pathFor = (key) => points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.d).toFixed(1)},${yCurve(p[key]).toFixed(1)}`).join(' ');
+      const areaFor = (key) => `M${x(1).toFixed(1)},${plotB} ${points.map((p) => `L${x(p.d).toFixed(1)},${yCurve(p[key]).toFixed(1)}`).join(' ')} L${x(cycleLength).toFixed(1)},${plotB} Z`;
+
+      const ovLineX = x(ovulationDay).toFixed(1);
+      const todayLineX = cycleDay > 0 ? x(Math.min(cycleDay, cycleLength)).toFixed(1) : null;
+
+      const svgContent = `
+        ${bands}
+        ${gridTicks}
+        <path d="${areaFor('endo')}" fill="#6B3654" opacity="0.16"/>
+        <path d="${pathFor('endo')}" fill="none" stroke="#6B3654" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="${pathFor('est')}" fill="none" stroke="#E3A23D" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round"/>
+        <path d="${pathFor('prog')}" fill="none" stroke="#3F5A47" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round"/>
+        <line x1="${ovLineX}" x2="${ovLineX}" y1="${plotT}" y2="${plotB}" stroke="var(--primary-text-color,#2B1B24)" stroke-width="1.4" stroke-dasharray="3 3"/>
+        <circle cx="${ovLineX}" cy="${yCurve(1.0).toFixed(1)}" r="5" fill="var(--primary-text-color,#2B1B24)"/>
+        <text x="${ovLineX}" y="${plotT - 6}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" fill="var(--primary-text-color,#2B1B24)">LH-Anstieg</text>
+        ${todayLineX ? `<line x1="${todayLineX}" x2="${todayLineX}" y1="${plotT}" y2="${bandY + bandH}" stroke="var(--mc-rose-deep,#C43F5E)" stroke-width="1.6"/>
+        <text x="${todayLineX}" y="${plotT - 6}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" font-weight="600" fill="var(--mc-rose-deep,#C43F5E)">${escapeHtml(this._t('dashboard_today'))}</text>` : ''}
+      `;
+
+      const legend = `
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#6b7280);">
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#6B3654;margin-right:5px;vertical-align:middle"></span>Gebärmutterschleimhaut</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E3A23D;margin-right:5px;vertical-align:middle"></span>Östrogen</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3F5A47;margin-right:5px;vertical-align:middle"></span>Progesteron</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--primary-text-color,#2B1B24);margin-right:5px;vertical-align:middle"></span>LH-Anstieg (Eisprung)</span>
+        </div>
+        <p class="helper" style="margin-top:6px;font-size:0.7rem;">Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten.</p>
+      `;
+
+      const titleText = `Cycle phase overview – day ${cycleDay} of ${cycleLength}`;
 
       return `
-        <div class="phase-timeline-wrap" role="img" aria-label="${escapeHtml(titleText)}">
-          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
+        <div class="phase-overview-wrap" role="img" aria-label="${escapeHtml(titleText)}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
             <title>${escapeHtml(titleText)}</title>
-            ${segmentRects}
-            ${trackBorder}
-            ${ticks}
-            ${phaseLabels}
-            ${markerLine}
-            ${markerTri}
-            ${markerLabel}
+            ${svgContent}
           </svg>
+          ${legend}
         </div>
       `;
     }
@@ -1844,15 +1880,15 @@
 
       // Center day text
       const centerLabel = cycleDay > 0
-        ? `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--primary-text-color,#1f2937)">${cycleDay}</text>
-           <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day'))}</text>`
+        ? `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="18" font-family="Fraunces, serif" font-weight="500" fill="var(--mc-rose-deep,#C43F5E)">${cycleDay}</text>
+           <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day')).toUpperCase()}</text>`
         : `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">—</text>`;
 
       // Legend below
       const legendItems = phases.map((ph, idx) => {
         const isActive = idx === activeIdx;
-        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.7rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 700 : 400}">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
+        return `<span style="display:inline-flex;align-items:center;gap:4px;font-family:var(--mc-font-mono);font-size:0.68rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 600 : 400}">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
         </span>`;
       }).join('');
 
@@ -1879,64 +1915,73 @@
         return `<div class="helper">${this._t('dashboard_basal_temp_no_data')}</div>`;
       }
 
-      const recent = temps.slice(-28);
+      const recent = temps.slice(-30);
       const values = recent.map((t) => Number(t.temperature ?? t.value ?? 0));
-      const minV = Math.min(...values);
-      const maxV = Math.max(...values);
+      const minV = Math.min(...values) - 0.05;
+      const maxV = Math.max(...values) + 0.05;
       const yRange = maxV - minV || 0.5;
 
       const ovulationDay = attrs.fertility_forecast?.ovulation_day
         ? Number(attrs.fertility_forecast.ovulation_day)
-        : null;
+        : (attrs.ovulation_day ? Number(attrs.ovulation_day) : null);
       const cycleDay = Number(attrs.cycle_day ?? 0);
 
-      const W = 400; const H = 80;
-      const padL = 32; const padR = 8; const padT = 10; const padB = 20;
+      const W = 400; const H = 130;
+      const padL = 32; const padR = 8; const padT = 16; const padB = 22;
       const chartW = W - padL - padR;
       const chartH = H - padT - padB;
 
       const toX = (i) => padL + (i / (recent.length - 1 || 1)) * chartW;
       const toY = (v) => padT + chartH - ((v - minV) / yRange) * chartH;
 
-      // Build path
+      const ovIdx = (ovulationDay !== null && ovulationDay > 0 && ovulationDay <= recent.length)
+        ? Math.max(0, recent.length - ovulationDay)
+        : null;
+
+      // shaded post-ovulation band
+      const ovBand = ovIdx !== null
+        ? `<rect x="${Math.round(toX(ovIdx))}" y="${padT}" width="${Math.round(W - padR - toX(ovIdx))}" height="${chartH}" fill="var(--mc-sage-tint,#E6EDE7)" opacity="0.7"/>`
+        : '';
+
+      // coverline: avg of first 6 readings + 0.1
+      const coverBase = values.slice(0, Math.min(6, values.length));
+      const cover = coverBase.length ? (coverBase.reduce((a, b) => a + b, 0) / coverBase.length) + 0.1 : null;
+      const coverLine = cover !== null && cover >= minV && cover <= maxV
+        ? `<line x1="${padL}" x2="${W - padR}" y1="${Math.round(toY(cover))}" y2="${Math.round(toY(cover))}" stroke="var(--mc-rose-deep)" stroke-width="1.3" stroke-dasharray="5 4"/>`
+        : '';
+
       const pathD = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
 
-      // Dots for each point
       const dots = values.map((v, i) => {
         const x = Math.round(toX(i));
         const y = Math.round(toY(v));
-        const isHighlight = (cycleDay > 0) && (recent.length - i <= cycleDay) && (recent.length - i === 1);
-        return `<circle cx="${x}" cy="${y}" r="${isHighlight ? 4 : 2}" fill="${isHighlight ? 'var(--primary-color,#2563eb)' : 'var(--accent-color,#10b981)'}" opacity="0.85"/>`;
+        const isToday = i === values.length - 1;
+        return `<circle cx="${x}" cy="${y}" r="${isToday ? 4.5 : 2.2}" fill="${isToday ? 'var(--primary-text-color,#2B1B24)' : 'var(--mc-rose-deep)'}"/>`;
       }).join('');
 
-      // Y-axis labels
-      const yLabels = [minV, maxV].map((v) => {
+      const yLabels = [minV, (minV + maxV) / 2, maxV].map((v) => {
         const y = Math.round(toY(v));
-        return `<text x="${padL - 3}" y="${y + 3}" text-anchor="end" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
+        return `<text x="${padL - 3}" y="${y + 3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
       }).join('');
 
-      // Ovulation vertical line
-      const ovLine = (ovulationDay !== null && ovulationDay > 0 && ovulationDay <= recent.length)
-        ? (() => {
-            const idx = Math.max(0, recent.length - ovulationDay);
-            const x = Math.round(toX(idx));
-            return `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-dasharray="3 2"/>
-                    <text x="${x}" y="${padT - 1}" text-anchor="middle" font-size="7" fill="var(--accent-color,#10b981)">${escapeHtml(this._t('dashboard_fertility_ovulation'))}</text>`;
-          })()
+      const ovLine = ovIdx !== null
+        ? `<line x1="${Math.round(toX(ovIdx))}" y1="${padT}" x2="${Math.round(toX(ovIdx))}" y2="${padT + chartH}" stroke="var(--primary-text-color,#2B1B24)" stroke-width="1.2" stroke-dasharray="3 3"/>
+           <text x="${Math.round(toX(ovIdx))}" y="${padT - 4}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--primary-text-color,#2B1B24)">${escapeHtml(this._t('dashboard_fertility_ovulation'))}</text>`
         : '';
 
-      // X-axis: first and last date labels
       const firstDate = recent[0]?.date ? String(recent[0].date).slice(5) : '';
       const lastDate = recent[recent.length - 1]?.date ? String(recent[recent.length - 1].date).slice(5) : '';
-      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="start">${escapeHtml(firstDate)}</text>
-                       <text x="${W - padR}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
+      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="start">${escapeHtml(firstDate)}</text>
+                       <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
       return `
         <div class="bbt-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_widget_basal_temp'))}">
           <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">
             <title>${escapeHtml(this._t('dashboard_widget_basal_temp'))}</title>
+            ${ovBand}
             ${yLabels}
-            <path d="${pathD}" fill="none" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            ${coverLine}
+            <path d="${pathD}" fill="none" stroke="var(--mc-rose-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             ${dots}
             ${ovLine}
             ${xLabels}
@@ -1966,7 +2011,6 @@
       if (entries.length === 0) return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
 
       const symptomKeys = ['bleeding', 'pain', 'mood'];
-      const colorMap = { 0: 'var(--divider-color,#e5e7eb)', 1: '#fde68a', 2: '#fbbf24', 3: '#ef4444' };
 
       const normalize = (v) => {
         if (!v || v === 'none') return 0;
@@ -1980,12 +2024,13 @@
       const rows = symptomKeys.map((key) => {
         const cells = entries.map((entry) => {
           const val = normalize(entry?.[key] ?? entry?.symptom_data?.[key]);
-          return `<td style="width:14px;height:14px;background:${colorMap[val] || colorMap[0]};border-radius:2px;border:1px solid var(--card-background-color,#fff);"></td>`;
+          const alpha = 0.1 + (val / 3) * 0.55;
+          return `<td style="width:14px;height:14px;background:rgba(196,63,94,${alpha});border-radius:4px;border:1px solid var(--card-background-color,#fff);"></td>`;
         }).join('');
-        return `<tr><td style="font-size:0.7rem;color:var(--secondary-text-color,#6b7280);padding-right:6px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
+        return `<tr><td style="font-size:0.72rem;font-family:var(--mc-font-mono);color:var(--secondary-text-color,#6b7280);padding-right:8px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
       }).join('');
 
-      return `<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:1px;"><tbody>${rows}</tbody></table></div>`;
+      return `<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:2px;"><tbody>${rows}</tbody></table></div>`;
     }
 
     _renderAnomalyInsights(stateObj) {
@@ -2012,32 +2057,35 @@
 
       const insights = [];
       insights.push({
-        icon: isRegular ? '✅' : '⚠️',
+        severity: isRegular ? 'info' : 'alert',
+        tag: isRegular ? this._t('severity_info') : this._t('severity_alert'),
         label: isRegular ? this._t('dashboard_anomaly_regular') : this._t('dashboard_anomaly_irregular'),
-        color: isRegular ? 'var(--success-color,#10b981)' : 'var(--warning-color,#f59e0b)',
       });
 
       insights.push({
-        icon: '📏',
+        severity: 'info',
+        tag: this._t('severity_info'),
         label: `${this._t('dashboard_anomaly_consistency')}: ${Math.round((100 - cv))}%`,
-        color: 'var(--secondary-text-color,#6b7280)',
       });
 
       const outliers = recent.filter((l) => Math.abs(l - avg) > threshold);
       outliers.forEach((len) => {
         const isShort = len < avg;
         insights.push({
-          icon: isShort ? '↙️' : '↗️',
+          severity: 'alert',
+          tag: this._t('severity_alert'),
           label: `${isShort ? this._t('dashboard_anomaly_short_cycle') : this._t('dashboard_anomaly_long_cycle')}: ${len}d`,
-          color: 'var(--error-color,#ef4444)',
         });
       });
 
       return `<div class="anomaly-list">
         ${insights.slice(0, 4).map((ins) => `
-          <div class="anomaly-item" style="color:${ins.color}">
-            <span class="anomaly-icon" aria-hidden="true">${ins.icon}</span>
-            <span class="anomaly-label">${escapeHtml(ins.label)}</span>
+          <div class="anomaly-item ${ins.severity}">
+            <span class="anomaly-dot" aria-hidden="true"></span>
+            <div class="anomaly-body">
+              <span class="anomaly-tag">${escapeHtml(ins.tag)}</span>
+              <p class="anomaly-text">${escapeHtml(ins.label)}</p>
+            </div>
           </div>
         `).join('')}
       </div>`;
@@ -2096,8 +2144,8 @@
       // X-axis: first and last date
       const firstDate = entries[0]?.date ? String(entries[0].date).slice(5) : '';
       const lastDate = entries[entries.length - 1]?.date ? String(entries[entries.length - 1].date).slice(5) : '';
-      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(firstDate)}</text>
-                       <text x="${W - padR}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
+      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(firstDate)}</text>
+                       <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
       const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('pain'))}</span>
@@ -2146,9 +2194,9 @@
           const isToday = isCurrentMonth && d === today.getDate();
 
           let fill = 'transparent';
-          if (isToday) fill = 'var(--primary-color,#2563eb)';
+          if (isToday) fill = 'var(--mc-plum,#6B3654)';
           else if (isPeriodStart) fill = 'var(--mc-rose-deep)';
-          else if (isPredicted) fill = 'rgba(224,92,122,0.3)';
+          else if (isPredicted) fill = 'rgba(232,99,125,0.32)';
 
           const sz = 5;
           days.push(`<rect x="${(d - 1) * (sz + 1)}" y="0" width="${sz}" height="${sz}" fill="${fill}" rx="1"/>`);
@@ -2167,8 +2215,8 @@
       const legend = `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
-          ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(224,92,122,0.3);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
+          ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
       `;
 
@@ -2444,6 +2492,11 @@
             overflow: visible;
             padding: 8px 0 4px;
           }
+          .phase-overview-wrap {
+            width: 100%;
+            overflow-x: auto;
+            padding: 8px 0 4px;
+          }
           .trend-chips {
             display: flex;
             flex-wrap: wrap;
@@ -2566,17 +2619,17 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            background: var(--secondary-background-color, #f3f4f6);
+            gap: 3px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--mc-sand);
             border: 1px solid var(--divider-color, #e5e7eb);
-            min-width: 64px;
-            flex: 1 1 64px;
+            min-width: 76px;
+            flex: 1 1 76px;
           }
           .stat-icon { font-size: 1rem; line-height: 1; }
-          .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--primary-text-color, #1f2937); }
-          .stat-label { font-size: 0.7rem; color: var(--secondary-text-color, #6b7280); text-align: center; }
+          .stat-value { font-family: var(--mc-font-display); font-size: 1.3rem; font-weight: 500; color: var(--mc-rose-deep); }
+          .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--secondary-text-color, #6b7280); text-align: center; }
           /* Cycle history graph */
           .cycle-history-wrap { width: 100%; }
           .cycle-history-legend {
@@ -2640,19 +2693,26 @@
           /* Anomaly insights */
           .anomaly-list {
             display: grid;
-            gap: 8px;
+            gap: 10px;
           }
           .anomaly-item {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.875rem;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--divider-color, #f3f4f6);
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--mc-sand);
+            border: 1px solid var(--divider-color, #e5e7eb);
           }
-          .anomaly-item:last-child { border-bottom: none; }
-          .anomaly-icon { font-size: 1rem; flex-shrink: 0; }
-          .anomaly-label { flex: 1; }
+          .anomaly-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--mc-sage); }
+          .anomaly-item.alert .anomaly-dot { background: var(--mc-rose-deep); }
+          .anomaly-body { flex: 1; }
+          .anomaly-tag {
+            font-family: var(--mc-font-mono);
+            font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+            color: var(--secondary-text-color, #6b7280); display: block; margin-bottom: 3px;
+          }
+          .anomaly-text { margin: 0; font-size: 0.8125rem; line-height: 1.45; }
           /* Pain & mood trend */
           .pain-mood-wrap { width: 100%; }
           /* Year overview */
