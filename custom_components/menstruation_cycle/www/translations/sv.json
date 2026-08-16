@@ -681,5 +681,9 @@
   "badge_doctor_report_exported": "Läkarrapport exporterad",
   "badge_profile_personalized": "Profil personifierad (födelsedatum + familjehistorik)",
   "badge_first_sign_logged": "Första kroppstecknet loggat",
-  "badge_signs_explored": "Alla kroppstecken utforskade"
+  "badge_signs_explored": "Alla kroppstecken utforskade",
+  "dashboard_pain_frequency": "Cykler med smärta",
+  "dashboard_most_common": "vanligast",
+  "dashboard_typical_bleeding": "typisk styrka",
+  "dashboard_avg_basal_temp": "Genomsn. basaltemp."
 }

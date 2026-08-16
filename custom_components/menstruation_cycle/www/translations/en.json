@@ -714,5 +714,9 @@
   "badge_doctor_report_exported": "Doctor report exported",
   "badge_profile_personalized": "Profile personalized (birth date + family history)",
   "badge_first_sign_logged": "First body sign logged",
-  "badge_signs_explored": "All body signs explored"
+  "badge_signs_explored": "All body signs explored",
+  "dashboard_pain_frequency": "Cycles with pain",
+  "dashboard_most_common": "most common",
+  "dashboard_typical_bleeding": "typical strength",
+  "dashboard_avg_basal_temp": "Avg. basal temp."
 }

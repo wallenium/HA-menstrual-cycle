@@ -714,5 +714,9 @@
   "badge_doctor_report_exported": "Arztbericht exportiert",
   "badge_profile_personalized": "Profil personalisiert (Geburtsdatum + Familienangabe)",
   "badge_first_sign_logged": "Erstes Körperzeichen erfasst",
-  "badge_signs_explored": "Alle Körperzeichen erkundet"
+  "badge_signs_explored": "Alle Körperzeichen erkundet",
+  "dashboard_pain_frequency": "Zyklen mit Schmerzen",
+  "dashboard_most_common": "häufigste Art",
+  "dashboard_typical_bleeding": "typische Stärke",
+  "dashboard_avg_basal_temp": "Ø Basaltemperatur"
 }

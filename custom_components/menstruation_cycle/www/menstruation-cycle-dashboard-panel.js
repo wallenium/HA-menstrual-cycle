@@ -151,6 +151,10 @@
     badge_profile_personalized: 'Profile personalized (birth date + family history)',
     badge_first_sign_logged: 'First body sign logged',
     badge_signs_explored: 'All body signs explored',
+    dashboard_pain_frequency: 'Cycles with pain',
+    dashboard_most_common: 'most common',
+    dashboard_typical_bleeding: 'typical strength',
+    dashboard_avg_basal_temp: 'Avg. basal temp.',
     dashboard_loading: 'Loading…',
     dashboard_onboarding_title: 'Welcome! No data logged yet.',
     dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
@@ -1442,7 +1446,11 @@
       }
 
       const recent = cycleLengths.slice(-12);
-      const avgLen = attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      // Prefer the backend's own cycle_statistics (computed with a wider window and
+      // consistent regularity math shared with anomaly detection) over local
+      // recomputation. Falls back to local values only if the attribute is missing.
+      const cycleStats = attrs.cycle_statistics && typeof attrs.cycle_statistics === 'object' ? attrs.cycle_statistics : null;
+      const avgLen = cycleStats?.average_cycle_length ?? attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
       const avg = avgLen !== null
         ? Number(avgLen)
         : Math.round(recent.reduce((a, b) => a + b.len, 0) / recent.length * 10) / 10;
@@ -1461,19 +1469,18 @@
       const maxY = Math.max(...allLens) + 3;
       const yRange = maxY - minY || 1;
 
-      // Merged from the former standalone statistics card: min/max/std.dev/count
-      // computed over the same recent-cycles window, shown as a compact stat strip.
-      const minLen = Math.min(...allLens);
-      const maxLen = Math.max(...allLens);
-      const stdDev = allLens.length >= 2
-        ? Math.round(Math.sqrt(allLens.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / allLens.length) * 10) / 10
-        : null;
+      // Prefer the backend's own cycle_statistics for min/max/regularity/count too,
+      // for internal consistency with the average line above.
+      const minLen = cycleStats?.min_cycle_length ?? Math.min(...allLens);
+      const maxLen = cycleStats?.max_cycle_length ?? Math.max(...allLens);
+      const regularityPercent = cycleStats?.cycle_regularity_percent ?? null;
+      const cyclesAnalyzed = cycleStats?.cycles_analyzed ?? allLens.length;
       const statStrip = `
         <div class="kpi-strip" style="margin-bottom:10px;">
           <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">↓</span><span class="kpi-value">${minLen}d</span><span class="kpi-label">Min</span></div>
           <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">↑</span><span class="kpi-value">${maxLen}d</span><span class="kpi-label">Max</span></div>
-          ${stdDev !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">±</span><span class="kpi-value">${stdDev}d</span><span class="kpi-label">${this._t('dashboard_anomaly_consistency')}</span></div>` : ''}
-          <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">#</span><span class="kpi-value">${allLens.length}</span><span class="kpi-label">${this._t('dashboard_widget_cycle_history')}</span></div>
+          ${regularityPercent !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">%</span><span class="kpi-value">${regularityPercent}%</span><span class="kpi-label">${this._t('dashboard_anomaly_consistency')}</span></div>` : ''}
+          <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">#</span><span class="kpi-value">${cyclesAnalyzed}</span><span class="kpi-label">${this._t('dashboard_widget_cycle_history')}</span></div>
         </div>`;
 
       const barW = Math.max(2, Math.floor(chartW / recent.length) - 3);
@@ -2312,20 +2319,22 @@
       if (!this._selectedEntityId) {
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
+      const attrs = stateObj?.attributes || {};
+      const statHeader = this._renderSymptomStatHeader(attrs);
+
       const tagName = 'menstruation-cycle-heatmap-card';
       if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
-        return `<div class="calendar-card-mount" data-mount="heatmap-card"></div>`;
+        return `${statHeader}<div class="calendar-card-mount" data-mount="heatmap-card"></div>`;
       }
       // Native fallback: simple 4-week × symptom grid
-      const attrs = stateObj?.attributes || {};
       const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
 
       if (!symptomHistory || (Array.isArray(symptomHistory) && symptomHistory.length === 0)) {
-        return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
+        return `${statHeader}<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
       }
 
       const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-28) : [];
-      if (entries.length === 0) return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
+      if (entries.length === 0) return `${statHeader}<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
 
       const symptomKeys = ['bleeding', 'pain', 'mood'];
 
@@ -2347,7 +2356,36 @@
         return `<tr><td style="font-size:0.72rem;font-family:var(--mc-font-mono);color:var(--secondary-text-color,#6b7280);padding-right:8px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
       }).join('');
 
-      return `<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:2px;"><tbody>${rows}</tbody></table></div>`;
+      return `${statHeader}<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:2px;"><tbody>${rows}</tbody></table></div>`;
+    }
+
+    _renderSymptomStatHeader(attrs) {
+      const stats = attrs.symptom_statistics && typeof attrs.symptom_statistics === 'object' ? attrs.symptom_statistics : null;
+      if (!stats || !stats.cycles_analyzed) return '';
+
+      const tiles = [];
+      if (stats.pain_frequency !== undefined && stats.pain_frequency !== null) {
+        tiles.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">💢</span><span class="kpi-value">${escapeHtml(stats.pain_frequency)}%</span><span class="kpi-label">${this._t('dashboard_pain_frequency') || 'Zyklen mit Schmerzen'}</span></div>`);
+      }
+      const topPainType = stats.common_pain_types && typeof stats.common_pain_types === 'object'
+        ? Object.entries(stats.common_pain_types).sort((a, b) => b[1] - a[1])[0]
+        : null;
+      if (topPainType) {
+        const [key, pct] = topPainType;
+        const label = this._t('opt_' + key) !== ('opt_' + key) ? this._t('opt_' + key) : key;
+        tiles.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🎯</span><span class="kpi-value">${escapeHtml(label)}</span><span class="kpi-label">${pct}% ${this._t('dashboard_most_common') || 'häufigste Art'}</span></div>`);
+      }
+      if (stats.typical_bleeding_strength) {
+        const label = this._t('opt_' + stats.typical_bleeding_strength) !== ('opt_' + stats.typical_bleeding_strength)
+          ? this._t('opt_' + stats.typical_bleeding_strength) : stats.typical_bleeding_strength;
+        tiles.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">🩸</span><span class="kpi-value">${escapeHtml(label)}</span><span class="kpi-label">${this._t('dashboard_typical_bleeding') || 'typische Stärke'}</span></div>`);
+      }
+      if (stats.average_basal_temp !== undefined && stats.average_basal_temp !== null) {
+        tiles.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(stats.average_basal_temp)}°C</span><span class="kpi-label">${this._t('dashboard_avg_basal_temp') || 'Ø Basaltemperatur'}</span></div>`);
+      }
+
+      if (!tiles.length) return '';
+      return `<div class="kpi-strip" style="margin-bottom:10px;">${tiles.join('')}</div>`;
     }
 
     _renderAnomalyInsights(stateObj) {
@@ -2367,9 +2405,15 @@
       const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
       const variance = recent.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / recent.length;
       const stdDev = Math.sqrt(variance);
-      const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
 
-      const isRegular = cv < 10;
+      // Prefer the backend's cycle_statistics.cycle_regularity_percent (±3-day-window
+      // based, computed over a wider history window) over a local coefficient-of-
+      // variation approximation — same source used in the cycle-length chart now, so
+      // both cards agree with each other.
+      const cycleStats = attrs.cycle_statistics && typeof attrs.cycle_statistics === 'object' ? attrs.cycle_statistics : null;
+      const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+      const regularityPercent = cycleStats?.cycle_regularity_percent ?? Math.round(100 - cv);
+      const isRegular = regularityPercent >= 70;
       const threshold = Math.max(5, 1.5 * stdDev);
 
       const insights = [];
@@ -2382,7 +2426,7 @@
       insights.push({
         severity: 'info',
         tag: this._t('severity_info'),
-        label: `${this._t('dashboard_anomaly_consistency')}: ${Math.round((100 - cv))}%`,
+        label: `${this._t('dashboard_anomaly_consistency')}: ${regularityPercent}%`,
       });
 
       const outliers = recent.filter((l) => Math.abs(l - avg) > threshold);

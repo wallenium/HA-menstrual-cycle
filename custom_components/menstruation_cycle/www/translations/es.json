@@ -681,5 +681,9 @@
   "badge_doctor_report_exported": "Informe médico exportado",
   "badge_profile_personalized": "Perfil personalizado (fecha de nacimiento + antecedentes familiares)",
   "badge_first_sign_logged": "Primer signo corporal registrado",
-  "badge_signs_explored": "Todos los signos corporales explorados"
+  "badge_signs_explored": "Todos los signos corporales explorados",
+  "dashboard_pain_frequency": "Ciclos con dolor",
+  "dashboard_most_common": "más frecuente",
+  "dashboard_typical_bleeding": "intensidad típica",
+  "dashboard_avg_basal_temp": "Temp. basal media"
 }
