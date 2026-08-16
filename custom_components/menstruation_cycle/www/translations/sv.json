@@ -733,5 +733,8 @@
   "pre_menarche_desc_breast_development_stage_2": "Knoppstadiet — liten upphöjning, vårtgården börjar bli bredare.",
   "pre_menarche_desc_breast_development_stage_3": "Bröstet och vårtgården fortsätter att växa, ännu utan separat kontur.",
   "pre_menarche_desc_breast_development_stage_4": "Vårtgården och bröstvårtan bildar en andra, avskild upphöjning ovanför bröstet.",
-  "pre_menarche_desc_breast_development_stage_5": "Moget stadium — vårtgården sjunker tillbaka in i bröstets övergripande kontur."
+  "pre_menarche_desc_breast_development_stage_5": "Moget stadium — vårtgården sjunker tillbaka in i bröstets övergripande kontur.",
+  "dashboard_pain_type_singular": "smärttyp",
+  "dashboard_pain_type_plural": "smärttyper",
+  "dashboard_pain_types_count": "Antal smärttyper"
 }

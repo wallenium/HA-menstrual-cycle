@@ -766,5 +766,8 @@
   "pre_menarche_desc_breast_development_stage_2": "Knospenstadium — kleine Erhebung, Brustwarzenhof beginnt sich zu vergrößern.",
   "pre_menarche_desc_breast_development_stage_3": "Brust und Brustwarzenhof vergrößern sich weiter, noch ohne getrennte Kontur.",
   "pre_menarche_desc_breast_development_stage_4": "Brustwarzenhof und Brustwarze bilden eine zweite, abgesetzte Erhebung.",
-  "pre_menarche_desc_breast_development_stage_5": "Reifestadium — Brustwarzenhof fügt sich wieder in die Gesamtform der Brust ein."
+  "pre_menarche_desc_breast_development_stage_5": "Reifestadium — Brustwarzenhof fügt sich wieder in die Gesamtform der Brust ein.",
+  "dashboard_pain_type_singular": "Schmerzart",
+  "dashboard_pain_type_plural": "Schmerzarten",
+  "dashboard_pain_types_count": "Anzahl Schmerzarten"
 }

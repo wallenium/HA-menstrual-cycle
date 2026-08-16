@@ -197,6 +197,9 @@
     pre_menarche_desc_breast_development_stage_3: 'Breast and areola continue enlarging, without a separate contour yet.',
     pre_menarche_desc_breast_development_stage_4: 'Areola and nipple form a second, raised mound above the breast.',
     pre_menarche_desc_breast_development_stage_5: 'Mature stage — areola settles back into the overall breast contour.',
+    dashboard_pain_type_singular: 'pain type',
+    dashboard_pain_type_plural: 'pain types',
+    dashboard_pain_types_count: 'Number of pain types',
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_support_card: 'Support & Education',
@@ -3074,24 +3077,39 @@
         return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
       }
 
-      const normPain = (v) => {
-        if (!v || v === 'none') return 0;
-        if (v === 'light' || v === 1) return 1;
-        if (v === 'medium' || v === 2) return 2;
-        if (v === 'heavy' || v === 3) return 3;
-        if (typeof v === 'number') return Math.min(3, v);
-        return 1;
+      // Real data model: `pain` is a multi-select array of pain *types* (cramps,
+      // headache, migraine, lower_back, mittelschmerz, tender_breasts, vulva) — not
+      // a single severity value. Use the count of distinct types logged that day as
+      // a severity proxy (more concurrent pain types ≈ a rougher day), rather than
+      // trying to match it against 'light'/'medium'/'heavy' values that this field
+      // never actually contains.
+      const painCount = (entry) => {
+        const raw = entry?.pain ?? entry?.symptom_data?.pain;
+        if (Array.isArray(raw)) return raw.filter((v) => v && v !== 'none').length;
+        if (typeof raw === 'string' && raw && raw !== 'none') return 1; // legacy/singular fallback
+        return 0;
       };
 
-      const normMood = (v) => {
-        if (!v) return 0;
-        if (typeof v === 'number') return Math.min(3, Math.max(0, v));
-        const mv = String(v).toLowerCase();
-        if (mv.includes('good') || mv.includes('happy') || mv.includes('gut')) return 3;
-        if (mv.includes('ok') || mv.includes('neutral')) return 2;
-        if (mv.includes('bad') || mv.includes('sad') || mv.includes('angry')) return 1;
-        return 1;
+      // `mood` has no defined value scale or logging UI anywhere in the app today —
+      // it's reserved in the backend's attribute whitelist but nothing currently
+      // writes a meaningful value to it. Rather than guessing "good/bad" from English
+      // substring matches (meaningless for a German-first app, and fabricated either
+      // way), only show it when it's an actual number (future-proof, if a numeric
+      // 1-5 scale is ever wired up) or mark presence neutrally when it's some other
+      // non-empty value, without pretending to know its meaning.
+      const moodValue = (entry) => {
+        const raw = entry?.mood ?? entry?.symptom_data?.mood;
+        if (typeof raw === 'number' && Number.isFinite(raw)) return Math.max(0, raw);
+        if (typeof raw === 'string' && raw.trim() && raw !== 'none') return 'logged';
+        return 0;
       };
+
+      const painCounts = entries.map(painCount);
+      const maxPain = Math.max(1, ...painCounts);
+      const moodValues = entries.map(moodValue);
+      const numericMoods = moodValues.filter((v) => typeof v === 'number' && v > 0);
+      const maxMood = Math.max(1, ...(numericMoods.length ? numericMoods : [1]));
+      const hasMoodData = moodValues.some((v) => v !== 0);
 
       const W = 400; const H = 70;
       const padL = 8; const padR = 8; const padT = 6; const padB = 18;
@@ -3099,20 +3117,31 @@
       const chartH = H - padT - padB;
       const barW = Math.max(2, Math.floor(chartW / entries.length) - 2);
       const gap = entries.length > 1 ? (chartW - barW * entries.length) / (entries.length - 1) : 0;
+      const halfW = Math.max(1, Math.floor(barW / 2));
 
       const bars = entries.map((entry, idx) => {
-        const painVal = normPain(entry?.pain ?? entry?.symptom_data?.pain ?? entry?.bleeding_strength);
-        const moodVal = normMood(entry?.mood ?? entry?.symptom_data?.mood);
+        const pain = painCounts[idx];
+        const mood = moodValues[idx];
         const x = Math.round(padL + idx * (barW + gap));
 
-        const painH = Math.max(1, (painVal / 3) * chartH);
+        const painFrac = pain > 0 ? pain / maxPain : 0;
+        const painH = pain > 0 ? Math.max(2, painFrac * chartH) : 0;
         const painY = padT + chartH - painH;
-        const moodH = Math.max(1, (moodVal / 3) * chartH);
-        const moodY = padT + chartH - moodH;
-        const halfW = Math.max(1, Math.floor(barW / 2));
+        const painBar = painH > 0 ? `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"><title>${pain} ${pain === 1 ? this._t('dashboard_pain_type_singular') || 'Schmerzart' : this._t('dashboard_pain_type_plural') || 'Schmerzarten'}</title></rect>` : '';
 
-        return `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"/>
-                <rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.8" rx="1"/>`;
+        let moodBar = '';
+        if (typeof mood === 'number' && mood > 0) {
+          const moodH = Math.max(2, (mood / maxMood) * chartH);
+          const moodY = padT + chartH - moodH;
+          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.8" rx="1"/>`;
+        } else if (mood === 'logged') {
+          // Presence-only marker: we know something was logged, not what it means.
+          const moodH = 3;
+          const moodY = padT + chartH - moodH;
+          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.4" rx="1"/>`;
+        }
+
+        return `${painBar}${moodBar}`;
       }).join('');
 
       // X-axis: first and last date
@@ -3122,8 +3151,8 @@
                        <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
       const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('pain'))}</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#6B3654;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_pain_types_count') || 'Anzahl Schmerzarten')}</span>
+        ${hasMoodData ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#6B3654;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>` : ''}
       </div>`;
 
       return `
