@@ -720,5 +720,6 @@
   "opt_noticeable_changes": "Cambios notables",
   "opt_significant_changes": "Cambios significativos",
   "opt_clear_to_white": "Transparente a blanco",
-  "opt_none": "Ninguno"
+  "opt_none": "Ninguno",
+  "dashboard_past_fertile_disclaimer": "Las ventanas fértiles pasadas se estiman de forma retrospectiva (método del calendario), no son valores medidos."
 }

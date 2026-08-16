@@ -720,5 +720,6 @@
   "opt_noticeable_changes": "Changements notables",
   "opt_significant_changes": "Changements importants",
   "opt_clear_to_white": "Transparent à blanc",
-  "opt_none": "Aucun"
+  "opt_none": "Aucun",
+  "dashboard_past_fertile_disclaimer": "Les fenêtres de fertilité passées sont estimées rétrospectivement (méthode du calendrier), et non des valeurs mesurées."
 }

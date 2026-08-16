@@ -753,5 +753,6 @@
   "opt_noticeable_changes": "Merkliche Veränderungen",
   "opt_significant_changes": "Deutliche Veränderungen",
   "opt_clear_to_white": "Klar bis weiß",
-  "opt_none": "Keine"
+  "opt_none": "Keine",
+  "dashboard_past_fertile_disclaimer": "Vergangene fruchtbare Fenster sind rückblickend geschätzt (Kalendermethode), keine gemessenen Werte."
 }

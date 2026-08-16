@@ -166,6 +166,7 @@
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
     dashboard_calendar_loading: 'Loading…',
     dashboard_card_unavailable: 'Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache).',
+    dashboard_past_fertile_disclaimer: 'Past fertile windows are estimated retrospectively (calendar method), not measured values.',
     dashboard_menarche_checklist_hint: 'Tap to log a sign. Feeds automatically into the estimate above.',
     remove: 'Remove',
     opt_stage_1: 'Stage 1',
@@ -3120,6 +3121,31 @@
       const startYear = today.getMonth() < 6 ? currentYear - 1 : currentYear;
       const isDe = this._lang === 'de';
 
+      // Past fertile windows/ovulation days aren't tracked by the backend (it only
+      // computes fertility_forecast live for the current cycle) — so estimate them
+      // retrospectively here for each completed past cycle, using the standard
+      // ~14-day luteal-phase assumption (next period start minus 14 days), the same
+      // convention already used for the current-cycle ring visualization above.
+      // Fertile window = the 5 days leading up to and including ovulation day —
+      // sperm can survive several days, so this is the widely-used calendar-method
+      // window, not a measured/confirmed value.
+      const pastOvulationDays = new Set();
+      const pastFertileDays = new Set();
+      const sortedStarts = allStarts.slice().sort();
+      for (let i = 0; i < sortedStarts.length - 1; i++) {
+        const nextStart = new Date(sortedStarts[i + 1]);
+        if (Number.isNaN(nextStart.getTime())) continue;
+        const cycleLen = Math.round((nextStart - new Date(sortedStarts[i])) / 86400000);
+        if (cycleLen < 15 || cycleLen > 60) continue; // skip implausible gaps (e.g. missed logging)
+        const ovDate = new Date(nextStart.getTime() - 14 * 86400000);
+        pastOvulationDays.add(ovDate.toISOString().slice(0, 10));
+        for (let off = 5; off >= 1; off--) {
+          const fDate = new Date(ovDate.getTime() - off * 86400000);
+          pastFertileDays.add(fDate.toISOString().slice(0, 10));
+        }
+      }
+      const hasPastFertileData = pastOvulationDays.size > 0;
+
       const isInFertileWindow = (isoDate) => {
         if (!fertileStart) return false;
         const d = new Date(isoDate);
@@ -3145,8 +3171,8 @@
           const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           const isPeriodStart = allStarts.includes(isoDate);
           const isPredicted = predictedStart && isoDate === predictedStart;
-          const isOvulation = ovulationDay && isoDate === ovulationDay;
-          const isFertile = !isOvulation && isInFertileWindow(isoDate);
+          const isOvulation = (ovulationDay && isoDate === ovulationDay) || pastOvulationDays.has(isoDate);
+          const isFertile = !isOvulation && (isInFertileWindow(isoDate) || pastFertileDays.has(isoDate));
           const isToday = isCurrentMonth && d === today.getDate();
 
           let bg = 'var(--divider-color,#e5e7eb)';
@@ -3171,10 +3197,11 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
           ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
-          ${fertileStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
-          ${ovulationDay ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}
+          ${(fertileStart || hasPastFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
+          ${(ovulationDay || hasPastFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
+        ${hasPastFertileData ? `<p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_past_fertile_disclaimer') || 'Vergangene fruchtbare Fenster sind rückblickend geschätzt (Kalendermethode), keine gemessenen Werte.'}</p>` : ''}
         ${this._renderIcsSubscribeLink(attrs)}
       `;
 

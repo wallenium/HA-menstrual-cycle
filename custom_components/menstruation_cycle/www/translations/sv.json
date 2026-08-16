@@ -720,5 +720,6 @@
   "opt_noticeable_changes": "Märkbara förändringar",
   "opt_significant_changes": "Betydande förändringar",
   "opt_clear_to_white": "Klar till vit",
-  "opt_none": "Inga"
+  "opt_none": "Inga",
+  "dashboard_past_fertile_disclaimer": "Tidigare fertila fönster är retrospektivt uppskattade (kalendermetoden), inte uppmätta värden."
 }
