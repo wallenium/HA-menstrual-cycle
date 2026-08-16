@@ -147,8 +147,6 @@ _DROPPED_ATTRIBUTE_KEYS = {
     "friendly_name",
     "menarche_data",
     "noncycle_data",
-    "symptom_correlation_insights",
-    "symptom_correlation_insights_reason",
 }
 
 _SIZE_SHEDDING_ORDER = [
@@ -156,6 +154,7 @@ _SIZE_SHEDDING_ORDER = [
     ATTR_SYMPTOM_HISTORY,
     "progress_badges",
     "cycle_statistics",
+    "symptom_correlation_insights",
     ATTR_HISTORY,
 ]
 

@@ -127,6 +127,14 @@
     milestone_6_months: '6 months',
     milestone_9_months: '9 months',
     milestone_menopause_confirmed: '12 months — confirmed',
+    dashboard_widget_symptom_insights: 'Symptom Insights',
+    dashboard_symptom_insights_none: 'No strong patterns detected yet.',
+    dashboard_symptom_insight_more: '{symptom} is {ratio}x more frequent in the {phase} phase.',
+    dashboard_symptom_insight_less: '{symptom} is less common in the {phase} phase ({ratio}x baseline).',
+    dashboard_confidence_low: 'Low confidence',
+    dashboard_confidence_medium: 'Medium confidence',
+    dashboard_ics_subscribe: 'Subscribe to calendar',
+    dashboard_ics_hint: '(as an iCal feed, e.g. for Google/Apple Calendar)',
     dashboard_calendar_day_added: 'Marked',
     dashboard_calendar_day_removed: 'Removed',
     dashboard_week_unit: 'Week',
@@ -271,8 +279,9 @@
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
     { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, span: 7 },
     { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, span: 12 },
-    { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 6 },
-    { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 6 },
+    { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
+    { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
+    { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
@@ -289,6 +298,7 @@
     'calendar_card',
     'symptom_heatmap',
     'anomaly_insights',
+    'symptom_insights',
     'pain_mood_trend',
     'year_overview',
   ];
@@ -309,6 +319,7 @@
         calendar_card: false,
         symptom_heatmap: false,
         anomaly_insights: false,
+        symptom_insights: false,
         pain_mood_trend: false,
         year_overview: false,
       },
@@ -330,6 +341,7 @@
         calendar_card: true,
         symptom_heatmap: true,
         anomaly_insights: true,
+        symptom_insights: true,
         pain_mood_trend: true,
         year_overview: true,
       },
@@ -2373,6 +2385,65 @@
       </div>`;
     }
 
+    _renderSymptomInsights(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const insights = Array.isArray(attrs.symptom_correlation_insights) ? attrs.symptom_correlation_insights : [];
+      const reason = attrs.symptom_correlation_insights_reason;
+
+      if (!insights.length) {
+        const reasonKey = {
+          insufficient_cycle_history: 'dashboard_not_enough_data',
+          insufficient_logged_days: 'dashboard_not_enough_data',
+          insufficient_phase_coverage: 'dashboard_not_enough_data',
+          insufficient_symptom_occurrences: 'dashboard_not_enough_data',
+          no_strong_insights: 'dashboard_symptom_insights_none',
+          unavailable_for_pregnancy: 'dashboard_not_enough_data',
+          unavailable_for_pre_menarche: 'dashboard_not_enough_data',
+          unavailable_for_menopause: 'dashboard_not_enough_data',
+        }[reason] || 'dashboard_not_enough_data';
+        return `<div class="helper">${this._t(reasonKey)}</div>`;
+      }
+
+      // Phase keys from the backend (period/follicular/fertile_window/ovulation_day/
+      // luteal/late_luteal) map onto our existing phase_* translation keys where
+      // possible; symptom_key maps onto existing opt_*/bare symptom translation keys.
+      const phaseKeyMap = {
+        period: 'phase_menstruation',
+        follicular: 'phase_follicular',
+        fertile_window: 'dashboard_fertility_window',
+        ovulation_day: 'dashboard_fertility_ovulation',
+        luteal: 'phase_luteal',
+        late_luteal: 'phase_luteal',
+      };
+
+      const items = insights.slice(0, 4).map((ins) => {
+        const symptomLabel = this._t(ins.symptom_key) !== ins.symptom_key
+          ? this._t(ins.symptom_key)
+          : (this._t('opt_' + ins.symptom_key) !== ('opt_' + ins.symptom_key) ? this._t('opt_' + ins.symptom_key) : ins.symptom_key);
+        const phaseLabel = this._t(phaseKeyMap[ins.phase] || ins.phase);
+        const moreFrequent = ins.direction === 'more_frequent';
+        const template = moreFrequent
+          ? (this._t('dashboard_symptom_insight_more') || '{symptom} ist {ratio}x häufiger in der {phase}-Phase.')
+          : (this._t('dashboard_symptom_insight_less') || '{symptom} ist seltener in der {phase}-Phase ({ratio}x Basisrate).');
+        const label = template
+          .replace('{symptom}', symptomLabel)
+          .replace('{ratio}', String(ins.ratio))
+          .replace('{phase}', phaseLabel);
+        const severity = ins.confidence === 'high' ? 'alert' : 'info';
+        const tag = ins.confidence === 'high' ? this._t('severity_alert') : (this._t(`dashboard_confidence_${ins.confidence}`) || ins.confidence);
+        return `
+          <div class="anomaly-item ${severity}">
+            <span class="anomaly-dot" aria-hidden="true"></span>
+            <div class="anomaly-body">
+              <span class="anomaly-tag">${escapeHtml(tag)}</span>
+              <p class="anomaly-text">${escapeHtml(label)}</p>
+            </div>
+          </div>`;
+      }).join('');
+
+      return `<div class="anomaly-list">${items}</div>`;
+    }
+
     _renderPainMoodTrend(stateObj) {
       const attrs = stateObj?.attributes || {};
       const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
@@ -2498,12 +2569,32 @@
           ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
+        ${this._renderIcsSubscribeLink(attrs)}
       `;
 
       return `
         <div class="year-overview-wrap" role="region" aria-label="${escapeHtml(this._t('dashboard_widget_year_overview'))}">
           <div class="year-months-grid">${months.join('')}</div>
           ${legend}
+        </div>
+      `;
+    }
+
+    _renderIcsSubscribeLink(attrs) {
+      if (!attrs.ics_url) return '';
+      let absoluteUrl;
+      try {
+        absoluteUrl = new URL(attrs.ics_url, window.location.origin).toString();
+      } catch (_err) {
+        return '';
+      }
+      const webcalUrl = absoluteUrl.replace(/^https?:\/\//, 'webcal://');
+      return `
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <a href="${escapeHtml(webcalUrl)}" style="font-size:0.72rem;color:var(--mc-rose-deep);text-decoration:none;font-weight:600;">
+            📅 ${this._t('dashboard_ics_subscribe') || 'Kalender abonnieren'}
+          </a>
+          <span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${this._t('dashboard_ics_hint') || '(als iCal-Feed, z. B. für Google/Apple Kalender)'}</span>
         </div>
       `;
     }
@@ -2573,6 +2664,7 @@
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
       if (widgetId === 'symptom_heatmap') body = this._renderSymptomHeatmap(stateObj);
       if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
+      if (widgetId === 'symptom_insights') body = this._renderSymptomInsights(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
       if (widgetId === 'fetal_development') body = this._renderFetalDevelopment(stateObj);
@@ -2636,7 +2728,7 @@
         // that depends on cycle history, phases, fertility, or temperature data.
         const menarcheHidden = [
           'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
-          'calendar_card', 'symptom_heatmap', 'anomaly_insights', 'pain_mood_trend', 'year_overview',
+          'calendar_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
           'fetal_development',
         ];
         order = order.filter((id) => !menarcheHidden.includes(id));

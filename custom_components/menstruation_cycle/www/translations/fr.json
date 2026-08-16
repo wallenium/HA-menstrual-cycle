@@ -654,5 +654,13 @@
   "milestone_3_months": "3 mois",
   "milestone_6_months": "6 mois",
   "milestone_9_months": "9 mois",
-  "milestone_menopause_confirmed": "12 mois — confirmée"
+  "milestone_menopause_confirmed": "12 mois — confirmée",
+  "dashboard_widget_symptom_insights": "Analyses des symptômes",
+  "dashboard_symptom_insights_none": "Aucun schéma marquant détecté pour l'instant.",
+  "dashboard_symptom_insight_more": "{symptom} est {ratio}x plus fréquent pendant la phase {phase}.",
+  "dashboard_symptom_insight_less": "{symptom} est moins fréquent pendant la phase {phase} ({ratio}x la référence).",
+  "dashboard_confidence_low": "Confiance faible",
+  "dashboard_confidence_medium": "Confiance moyenne",
+  "dashboard_ics_subscribe": "S'abonner au calendrier",
+  "dashboard_ics_hint": "(flux iCal, p. ex. pour Google/Apple Calendrier)"
 }

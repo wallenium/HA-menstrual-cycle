@@ -654,5 +654,13 @@
   "milestone_3_months": "3 månader",
   "milestone_6_months": "6 månader",
   "milestone_9_months": "9 månader",
-  "milestone_menopause_confirmed": "12 månader — bekräftad"
+  "milestone_menopause_confirmed": "12 månader — bekräftad",
+  "dashboard_widget_symptom_insights": "Symtominsikter",
+  "dashboard_symptom_insights_none": "Inga tydliga mönster upptäckta ännu.",
+  "dashboard_symptom_insight_more": "{symptom} är {ratio}x vanligare under {phase}-fasen.",
+  "dashboard_symptom_insight_less": "{symptom} är mindre vanligt under {phase}-fasen ({ratio}x basnivå).",
+  "dashboard_confidence_low": "Låg tillförlitlighet",
+  "dashboard_confidence_medium": "Medelhög tillförlitlighet",
+  "dashboard_ics_subscribe": "Prenumerera på kalender",
+  "dashboard_ics_hint": "(som iCal-flöde, t.ex. för Google/Apple Kalender)"
 }
