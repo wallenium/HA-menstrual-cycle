@@ -695,5 +695,12 @@
   "dashboard_confidence_low": "Geringe Konfidenz",
   "dashboard_confidence_medium": "Mittlere Konfidenz",
   "dashboard_ics_subscribe": "Kalender abonnieren",
-  "dashboard_ics_hint": "(als iCal-Feed, z. B. für Google/Apple Kalender)"
+  "dashboard_ics_hint": "(als iCal-Feed, z. B. für Google/Apple Kalender)",
+  "dashboard_widget_progress_badges": "Fortschritt",
+  "dashboard_badge_earned_on": "Erreicht am",
+  "badge_first_entry": "Erster Eintrag erfasst",
+  "badge_cycles_3": "3 Zyklen erfasst",
+  "badge_cycles_6": "6 Zyklen erfasst",
+  "badge_consistent_logging": "Regelmäßig erfasst (30 Tage)",
+  "badge_pattern_emerging": "Muster erkennbar"
 }

@@ -135,6 +135,13 @@
     dashboard_confidence_medium: 'Medium confidence',
     dashboard_ics_subscribe: 'Subscribe to calendar',
     dashboard_ics_hint: '(as an iCal feed, e.g. for Google/Apple Calendar)',
+    dashboard_widget_progress_badges: 'Progress',
+    dashboard_badge_earned_on: 'Earned on',
+    badge_first_entry: 'First entry logged',
+    badge_cycles_3: '3 cycles logged',
+    badge_cycles_6: '6 cycles logged',
+    badge_consistent_logging: 'Consistent logging (30 days)',
+    badge_pattern_emerging: 'Pattern emerging',
     dashboard_calendar_day_added: 'Marked',
     dashboard_calendar_day_removed: 'Removed',
     dashboard_week_unit: 'Week',
@@ -282,6 +289,7 @@
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
+    { id: 'progress_badges', title: 'dashboard_widget_progress_badges', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
@@ -299,6 +307,7 @@
     'symptom_heatmap',
     'anomaly_insights',
     'symptom_insights',
+    'progress_badges',
     'pain_mood_trend',
     'year_overview',
   ];
@@ -320,6 +329,7 @@
         symptom_heatmap: false,
         anomaly_insights: false,
         symptom_insights: false,
+        progress_badges: true,
         pain_mood_trend: false,
         year_overview: false,
       },
@@ -342,6 +352,7 @@
         symptom_heatmap: true,
         anomaly_insights: true,
         symptom_insights: true,
+        progress_badges: true,
         pain_mood_trend: true,
         year_overview: true,
       },
@@ -2444,6 +2455,48 @@
       return `<div class="anomaly-list">${items}</div>`;
     }
 
+    _renderProgressBadges(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const badges = Array.isArray(attrs.progress_badges) ? attrs.progress_badges : [];
+      if (!badges.length) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      // Fixed v1 badge set, in a stable, calm display order — matches badges.py.
+      const badgeLabels = {
+        first_entry: 'badge_first_entry',
+        cycles_3_logged: 'badge_cycles_3',
+        cycles_6_logged: 'badge_cycles_6',
+        consistent_logging_30d: 'badge_consistent_logging',
+        pattern_emerging: 'badge_pattern_emerging',
+      };
+      const byKey = {};
+      badges.forEach((b) => { if (b && b.key) byKey[b.key] = b; });
+
+      const items = Object.keys(badgeLabels).map((key) => {
+        const badge = byKey[key];
+        if (!badge) return '';
+        const label = this._t(badgeLabels[key]);
+        const earned = badge.state === 'earned';
+        const inProgress = badge.state === 'in_progress';
+        let detail = '';
+        if (earned && badge.earned_at) {
+          detail = `${this._t('dashboard_badge_earned_on') || 'Erreicht am'} ${escapeHtml(badge.earned_at)}`;
+        } else if (inProgress && badge.progress_target) {
+          detail = `${escapeHtml(badge.progress_value)} / ${escapeHtml(badge.progress_target)}`;
+        }
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
+          <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${earned ? 'var(--mc-sage)' : 'transparent'};border:${earned ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${earned ? '✓' : ''}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;${earned ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(label)}</div>
+            ${detail ? `<div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);margin-top:2px;">${detail}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div>${items}</div>`;
+    }
+
     _renderPainMoodTrend(stateObj) {
       const attrs = stateObj?.attributes || {};
       const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
@@ -2665,6 +2718,7 @@
       if (widgetId === 'symptom_heatmap') body = this._renderSymptomHeatmap(stateObj);
       if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
       if (widgetId === 'symptom_insights') body = this._renderSymptomInsights(stateObj);
+      if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
       if (widgetId === 'fetal_development') body = this._renderFetalDevelopment(stateObj);

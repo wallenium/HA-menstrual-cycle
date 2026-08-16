@@ -662,5 +662,12 @@
   "dashboard_confidence_low": "Låg tillförlitlighet",
   "dashboard_confidence_medium": "Medelhög tillförlitlighet",
   "dashboard_ics_subscribe": "Prenumerera på kalender",
-  "dashboard_ics_hint": "(som iCal-flöde, t.ex. för Google/Apple Kalender)"
+  "dashboard_ics_hint": "(som iCal-flöde, t.ex. för Google/Apple Kalender)",
+  "dashboard_widget_progress_badges": "Framsteg",
+  "dashboard_badge_earned_on": "Uppnått den",
+  "badge_first_entry": "Första posten loggad",
+  "badge_cycles_3": "3 cykler loggade",
+  "badge_cycles_6": "6 cykler loggade",
+  "badge_consistent_logging": "Regelbunden loggning (30 dagar)",
+  "badge_pattern_emerging": "Mönster framträder"
 }

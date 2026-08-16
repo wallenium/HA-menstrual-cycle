@@ -662,5 +662,12 @@
   "dashboard_confidence_low": "Confiance faible",
   "dashboard_confidence_medium": "Confiance moyenne",
   "dashboard_ics_subscribe": "S'abonner au calendrier",
-  "dashboard_ics_hint": "(flux iCal, p. ex. pour Google/Apple Calendrier)"
+  "dashboard_ics_hint": "(flux iCal, p. ex. pour Google/Apple Calendrier)",
+  "dashboard_widget_progress_badges": "Progression",
+  "dashboard_badge_earned_on": "Obtenu le",
+  "badge_first_entry": "Première entrée enregistrée",
+  "badge_cycles_3": "3 cycles enregistrés",
+  "badge_cycles_6": "6 cycles enregistrés",
+  "badge_consistent_logging": "Enregistrement régulier (30 jours)",
+  "badge_pattern_emerging": "Tendance émergente"
 }
