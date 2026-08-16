@@ -770,5 +770,6 @@
   "dashboard_pain_type_singular": "pain type",
   "dashboard_pain_type_plural": "pain types",
   "dashboard_pain_types_count": "Number of pain types",
-  "acne": "skin changes"
+  "acne": "skin changes",
+  "dashboard_days_short": "d"
 }

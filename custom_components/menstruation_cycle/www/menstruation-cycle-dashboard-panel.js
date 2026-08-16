@@ -169,6 +169,7 @@
     dashboard_past_fertile_disclaimer: 'Fertile windows outside the current cycle are estimated (calendar method), not measured or guaranteed values.',
     dashboard_year_prev: 'Previous year',
     dashboard_year_next: 'Next year',
+    dashboard_days_short: 'd',
     dashboard_menarche_checklist_hint: 'Tap to log a sign. Feeds automatically into the estimate above.',
     remove: 'Remove',
     opt_stage_1: 'Stage 1',
@@ -3195,7 +3196,6 @@
       const attrs = stateObj?.attributes || {};
       const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
       const predictedStarts = Array.isArray(attrs.predicted_cycle_starts) ? attrs.predicted_cycle_starts : [];
-      const predictedStartSet = new Set(predictedStarts);
       const fertility = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : {};
       const fertileStart = fertility.fertile_window_start ?? attrs.fertile_window_start ?? null;
       const fertileEnd = fertility.fertile_window_end ?? attrs.fertile_window_end ?? null;
@@ -3204,6 +3204,34 @@
       const today = new Date();
       const selectedYear = this._yearOverviewYear || today.getFullYear();
       const isDe = this._lang === 'de';
+
+      // Show the full period span (start day + following days), not just the start
+      // day, using the best available average-duration source: actual measured
+      // duration from bleeding-block history, falling back to the learned average,
+      // then the configured default, then a generic fallback.
+      const avgPeriodDuration = Math.round(
+        attrs.cycle_statistics?.average_period_duration
+        ?? attrs.period_duration_learned_avg_days
+        ?? attrs.period_duration_default_days
+        ?? 5
+      );
+      const periodDays = new Set();
+      const predictedPeriodDays = new Set();
+      allStarts.forEach((startIso) => {
+        const start = new Date(startIso);
+        if (Number.isNaN(start.getTime())) return;
+        for (let off = 0; off < avgPeriodDuration; off++) {
+          periodDays.add(new Date(start.getTime() + off * 86400000).toISOString().slice(0, 10));
+        }
+      });
+      predictedStarts.forEach((startIso) => {
+        const start = new Date(startIso);
+        if (Number.isNaN(start.getTime())) return;
+        for (let off = 0; off < avgPeriodDuration; off++) {
+          const iso = new Date(start.getTime() + off * 86400000).toISOString().slice(0, 10);
+          if (!periodDays.has(iso)) predictedPeriodDays.add(iso);
+        }
+      });
 
       // Fertile windows/ovulation days for cycles other than the current one aren't
       // tracked by the backend (it only computes fertility_forecast live for the
@@ -3255,18 +3283,18 @@
         for (let i = 0; i < leadOffset; i++) dayCells.push('<div class="year-day-cell"></div>');
         for (let d = 1; d <= daysInMonth; d++) {
           const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const isPeriodStart = allStarts.includes(isoDate);
-          const isPredictedStart = !isPeriodStart && predictedStartSet.has(isoDate);
+          const isPeriodDay = periodDays.has(isoDate);
+          const isPredictedPeriodDay = !isPeriodDay && predictedPeriodDays.has(isoDate);
           const isOvulation = (ovulationDay && isoDate === ovulationDay) || estOvulationDays.has(isoDate);
           const isFertile = !isOvulation && (isInFertileWindow(isoDate) || estFertileDays.has(isoDate));
           const isToday = isCurrentMonth && d === today.getDate();
 
           let bg = 'var(--divider-color,#e5e7eb)';
           if (isToday) bg = 'var(--mc-plum,#6B3654)';
-          else if (isPeriodStart) bg = 'var(--mc-rose-deep)';
+          else if (isPeriodDay) bg = 'var(--mc-rose-deep)';
           else if (isOvulation) bg = 'var(--mc-sage-deep,#3F5A47)';
           else if (isFertile) bg = 'var(--mc-amber,#E3A23D)';
-          else if (isPredictedStart) bg = 'rgba(232,99,125,0.32)';
+          else if (isPredictedPeriodDay) bg = 'rgba(232,99,125,0.32)';
 
           dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${escapeHtml(this._formatDate(isoDate))}"></div>`);
         }
@@ -3281,7 +3309,7 @@
 
       const legend = `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))} (Ø ${avgPeriodDuration}${this._t('dashboard_days_short') || 'T'})</span>
           ${predictedStarts.length ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
           ${(fertileStart || hasEstimatedFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
           ${(ovulationDay || hasEstimatedFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}

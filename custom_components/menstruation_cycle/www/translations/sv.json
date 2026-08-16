@@ -737,5 +737,6 @@
   "dashboard_pain_type_singular": "smärttyp",
   "dashboard_pain_type_plural": "smärttyper",
   "dashboard_pain_types_count": "Antal smärttyper",
-  "acne": "hudförändringar"
+  "acne": "hudförändringar",
+  "dashboard_days_short": "d"
 }
