@@ -580,6 +580,22 @@
           if (this.isConnected) this.render();
         }).catch(() => {});
       }
+
+      // window.ProductIcons (menstruation-icons.js) gives theme-tinted masked SVG
+      // icons instead of our plain <img> fallback, but it's a plain global set by a
+      // script tag — no whenDefined() equivalent — so poll briefly instead.
+      if (typeof window !== 'undefined' && !window.ProductIcons) {
+        let attempts = 0;
+        const poll = () => {
+          attempts += 1;
+          if (window.ProductIcons) {
+            if (this.isConnected) this.render();
+            return;
+          }
+          if (attempts < 15) setTimeout(poll, 200);
+        };
+        setTimeout(poll, 200);
+      }
     }
 
     set hass(hass) {
@@ -1407,8 +1423,16 @@
 
     // Real bundled product illustrations from assets/period/, served via the same
     // existing HTTP route already used for the pregnancy silhouettes
-    // (/menstruation_cycle/assets/{subfolder}/{filename}).
+    // (/menstruation_cycle/assets/{subfolder}/{filename}). Prefers the shared
+    // window.ProductIcons helper (menstruation-icons.js, already used by the gauge/
+    // calendar cards) since it renders the icon as a CSS mask tinted to currentColor
+    // — matches the app's theme/dark-mode automatically, unlike a plain <img> which
+    // shows the SVG's own fixed colors.
     _productIconSvg(key) {
+      if (typeof window !== 'undefined' && window.ProductIcons?.getIconWithSize) {
+        const html = window.ProductIcons.getIconWithSize(key, 22);
+        if (html) return html;
+      }
       const files = {
         pad: 'pad.svg',
         tampon: 'tampon.svg',
@@ -1772,6 +1796,24 @@
       return this._renderCycleHero(stateObj, discreetMode);
     }
 
+    // Small status illustration from assets/state/ (period/fertile/pms/neutral/
+    // pregnant/pre_menarche/menarche/menopause), via the shared window.ProductIcons
+    // helper. Returns '' if the module isn't loaded yet or the state has no asset —
+    // callers should treat this as a nice-to-have, not a required element. Pass attrs
+    // for the 'pregnant' state so the icon reflects the real week instead of
+    // defaulting to month 1.
+    _statusIconHtml(stateKey, size = 32, attrs = null) {
+      if (typeof window === 'undefined' || !window.ProductIcons) return '';
+      try {
+        if (attrs && window.ProductIcons.getStatusAnimatedIcon) {
+          return window.ProductIcons.getStatusAnimatedIcon(stateKey, attrs, size) || '';
+        }
+        return window.ProductIcons.getStatusIcon?.(stateKey, size) || '';
+      } catch (_err) {
+        return '';
+      }
+    }
+
     _renderCycleHero(stateObj, discreetMode) {
       const attrs = stateObj?.attributes || {};
       const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
@@ -1809,8 +1851,10 @@
           ${marker}
         </svg>`;
 
+      const statusIcon = !discreetMode ? this._statusIconHtml(stateObj?.state, 32) : '';
       const centerHtml = `
         <div class="hero-wheel-center">
+          ${statusIcon ? `<div style="margin-bottom:4px;">${statusIcon}</div>` : ''}
           <div class="hw-num">${cycleDay || '—'}</div>
           <div class="hw-sub">${this._t('cycle_day').toUpperCase()} / ${escapeHtml(cycleLength)}</div>
           ${!discreetMode && phase ? `<div class="hw-tag">${escapeHtml(phase)}</div>` : ''}
@@ -1905,8 +1949,10 @@
           ${marker}
         </svg>`;
 
+      const statusIcon = this._statusIconHtml('pregnant', 32, attrs);
       const centerHtml = `
         <div class="hero-wheel-center">
+          ${statusIcon ? `<div style="margin-bottom:4px;">${statusIcon}</div>` : ''}
           <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
           <div class="hw-sub">${escapeHtml(weekUnit)}</div>
           <div class="hw-tag">${this._t('trimester_' + trimester)}</div>
@@ -1980,8 +2026,10 @@
         sourceNote = '';
       }
 
+      const statusIcon = !discreetMode ? this._statusIconHtml('pre_menarche', 32) : '';
       return `
         <div>
+          ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
           <div class="progress-holder">
             <div class="progress-track" style="position:relative;height:14px;border-radius:999px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
               <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), var(--mc-rose));"></div>
@@ -2015,8 +2063,10 @@
       const isConfirmed = daysSinceLastPeriod !== null && daysSinceLastPeriod >= confirmThresholdDays;
       const daysRemaining = daysSinceLastPeriod !== null ? Math.max(0, confirmThresholdDays - daysSinceLastPeriod) : null;
 
+      const statusIcon = !discreetMode ? this._statusIconHtml('menopause', 32) : '';
       return `
         <div>
+          ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
           <div class="progress-holder">
             <div class="progress-track" style="position:relative;height:14px;border-radius:999px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
               <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), ${isConfirmed ? 'var(--mc-plum)' : 'var(--mc-rose)'});"></div>
@@ -2242,11 +2292,14 @@
 
       const assetIdx = _pregnancyAssetIndex(week);
       const weekUnit = this._t('dashboard_week_unit');
+      const sharedIcon = (typeof window !== 'undefined' && window.ProductIcons?.getPregnancyIcon)
+        ? window.ProductIcons.getPregnancyIcon(week, 84)
+        : '';
       const illustration = `
         <div style="width:110px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;">
-          <img src="/menstruation_cycle/assets/pregnancy/preg_${assetIdx}.svg" width="84" height="172"
+          ${sharedIcon || `<img src="/menstruation_cycle/assets/pregnancy/preg_${assetIdx}.svg" width="84" height="172"
                alt="${escapeHtml(weekUnit)} ${week}" style="max-width:100%;height:auto;" loading="lazy"
-               onerror="this.style.display='none';"/>
+               onerror="this.style.display='none';"/>`}
         </div>`;
 
       return `
