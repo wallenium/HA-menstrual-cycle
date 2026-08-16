@@ -669,5 +669,9 @@
   "pregnancy_risk_notes": "Notes",
   "nfp_analysis": "NFP",
   "legend_cervix_peak": "Cervical mucus peak detected",
-  "temperature_rise_day": "Temperature rise"
+  "temperature_rise_day": "Temperature rise",
+  "dashboard_calendar_tap_hint": "Tap a day to mark or remove a period start.",
+  "dashboard_calendar_day_added": "Marked",
+  "dashboard_calendar_day_removed": "Removed",
+  "dashboard_calendar_fallback_note": "(Full symptom logging — bleeding strength, pain, cervical mucus, and more — loads automatically once available.)"
 }

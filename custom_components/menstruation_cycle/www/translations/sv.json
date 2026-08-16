@@ -636,5 +636,9 @@
   "pregnancy_risk_notes": "Anteckningar",
   "nfp_analysis": "NFP",
   "legend_cervix_peak": "Cervixslemtopp upptäckt",
-  "temperature_rise_day": "Temperaturhöjning"
+  "temperature_rise_day": "Temperaturhöjning",
+  "dashboard_calendar_tap_hint": "Tryck på en dag för att markera eller ta bort en mensstart.",
+  "dashboard_calendar_day_added": "Markerad",
+  "dashboard_calendar_day_removed": "Borttagen",
+  "dashboard_calendar_fallback_note": "(Fullständig symtomloggning — blödningsstyrka, smärta, cervixslem med mera — laddas automatiskt när den finns tillgänglig.)"
 }

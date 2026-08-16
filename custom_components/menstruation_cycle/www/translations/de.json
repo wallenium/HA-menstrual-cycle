@@ -669,5 +669,9 @@
   "pregnancy_risk_notes": "Notizen",
   "nfp_analysis": "NFP",
   "legend_cervix_peak": "Zervixschleim-Höhepunkt erkannt",
-  "temperature_rise_day": "Temperaturanstieg"
+  "temperature_rise_day": "Temperaturanstieg",
+  "dashboard_calendar_tap_hint": "Tag antippen, um einen Periodenstart zu markieren oder zu entfernen.",
+  "dashboard_calendar_day_added": "Markiert",
+  "dashboard_calendar_day_removed": "Entfernt",
+  "dashboard_calendar_fallback_note": "(Für Blutungsstärke, Schmerzen, Zervixschleim u. a. wird die vollständige Kalender-Ressource geladen, sobald verfügbar.)"
 }

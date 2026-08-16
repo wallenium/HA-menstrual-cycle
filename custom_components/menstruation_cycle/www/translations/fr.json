@@ -636,5 +636,9 @@
   "pregnancy_risk_notes": "Notes",
   "nfp_analysis": "MNF",
   "legend_cervix_peak": "Pic de glaire cervicale détecté",
-  "temperature_rise_day": "Hausse thermique"
+  "temperature_rise_day": "Hausse thermique",
+  "dashboard_calendar_tap_hint": "Touchez un jour pour marquer ou retirer un début de règles.",
+  "dashboard_calendar_day_added": "Marqué",
+  "dashboard_calendar_day_removed": "Retiré",
+  "dashboard_calendar_fallback_note": "(La saisie complète des symptômes — intensité des règles, douleurs, glaire cervicale, etc. — se charge automatiquement dès qu'elle est disponible.)"
 }

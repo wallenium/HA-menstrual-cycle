@@ -111,6 +111,10 @@
     nfp_analysis: 'NFP',
     temperature_rise_day: 'Temperature rise',
     legend_cervix_peak: 'Cervical mucus peak detected',
+    dashboard_calendar_tap_hint: 'Tap a day to mark or remove a period start.',
+    dashboard_calendar_fallback_note: '(Full symptom logging — bleeding strength, pain, cervical mucus, and more — loads automatically once available.)',
+    dashboard_calendar_day_added: 'Marked',
+    dashboard_calendar_day_removed: 'Removed',
     dashboard_week_unit: 'Week',
     dashboard_due_date_short: 'Due',
     trimester_1: '1st Trimester',
@@ -456,6 +460,7 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
+      this._calendarMessage = '';
       this._i18nLanguagePromises = {};
       this._lastRenderSig = null;
       this._debugEnabled = this._readDebugFlag();
@@ -473,6 +478,19 @@
       this.shadowRoot?.addEventListener('click', (event) => this._handleClick(event));
       this.shadowRoot?.addEventListener('change', (event) => this._handleChange(event));
       this.shadowRoot?.addEventListener('submit', (event) => this._handleSubmit(event));
+
+      // The full-featured menstruation-calendar-card (rich symptom modal: bleeding,
+      // pain, cervical mucus, cervix position, basal temp, etc.) is registered as a
+      // Lovelace resource and loads asynchronously. A one-time synchronous check at
+      // render time can miss it if this panel renders before that script finishes
+      // loading — so also watch for it becoming defined and re-render once it is,
+      // upgrading from the reduced native fallback (period-day toggle only) to the
+      // real card automatically, without a page reload.
+      if (typeof customElements !== 'undefined' && !customElements.get('menstruation-calendar-card')) {
+        customElements.whenDefined('menstruation-calendar-card').then(() => {
+          if (this.isConnected) this.render();
+        }).catch(() => {});
+      }
     }
 
     set hass(hass) {
@@ -1029,6 +1047,45 @@
       this.render();
     }
 
+    async _toggleCalendarDay(iso, isCurrentlyStart) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      const isPregnant = !!(attrs.is_pregnant ?? (attrs.pregnancy_data || {}).is_pregnant);
+      if (isPregnant) return;
+
+      const service = isCurrentlyStart ? 'remove_cycle_start' : 'add_cycle_start';
+      const entityId = this._selectedEntityId;
+      const profile = attrs.profile;
+      const entryId = attrs.entry_id;
+      const attempts = [
+        { date: iso, entity_id: entityId, ...(profile ? { profile } : {}), ...(entryId ? { entry_id: entryId } : {}) },
+        { date: iso, entity_id: entityId, ...(profile ? { profile } : {}) },
+        { date: iso, ...(profile ? { profile } : {}), ...(entryId ? { entry_id: entryId } : {}) },
+        { date: iso, ...(profile ? { profile } : {}) },
+        { date: iso },
+      ];
+      let lastError = null;
+      for (const payload of attempts) {
+        try {
+          await this._hass.callService('menstruation_cycle', service, payload);
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      this._calendarMessage = lastError
+        ? this._t('symptom_save_error')
+        : (isCurrentlyStart ? (this._t('dashboard_calendar_day_removed') || 'Entfernt') : (this._t('dashboard_calendar_day_added') || 'Markiert'));
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: entityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     _moveWidget(id, direction) {
       const target = this._editMode ? this._editDraft : this._prefs;
       if (!target) return;
@@ -1085,6 +1142,9 @@
           this._savePrefs();
         }
         this.render();
+      } else if (action === 'calendar-day' && target.dataset.date) {
+        const isStart = target.dataset.isStart === 'true';
+        this._toggleCalendarDay(target.dataset.date, isStart);
       }
     }
 
@@ -1346,17 +1406,20 @@
       // Leading empty cells
       const leadOffset = this._lang === 'de' ? (firstDay === 0 ? 6 : firstDay - 1) : firstDay;
       for (let i = 0; i < leadOffset; i++) cells.push('<td></td>');
+      const isPregnant = !!(attrs.is_pregnant ?? (attrs.pregnancy_data || {}).is_pregnant);
       for (let day = 1; day <= daysInMonth; day++) {
         const isToday = day === todayDate;
         const isPeriodStart = startDates.has(day);
         const isPredicted = inWindow(day);
+        const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         let bg = 'transparent';
         let border = '';
-        if (isToday) { bg = 'var(--primary-color,#2563eb)'; }
+        if (isToday) { bg = 'var(--mc-plum,#6B3654)'; }
         else if (isPeriodStart) { bg = 'var(--mc-rose-deep)'; }
         else if (isPredicted) { bg = 'var(--mc-rose-tint)'; border = 'border:1px dashed var(--mc-rose);'; }
         const color = (isToday || isPeriodStart) ? '#fff' : 'inherit';
-        cells.push(`<td style="text-align:center;padding:2px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};${border}color:${color};font-size:0.75rem;font-weight:${isToday ? 700 : 400}">${day}</span></td>`);
+        const clickable = !isPregnant;
+        cells.push(`<td style="text-align:center;padding:2px;"><span ${clickable ? `data-action="calendar-day" data-date="${iso}" data-is-start="${isPeriodStart}"` : ''} style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${bg};${border}color:${color};font-size:0.75rem;font-weight:${isToday ? 700 : 400};${clickable ? 'cursor:pointer;' : ''}">${day}</span></td>`);
       }
 
       const rows = [];
@@ -1368,8 +1431,10 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_label_state')}</span>
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-tint);border:1px dashed var(--mc-rose);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_fertility_window')}</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_today')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_today')}</span>
         </div>
+        ${!isPregnant ? `<p class="helper" style="margin-top:6px;font-size:0.7rem;">${this._t('dashboard_calendar_tap_hint') || 'Tag antippen, um einen Periodenstart zu markieren oder zu entfernen.'} ${this._t('dashboard_calendar_fallback_note') || '(Für Blutungsstärke, Schmerzen, Zervixschleim u. a. wird die vollständige Kalender-Ressource geladen, sobald verfügbar.)'}</p>` : ''}
+        ${this._calendarMessage ? `<p class="message" style="margin-top:4px;">${escapeHtml(this._calendarMessage)}</p>` : ''}
       `;
 
       return `
