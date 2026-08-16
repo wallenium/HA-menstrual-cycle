@@ -734,5 +734,6 @@
   "dashboard_widget_support_card": "Support & Education",
   "dashboard_birth": "Birth",
   "dashboard_days_remaining": "Days remaining",
-  "dashboard_postpartum_disclaimer": "Recovery varies a lot from person to person — this window is a rough guide, not a medical prescription."
+  "dashboard_postpartum_disclaimer": "Recovery varies a lot from person to person — this window is a rough guide, not a medical prescription.",
+  "dashboard_card_unavailable": "Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache)."
 }

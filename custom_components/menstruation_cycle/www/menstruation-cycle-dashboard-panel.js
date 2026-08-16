@@ -165,6 +165,7 @@
     dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
     dashboard_calendar_loading: 'Loading…',
+    dashboard_card_unavailable: 'Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache).',
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_support_card: 'Support & Education',
@@ -568,6 +569,9 @@
       this._updateRunning = false;
       // Incrementing version bumped on every prefs write, used in render signature
       this._prefsVersion = 0;
+      // Tags that never became defined within the timeout in _watchEmbeddedCard(),
+      // used to show an honest "not available" message instead of an infinite spinner.
+      this._embeddedCardTimedOut = new Set();
     }
 
     connectedCallback() {
@@ -575,17 +579,38 @@
       this.shadowRoot?.addEventListener('change', (event) => this._handleChange(event));
       this.shadowRoot?.addEventListener('submit', (event) => this._handleSubmit(event));
 
-      // The full-featured menstruation-calendar-card (rich symptom modal: bleeding,
-      // pain, cervical mucus, cervix position, basal temp, etc.) is registered as a
-      // Lovelace resource and loads asynchronously. A one-time synchronous check at
-      // render time can miss it if this panel renders before that script finishes
-      // loading — so also watch for it becoming defined and re-render once it is,
-      // upgrading from the reduced native fallback (period-day toggle only) to the
-      // real card automatically, without a page reload.
-      if (typeof customElements !== 'undefined' && !customElements.get('menstruation-calendar-card')) {
-        customElements.whenDefined('menstruation-calendar-card').then(() => {
-          if (this.isConnected) this.render();
-        }).catch(() => {});
+      // Several real Lovelace-style cards (calendar, heatmap, support, product
+      // inventory, countdown timer, statistics) are registered as Lovelace resources
+      // and load asynchronously. A one-time synchronous check at render time can miss
+      // any of them if this panel renders before their script finishes loading — so
+      // watch each one and re-render once it becomes defined, upgrading each mount
+      // point from its "loading…" placeholder to the real card automatically, without
+      // a page reload.
+      const embeddedCardTags = [
+        'menstruation-calendar-card',
+        'menstruation-cycle-heatmap-card',
+        'menstruation-support-card',
+        'menstruation-product-inventory-card',
+        'menstruation-countdown-timer',
+        'menstruation-statistics-card',
+      ];
+      if (typeof customElements !== 'undefined') {
+        embeddedCardTags.forEach((tag) => {
+          if (!customElements.get(tag)) {
+            const timeoutMs = 20000;
+            let settled = false;
+            customElements.whenDefined(tag).then(() => {
+              settled = true;
+              if (this.isConnected) this.render();
+            }).catch(() => {});
+            setTimeout(() => {
+              if (!settled && !customElements.get(tag)) {
+                this._embeddedCardTimedOut.add(tag);
+                if (this.isConnected) this.render();
+              }
+            }, timeoutMs);
+          }
+        });
       }
 
       // window.ProductIcons (menstruation-icons.js) gives theme-tinted masked SVG
@@ -1539,9 +1564,28 @@
       return `<div style="display:grid;gap:8px;">${rows}</div>${inventoryHint}`;
     }
 
+    // Maps mount-point keys to the custom element tag they wait for, so the
+    // placeholder can tell a genuinely-missing resource apart from one still loading.
+    _mountKeyToTag(mountKey) {
+      const map = {
+        'calendar-card': 'menstruation-calendar-card',
+        'heatmap-card': 'menstruation-cycle-heatmap-card',
+        'support-card': 'menstruation-support-card',
+        'inventory-card': 'menstruation-product-inventory-card',
+        'timer-card': 'menstruation-countdown-timer',
+        'statistics-card': 'menstruation-statistics-card',
+      };
+      return map[mountKey] || null;
+    }
+
     _renderEmbeddedCardMount(mountKey) {
+      const tag = this._mountKeyToTag(mountKey);
+      const timedOut = tag && this._embeddedCardTimedOut.has(tag);
+      const message = timedOut
+        ? (this._t('dashboard_card_unavailable') || 'Karte nicht verfügbar — bitte prüfen, ob die Ressource in Home Assistant korrekt eingebunden ist (HACS neu laden, Browser-Cache leeren).')
+        : (this._t('dashboard_calendar_loading') || 'Wird geladen …');
       return `<div class="calendar-card-mount" data-mount="${mountKey}">
-        <div class="helper">${this._t('dashboard_calendar_loading') || 'Wird geladen …'}</div>
+        <div class="helper">${message}</div>
       </div>`;
     }
 
@@ -3164,7 +3208,7 @@
         if (!order.includes('fetal_development')) {
           const idx = order.indexOf('phase_timeline');
           order = idx >= 0
-            ? [...order.slice(0, idx + 1), 'fetal_development', ...order.slice(idx + 1)]
+            ? [...order.slice(0, idx), 'fetal_development', ...order.slice(idx)]
             : [...order, 'fetal_development'];
         }
       } else if (mode === 'menarche') {

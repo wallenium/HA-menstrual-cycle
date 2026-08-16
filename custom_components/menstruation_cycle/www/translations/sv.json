@@ -701,5 +701,6 @@
   "dashboard_widget_support_card": "Stöd och information",
   "dashboard_birth": "Förlossning",
   "dashboard_days_remaining": "Dagar kvar",
-  "dashboard_postpartum_disclaimer": "Återhämtningen varierar mycket mellan olika personer — denna period är en grov riktlinje, inte en medicinsk föreskrift."
+  "dashboard_postpartum_disclaimer": "Återhämtningen varierar mycket mellan olika personer — denna period är en grov riktlinje, inte en medicinsk föreskrift.",
+  "dashboard_card_unavailable": "Kortet är inte tillgängligt — kontrollera att resursen är korrekt registrerad i Home Assistant (ladda om i HACS, rensa webbläsarens cache)."
 }

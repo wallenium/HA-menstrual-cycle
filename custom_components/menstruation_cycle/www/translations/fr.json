@@ -701,5 +701,6 @@
   "dashboard_widget_support_card": "Soutien et éducation",
   "dashboard_birth": "Naissance",
   "dashboard_days_remaining": "Jours restants",
-  "dashboard_postpartum_disclaimer": "La récupération varie beaucoup d'une personne à l'autre — cette période est un repère approximatif, pas une prescription médicale."
+  "dashboard_postpartum_disclaimer": "La récupération varie beaucoup d'une personne à l'autre — cette période est un repère approximatif, pas une prescription médicale.",
+  "dashboard_card_unavailable": "Carte indisponible — vérifiez que la ressource est correctement enregistrée dans Home Assistant (retélécharger via HACS, vider le cache du navigateur)."
 }

@@ -734,5 +734,6 @@
   "dashboard_widget_support_card": "Unterstützung & Aufklärung",
   "dashboard_birth": "Geburt",
   "dashboard_days_remaining": "Tage verbleibend",
-  "dashboard_postpartum_disclaimer": "Rückbildung verläuft individuell sehr unterschiedlich — dieser Zeitraum ist eine grobe Orientierung, keine medizinische Vorgabe."
+  "dashboard_postpartum_disclaimer": "Rückbildung verläuft individuell sehr unterschiedlich — dieser Zeitraum ist eine grobe Orientierung, keine medizinische Vorgabe.",
+  "dashboard_card_unavailable": "Karte nicht verfügbar — bitte prüfen, ob die Ressource in Home Assistant korrekt eingebunden ist (HACS neu laden, Browser-Cache leeren)."
 }
