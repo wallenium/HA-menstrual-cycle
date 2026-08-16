@@ -76,6 +76,22 @@
     dashboard_save_aria: 'Save dashboard layout',
     dashboard_cancel_aria: 'Cancel dashboard edits',
     dashboard_reset_aria: 'Reset dashboard to mode defaults',
+    dashboard_widget_phase_donut: 'Phase Distribution',
+    dashboard_widget_basal_temp: 'Basal Temperature',
+    dashboard_widget_symptom_heatmap: 'Symptom Heat Grid',
+    dashboard_widget_anomaly_insights: 'Anomaly Insights',
+    dashboard_widget_pain_mood_trend: 'Pain & Mood Trend',
+    dashboard_widget_year_overview: 'Year Overview',
+    dashboard_phase_donut_title: 'Typical phase distribution',
+    dashboard_basal_temp_unit: '°C',
+    dashboard_basal_temp_no_data: 'No temperature data recorded.',
+    dashboard_anomaly_regular: 'Regular cycle',
+    dashboard_anomaly_irregular: 'Irregular pattern detected',
+    dashboard_anomaly_short_cycle: 'Short cycle',
+    dashboard_anomaly_long_cycle: 'Long cycle',
+    dashboard_anomaly_consistency: 'Consistency',
+    dashboard_pain_no_data: 'No symptom data available.',
+    dashboard_year_overview_title: 'Year at a glance',
   };
   const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
   const I18N_SCRIPT_SELECTOR = 'script[src]';
@@ -147,15 +163,27 @@
     { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
     { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
     { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
+    { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, wide: false },
+    { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, wide: true },
+    { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, wide: true },
+    { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, wide: false },
+    { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, wide: true },
+    { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, wide: true },
   ];
 
   // Default widget order: graph-first / visual cockpit layout
   const WIDGET_IDS_GRAPH_FIRST = [
     'kpi_strip',
     'phase_timeline',
+    'phase_donut',
     'statistics_card',
     'cycle_history',
+    'basal_temp',
     'pregnancy_prediction',
+    'symptom_heatmap',
+    'pain_mood_trend',
+    'anomaly_insights',
+    'year_overview',
     'gauge_card',
     'calendar_card',
     'today_status',
@@ -186,6 +214,12 @@
         reminders: true,
         progress: false,
         my_info: false,
+        phase_donut: true,
+        basal_temp: false,
+        symptom_heatmap: false,
+        anomaly_insights: false,
+        pain_mood_trend: false,
+        year_overview: false,
       },
       myInfo: {
         displayName: '',
@@ -209,6 +243,12 @@
         reminders: true,
         progress: true,
         my_info: true,
+        phase_donut: true,
+        basal_temp: true,
+        symptom_heatmap: true,
+        anomaly_insights: true,
+        pain_mood_trend: true,
+        year_overview: true,
       },
       myInfo: {
         displayName: '',
@@ -543,6 +583,8 @@
           phase_day: attrs.phase_day ?? null,
           grouped_starts: attrs.grouped_starts ?? null,
           fertility_forecast: attrs.fertility_forecast ?? null,
+          basal_temperatures: attrs.basal_temperatures ?? attrs.bbt_readings ?? null,
+          symptom_history: attrs.symptom_history ?? attrs.symptoms_last_30 ?? null,
         },
         editMode: this._editMode,
         prefsVersion: this._prefsVersion,
@@ -1575,6 +1617,407 @@
       `;
     }
 
+
+    _renderPhaseDonut(stateObj, discreetMode) {
+      if (discreetMode) return `<div class="helper">${this._t('dashboard_discreet_note')}</div>`;
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
+      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const currentPhase = String(attrs.current_phase ?? attrs.state ?? stateObj?.state ?? '').toLowerCase();
+
+      const phases = [
+        { id: 'menstrual',  label: 'Men',  days: Math.round(cycleLength * 0.179), color: '#e05c7a' },
+        { id: 'follicular', label: 'Fol',  days: Math.round(cycleLength * (0.464 - 0.179)), color: '#f97316' },
+        { id: 'ovulation',  label: 'Ov',   days: Math.max(1, Math.round(cycleLength * 0.072)), color: '#a855f7' },
+        { id: 'luteal',     label: 'Lut',  days: Math.round(cycleLength * (1 - 0.536)), color: '#3b82f6' },
+      ];
+
+      // Normalize so they sum to cycleLength
+      const totalDays = phases.reduce((s, p) => s + p.days, 0);
+      const scale = cycleLength / (totalDays || cycleLength);
+      let cumAngle = -90; // start at top
+      const cx = 60; const cy = 60; const R = 48; const innerR = 30;
+      const toRad = (deg) => (deg * Math.PI) / 180;
+
+      const matchPhase = (ph) => {
+        const p = ph.id;
+        if (currentPhase.includes(p)) return true;
+        if (p === 'menstrual' && (currentPhase.includes('period') || currentPhase.includes('bleeding'))) return true;
+        if (p === 'ovulation' && currentPhase.includes('ovulat')) return true;
+        return false;
+      };
+      const activeIdx = phases.findIndex(matchPhase);
+
+      const slices = phases.map((ph, idx) => {
+        const angleDeg = (ph.days * scale / cycleLength) * 360;
+        const startAngle = cumAngle;
+        cumAngle += angleDeg;
+        const endAngle = cumAngle;
+        const isActive = idx === activeIdx;
+
+        const x1 = cx + R * Math.cos(toRad(startAngle));
+        const y1 = cy + R * Math.sin(toRad(startAngle));
+        const x2 = cx + R * Math.cos(toRad(endAngle));
+        const y2 = cy + R * Math.sin(toRad(endAngle));
+        const xi1 = cx + innerR * Math.cos(toRad(startAngle));
+        const yi1 = cy + innerR * Math.sin(toRad(startAngle));
+        const xi2 = cx + innerR * Math.cos(toRad(endAngle));
+        const yi2 = cy + innerR * Math.sin(toRad(endAngle));
+        const largeArc = angleDeg > 180 ? 1 : 0;
+
+        const pathD = `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${largeArc},1 ${x2.toFixed(2)},${y2.toFixed(2)} L${xi2.toFixed(2)},${yi2.toFixed(2)} A${innerR},${innerR} 0 ${largeArc},0 ${xi1.toFixed(2)},${yi1.toFixed(2)} Z`;
+        const opacity = isActive ? '1' : '0.45';
+        const strokeW = isActive ? '2' : '0.5';
+        const strokeColor = isActive ? '#fff' : 'none';
+
+        // Label in slice midpoint
+        const midAngle = startAngle + angleDeg / 2;
+        const labelR = (R + innerR) / 2;
+        const lx = cx + labelR * Math.cos(toRad(midAngle));
+        const ly = cy + labelR * Math.sin(toRad(midAngle));
+
+        return `<path d="${pathD}" fill="${ph.color}" opacity="${opacity}" stroke="${strokeColor}" stroke-width="${strokeW}"/>
+                <text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="8" fill="#fff" font-weight="${isActive ? '700' : '400'}" pointer-events="none">${ph.label}</text>`;
+      }).join('');
+
+      // Center day text
+      const centerLabel = cycleDay > 0
+        ? `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--primary-text-color,#1f2937)">${cycleDay}</text>
+           <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day'))}</text>`
+        : `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">—</text>`;
+
+      // Legend below
+      const legendItems = phases.map((ph, idx) => {
+        const isActive = idx === activeIdx;
+        return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.7rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 700 : 400}">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
+        </span>`;
+      }).join('');
+
+      return `
+        <div class="phase-donut-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_phase_donut_title'))}">
+          <svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0;">
+            <title>${escapeHtml(this._t('dashboard_phase_donut_title'))}</title>
+            ${slices}
+            ${centerLabel}
+          </svg>
+          <div class="phase-donut-legend">${legendItems}</div>
+        </div>
+      `;
+    }
+
+    _renderBasalTempChart(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const rawTemps = attrs.basal_temperatures ?? attrs.bbt_readings ?? null;
+      const temps = Array.isArray(rawTemps)
+        ? rawTemps.filter((t) => t && (typeof t.temperature === 'number' || typeof t.value === 'number'))
+        : [];
+
+      if (temps.length < 2) {
+        return `<div class="helper">${this._t('dashboard_basal_temp_no_data')}</div>`;
+      }
+
+      const recent = temps.slice(-28);
+      const values = recent.map((t) => Number(t.temperature ?? t.value ?? 0));
+      const minV = Math.min(...values);
+      const maxV = Math.max(...values);
+      const yRange = maxV - minV || 0.5;
+
+      const ovulationDay = attrs.fertility_forecast?.ovulation_day
+        ? Number(attrs.fertility_forecast.ovulation_day)
+        : null;
+      const cycleDay = Number(attrs.cycle_day ?? 0);
+
+      const W = 400; const H = 80;
+      const padL = 32; const padR = 8; const padT = 10; const padB = 20;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+
+      const toX = (i) => padL + (i / (recent.length - 1 || 1)) * chartW;
+      const toY = (v) => padT + chartH - ((v - minV) / yRange) * chartH;
+
+      // Build path
+      const pathD = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
+
+      // Dots for each point
+      const dots = values.map((v, i) => {
+        const x = Math.round(toX(i));
+        const y = Math.round(toY(v));
+        const isHighlight = (cycleDay > 0) && (recent.length - i <= cycleDay) && (recent.length - i === 1);
+        return `<circle cx="${x}" cy="${y}" r="${isHighlight ? 4 : 2}" fill="${isHighlight ? 'var(--primary-color,#2563eb)' : 'var(--accent-color,#10b981)'}" opacity="0.85"/>`;
+      }).join('');
+
+      // Y-axis labels
+      const yLabels = [minV, maxV].map((v) => {
+        const y = Math.round(toY(v));
+        return `<text x="${padL - 3}" y="${y + 3}" text-anchor="end" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
+      }).join('');
+
+      // Ovulation vertical line
+      const ovLine = (ovulationDay !== null && ovulationDay > 0 && ovulationDay <= recent.length)
+        ? (() => {
+            const idx = Math.max(0, recent.length - ovulationDay);
+            const x = Math.round(toX(idx));
+            return `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="${x}" y="${padT - 1}" text-anchor="middle" font-size="7" fill="var(--accent-color,#10b981)">${escapeHtml(this._t('dashboard_fertility_ovulation'))}</text>`;
+          })()
+        : '';
+
+      // X-axis: first and last date labels
+      const firstDate = recent[0]?.date ? String(recent[0].date).slice(5) : '';
+      const lastDate = recent[recent.length - 1]?.date ? String(recent[recent.length - 1].date).slice(5) : '';
+      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="start">${escapeHtml(firstDate)}</text>
+                       <text x="${W - padR}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
+
+      return `
+        <div class="bbt-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_widget_basal_temp'))}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">
+            <title>${escapeHtml(this._t('dashboard_widget_basal_temp'))}</title>
+            ${yLabels}
+            <path d="${pathD}" fill="none" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            ${dots}
+            ${ovLine}
+            ${xLabels}
+          </svg>
+        </div>
+      `;
+    }
+
+    _renderSymptomHeatmap(stateObj) {
+      if (!this._selectedEntityId) {
+        return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
+      }
+      const tagName = 'menstruation-cycle-heatmap-card';
+      if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
+        const entityId = escapeHtml(this._selectedEntityId);
+        return `<${tagName} entity-id="${entityId}" max_cycles="6"></${tagName}>`;
+      }
+      // Native fallback: simple 4-week × symptom grid
+      const attrs = stateObj?.attributes || {};
+      const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
+
+      if (!symptomHistory || (Array.isArray(symptomHistory) && symptomHistory.length === 0)) {
+        return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
+      }
+
+      const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-28) : [];
+      if (entries.length === 0) return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
+
+      const symptomKeys = ['bleeding', 'pain', 'mood'];
+      const colorMap = { 0: 'var(--divider-color,#e5e7eb)', 1: '#fde68a', 2: '#fbbf24', 3: '#ef4444' };
+
+      const normalize = (v) => {
+        if (!v || v === 'none') return 0;
+        if (v === 'light' || v === 1) return 1;
+        if (v === 'medium' || v === 2) return 2;
+        if (v === 'heavy' || v === 3) return 3;
+        if (typeof v === 'number') return Math.min(3, Math.round(v));
+        return 1;
+      };
+
+      const rows = symptomKeys.map((key) => {
+        const cells = entries.map((entry) => {
+          const val = normalize(entry?.[key] ?? entry?.symptom_data?.[key]);
+          return `<td style="width:14px;height:14px;background:${colorMap[val] || colorMap[0]};border-radius:2px;border:1px solid var(--card-background-color,#fff);"></td>`;
+        }).join('');
+        return `<tr><td style="font-size:0.7rem;color:var(--secondary-text-color,#6b7280);padding-right:6px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
+      }).join('');
+
+      return `<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:1px;"><tbody>${rows}</tbody></table></div>`;
+    }
+
+    _renderAnomalyInsights(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+      const cycleLengths = [];
+      for (let i = 1; i < allStarts.length; i++) {
+        const len = Math.round((new Date(allStarts[i]) - new Date(allStarts[i - 1])) / 86400000);
+        if (len > 10 && len < 80) cycleLengths.push(len);
+      }
+
+      if (cycleLengths.length < 3) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      const recent = cycleLengths.slice(-12);
+      const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+      const variance = recent.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / recent.length;
+      const stdDev = Math.sqrt(variance);
+      const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+
+      const isRegular = cv < 10;
+      const threshold = Math.max(5, 1.5 * stdDev);
+
+      const insights = [];
+      insights.push({
+        icon: isRegular ? '✅' : '⚠️',
+        label: isRegular ? this._t('dashboard_anomaly_regular') : this._t('dashboard_anomaly_irregular'),
+        color: isRegular ? 'var(--success-color,#10b981)' : 'var(--warning-color,#f59e0b)',
+      });
+
+      insights.push({
+        icon: '📏',
+        label: `${this._t('dashboard_anomaly_consistency')}: ${Math.round((100 - cv))}%`,
+        color: 'var(--secondary-text-color,#6b7280)',
+      });
+
+      const outliers = recent.filter((l) => Math.abs(l - avg) > threshold);
+      outliers.forEach((len) => {
+        const isShort = len < avg;
+        insights.push({
+          icon: isShort ? '↙️' : '↗️',
+          label: `${isShort ? this._t('dashboard_anomaly_short_cycle') : this._t('dashboard_anomaly_long_cycle')}: ${len}d`,
+          color: 'var(--error-color,#ef4444)',
+        });
+      });
+
+      return `<div class="anomaly-list">
+        ${insights.slice(0, 4).map((ins) => `
+          <div class="anomaly-item" style="color:${ins.color}">
+            <span class="anomaly-icon" aria-hidden="true">${ins.icon}</span>
+            <span class="anomaly-label">${escapeHtml(ins.label)}</span>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    _renderPainMoodTrend(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
+      const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-14) : [];
+
+      if (entries.length < 2) {
+        return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
+      }
+
+      const normPain = (v) => {
+        if (!v || v === 'none') return 0;
+        if (v === 'light' || v === 1) return 1;
+        if (v === 'medium' || v === 2) return 2;
+        if (v === 'heavy' || v === 3) return 3;
+        if (typeof v === 'number') return Math.min(3, v);
+        return 1;
+      };
+
+      const normMood = (v) => {
+        if (!v) return 0;
+        if (typeof v === 'number') return Math.min(3, Math.max(0, v));
+        const mv = String(v).toLowerCase();
+        if (mv.includes('good') || mv.includes('happy') || mv.includes('gut')) return 3;
+        if (mv.includes('ok') || mv.includes('neutral')) return 2;
+        if (mv.includes('bad') || mv.includes('sad') || mv.includes('angry')) return 1;
+        return 1;
+      };
+
+      const W = 400; const H = 70;
+      const padL = 8; const padR = 8; const padT = 6; const padB = 18;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+      const barW = Math.max(2, Math.floor(chartW / entries.length) - 2);
+      const gap = entries.length > 1 ? (chartW - barW * entries.length) / (entries.length - 1) : 0;
+
+      const bars = entries.map((entry, idx) => {
+        const painVal = normPain(entry?.pain ?? entry?.symptom_data?.pain ?? entry?.bleeding_strength);
+        const moodVal = normMood(entry?.mood ?? entry?.symptom_data?.mood);
+        const x = Math.round(padL + idx * (barW + gap));
+
+        const painH = Math.max(1, (painVal / 3) * chartH);
+        const painY = padT + chartH - painH;
+        const moodH = Math.max(1, (moodVal / 3) * chartH);
+        const moodY = padT + chartH - moodH;
+        const halfW = Math.max(1, Math.floor(barW / 2));
+
+        return `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#e05c7a" opacity="0.7" rx="1"/>
+                <rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#a855f7" opacity="0.7" rx="1"/>`;
+      }).join('');
+
+      // X-axis: first and last date
+      const firstDate = entries[0]?.date ? String(entries[0].date).slice(5) : '';
+      const lastDate = entries[entries.length - 1]?.date ? String(entries[entries.length - 1].date).slice(5) : '';
+      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(firstDate)}</text>
+                       <text x="${W - padR}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
+
+      const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('pain'))}</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#a855f7;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>
+      </div>`;
+
+      return `
+        <div class="pain-mood-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_widget_pain_mood_trend'))}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">
+            <title>${escapeHtml(this._t('dashboard_widget_pain_mood_trend'))}</title>
+            ${bars}
+            ${xLabels}
+          </svg>
+          ${legend}
+        </div>
+      `;
+    }
+
+    _renderYearOverview(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
+      const forecast = attrs.period_forecast || {};
+      const predictedStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+
+      const startSet = new Set(allStarts);
+      if (predictedStart) startSet.add(predictedStart + '_pred');
+
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const startYear = today.getMonth() < 6 ? currentYear - 1 : currentYear;
+
+      const months = [];
+      for (let m = 0; m < 12; m++) {
+        const monthDate = new Date(startYear, today.getMonth() - 11 + m, 1);
+        const yr = monthDate.getFullYear();
+        const mo = monthDate.getMonth();
+        const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+        const monthLabel = monthDate.toLocaleDateString(this._lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' });
+        const isCurrentMonth = yr === today.getFullYear() && mo === today.getMonth();
+
+        const days = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+          const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isPeriodStart = allStarts.includes(isoDate);
+          const isPredicted = predictedStart && isoDate === predictedStart;
+          const isToday = isCurrentMonth && d === today.getDate();
+
+          let fill = 'transparent';
+          if (isToday) fill = 'var(--primary-color,#2563eb)';
+          else if (isPeriodStart) fill = '#e05c7a';
+          else if (isPredicted) fill = 'rgba(224,92,122,0.3)';
+
+          const sz = 5;
+          days.push(`<rect x="${(d - 1) * (sz + 1)}" y="0" width="${sz}" height="${sz}" fill="${fill}" rx="1"/>`);
+        }
+
+        months.push(`
+          <div class="year-month" ${isCurrentMonth ? 'style="opacity:1"' : 'style="opacity:0.75"'}>
+            <div class="year-month-label">${escapeHtml(monthLabel)}</div>
+            <svg viewBox="0 0 ${(daysInMonth) * 6} 5" width="${(daysInMonth) * 6}" height="5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="display:block;">
+              ${days.join('')}
+            </svg>
+          </div>
+        `);
+      }
+
+      const legend = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
+          ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(224,92,122,0.3);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
+        </div>
+      `;
+
+      return `
+        <div class="year-overview-wrap" role="region" aria-label="${escapeHtml(this._t('dashboard_widget_year_overview'))}">
+          <div class="year-months-grid">${months.join('')}</div>
+          ${legend}
+        </div>
+      `;
+    }
+
     _renderEditPanel() {
       if (!this._editMode || !this._editDraft) return '';
       const draft = this._editDraft;
@@ -1641,6 +2084,12 @@
       if (widgetId === 'statistics_card') body = this._renderStatisticsCard(stateObj);
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
+      if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
+      if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
+      if (widgetId === 'symptom_heatmap') body = this._renderSymptomHeatmap(stateObj);
+      if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
+      if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
+      if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
       if (widgetId === 'reminders') body = this._renderRemindersCard();
       if (widgetId === 'progress') body = this._renderProgressCard(stateObj);
       if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);
@@ -1979,6 +2428,59 @@
           .pred-disclaimer {
             margin: 6px 0 0;
             font-style: italic;
+          }
+          /* Phase donut */
+          .phase-donut-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .phase-donut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1 1 80px;
+          }
+          /* Basal temperature */
+          .bbt-wrap { width: 100%; }
+          /* Symptom heatmap fallback */
+          /* Anomaly insights */
+          .anomaly-list {
+            display: grid;
+            gap: 8px;
+          }
+          .anomaly-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--divider-color, #f3f4f6);
+          }
+          .anomaly-item:last-child { border-bottom: none; }
+          .anomaly-icon { font-size: 1rem; flex-shrink: 0; }
+          .anomaly-label { flex: 1; }
+          /* Pain & mood trend */
+          .pain-mood-wrap { width: 100%; }
+          /* Year overview */
+          .year-overview-wrap { width: 100%; }
+          .year-months-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            align-items: flex-start;
+          }
+          .year-month {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: flex-start;
+          }
+          .year-month-label {
+            font-size: 0.7rem;
+            color: var(--secondary-text-color, #6b7280);
+            white-space: nowrap;
           }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
