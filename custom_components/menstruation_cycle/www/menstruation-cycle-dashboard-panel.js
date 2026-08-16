@@ -1133,10 +1133,10 @@
       const circumference = Math.PI * R; // half-circle arc length
       const arcOffset = circumference * (1 - progress);
       const phaseColors = {
-        menstrual: '#e05c7a', follicular: '#f97316', ovulation: '#a855f7', luteal: '#3b82f6',
+        menstrual: '#E8637D', follicular: '#7C9885', ovulation: '#3F5A47', luteal: '#6B3654',
       };
       const phaseLower = String(phase).toLowerCase();
-      let color = '#2563eb';
+      let color = '#C43F5E';
       for (const [key, val] of Object.entries(phaseColors)) {
         if (phaseLower.includes(key)) { color = val; break; }
       }
@@ -1210,8 +1210,8 @@
         let bg = 'transparent';
         let border = '';
         if (isToday) { bg = 'var(--primary-color,#2563eb)'; }
-        else if (isPeriodStart) { bg = '#e05c7a'; }
-        else if (isPredicted) { bg = 'rgba(224,92,122,0.18)'; border = 'border:1px dashed #e05c7a;'; }
+        else if (isPeriodStart) { bg = 'var(--mc-rose-deep)'; }
+        else if (isPredicted) { bg = 'var(--mc-rose-tint)'; border = 'border:1px dashed var(--mc-rose);'; }
         const color = (isToday || isPeriodStart) ? '#fff' : 'inherit';
         cells.push(`<td style="text-align:center;padding:2px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};${border}color:${color};font-size:0.75rem;font-weight:${isToday ? 700 : 400}">${day}</span></td>`);
       }
@@ -1223,8 +1223,8 @@
 
       const legend = `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_label_state')}</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(224,92,122,0.18);border:1px dashed #e05c7a;margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_fertility_window')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_label_state')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-tint);border:1px dashed var(--mc-rose);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_fertility_window')}</span>
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_today')}</span>
         </div>
       `;
@@ -1330,7 +1330,7 @@
         const barH2 = Math.max(2, ((c.len - minY) / yRange) * chartH);
         const y = padTop + chartH - barH2;
         const isOutlier = avg !== null && Math.abs(c.len - avg) > outlierThreshold;
-        const fill = isOutlier ? '#f97316' : 'var(--primary-color,#2563eb)';
+        const fill = isOutlier ? 'var(--mc-amber)' : 'var(--mc-rose-deep)';
         const label = String(c.len);
         const cx = x + barW / 2;
         return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${barW}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.75" rx="2"/>
@@ -1369,7 +1369,7 @@
           </svg>
           <div class="cycle-history-legend">
             <span class="legend-dot" style="background:var(--primary-color,#2563eb)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
-            <span class="legend-dot" style="background:#f97316"></span><span>${this._t('dashboard_cycle_history_outlier')}</span>
+            <span class="legend-dot" style="background:var(--mc-amber)"></span><span>${this._t('dashboard_cycle_history_outlier')}</span>
             <span class="legend-dash" style="background:var(--accent-color,#10b981)"></span><span>${this._t('dashboard_cycle_history_avg')}</span>
           </div>
         </div>
@@ -1476,70 +1476,192 @@
       `;
     }
 
-    _renderKpiStrip(stateObj, discreetMode) {
+    /* ============ MODE DETECTION ============ */
+    _resolveMode(stateObj) {
       const attrs = stateObj?.attributes || {};
-      const cycleDay = attrs.cycle_day ?? null;
-      const cycleLengthAvg = attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
-      const phase = discreetMode ? null : (attrs.current_phase ?? attrs.state ?? stateObj?.state ?? null);
-      const forecast = attrs.period_forecast || {};
-      const daysUntil = attrs.days_until_next_start ?? forecast.days_until ?? null;
-      const confidence = forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
-
-      const kpis = [];
-
-      kpis.push(`
-        <div class="kpi-item">
-          <span class="kpi-icon" aria-hidden="true">📅</span>
-          <span class="kpi-value">${cycleDay !== null ? escapeHtml(cycleDay) : '—'}</span>
-          <span class="kpi-label">${this._t('cycle_day')}</span>
-        </div>
-      `);
-
-      if (!discreetMode) {
-        kpis.push(`
-          <div class="kpi-item">
-            <span class="kpi-icon" aria-hidden="true">🌸</span>
-            <span class="kpi-value">${phase !== null ? escapeHtml(phase) : '—'}</span>
-            <span class="kpi-label">${this._t('dashboard_label_state')}</span>
-          </div>
-        `);
-      }
-
-      kpis.push(`
-        <div class="kpi-item">
-          <span class="kpi-icon" aria-hidden="true">⏳</span>
-          <span class="kpi-value">${daysUntil !== null ? escapeHtml(daysUntil) : '—'}</span>
-          <span class="kpi-label">${this._t('dashboard_days_until_next')}</span>
-        </div>
-      `);
-
-      if (confidence !== null) {
-        kpis.push(`
-          <div class="kpi-item">
-            <span class="kpi-icon" aria-hidden="true">🎯</span>
-            <span class="kpi-value">${escapeHtml(confidence)}</span>
-            <span class="kpi-label">${this._t('period_forecast_confidence')}</span>
-          </div>
-        `);
-      }
-
-      return `<div class="kpi-strip" role="region" aria-label="Cycle at a glance">${kpis.join('')}</div>`;
+      const state = stateObj?.state;
+      if (attrs.is_pregnant || state === 'pregnant') return 'pregnancy';
+      const stage = attrs.onboarding_stage_effective || attrs.onboarding_stage;
+      if (stage === 'pre_menarche' || state === 'pre_menarche') return 'menarche';
+      return 'cycle';
     }
 
+    /* ============ HERO (wheel + kpi tiles), auto-switches by mode ============ */
+    _renderHeroWheel(stateObj, discreetMode) {
+      const mode = this._resolveMode(stateObj);
+      if (mode === 'pregnancy') return this._renderPregnancyHero(stateObj, discreetMode);
+      if (mode === 'menarche') return this._renderMenarcheHero(stateObj, discreetMode);
+      return this._renderCycleHero(stateObj, discreetMode);
+    }
+
+    _renderCycleHero(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
+      const cycleLength = Number(attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const phase = discreetMode ? null : (attrs.current_phase ?? stateObj?.state ?? null);
+      const forecast = attrs.period_forecast || {};
+      const daysUntil = attrs.days_until_next_start ?? forecast.days_until ?? null;
+      const fertility = attrs.fertility_forecast || {};
+      const ovulationEst = fertility.ovulation_estimate ?? attrs.ovulation_day ?? null;
+      const confidence = forecast.window_confidence ?? forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
+
+      const cx = 100, cy = 100, r = 82, sw = 15;
+      const circumference = 2 * Math.PI * r;
+      const phases = [
+        { from: 0, to: 0.179, color: '#E8637D' },
+        { from: 0.179, to: 0.464, color: '#7C9885' },
+        { from: 0.464, to: 0.536, color: '#3F5A47' },
+        { from: 0.536, to: 1, color: '#6B3654' },
+      ];
+      const ringSegs = phases.map((p) => {
+        const len = (p.to - p.from) * circumference;
+        const gap = circumference - len;
+        const offset = -(p.from) * circumference;
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${p.color}" stroke-width="${sw}" stroke-dasharray="${len} ${gap}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+      }).join('');
+      const todayFrac = cycleLength > 0 ? Math.min(1, Math.max(0, (cycleDay - 1) / cycleLength)) : 0;
+      const a = todayFrac * 2 * Math.PI - Math.PI / 2;
+      const mx = cx + r * Math.cos(a), my = cy + r * Math.sin(a);
+      const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
+
+      const wheelSvg = `
+        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="${this._t('cycle_day')} ${escapeHtml(cycleDay)} / ${escapeHtml(cycleLength)}">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
+          ${ringSegs}
+          ${marker}
+        </svg>`;
+
+      const centerHtml = `
+        <div class="hero-wheel-center">
+          <div class="hw-num">${cycleDay || '—'}</div>
+          <div class="hw-sub">${this._t('cycle_day').toUpperCase()} / ${escapeHtml(cycleLength)}</div>
+          ${!discreetMode && phase ? `<div class="hw-tag">${escapeHtml(phase)}</div>` : ''}
+        </div>`;
+
+      const kpis = [];
+      kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
+      if (!discreetMode) {
+        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${ovulationEst ? escapeHtml(ovulationEst) : '—'}</span><span class="kpi-label">${this._t('dashboard_fertility_ovulation')}</span></div>`);
+      }
+      if (confidence !== null && confidence !== undefined) {
+        kpis.push(`<div class="kpi-item mc-plum"><span class="kpi-icon" aria-hidden="true">🎯</span><span class="kpi-value">${escapeHtml(confidence)}</span><span class="kpi-label">${this._t('period_forecast_confidence')}</span></div>`);
+      }
+
+      return `
+        <div class="hero-layout" role="region" aria-label="Cycle at a glance">
+          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
+          <div class="kpi-strip">${kpis.join('')}</div>
+        </div>`;
+    }
+
+    _renderPregnancyHero(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const weeksPregnantRaw = Number(attrs.weeks_pregnant ?? 0) || 0;
+      const weeks = Math.floor(weeksPregnantRaw);
+      const days = Math.round((weeksPregnantRaw - weeks) * 7);
+      const dueDate = attrs.due_date ?? (attrs.pregnancy_data || {}).due_date ?? null;
+      let daysUntilDue = null;
+      if (dueDate) {
+        const due = new Date(dueDate);
+        const today = new Date(this._todayIso());
+        if (!Number.isNaN(due.getTime())) daysUntilDue = Math.round((due - today) / 86400000);
+      }
+      const trimester = weeksPregnantRaw < 13 ? 1 : (weeksPregnantRaw < 27 ? 2 : 3);
+
+      const cx = 100, cy = 100, r = 82, sw = 15;
+      const circumference = 2 * Math.PI * r;
+      const totalWeeks = 40;
+      const trimesters = [
+        { from: 0, to: 13, color: '#E8637D' },
+        { from: 13, to: 27, color: '#7C9885' },
+        { from: 27, to: 40, color: '#6B3654' },
+      ];
+      const ringSegs = trimesters.map((t) => {
+        const len = (t.to - t.from) / totalWeeks * circumference;
+        const gap = circumference - len;
+        const offset = -(t.from / totalWeeks) * circumference;
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${t.color}" stroke-width="${sw}" stroke-dasharray="${len} ${gap}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+      }).join('');
+      const frac = Math.min(1, Math.max(0, weeksPregnantRaw / totalWeeks));
+      const a = frac * 2 * Math.PI - Math.PI / 2;
+      const mx = cx + r * Math.cos(a), my = cy + r * Math.sin(a);
+      const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
+
+      const wheelSvg = `
+        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="SSW ${escapeHtml(weeks)}+${escapeHtml(days)}">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
+          ${ringSegs}
+          ${marker}
+        </svg>`;
+
+      const centerHtml = `
+        <div class="hero-wheel-center">
+          <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
+          <div class="hw-sub">SSW</div>
+          <div class="hw-tag">${trimester}. Trimester</div>
+        </div>`;
+
+      const kpis = [];
+      kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
+      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">ET</span></div>`);
+
+      return `
+        <div class="hero-layout" role="region" aria-label="Pregnancy at a glance">
+          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
+          <div class="kpi-strip">${kpis.join('')}</div>
+        </div>`;
+    }
+
+    _renderMenarcheHero(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const daysUntil = attrs.days_until_menarche ?? null;
+      const estDate = attrs.estimated_menarche_date ?? (attrs.menarche_data || {}).estimated_date ?? null;
+      const preMenData = attrs.pre_menarche_data || {};
+      const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
+      const signKeys = ['pubic_hair', 'breast', 'height_spurt', 'mood', 'acne', 'body_odor', 'discharge'];
+      const observedCount = signKeys.filter((k) => signs[k] != null && signs[k] !== '' && signs[k] !== 'none').length;
+      const pct = Math.round((observedCount / signKeys.length) * 100);
+
+      return `
+        <div>
+          <div class="progress-holder">
+            <div class="progress-track" style="position:relative;height:14px;border-radius:999px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), var(--mc-rose));"></div>
+              <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+              <span>${observedCount} / ${signKeys.length} ${this._t('dashboard_widget_progress')}</span>
+              <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDate ? escapeHtml(estDate) : '—')}</span>
+            </div>
+          </div>
+          <div class="kpi-strip" style="margin-top:14px;">
+            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('days_until_menarche')}</span></div>
+            <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${observedCount}/${signKeys.length}</span><span class="kpi-label">${this._t('dashboard_widget_progress')}</span></div>
+          </div>
+        </div>`;
+    }
+
+    /* ============ HORIZONTAL PHASE / MILESTONE OVERVIEW, auto-switches by mode ============ */
     _renderPhaseTimeline(stateObj, discreetMode) {
+      const mode = this._resolveMode(stateObj);
+      if (mode === 'pregnancy') return this._renderPregnancyMilestones(stateObj);
+      if (mode === 'menarche') return this._renderMenarcheChecklist(stateObj);
+      return this._renderCyclePhaseOverview(stateObj, discreetMode);
+    }
+
+    _renderCyclePhaseOverview(stateObj, discreetMode) {
       if (discreetMode) return `<div class="helper">${this._t('dashboard_discreet_note')}</div>`;
 
       const attrs = stateObj?.attributes || {};
       const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
-      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
-      const currentPhase = String(attrs.current_phase ?? attrs.state ?? stateObj?.state ?? '').toLowerCase();
+      const cycleLength = Number(attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const currentPhase = String(attrs.current_phase ?? stateObj?.state ?? '').toLowerCase();
 
-      // Phase definitions: [id, label, startFraction, endFraction, color]
       const phases = [
-        { id: 'menstrual',   label: 'Menstrual',   start: 0,      end: 0.179, color: '#e05c7a' },
-        { id: 'follicular',  label: 'Follicular',  start: 0.179,  end: 0.464, color: '#f97316' },
-        { id: 'ovulation',   label: 'Ovulation',   start: 0.464,  end: 0.536, color: '#a855f7' },
-        { id: 'luteal',      label: 'Luteal',      start: 0.536,  end: 1.0,   color: '#3b82f6' },
+        { id: 'menstrual',   label: 'Menstrual',   start: 0,      end: 0.179, color: '#E8637D' },
+        { id: 'follicular',  label: 'Follicular',  start: 0.179,  end: 0.464, color: '#7C9885' },
+        { id: 'ovulation',   label: 'Ovulation',   start: 0.464,  end: 0.536, color: '#3F5A47' },
+        { id: 'luteal',      label: 'Luteal',      start: 0.536,  end: 1.0,   color: '#6B3654' },
       ];
 
       const W = 400;
@@ -1549,7 +1671,6 @@
       const labelY = H - 4;
       const tickY2 = trackY + trackH + 6;
 
-      // Match current phase by substring
       const matchPhase = (ph) => {
         const p = ph.id;
         if (currentPhase.includes(p)) return true;
@@ -1559,44 +1680,38 @@
       };
       const activePhaseIdx = phases.findIndex(matchPhase);
 
-      // Today marker position
       const todayFrac = cycleLength > 0 ? Math.min(1, Math.max(0, (cycleDay - 1) / cycleLength)) : 0;
       const todayX = Math.round(todayFrac * W);
 
-      // Build phase segments
       const segmentRects = phases.map((ph, idx) => {
         const x = Math.round(ph.start * W);
         const w = Math.max(1, Math.round((ph.end - ph.start) * W));
         const isActive = idx === activePhaseIdx;
-        const opacity = isActive ? '1' : '0.35';
-        const stroke = isActive ? 'rgba(255,255,255,0.5)' : 'none';
+        const opacity = isActive ? '1' : '0.4';
+        const stroke = isActive ? 'rgba(255,255,255,0.6)' : 'none';
         return `<rect x="${x}" y="${trackY}" width="${w}" height="${trackH}" fill="${ph.color}" opacity="${opacity}" stroke="${stroke}" stroke-width="${isActive ? 1.5 : 0}" rx="0"/>`;
       }).join('');
 
-      // Track border/radius overlay
       const trackBorder = `<rect x="0" y="${trackY}" width="${W}" height="${trackH}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="1" rx="7"/>`;
 
-      // Phase labels (short, centered in segment)
       const phaseLabels = phases.map((ph, idx) => {
         const cx = Math.round((ph.start + ph.end) / 2 * W);
         const isActive = idx === activePhaseIdx;
         const shortLabel = ph.label.slice(0, 3);
-        return `<text x="${cx}" y="${labelY}" text-anchor="middle" font-size="9" fill="${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'}" font-weight="${isActive ? '700' : '400'}">${shortLabel}</text>`;
+        return `<text x="${cx}" y="${labelY}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'}" font-weight="${isActive ? '700' : '400'}">${shortLabel}</text>`;
       }).join('');
 
-      // Day tick marks at cycle quarters
       const ticks = [7, 14, 21].map((day) => {
         const x = Math.round((day / cycleLength) * W);
         return `<line x1="${x}" y1="${trackY + trackH}" x2="${x}" y2="${tickY2}" stroke="var(--divider-color,#d1d5db)" stroke-width="1"/>
                 <text x="${x}" y="${tickY2 + 8}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${day}</text>`;
       }).join('');
 
-      // Today marker (triangle + line)
-      const markerColor = 'var(--primary-color,#2563eb)';
+      const markerColor = 'var(--mc-rose-deep,#C43F5E)';
       const markerLine = `<line x1="${todayX}" y1="${trackY - 1}" x2="${todayX}" y2="${trackY + trackH + 1}" stroke="${markerColor}" stroke-width="2"/>`;
       const markerTri = `<polygon points="${todayX},${trackY - 7} ${todayX - 5},${trackY - 1} ${todayX + 5},${trackY - 1}" fill="${markerColor}"/>`;
       const markerLabel = cycleDay > 0
-        ? `<text x="${Math.min(W - 10, Math.max(10, todayX))}" y="${trackY - 10}" text-anchor="middle" font-size="9" fill="${markerColor}" font-weight="600">${this._t('cycle_day')} ${escapeHtml(cycleDay)}</text>`
+        ? `<text x="${Math.min(W - 10, Math.max(10, todayX))}" y="${trackY - 10}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="${markerColor}" font-weight="600">${this._t('cycle_day')} ${escapeHtml(cycleDay)}</text>`
         : '';
 
       const titleText = `Cycle phase timeline – day ${cycleDay} of ${cycleLength}`;
@@ -1617,6 +1732,53 @@
       `;
     }
 
+    _renderPregnancyMilestones(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const weeksPregnantRaw = Number(attrs.weeks_pregnant ?? 0) || 0;
+      const milestones = [
+        { week: 6, label: 'Herzschlag hörbar' },
+        { week: 12, label: 'Ersttrimester-Screening' },
+        { week: 20, label: 'Organscreening' },
+        { week: 24, label: 'Lebensfähigkeitsgrenze' },
+        { week: 28, label: '3. Trimester beginnt' },
+        { week: 36, label: 'Kindslage-Kontrolle' },
+        { week: 40, label: 'Entbindungstermin' },
+      ];
+      const items = milestones.map((m) => {
+        const state = weeksPregnantRaw >= m.week ? 'done' : (Math.abs(weeksPregnantRaw - m.week) < 1 ? 'current' : '');
+        return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;min-width:88px;flex:1;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${state === 'done' ? 'var(--mc-sage)' : (state === 'current' ? 'var(--mc-rose-deep)' : 'var(--card-background-color,#fff)')};border:2.5px solid ${state === 'current' ? 'var(--mc-rose-deep)' : 'var(--mc-sage)'};${state === 'current' ? 'box-shadow:0 0 0 4px var(--mc-rose-tint);' : ''}"></div>
+          <div style="font-size:11px;font-weight:600;">${escapeHtml(m.label)}</div>
+          <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">SSW ${m.week}</div>
+        </div>`;
+      }).join('<div style="flex:0.4;height:2px;background:var(--divider-color,#e5e7eb);align-self:flex-start;margin-top:6px;"></div>');
+      return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>`;
+    }
+
+    _renderMenarcheChecklist(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const preMenData = attrs.pre_menarche_data || {};
+      const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
+      const signDefs = [
+        { key: 'height_spurt', label: 'Wachstumsschub' },
+        { key: 'breast', label: 'Körperliche Veränderungen' },
+        { key: 'pubic_hair', label: 'Weitere körperliche Reifezeichen' },
+        { key: 'discharge', label: 'Erste Beobachtung von Ausfluss' },
+        { key: 'mood', label: 'Stimmungsveränderungen' },
+        { key: 'acne', label: 'Hautveränderungen' },
+        { key: 'body_odor', label: 'Körpergeruch-Veränderung' },
+      ];
+      const items = signDefs.map((s) => {
+        const val = signs[s.key];
+        const done = val != null && val !== '' && val !== 'none';
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
+          <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
+          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(s.label)}${done ? ` — ${escapeHtml(String(val))}` : ''}</div>
+        </div>`;
+      }).join('');
+      return `<div>${items}</div>`;
+    }
+
 
     _renderPhaseDonut(stateObj, discreetMode) {
       if (discreetMode) return `<div class="helper">${this._t('dashboard_discreet_note')}</div>`;
@@ -1626,10 +1788,10 @@
       const currentPhase = String(attrs.current_phase ?? attrs.state ?? stateObj?.state ?? '').toLowerCase();
 
       const phases = [
-        { id: 'menstrual',  label: 'Men',  days: Math.round(cycleLength * 0.179), color: '#e05c7a' },
-        { id: 'follicular', label: 'Fol',  days: Math.round(cycleLength * (0.464 - 0.179)), color: '#f97316' },
-        { id: 'ovulation',  label: 'Ov',   days: Math.max(1, Math.round(cycleLength * 0.072)), color: '#a855f7' },
-        { id: 'luteal',     label: 'Lut',  days: Math.round(cycleLength * (1 - 0.536)), color: '#3b82f6' },
+        { id: 'menstrual',  label: 'Men',  days: Math.round(cycleLength * 0.179), color: '#E8637D' },
+        { id: 'follicular', label: 'Fol',  days: Math.round(cycleLength * (0.464 - 0.179)), color: '#7C9885' },
+        { id: 'ovulation',  label: 'Ov',   days: Math.max(1, Math.round(cycleLength * 0.072)), color: '#3F5A47' },
+        { id: 'luteal',     label: 'Lut',  days: Math.round(cycleLength * (1 - 0.536)), color: '#6B3654' },
       ];
 
       // Normalize so they sum to cycleLength
@@ -1927,8 +2089,8 @@
         const moodY = padT + chartH - moodH;
         const halfW = Math.max(1, Math.floor(barW / 2));
 
-        return `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#e05c7a" opacity="0.7" rx="1"/>
-                <rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#a855f7" opacity="0.7" rx="1"/>`;
+        return `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"/>
+                <rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.8" rx="1"/>`;
       }).join('');
 
       // X-axis: first and last date
@@ -1938,8 +2100,8 @@
                        <text x="${W - padR}" y="${H - 2}" font-size="7" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
       const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('pain'))}</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#a855f7;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('pain'))}</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#6B3654;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>
       </div>`;
 
       return `
@@ -1985,7 +2147,7 @@
 
           let fill = 'transparent';
           if (isToday) fill = 'var(--primary-color,#2563eb)';
-          else if (isPeriodStart) fill = '#e05c7a';
+          else if (isPeriodStart) fill = 'var(--mc-rose-deep)';
           else if (isPredicted) fill = 'rgba(224,92,122,0.3)';
 
           const sz = 5;
@@ -2004,7 +2166,7 @@
 
       const legend = `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
           ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(224,92,122,0.3);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
@@ -2067,14 +2229,16 @@
       const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
       let body = '';
       if (widgetId === 'kpi_strip') {
-        const strip = this._renderKpiStrip(stateObj, discreetMode);
+        const strip = this._renderHeroWheel(stateObj, discreetMode);
         const wideClass = 'card--wide';
         return `<article class="card ${wideClass} card--hero" aria-label="Cycle at a glance">${strip}</article>`;
       }
       if (widgetId === 'phase_timeline') {
         const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
         const wideClass = 'card--wide';
-        return `<article class="card ${wideClass}"><h2>${this._t('dashboard_widget_today_status')}</h2>${timeline}</article>`;
+        const mode = this._resolveMode(stateObj);
+        const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : 'dashboard_widget_today_status');
+        return `<article class="card ${wideClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
       }
       if (widgetId === 'quick_log') body = this._renderQuickLogCard(discreetMode);
       if (widgetId === 'today_status') body = this._renderTodayCard(stateObj, discreetMode);
@@ -2152,25 +2316,38 @@
 
       this.shadowRoot.innerHTML = `
         <style>
-          :host { display: block; height: 100%; color: var(--primary-text-color, #1f2937); font-family: var(--paper-font-body1_-_font-family, inherit); }
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+          :host {
+            display: block; height: 100%;
+            color: var(--primary-text-color, #1f2937);
+            font-family: 'Inter', var(--paper-font-body1_-_font-family, sans-serif);
+            --mc-rose: #E8637D; --mc-rose-deep: #C43F5E; --mc-rose-tint: #FBE1E6;
+            --mc-plum: #6B3654; --mc-plum-tint: #EDE0E8;
+            --mc-sage: #7C9885; --mc-sage-deep: #3F5A47; --mc-sage-tint: #E6EDE7;
+            --mc-amber: #E3A23D; --mc-amber-tint: #FBEEDC;
+            --mc-sand: color-mix(in srgb, var(--card-background-color, #fff) 88%, var(--mc-rose) 12%);
+            --mc-font-display: 'Fraunces', serif;
+            --mc-font-mono: 'IBM Plex Mono', monospace;
+          }
           .page { padding: 16px; display: grid; gap: 16px; }
           .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-          .toolbar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+          .toolbar h1 { margin: 0; font-family: var(--mc-font-display); font-weight: 500; font-size: 1.4rem; letter-spacing: -0.01em; }
           .toolbar button {
             border: 1px solid var(--divider-color, #d1d5db);
-            border-radius: 10px;
+            border-radius: 999px;
             background: var(--card-background-color, #fff);
             color: inherit;
             padding: 8px 14px;
             cursor: pointer;
             font-size: 0.875rem;
+            font-weight: 600;
             transition: background 0.15s, border-color 0.15s;
           }
-          .toolbar button:hover { background: var(--secondary-background-color, #f3f4f6); border-color: var(--primary-color, #2563eb); }
+          .toolbar button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
           .entity-picker {
             width: auto;
             border: 1px solid var(--divider-color, #d1d5db);
-            border-radius: 10px;
+            border-radius: 999px;
             padding: 7px 12px;
             background: var(--card-background-color, #fff);
             color: inherit;
@@ -2191,14 +2368,14 @@
           .card {
             background: var(--card-background-color, #fff);
             border: 1px solid var(--divider-color, #e5e7eb);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 20px;
+            padding: 18px 20px;
             display: grid;
             gap: 10px;
-            box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+            box-shadow: 0 1px 2px rgba(43,27,36,.04), 0 8px 24px -14px rgba(43,27,36,.22);
             transition: box-shadow 0.15s;
           }
-          .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.10), 0 4px 16px rgba(0,0,0,.06); }
+          .card:hover { box-shadow: 0 2px 8px rgba(43,27,36,.08), 0 12px 28px -12px rgba(43,27,36,.16); }
           .card h2 {
             margin: 0;
             font-size: 0.9375rem;
@@ -2213,40 +2390,55 @@
           @media (min-width: 900px) {
             .card--wide { grid-column: span 3; }
           }
-          /* Hero KPI card */
-          .card--hero { padding: 12px 16px; }
+          /* Hero card */
+          .card--hero { padding: 20px 22px; }
+          .hero-layout { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: center; }
+          @media (max-width: 640px) { .hero-layout { grid-template-columns: 1fr; justify-items: center; } }
+          .hero-wheel-holder { position: relative; width: 200px; height: 200px; flex: none; }
+          .hero-wheel-center {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+          }
+          .hero-wheel-center .hw-num { font-family: var(--mc-font-display); font-size: 34px; font-weight: 500; line-height: 1; color: var(--mc-rose-deep); }
+          .hero-wheel-center .hw-sub { font-family: var(--mc-font-mono); font-size: 10px; letter-spacing: .04em; color: var(--secondary-text-color,#6b7280); margin-top: 3px; }
+          .hero-wheel-center .hw-tag { margin-top: 8px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--mc-sage-tint); color: var(--mc-sage-deep); }
           .kpi-strip {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 10px;
             align-items: stretch;
           }
           .kpi-item {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 10px 16px;
-            border-radius: 12px;
-            background: var(--secondary-background-color, #f3f4f6);
+            gap: 3px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: var(--mc-sand);
             border: 1px solid var(--divider-color, #e5e7eb);
-            min-width: 72px;
-            flex: 1 1 72px;
+            min-width: 96px;
+            flex: 1 1 96px;
           }
-          .kpi-icon { font-size: 1.25rem; line-height: 1; }
+          .kpi-item.mc-rose { background: var(--mc-rose-tint); }
+          .kpi-item.mc-plum { background: var(--mc-plum-tint); }
+          .kpi-icon { font-size: 1.1rem; line-height: 1; }
           .kpi-value {
-            font-size: 1.25rem;
-            font-weight: 700;
+            font-family: var(--mc-font-display);
+            font-size: 1.5rem;
+            font-weight: 500;
             color: var(--primary-text-color, #1f2937);
-            line-height: 1.2;
+            line-height: 1.15;
           }
+          .kpi-item.mc-rose .kpi-value { color: var(--mc-rose-deep); }
+          .kpi-item.mc-plum .kpi-value { color: var(--mc-plum); }
           .kpi-label {
             font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
             color: var(--secondary-text-color, #6b7280);
-            text-align: center;
             line-height: 1.2;
           }
-          /* Phase timeline */
+          /* Phase timeline / overview */
           .phase-timeline-wrap {
             width: 100%;
             overflow: visible;
@@ -2264,7 +2456,7 @@
             gap: 6px;
             padding: 4px 10px;
             border-radius: 20px;
-            background: var(--secondary-background-color, #f3f4f6);
+            background: var(--mc-sand);
             border: 1px solid var(--divider-color, #e5e7eb);
             font-size: 0.8125rem;
             color: var(--secondary-text-color, #4b5563);
