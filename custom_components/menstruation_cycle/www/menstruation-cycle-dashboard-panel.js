@@ -166,6 +166,24 @@
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
     dashboard_calendar_loading: 'Loading…',
     dashboard_card_unavailable: 'Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache).',
+    dashboard_menarche_checklist_hint: 'Tap to log a sign. Feeds automatically into the estimate above.',
+    remove: 'Remove',
+    opt_stage_1: 'Stage 1',
+    opt_stage_2: 'Stage 2',
+    opt_stage_3: 'Stage 3',
+    opt_stage_4: 'Stage 4',
+    opt_stage_5: 'Stage 5',
+    opt_slight: 'Slight',
+    opt_moderate: 'Moderate',
+    opt_significant: 'Significant',
+    opt_severe: 'Severe',
+    opt_strong: 'Strong',
+    opt_stable: 'Stable',
+    opt_mild_changes: 'Mild changes',
+    opt_noticeable_changes: 'Noticeable changes',
+    opt_significant_changes: 'Significant changes',
+    opt_clear_to_white: 'Clear to white',
+    opt_none: 'None',
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_support_card: 'Support & Education',
@@ -459,17 +477,54 @@
     return { stage: String(raw), loggedAt: null };
   };
 
+  // Canonical sign metadata — keys MUST match PRE_MENARCHE_SIGN_OPTIONS in const.py
+  // exactly, since these are sent verbatim as the `pre_menarche_sign` service field.
+  // Using different keys here (as an earlier version of this file did) means logged
+  // data would never be found by any of the reading/estimating code below, and the
+  // service call itself would be rejected with "Unknown pre-menarche sign".
+  const PRE_MENARCHE_SIGNS = {
+    pubic_hair_growth: {
+      labelKey: 'pubic_hair', checklistLabelKey: 'menarche_sign_pubic_hair',
+      options: ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5'],
+    },
+    breast_development: {
+      labelKey: 'breast', checklistLabelKey: 'menarche_sign_breast',
+      options: ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5'],
+    },
+    height_spurt: {
+      labelKey: 'height_spurt', checklistLabelKey: 'menarche_sign_height_spurt',
+      options: ['none', 'slight', 'moderate', 'significant'],
+    },
+    mood_changes: {
+      labelKey: 'mood', checklistLabelKey: 'menarche_sign_mood',
+      options: ['stable', 'mild_changes', 'noticeable_changes', 'significant_changes'],
+    },
+    acne: {
+      labelKey: 'acne', checklistLabelKey: 'menarche_sign_acne',
+      options: ['none', 'slight', 'moderate', 'severe'],
+    },
+    body_odor: {
+      labelKey: 'body_odor', checklistLabelKey: 'menarche_sign_body_odor',
+      options: ['none', 'slight', 'moderate', 'strong'],
+    },
+    vaginal_discharge: {
+      labelKey: 'discharge', checklistLabelKey: 'menarche_sign_discharge',
+      options: ['none', 'clear', 'white', 'clear_to_white'],
+    },
+  };
+  const PRE_MENARCHE_SIGN_KEYS = Object.keys(PRE_MENARCHE_SIGNS);
+
   // Typical (widely-known, general) lead time from a sign's onset to menarche, used only
   // when we have a real logged_at date for that sign. Ordered by how proximate/reliable
   // the signal is — discharge is the closest predictor, breast/pubic hair the least.
   // These are illustrative averages with wide individual variation, not a diagnosis.
   const MENARCHE_OFFSET_DAYS = {
-    discharge: 270,      // ~9 months (typical range ~6-12 months before menarche)
-    height_spurt: 365,   // ~12 months (growth spurt peak typically precedes menarche by ~1 year)
-    breast: 640,         // ~21 months (thelarche typically precedes menarche by ~2 years)
-    pubic_hair: 610,      // ~20 months
+    vaginal_discharge: 270,      // ~9 months (typical range ~6-12 months before menarche)
+    height_spurt: 365,           // ~12 months (growth spurt peak typically precedes menarche by ~1 year)
+    breast_development: 640,     // ~21 months (thelarche typically precedes menarche by ~2 years)
+    pubic_hair_growth: 610,      // ~20 months
   };
-  const MENARCHE_SIGN_PRIORITY = ['discharge', 'height_spurt', 'breast', 'pubic_hair'];
+  const MENARCHE_SIGN_PRIORITY = ['vaginal_discharge', 'height_spurt', 'breast_development', 'pubic_hair_growth'];
 
   /**
    * Builds a dynamic menarche estimate from whichever logged, dated sign is most
@@ -558,6 +613,7 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
+      this._expandedSign = null;
       this._i18nLanguagePromises = {};
       this._lastRenderSig = null;
       this._debugEnabled = this._readDebugFlag();
@@ -1207,6 +1263,53 @@
       this.render();
     }
 
+    async _logPreMenarcheSign(signKey, stageValue) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_pre_menarche_sign', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          pre_menarche_sign: signKey,
+          tanner_stage: stageValue,
+        });
+        this._message = this._t('symptom_saved');
+      } catch (_error) {
+        this._message = this._t('symptom_save_error');
+      }
+      this._expandedSign = null;
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
+    async _removePreMenarcheSign(signKey) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'remove_pre_menarche_sign', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          pre_menarche_sign: signKey,
+        });
+        this._message = this._t('symptom_saved');
+      } catch (_error) {
+        this._message = this._t('symptom_save_error');
+      }
+      this._expandedSign = null;
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     _moveWidget(id, direction) {
       const target = this._editMode ? this._editDraft : this._prefs;
       if (!target) return;
@@ -1222,8 +1325,10 @@
     }
 
     _handleClick(event) {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
+      const rawTarget = event.target;
+      if (!(rawTarget instanceof HTMLElement)) return;
+      const target = rawTarget.closest('[data-action]');
+      if (!target) return;
       const action = target.dataset.action;
       const widget = target.dataset.widget;
 
@@ -1263,6 +1368,13 @@
           this._savePrefs();
         }
         this.render();
+      } else if (action === 'toggle-sign-picker' && target.dataset.sign) {
+        this._expandedSign = this._expandedSign === target.dataset.sign ? null : target.dataset.sign;
+        this.render();
+      } else if (action === 'log-sign' && target.dataset.sign && target.dataset.stage) {
+        this._logPreMenarcheSign(target.dataset.sign, target.dataset.stage);
+      } else if (action === 'remove-sign' && target.dataset.sign) {
+        this._removePreMenarcheSign(target.dataset.sign);
       }
     }
 
@@ -2054,7 +2166,7 @@
       const attrs = stateObj?.attributes || {};
       const preMenData = attrs.pre_menarche_data || {};
       const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
-      const signKeys = ['pubic_hair', 'breast', 'height_spurt', 'mood', 'acne', 'body_odor', 'discharge'];
+      const signKeys = PRE_MENARCHE_SIGN_KEYS;
       const observedCount = signKeys.filter((k) => _normalizeSignEntry(signs[k]) !== null).length;
 
       const dynamic = _estimateMenarcheFromSigns(signs);
@@ -2431,25 +2543,38 @@
       const attrs = stateObj?.attributes || {};
       const preMenData = attrs.pre_menarche_data || {};
       const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
-      const signDefs = [
-        { key: 'height_spurt', labelKey: 'menarche_sign_height_spurt' },
-        { key: 'breast', labelKey: 'menarche_sign_breast' },
-        { key: 'pubic_hair', labelKey: 'menarche_sign_pubic_hair' },
-        { key: 'discharge', labelKey: 'menarche_sign_discharge' },
-        { key: 'mood', labelKey: 'menarche_sign_mood' },
-        { key: 'acne', labelKey: 'menarche_sign_acne' },
-        { key: 'body_odor', labelKey: 'menarche_sign_body_odor' },
-      ];
-      const items = signDefs.map((s) => {
-        const entry = _normalizeSignEntry(signs[s.key]);
+
+      const items = PRE_MENARCHE_SIGN_KEYS.map((signKey) => {
+        const meta = PRE_MENARCHE_SIGNS[signKey];
+        const entry = _normalizeSignEntry(signs[signKey]);
         const done = entry !== null;
-        const detail = done ? `${escapeHtml(entry.stage)}${entry.loggedAt ? ` · ${escapeHtml(this._formatDate(entry.loggedAt))}` : ''}` : '';
-        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
-          <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
-          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(s.labelKey))}${done ? ` — ${detail}` : ''}</div>
+        const detail = done ? `${this._t('opt_' + entry.stage) !== ('opt_' + entry.stage) ? this._t('opt_' + entry.stage) : entry.stage}${entry.loggedAt ? ` · ${escapeHtml(this._formatDate(entry.loggedAt))}` : ''}` : '';
+        const isExpanded = this._expandedSign === signKey;
+
+        const optionButtons = meta.options.map((opt) => {
+          const optLabel = this._t('opt_' + opt) !== ('opt_' + opt) ? this._t('opt_' + opt) : opt;
+          const selected = entry && entry.stage === opt;
+          return `<button type="button" class="sym-opt-btn${selected ? ' sym-selected' : ''}" data-action="log-sign" data-sign="${signKey}" data-stage="${opt}" style="padding:6px 12px;border-radius:10px;border:1px solid ${selected ? 'var(--mc-rose-deep)' : 'var(--divider-color,#d1d5db)'};background:${selected ? 'var(--mc-rose-tint)' : 'var(--card-background-color,#fff)'};font-size:12px;cursor:pointer;">${escapeHtml(optLabel)}</button>`;
+        }).join('');
+
+        const picker = isExpanded ? `
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px 4px 46px;">
+            ${optionButtons}
+            ${done ? `<button type="button" data-action="remove-sign" data-sign="${signKey}" style="padding:6px 12px;border-radius:10px;border:1px solid var(--divider-color,#d1d5db);background:transparent;font-size:12px;color:var(--secondary-text-color,#6b7280);cursor:pointer;">${this._t('remove') || 'Entfernen'}</button>` : ''}
+          </div>` : '';
+
+        return `<div style="border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;overflow:hidden;">
+          <div data-action="toggle-sign-picker" data-sign="${signKey}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;">
+            <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
+            <div style="flex:1;font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(meta.checklistLabelKey))}${done ? ` — ${detail}` : ''}</div>
+            <div style="color:var(--secondary-text-color,#6b7280);font-size:11px;transform:rotate(${isExpanded ? '180deg' : '0deg'});transition:transform 0.15s;">▾</div>
+          </div>
+          ${picker}
         </div>`;
       }).join('');
-      return `<div>${items}</div>`;
+
+      return `<div>${items}</div>
+        <p class="helper" style="margin-top:4px;font-size:0.68rem;">${this._t('dashboard_menarche_checklist_hint') || 'Antippen, um ein Anzeichen zu erfassen. Fließt automatisch in die Schätzung oben ein.'}</p>`;
     }
 
 

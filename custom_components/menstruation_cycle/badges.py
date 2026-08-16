@@ -50,8 +50,10 @@ _VARIETY_CATEGORY_KEYS = tuple(
 _SYMPTOM_VARIETY_MIN_CATEGORIES = 5
 
 # The 7 pre-menarche body-sign categories tracked via add_pre_menarche_sign.
+# These must match PRE_MENARCHE_SIGN_OPTIONS keys in const.py exactly.
 _PRE_MENARCHE_SIGN_KEYS = (
-    "pubic_hair", "breast", "height_spurt", "mood", "acne", "body_odor", "discharge",
+    "pubic_hair_growth", "breast_development", "height_spurt", "mood_changes",
+    "acne", "body_odor", "vaginal_discharge",
 )
 
 _BASAL_TEMP_TRACKER_MIN_DAYS = 10
