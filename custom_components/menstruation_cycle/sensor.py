@@ -58,6 +58,9 @@ from .const import (
     ATTR_FERTILITY_FORECAST,
     ATTR_LEARNING_PHASE,
     CONF_BIRTH_DATE,
+    DEFAULT_MENARCHE_AGE_MAX,
+    DEFAULT_MENARCHE_AGE_MIN,
+    DEFAULT_MENARCHE_AGE_TYPICAL,
     CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
     DEFAULT_NFP_ANALYSIS_MODE,
@@ -1142,11 +1145,16 @@ class MenstruationGaugeSensor(SensorEntity):
             },
             ATTR_BIRTH_DATE: self._entry.data.get(CONF_BIRTH_DATE),
             ATTR_AGE_AT_TRACKING: self._calculate_age(self._entry.data.get(CONF_BIRTH_DATE)),
-            ATTR_ESTIMATED_MENARCHE_DATE: model.menarche_data.get("estimated_date"),
-            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(model.menarche_data),
+            ATTR_ESTIMATED_MENARCHE_DATE: self._calculate_estimated_menarche_date(
+                self._entry.data.get(CONF_BIRTH_DATE),
+                model.menarche_data.get("family_menarche_age"),
+            ) or model.menarche_data.get("estimated_date"),
+            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(model.menarche_data, self._entry.data.get(CONF_BIRTH_DATE)),
             "menarche_data": model.menarche_data,
             ATTR_PRE_MENARCHE_DATA: model.pre_menarche_data,
             ATTR_MENOPAUSE_DATA: model.menopause_data,
+            "days_since_last_period": model.days_since_last_period,
+            "menopause_months_tracked": model.menopause_months_tracked,
             "noncycle_data": model.noncycle_data,
             "profile": runtime.profile,
             "entry_id": self._entry.entry_id,
@@ -1181,9 +1189,11 @@ class MenstruationGaugeSensor(SensorEntity):
         }
         self._attrs = _build_compact_sensor_attributes(raw_attrs)
 
-    def _calculate_days_until_menarche(self, menarche_data: dict[str, Any]) -> int | None:
+    def _calculate_days_until_menarche(self, menarche_data: dict[str, Any], birth_date: str | None) -> int | None:
         """Calculate days until estimated menarche."""
-        estimated_date = menarche_data.get("estimated_date")
+        estimated_date = self._calculate_estimated_menarche_date(
+            birth_date, menarche_data.get("family_menarche_age")
+        ) or menarche_data.get("estimated_date")
         if not estimated_date:
             return None
         try:
@@ -1192,6 +1202,34 @@ class MenstruationGaugeSensor(SensorEntity):
             return (est_date - today).days
         except (TypeError, ValueError):
             return None
+
+    def _calculate_estimated_menarche_date(
+        self, birth_date: str | None, family_menarche_age: int | float | None
+    ) -> str | None:
+        """Estimate menarche date from birth_date + family_menarche_age (mother's age at
+        menarche). Falls back to the population-typical menarche age when no family
+        value has been recorded, so the estimate still improves once a birth_date is
+        set even before a family history value is entered."""
+        if not birth_date:
+            return None
+        try:
+            born = date.fromisoformat(str(birth_date))
+        except (TypeError, ValueError):
+            return None
+        try:
+            age_years = float(family_menarche_age) if family_menarche_age else DEFAULT_MENARCHE_AGE_TYPICAL
+        except (TypeError, ValueError):
+            age_years = DEFAULT_MENARCHE_AGE_TYPICAL
+        if not (DEFAULT_MENARCHE_AGE_MIN <= age_years <= DEFAULT_MENARCHE_AGE_MAX):
+            age_years = DEFAULT_MENARCHE_AGE_TYPICAL
+        whole_years = int(age_years)
+        extra_days = round((age_years - whole_years) * 365)
+        try:
+            estimated = born.replace(year=born.year + whole_years) + timedelta(days=extra_days)
+        except ValueError:
+            # Feb 29 birth_date landing on a non-leap year — fall back to Feb 28.
+            estimated = born.replace(year=born.year + whole_years, day=28) + timedelta(days=extra_days)
+        return estimated.isoformat()
 
     def _calculate_age(self, birth_date: str | None) -> int | None:
         """Calculate current age in whole years from a stored birth_date."""

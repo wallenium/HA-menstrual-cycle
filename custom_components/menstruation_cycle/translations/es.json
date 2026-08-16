@@ -30,7 +30,6 @@
           "pregnancy_high_risk": "Embarazo de alto riesgo",
           "pregnancy_risk_notes": "Notas de riesgo (opcional, p. ej. afección o punto de control)",
           "pre_menarche_enabled": "Activar seguimiento previo a la menarquia",
-          "estimated_menarche_date": "Fecha estimada de la menarquia (AAAA-MM-DD)",
           "family_menarche_age": "Edad de menarquia en la familia (8–20, opcional)",
           "menopause_enabled": "Activar modo de menopausia",
           "menopause_start_date": "Fecha de inicio de la menopausia (AAAA-MM-DD)",

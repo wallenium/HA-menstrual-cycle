@@ -14,7 +14,6 @@ from homeassistant.util import slugify
 
 from .const import (
     CONF_BIRTH_DATE,
-    CONF_ESTIMATED_MENARCHE_DATE,
     CONF_FAMILY_MENARCHE_AGE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -242,19 +241,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             # Validate optional date fields
             preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE) or "").strip()
-            men_date_raw = str(user_input.get(CONF_ESTIMATED_MENARCHE_DATE) or "").strip()
             meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE) or "").strip()
             birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
 
             preg_date_parsed = _parse_date_opt(preg_date_raw)
-            men_date_parsed = _parse_date_opt(men_date_raw)
             meno_date_parsed = _parse_date_opt(meno_date_raw)
             birth_date_parsed = _parse_date_opt(birth_date_raw)
 
             if preg_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_PREGNANCY_START_DATE] = "invalid_date"
-            if men_date_parsed is _INVALID_DATE_SENTINEL:
-                errors[CONF_ESTIMATED_MENARCHE_DATE] = "invalid_date"
             if meno_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_MENOPAUSE_START_DATE] = "invalid_date"
             if birth_date_parsed is _INVALID_DATE_SENTINEL:
@@ -316,7 +311,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     "tracking_active": pre_menarche_enabled,
                     "is_menarche": menarche_data.get("is_menarche", False),
                     "menarche_date": menarche_data.get("menarche_date"),
-                    "estimated_date": men_date_parsed if men_date_parsed is not _INVALID_DATE_SENTINEL else None,
+                    # No longer manually entered — computed dynamically in sensor.py
+                    # from birth_date + family_menarche_age (mother's age at menarche).
+                    "estimated_date": None,
                     "family_menarche_age": new_family_menarche_age,
                 }
                 new_menopause_data = {
@@ -435,10 +432,6 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_PRE_MENARCHE_ENABLED,
                     default=bool(menarche_data.get("tracking_active", False)),
                 ): bool,
-                vol.Optional(
-                    CONF_ESTIMATED_MENARCHE_DATE,
-                    default=menarche_data.get("estimated_date") or None,
-                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_FAMILY_MENARCHE_AGE,
                     default=str(menarche_data.get("family_menarche_age") or ""),

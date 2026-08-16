@@ -179,6 +179,7 @@ STATE_NEUTRAL = "neutral"
 STATE_PREGNANT = "pregnant"
 STATE_PRE_MENARCHE = "pre_menarche"
 STATE_MENARCHE = "menarche"
+STATE_MENOPAUSE = "menopause"
 
 # Symptom field definitions
 SYMPTOM_BLEEDING_STRENGTH = "bleeding_strength"

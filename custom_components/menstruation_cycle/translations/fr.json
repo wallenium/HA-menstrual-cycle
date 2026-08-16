@@ -30,7 +30,6 @@
           "pregnancy_high_risk": "Grossesse à risque",
           "pregnancy_risk_notes": "Notes sur les risques (facultatif, ex. pathologie ou point de surveillance)",
           "pre_menarche_enabled": "Activer le suivi pré-ménarche",
-          "estimated_menarche_date": "Date estimée des premières règles (AAAA-MM-JJ)",
           "family_menarche_age": "Âge des premières règles dans la famille (8–20, facultatif)",
           "menopause_enabled": "Activer le mode ménopause",
           "menopause_start_date": "Date de début de la ménopause (AAAA-MM-JJ)",

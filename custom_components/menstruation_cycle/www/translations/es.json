@@ -640,5 +640,19 @@
   "dashboard_calendar_tap_hint": "Toca un día para marcar o quitar un inicio de período.",
   "dashboard_calendar_day_added": "Marcado",
   "dashboard_calendar_day_removed": "Eliminado",
-  "dashboard_calendar_fallback_note": "(El registro completo de síntomas — intensidad del sangrado, dolor, moco cervical y más — se carga automáticamente en cuanto está disponible.)"
+  "dashboard_calendar_fallback_note": "(El registro completo de síntomas — intensidad del sangrado, dolor, moco cervical y más — se carga automáticamente en cuanto está disponible.)",
+  "dashboard_last_period": "Última menstruación",
+  "dashboard_menopause_threshold": "12 meses sin menstruación",
+  "dashboard_days_since_last_period": "Días desde la última menstruación",
+  "dashboard_days_to_confirmed": "Días hasta confirmación",
+  "dashboard_months_tracked": "Meses registrados",
+  "dashboard_menopause_confirmed": "Confirmada",
+  "dashboard_perimenopause": "Perimenopausia",
+  "dashboard_widget_menopause_timeline": "Cronología de la menopausia",
+  "dashboard_menopause_timeline_note": "Hitos desde tu última menstruación registrada. La menopausia se considera clínicamente confirmada tras 12 meses sin menstruación.",
+  "milestone_last_period": "Última menstruación",
+  "milestone_3_months": "3 meses",
+  "milestone_6_months": "6 meses",
+  "milestone_9_months": "9 meses",
+  "milestone_menopause_confirmed": "12 meses — confirmada"
 }

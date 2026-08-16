@@ -30,7 +30,6 @@
           "pregnancy_high_risk": "Riskgraviditet",
           "pregnancy_risk_notes": "Anteckningar om risker (valfritt, t.ex. tillstånd eller uppföljningsfokus)",
           "pre_menarche_enabled": "Aktivera spårning före menarche",
-          "estimated_menarche_date": "Uppskattat menarche-datum (ÅÅÅÅ-MM-DD)",
           "family_menarche_age": "Menarche-ålder i familjen (8–20, valfritt)",
           "menopause_enabled": "Aktivera klimakterieläge",
           "menopause_start_date": "Klimakteriets startdatum (ÅÅÅÅ-MM-DD)",

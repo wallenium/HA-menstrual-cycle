@@ -640,5 +640,19 @@
   "dashboard_calendar_tap_hint": "Tryck på en dag för att markera eller ta bort en mensstart.",
   "dashboard_calendar_day_added": "Markerad",
   "dashboard_calendar_day_removed": "Borttagen",
-  "dashboard_calendar_fallback_note": "(Fullständig symtomloggning — blödningsstyrka, smärta, cervixslem med mera — laddas automatiskt när den finns tillgänglig.)"
+  "dashboard_calendar_fallback_note": "(Fullständig symtomloggning — blödningsstyrka, smärta, cervixslem med mera — laddas automatiskt när den finns tillgänglig.)",
+  "dashboard_last_period": "Senaste mens",
+  "dashboard_menopause_threshold": "12 månader utan mens",
+  "dashboard_days_since_last_period": "Dagar sedan senaste mens",
+  "dashboard_days_to_confirmed": "Dagar till bekräftad",
+  "dashboard_months_tracked": "Månader spårade",
+  "dashboard_menopause_confirmed": "Bekräftad",
+  "dashboard_perimenopause": "Perimenopaus",
+  "dashboard_widget_menopause_timeline": "Menopaus-tidslinje",
+  "dashboard_menopause_timeline_note": "Milstolpar sedan din senast registrerade mens. Menopaus anses kliniskt bekräftad efter 12 månader utan mens.",
+  "milestone_last_period": "Senaste mens",
+  "milestone_3_months": "3 månader",
+  "milestone_6_months": "6 månader",
+  "milestone_9_months": "9 månader",
+  "milestone_menopause_confirmed": "12 månader — bekräftad"
 }

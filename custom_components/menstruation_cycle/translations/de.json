@@ -30,7 +30,6 @@
           "pregnancy_high_risk": "Risikoschwangerschaft",
           "pregnancy_risk_notes": "Notizen zur Risikoschwangerschaft (optional, z. B. Befund oder Kontrollschwerpunkt)",
           "pre_menarche_enabled": "Prä-Menarche-Tracking aktivieren",
-          "estimated_menarche_date": "Voraussichtliches Menarche-Datum (JJJJ-MM-TT)",
           "family_menarche_age": "Menarche-Alter in der Familie (8–20, optional)",
           "menopause_enabled": "Menopause-Modus aktivieren",
           "menopause_start_date": "Menopause-Startdatum (JJJJ-MM-TT)",

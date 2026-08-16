@@ -19,6 +19,7 @@ from .const import (
     ONBOARDING_STAGES,
     STATE_FERTILE,
     STATE_MENARCHE,
+    STATE_MENOPAUSE,
     STATE_NEUTRAL,
     STATE_PERIOD,
     STATE_PMS,
@@ -90,6 +91,8 @@ class CycleModel:
     onboarding_stage_effective: str
     learning_phase: bool
     prediction_gating: dict[str, Any]
+    days_since_last_period: int | None = None
+    menopause_months_tracked: int | None = None
 
 
 def normalize_history(history: list[str]) -> list[str]:
@@ -2181,6 +2184,69 @@ def build_cycle_model(
                 "confidence": "low",
                 "reason": "pre_menarche_mode",
             },
+        )
+
+    # If menopause mode is enabled, suppress cycle/fertility predictions and instead
+    # surface time-since-last-period and time-since-menopause-start, which is what's
+    # clinically relevant here (menopause is confirmed after 12 consecutive months
+    # without a period).
+    if meno_data.get("is_menopause") is True:
+        last_period_date: date | None = None
+        if normalized:
+            try:
+                last_period_date = date.fromisoformat(normalized[-1])
+            except ValueError:
+                last_period_date = None
+        days_since_last_period = (now - last_period_date).days if last_period_date else None
+
+        meno_start_date: date | None = None
+        raw_meno_start = meno_data.get("start_date")
+        if raw_meno_start:
+            try:
+                meno_start_date = date.fromisoformat(str(raw_meno_start))
+            except ValueError:
+                meno_start_date = None
+        menopause_months_tracked = (
+            (now - meno_start_date).days // 30 if meno_start_date else None
+        )
+
+        return CycleModel(
+            history=normalized,
+            grouped_starts=grouped_cycle_starts(normalized),
+            bleeding_blocks=[],
+            next_predicted_start=None,
+            predicted_cycle_starts=[],
+            avg_cycle_length=None,
+            fertile_window_start=None,
+            fertile_window_end=None,
+            ovulation_day=None,
+            days_until_next_start=None,
+            period_duration_days=period_duration_days,
+            learned_period_duration_days=None,
+            current_period=None,
+            state=STATE_MENOPAUSE,
+            symptom_history=symptoms,
+            is_pregnant=False,
+            pregnancy_start_date=None,
+            weeks_pregnant=None,
+            due_date=None,
+            menarche_data=men_data,
+            pre_menarche_data=pre_men_data,
+            menopause_data=meno_data,
+            noncycle_data=nc_data,
+            nfp_analysis=None,
+            learned_ovulation_offset=None,
+            nfp_mode=nfp_mode,
+            period_forecast=None,
+            fertility_forecast=None,
+            symptom_correlation_insights=[],
+            symptom_correlation_insights_reason="unavailable_for_menopause",
+            onboarding_stage=requested_stage,
+            onboarding_stage_effective=requested_stage,
+            learning_phase=False,
+            prediction_gating={"precision_allowed": False, "confidence": "low", "reason": "menopause_mode"},
+            days_since_last_period=days_since_last_period,
+            menopause_months_tracked=menopause_months_tracked,
         )
 
     # If menarche has been recorded, check if we're in the menarche transition state

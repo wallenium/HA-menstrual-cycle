@@ -113,6 +113,20 @@
     legend_cervix_peak: 'Cervical mucus peak detected',
     dashboard_calendar_tap_hint: 'Tap a day to mark or remove a period start.',
     dashboard_calendar_fallback_note: '(Full symptom logging — bleeding strength, pain, cervical mucus, and more — loads automatically once available.)',
+    dashboard_last_period: 'Last period',
+    dashboard_menopause_threshold: '12 months without a period',
+    dashboard_days_since_last_period: 'Days since last period',
+    dashboard_days_to_confirmed: 'Days until confirmed',
+    dashboard_months_tracked: 'Months tracked',
+    dashboard_menopause_confirmed: 'Confirmed',
+    dashboard_perimenopause: 'Perimenopause',
+    dashboard_widget_menopause_timeline: 'Menopause Timeline',
+    dashboard_menopause_timeline_note: 'Milestones since your last logged period. Menopause is clinically considered confirmed after 12 months without a period.',
+    milestone_last_period: 'Last period',
+    milestone_3_months: '3 months',
+    milestone_6_months: '6 months',
+    milestone_9_months: '9 months',
+    milestone_menopause_confirmed: '12 months — confirmed',
     dashboard_calendar_day_added: 'Marked',
     dashboard_calendar_day_removed: 'Removed',
     dashboard_week_unit: 'Week',
@@ -1488,7 +1502,7 @@
     }
 
     _renderPregnancyPredictionGraph(stateObj) {
-      const mode = this._resolveMode(stateObj);
+      const mode = this._resolveContentMode(stateObj);
       if (mode !== 'cycle') return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
 
       const attrs = stateObj?.attributes || {};
@@ -1574,10 +1588,11 @@
     }
 
     /* ============ MODE DETECTION ============ */
-    _resolveMode(stateObj) {
+    _resolveContentMode(stateObj) {
       const attrs = stateObj?.attributes || {};
       const state = stateObj?.state;
       if (attrs.is_pregnant || state === 'pregnant') return 'pregnancy';
+      if ((attrs.menopause_data || {}).is_menopause || state === 'menopause') return 'menopause';
       const stage = attrs.onboarding_stage_effective || attrs.onboarding_stage;
       if (stage === 'pre_menarche' || state === 'pre_menarche') return 'menarche';
       return 'cycle';
@@ -1585,9 +1600,10 @@
 
     /* ============ HERO (wheel + kpi tiles), auto-switches by mode ============ */
     _renderHeroWheel(stateObj, discreetMode) {
-      const mode = this._resolveMode(stateObj);
+      const mode = this._resolveContentMode(stateObj);
       if (mode === 'pregnancy') return this._renderPregnancyHero(stateObj, discreetMode);
       if (mode === 'menarche') return this._renderMenarcheHero(stateObj, discreetMode);
+      if (mode === 'menopause') return this._renderMenopauseHero(stateObj, discreetMode);
       return this._renderCycleHero(stateObj, discreetMode);
     }
 
@@ -1797,12 +1813,68 @@
         </div>`;
     }
 
+    _renderMenopauseHero(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const daysSinceLastPeriod = attrs.days_since_last_period ?? null;
+      const monthsTracked = attrs.menopause_months_tracked ?? null;
+      // Menopause is clinically confirmed after 12 consecutive months without a period.
+      const confirmThresholdDays = 365;
+      const pct = daysSinceLastPeriod !== null
+        ? Math.round(Math.min(100, Math.max(0, (daysSinceLastPeriod / confirmThresholdDays) * 100)))
+        : 0;
+      const isConfirmed = daysSinceLastPeriod !== null && daysSinceLastPeriod >= confirmThresholdDays;
+      const daysRemaining = daysSinceLastPeriod !== null ? Math.max(0, confirmThresholdDays - daysSinceLastPeriod) : null;
+
+      return `
+        <div>
+          <div class="progress-holder">
+            <div class="progress-track" style="position:relative;height:14px;border-radius:999px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), ${isConfirmed ? 'var(--mc-plum)' : 'var(--mc-rose)'});"></div>
+              <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+              <span>${this._t('dashboard_last_period') || 'Letzte Periode'}</span>
+              <span>${this._t('dashboard_menopause_threshold') || '12 Monate ohne Periode'}</span>
+            </div>
+          </div>
+          <div class="kpi-strip" style="margin-top:14px;">
+            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysSinceLastPeriod !== null ? escapeHtml(daysSinceLastPeriod) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_since_last_period') || 'Tage seit letzter Periode'}</span></div>
+            ${daysRemaining !== null && !isConfirmed ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${escapeHtml(daysRemaining)}</span><span class="kpi-label">${this._t('dashboard_days_to_confirmed') || 'Tage bis bestätigt'}</span></div>` : ''}
+            ${monthsTracked !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${escapeHtml(monthsTracked)}</span><span class="kpi-label">${this._t('dashboard_months_tracked') || 'Monate erfasst'}</span></div>` : ''}
+            <div class="kpi-item ${isConfirmed ? 'mc-plum' : ''}"><span class="kpi-icon" aria-hidden="true">${isConfirmed ? '✓' : '◐'}</span><span class="kpi-value" style="font-size:1rem;">${isConfirmed ? (this._t('dashboard_menopause_confirmed') || 'Bestätigt') : (this._t('dashboard_perimenopause') || 'Perimenopause')}</span><span class="kpi-label">${this._t('dashboard_label_state')}</span></div>
+          </div>
+          <p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>
+        </div>`;
+    }
+
     /* ============ HORIZONTAL PHASE / MILESTONE OVERVIEW, auto-switches by mode ============ */
     _renderPhaseTimeline(stateObj, discreetMode) {
-      const mode = this._resolveMode(stateObj);
+      const mode = this._resolveContentMode(stateObj);
       if (mode === 'pregnancy') return this._renderPregnancyMilestones(stateObj);
       if (mode === 'menarche') return this._renderMenarcheChecklist(stateObj);
+      if (mode === 'menopause') return this._renderMenopauseTimeline(stateObj);
       return this._renderCyclePhaseOverview(stateObj, discreetMode);
+    }
+
+    _renderMenopauseTimeline(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const daysSinceLastPeriod = attrs.days_since_last_period ?? 0;
+      const milestones = [
+        { days: 0, labelKey: 'milestone_last_period' },
+        { days: 90, labelKey: 'milestone_3_months' },
+        { days: 180, labelKey: 'milestone_6_months' },
+        { days: 270, labelKey: 'milestone_9_months' },
+        { days: 365, labelKey: 'milestone_menopause_confirmed' },
+      ];
+      const items = milestones.map((m) => {
+        const state = daysSinceLastPeriod >= m.days ? 'done' : (Math.abs(daysSinceLastPeriod - m.days) < 15 ? 'current' : '');
+        return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;min-width:88px;flex:1;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${state === 'done' ? 'var(--mc-sage)' : (state === 'current' ? 'var(--mc-rose-deep)' : 'var(--card-background-color,#fff)')};border:2.5px solid ${state === 'current' ? 'var(--mc-rose-deep)' : 'var(--mc-sage)'};${state === 'current' ? 'box-shadow:0 0 0 4px var(--mc-rose-tint);' : ''}"></div>
+          <div style="font-size:11px;font-weight:600;">${escapeHtml(this._t(m.labelKey) || m.labelKey)}</div>
+        </div>`;
+      }).join('<div style="flex:0.4;height:2px;background:var(--divider-color,#e5e7eb);align-self:flex-start;margin-top:6px;"></div>');
+      return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>
+        <p class="helper" style="margin-top:8px;font-size:0.7rem;">${this._t('dashboard_menopause_timeline_note') || 'Meilensteine seit der letzten erfassten Periode. Menopause gilt klinisch als bestätigt nach 12 Monaten ohne Periode.'}</p>`;
     }
 
     _renderNfpSummaryLine(stateObj) {
@@ -2490,8 +2562,8 @@
       }
       if (widgetId === 'phase_timeline') {
         const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
-        const mode = this._resolveMode(stateObj);
-        const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : 'dashboard_widget_today_status');
+        const mode = this._resolveContentMode(stateObj);
+        const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : (mode === 'menopause' ? 'dashboard_widget_menopause_timeline' : 'dashboard_widget_today_status'));
         return `<article class="card ${spanClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
       }
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
@@ -2549,7 +2621,7 @@
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       const availableEntities = this._availableEntities || this._getAvailableEntitiesFallback();
       const discreetMode = !!this._prefs?.discreetMode;
-      const mode = this._resolveMode(stateObj);
+      const mode = this._resolveContentMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
       if (mode === 'pregnancy') {
         order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction', 'calendar_card'].includes(id));
@@ -2568,6 +2640,16 @@
           'fetal_development',
         ];
         order = order.filter((id) => !menarcheHidden.includes(id));
+      } else if (mode === 'menopause') {
+        // No regular cycle to analyze anymore — hide phase/fertility/temperature
+        // widgets and cycle-length anomaly detection, but keep general symptom
+        // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
+        // bleeding and symptoms are still worth logging during perimenopause.
+        const menopauseHidden = [
+          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'anomaly_insights', 'fetal_development',
+        ];
+        order = order.filter((id) => !menopauseHidden.includes(id));
       } else {
         order = order.filter((id) => id !== 'fetal_development');
       }

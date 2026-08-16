@@ -640,5 +640,19 @@
   "dashboard_calendar_tap_hint": "Touchez un jour pour marquer ou retirer un début de règles.",
   "dashboard_calendar_day_added": "Marqué",
   "dashboard_calendar_day_removed": "Retiré",
-  "dashboard_calendar_fallback_note": "(La saisie complète des symptômes — intensité des règles, douleurs, glaire cervicale, etc. — se charge automatiquement dès qu'elle est disponible.)"
+  "dashboard_calendar_fallback_note": "(La saisie complète des symptômes — intensité des règles, douleurs, glaire cervicale, etc. — se charge automatiquement dès qu'elle est disponible.)",
+  "dashboard_last_period": "Dernières règles",
+  "dashboard_menopause_threshold": "12 mois sans règles",
+  "dashboard_days_since_last_period": "Jours depuis les dernières règles",
+  "dashboard_days_to_confirmed": "Jours avant confirmation",
+  "dashboard_months_tracked": "Mois suivis",
+  "dashboard_menopause_confirmed": "Confirmée",
+  "dashboard_perimenopause": "Périménopause",
+  "dashboard_widget_menopause_timeline": "Chronologie de la ménopause",
+  "dashboard_menopause_timeline_note": "Étapes depuis vos dernières règles enregistrées. La ménopause est cliniquement considérée comme confirmée après 12 mois sans règles.",
+  "milestone_last_period": "Dernières règles",
+  "milestone_3_months": "3 mois",
+  "milestone_6_months": "6 mois",
+  "milestone_9_months": "9 mois",
+  "milestone_menopause_confirmed": "12 mois — confirmée"
 }

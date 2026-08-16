@@ -31,7 +31,6 @@
           "pregnancy_high_risk": "High-risk pregnancy",
           "pregnancy_risk_notes": "Risk notes (optional, e.g. condition or monitoring focus)",
           "pre_menarche_enabled": "Enable pre-menarche tracking",
-          "estimated_menarche_date": "Estimated menarche date (YYYY-MM-DD)",
           "family_menarche_age": "Family menarche age (8–20, optional)",
           "menopause_enabled": "Enable menopause mode",
           "menopause_start_date": "Menopause start date (YYYY-MM-DD)",

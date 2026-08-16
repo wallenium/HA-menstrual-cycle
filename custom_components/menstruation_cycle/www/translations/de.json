@@ -673,5 +673,19 @@
   "dashboard_calendar_tap_hint": "Tag antippen, um einen Periodenstart zu markieren oder zu entfernen.",
   "dashboard_calendar_day_added": "Markiert",
   "dashboard_calendar_day_removed": "Entfernt",
-  "dashboard_calendar_fallback_note": "(Für Blutungsstärke, Schmerzen, Zervixschleim u. a. wird die vollständige Kalender-Ressource geladen, sobald verfügbar.)"
+  "dashboard_calendar_fallback_note": "(Für Blutungsstärke, Schmerzen, Zervixschleim u. a. wird die vollständige Kalender-Ressource geladen, sobald verfügbar.)",
+  "dashboard_last_period": "Letzte Periode",
+  "dashboard_menopause_threshold": "12 Monate ohne Periode",
+  "dashboard_days_since_last_period": "Tage seit letzter Periode",
+  "dashboard_days_to_confirmed": "Tage bis bestätigt",
+  "dashboard_months_tracked": "Monate erfasst",
+  "dashboard_menopause_confirmed": "Bestätigt",
+  "dashboard_perimenopause": "Perimenopause",
+  "dashboard_widget_menopause_timeline": "Menopause-Zeitlinie",
+  "dashboard_menopause_timeline_note": "Meilensteine seit deiner letzten erfassten Periode. Menopause gilt klinisch als bestätigt nach 12 Monaten ohne Periode.",
+  "milestone_last_period": "Letzte Periode",
+  "milestone_3_months": "3 Monate",
+  "milestone_6_months": "6 Monate",
+  "milestone_9_months": "9 Monate",
+  "milestone_menopause_confirmed": "12 Monate — bestätigt"
 }

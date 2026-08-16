@@ -673,5 +673,19 @@
   "dashboard_calendar_tap_hint": "Tap a day to mark or remove a period start.",
   "dashboard_calendar_day_added": "Marked",
   "dashboard_calendar_day_removed": "Removed",
-  "dashboard_calendar_fallback_note": "(Full symptom logging — bleeding strength, pain, cervical mucus, and more — loads automatically once available.)"
+  "dashboard_calendar_fallback_note": "(Full symptom logging — bleeding strength, pain, cervical mucus, and more — loads automatically once available.)",
+  "dashboard_last_period": "Last period",
+  "dashboard_menopause_threshold": "12 months without a period",
+  "dashboard_days_since_last_period": "Days since last period",
+  "dashboard_days_to_confirmed": "Days until confirmed",
+  "dashboard_months_tracked": "Months tracked",
+  "dashboard_menopause_confirmed": "Confirmed",
+  "dashboard_perimenopause": "Perimenopause",
+  "dashboard_widget_menopause_timeline": "Menopause Timeline",
+  "dashboard_menopause_timeline_note": "Milestones since your last logged period. Menopause is clinically considered confirmed after 12 months without a period.",
+  "milestone_last_period": "Last period",
+  "milestone_3_months": "3 months",
+  "milestone_6_months": "6 months",
+  "milestone_9_months": "9 months",
+  "milestone_menopause_confirmed": "12 months — confirmed"
 }
