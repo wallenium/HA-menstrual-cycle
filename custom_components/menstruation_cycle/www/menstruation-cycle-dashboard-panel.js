@@ -460,7 +460,6 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
-      this._calendarMessage = '';
       this._i18nLanguagePromises = {};
       this._lastRenderSig = null;
       this._debugEnabled = this._readDebugFlag();
@@ -1047,45 +1046,6 @@
       this.render();
     }
 
-    async _toggleCalendarDay(iso, isCurrentlyStart) {
-      if (!this._hass || !this._selectedEntityId) return;
-      const stateObj = this._hass.states?.[this._selectedEntityId];
-      const attrs = stateObj?.attributes || {};
-      const isPregnant = !!(attrs.is_pregnant ?? (attrs.pregnancy_data || {}).is_pregnant);
-      if (isPregnant) return;
-
-      const service = isCurrentlyStart ? 'remove_cycle_start' : 'add_cycle_start';
-      const entityId = this._selectedEntityId;
-      const profile = attrs.profile;
-      const entryId = attrs.entry_id;
-      const attempts = [
-        { date: iso, entity_id: entityId, ...(profile ? { profile } : {}), ...(entryId ? { entry_id: entryId } : {}) },
-        { date: iso, entity_id: entityId, ...(profile ? { profile } : {}) },
-        { date: iso, ...(profile ? { profile } : {}), ...(entryId ? { entry_id: entryId } : {}) },
-        { date: iso, ...(profile ? { profile } : {}) },
-        { date: iso },
-      ];
-      let lastError = null;
-      for (const payload of attempts) {
-        try {
-          await this._hass.callService('menstruation_cycle', service, payload);
-          lastError = null;
-          break;
-        } catch (err) {
-          lastError = err;
-        }
-      }
-      this._calendarMessage = lastError
-        ? this._t('symptom_save_error')
-        : (isCurrentlyStart ? (this._t('dashboard_calendar_day_removed') || 'Entfernt') : (this._t('dashboard_calendar_day_added') || 'Markiert'));
-      try {
-        await this._hass.callService('homeassistant', 'update_entity', { entity_id: entityId });
-      } catch (_error) {
-        // update_entity may be unavailable in some environments — non-fatal.
-      }
-      this.render();
-    }
-
     _moveWidget(id, direction) {
       const target = this._editMode ? this._editDraft : this._prefs;
       if (!target) return;
@@ -1142,9 +1102,6 @@
           this._savePrefs();
         }
         this.render();
-      } else if (action === 'calendar-day' && target.dataset.date) {
-        const isStart = target.dataset.isStart === 'true';
-        this._toggleCalendarDay(target.dataset.date, isStart);
       }
     }
 
@@ -1364,95 +1321,19 @@
       }
       const tagName = 'menstruation-calendar-card';
       if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
-        // This is a standard Lovelace-style card: it needs `.hass` and `.setConfig()`
-        // assigned as real JS properties, not HTML attributes (it has no
-        // observedAttributes/getAttribute fallback at all). A raw
-        // `<menstruation-calendar-card entity-id="...">` string would render blank
-        // forever, since its internal _config/hass would never be set. Instead we
-        // render an empty mount point here and attach the real element to it via
-        // DOM APIs in _mountEmbeddedCards(), which runs after every innerHTML update.
+        // Standard Lovelace-style card: needs `.hass` and `.setConfig()` assigned as
+        // real JS properties (no HTML-attribute fallback). Rendered as an empty mount
+        // point here; the real element is attached via DOM APIs in
+        // _mountEmbeddedCards(), which runs after every innerHTML update.
         return `<div class="calendar-card-mount" data-mount="calendar-card"></div>`;
       }
-      // Native fallback: mini calendar showing current month with period-start markers
-      const attrs = stateObj?.attributes || {};
-      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
-      const forecast = attrs.period_forecast || {};
-      const windowStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
-      const windowEnd = forecast.window_end ?? null;
-
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      const firstDay = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const todayDate = today.getDate();
-
-      const monthLabel = today.toLocaleDateString(this._lang === 'de' ? 'de-DE' : 'en-US', { month: 'long', year: 'numeric' });
-
-      const startDates = new Set(
-        allStarts
-          .filter((d) => d && d.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
-          .map((d) => parseInt(d.slice(8, 10), 10))
-      );
-
-      const inWindow = (day) => {
-        if (!windowStart) return false;
-        const d = new Date(year, month, day);
-        const ws = new Date(windowStart);
-        const we = windowEnd ? new Date(windowEnd) : ws;
-        return d >= ws && d <= we;
-      };
-
-      const dayNames = this._lang === 'de'
-        ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-        : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-      const headerCells = dayNames.map((d) => `<th style="font-size:0.7rem;color:var(--secondary-text-color,#6b7280);padding:2px 0;text-align:center">${d}</th>`).join('');
-
-      const cells = [];
-      // Leading empty cells
-      const leadOffset = this._lang === 'de' ? (firstDay === 0 ? 6 : firstDay - 1) : firstDay;
-      for (let i = 0; i < leadOffset; i++) cells.push('<td></td>');
-      const isPregnant = !!(attrs.is_pregnant ?? (attrs.pregnancy_data || {}).is_pregnant);
-      for (let day = 1; day <= daysInMonth; day++) {
-        const isToday = day === todayDate;
-        const isPeriodStart = startDates.has(day);
-        const isPredicted = inWindow(day);
-        const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        let bg = 'transparent';
-        let border = '';
-        if (isToday) { bg = 'var(--mc-plum,#6B3654)'; }
-        else if (isPeriodStart) { bg = 'var(--mc-rose-deep)'; }
-        else if (isPredicted) { bg = 'var(--mc-rose-tint)'; border = 'border:1px dashed var(--mc-rose);'; }
-        const color = (isToday || isPeriodStart) ? '#fff' : 'inherit';
-        const clickable = !isPregnant;
-        cells.push(`<td style="text-align:center;padding:2px;"><span ${clickable ? `data-action="calendar-day" data-date="${iso}" data-is-start="${isPeriodStart}"` : ''} style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${bg};${border}color:${color};font-size:0.75rem;font-weight:${isToday ? 700 : 400};${clickable ? 'cursor:pointer;' : ''}">${day}</span></td>`);
-      }
-
-      const rows = [];
-      for (let i = 0; i < cells.length; i += 7) {
-        rows.push(`<tr>${cells.slice(i, i + 7).join('')}</tr>`);
-      }
-
-      const legend = `
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_label_state')}</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-rose-tint);border:1px dashed var(--mc-rose);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_fertility_window')}</span>
-          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_today')}</span>
-        </div>
-        ${!isPregnant ? `<p class="helper" style="margin-top:6px;font-size:0.7rem;">${this._t('dashboard_calendar_tap_hint') || 'Tag antippen, um einen Periodenstart zu markieren oder zu entfernen.'} ${this._t('dashboard_calendar_fallback_note') || '(Für Blutungsstärke, Schmerzen, Zervixschleim u. a. wird die vollständige Kalender-Ressource geladen, sobald verfügbar.)'}</p>` : ''}
-        ${this._calendarMessage ? `<p class="message" style="margin-top:4px;">${escapeHtml(this._calendarMessage)}</p>` : ''}
-      `;
-
-      return `
-        <div style="overflow-x:auto;">
-          <div style="font-size:0.85rem;font-weight:600;margin-bottom:6px;">${escapeHtml(monthLabel)}</div>
-          <table style="border-collapse:collapse;width:100%;">
-            <thead><tr>${headerCells}</tr></thead>
-            <tbody>${rows.join('')}</tbody>
-          </table>
-          ${legend}
-        </div>
-      `;
+      // Deliberately no separate fallback calendar here. The real
+      // menstruation-calendar-card opens a full symptom-logging dialog on tap; an
+      // independent fallback grid would need different (and inevitably inconsistent)
+      // tap behavior, which risks accidentally toggling a period start. Better to
+      // show a clear loading state and let connectedCallback's whenDefined() watcher
+      // re-render automatically once the real card's resource finishes loading.
+      return `<div class="helper">${this._t('dashboard_calendar_loading') || 'Kalender wird geladen …'}</div>`;
     }
 
     _renderStatisticsCard(stateObj) {
@@ -2499,12 +2380,10 @@
       const forecast = attrs.period_forecast || {};
       const predictedStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
 
-      const startSet = new Set(allStarts);
-      if (predictedStart) startSet.add(predictedStart + '_pred');
-
       const today = new Date();
       const currentYear = today.getFullYear();
       const startYear = today.getMonth() < 6 ? currentYear - 1 : currentYear;
+      const isDe = this._lang === 'de';
 
       const months = [];
       for (let m = 0; m < 12; m++) {
@@ -2512,37 +2391,37 @@
         const yr = monthDate.getFullYear();
         const mo = monthDate.getMonth();
         const daysInMonth = new Date(yr, mo + 1, 0).getDate();
-        const monthLabel = monthDate.toLocaleDateString(this._lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' });
+        const monthLabel = monthDate.toLocaleDateString(isDe ? 'de-DE' : 'en-US', { month: 'short', year: '2-digit' });
         const isCurrentMonth = yr === today.getFullYear() && mo === today.getMonth();
+        const firstWeekday = new Date(yr, mo, 1).getDay();
+        const leadOffset = isDe ? (firstWeekday === 0 ? 6 : firstWeekday - 1) : firstWeekday;
 
-        const days = [];
+        const dayCells = [];
+        for (let i = 0; i < leadOffset; i++) dayCells.push('<div class="year-day-cell"></div>');
         for (let d = 1; d <= daysInMonth; d++) {
           const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           const isPeriodStart = allStarts.includes(isoDate);
           const isPredicted = predictedStart && isoDate === predictedStart;
           const isToday = isCurrentMonth && d === today.getDate();
 
-          let fill = 'var(--divider-color,#e5e7eb)';
-          if (isToday) fill = 'var(--mc-plum,#6B3654)';
-          else if (isPeriodStart) fill = 'var(--mc-rose-deep)';
-          else if (isPredicted) fill = 'rgba(232,99,125,0.32)';
+          let bg = 'var(--divider-color,#e5e7eb)';
+          if (isToday) bg = 'var(--mc-plum,#6B3654)';
+          else if (isPeriodStart) bg = 'var(--mc-rose-deep)';
+          else if (isPredicted) bg = 'rgba(232,99,125,0.32)';
 
-          const sz = 5;
-          days.push(`<rect x="${(d - 1) * (sz + 1)}" y="0" width="${sz}" height="${sz}" fill="${fill}" rx="1"/>`);
+          dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${isoDate}"></div>`);
         }
 
         months.push(`
-          <div class="year-month" ${isCurrentMonth ? 'style="opacity:1"' : 'style="opacity:0.75"'}>
+          <div class="year-month" ${isCurrentMonth ? 'style="opacity:1"' : 'style="opacity:0.8"'}>
             <div class="year-month-label">${escapeHtml(monthLabel)}</div>
-            <svg viewBox="0 0 ${(daysInMonth) * 6} 5" width="${(daysInMonth) * 6}" height="5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="display:block;">
-              ${days.join('')}
-            </svg>
+            <div class="year-month-days">${dayCells.join('')}</div>
           </div>
         `);
       }
 
       const legend = `
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
           ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
@@ -3061,21 +2940,36 @@
           /* Year overview */
           .year-overview-wrap { width: 100%; }
           .year-months-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 12px;
-            align-items: flex-start;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px 20px;
+          }
+          @media (max-width: 700px) {
+            .year-months-grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (max-width: 420px) {
+            .year-months-grid { grid-template-columns: 1fr; }
           }
           .year-month {
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            align-items: flex-start;
+            gap: 6px;
           }
           .year-month-label {
+            font-family: var(--mc-font-mono);
             font-size: 0.7rem;
             color: var(--secondary-text-color, #6b7280);
             white-space: nowrap;
+          }
+          .year-month-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+          }
+          .year-day-cell {
+            aspect-ratio: 1 / 1;
+            border-radius: 3px;
+            min-width: 10px;
           }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
