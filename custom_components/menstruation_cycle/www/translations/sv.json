@@ -694,5 +694,9 @@
   "dashboard_stock_hint": "Lager från hushållsinventeringen (delat mellan alla profiler).",
   "dashboard_period_day_label": "Mens",
   "dashboard_learning_phase": "Inlärningsfas — prognoserna är fortfarande grova, de blir mer exakta med fler loggade cykler.",
-  "dashboard_learning_phase_progress": "Inlärningsfas — {have} av {need} cykler loggade för mer tillförlitliga prognoser."
+  "dashboard_learning_phase_progress": "Inlärningsfas — {have} av {need} cykler loggade för mer tillförlitliga prognoser.",
+  "dashboard_calendar_loading": "Laddar…",
+  "dashboard_widget_inventory_card": "Produktinventering",
+  "dashboard_widget_timer_card": "Timer",
+  "dashboard_widget_support_card": "Stöd och information"
 }

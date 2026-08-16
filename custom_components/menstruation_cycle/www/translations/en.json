@@ -727,5 +727,9 @@
   "dashboard_stock_hint": "Stock from the household inventory (shared across all profiles).",
   "dashboard_period_day_label": "Period",
   "dashboard_learning_phase": "Learning phase — predictions are still rough, they get more precise with more logged cycles.",
-  "dashboard_learning_phase_progress": "Learning phase — {have} of {need} cycles logged for more reliable predictions."
+  "dashboard_learning_phase_progress": "Learning phase — {have} of {need} cycles logged for more reliable predictions.",
+  "dashboard_calendar_loading": "Loading…",
+  "dashboard_widget_inventory_card": "Product Inventory",
+  "dashboard_widget_timer_card": "Timer",
+  "dashboard_widget_support_card": "Support & Education"
 }

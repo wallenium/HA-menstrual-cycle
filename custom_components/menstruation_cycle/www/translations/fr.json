@@ -694,5 +694,9 @@
   "dashboard_stock_hint": "Stock provenant de l'inventaire du foyer (partagé entre tous les profils).",
   "dashboard_period_day_label": "Règles",
   "dashboard_learning_phase": "Phase d'apprentissage — les prévisions sont encore approximatives, elles s'affineront avec plus de cycles enregistrés.",
-  "dashboard_learning_phase_progress": "Phase d'apprentissage — {have} cycles sur {need} enregistrés pour des prévisions plus fiables."
+  "dashboard_learning_phase_progress": "Phase d'apprentissage — {have} cycles sur {need} enregistrés pour des prévisions plus fiables.",
+  "dashboard_calendar_loading": "Chargement…",
+  "dashboard_widget_inventory_card": "Inventaire des produits",
+  "dashboard_widget_timer_card": "Minuteur",
+  "dashboard_widget_support_card": "Soutien et éducation"
 }

@@ -164,6 +164,10 @@
     dashboard_period_day_label: 'Period',
     dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
+    dashboard_calendar_loading: 'Loading…',
+    dashboard_widget_inventory_card: 'Product Inventory',
+    dashboard_widget_timer_card: 'Timer',
+    dashboard_widget_support_card: 'Support & Education',
     dashboard_loading: 'Loading…',
     dashboard_onboarding_title: 'Welcome! No data logged yet.',
     dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
@@ -312,6 +316,10 @@
     { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, span: 7 },
     { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, span: 12 },
     { id: 'product_usage', title: 'dashboard_widget_product_usage', sensitive: false, span: 12 },
+    { id: 'inventory_card', title: 'dashboard_widget_inventory_card', sensitive: false, span: 6 },
+    { id: 'timer_card', title: 'dashboard_widget_timer_card', sensitive: false, span: 6 },
+    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
+    { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
@@ -331,6 +339,10 @@
     'cycle_history',
     'calendar_card',
     'product_usage',
+    'inventory_card',
+    'timer_card',
+    'statistics_card',
+    'support_card',
     'symptom_heatmap',
     'anomaly_insights',
     'symptom_insights',
@@ -354,6 +366,12 @@
         basal_temp: false,
         calendar_card: false,
         product_usage: true,
+        inventory_card: true,
+        timer_card: true,
+        statistics_card: false,
+        // Shown by default in pre-menarche/early-menarche modes, matching the
+        // card's own documented default visibility.
+        support_card: true,
         symptom_heatmap: false,
         anomaly_insights: false,
         symptom_insights: false,
@@ -378,6 +396,12 @@
         basal_temp: true,
         calendar_card: true,
         product_usage: true,
+        inventory_card: true,
+        timer_card: true,
+        statistics_card: true,
+        // Hidden by default in established_cycle mode, matching the card's own
+        // documented default visibility — still available via edit mode.
+        support_card: false,
         symptom_heatmap: true,
         anomaly_insights: true,
         symptom_insights: true,
@@ -1461,6 +1485,12 @@
       return `<div style="display:grid;gap:8px;">${rows}</div>${inventoryHint}`;
     }
 
+    _renderEmbeddedCardMount(mountKey) {
+      return `<div class="calendar-card-mount" data-mount="${mountKey}">
+        <div class="helper">${this._t('dashboard_calendar_loading') || 'Wird geladen …'}</div>
+      </div>`;
+    }
+
     _renderCalendarCard(stateObj) {
       if (!this._selectedEntityId) {
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
@@ -1471,7 +1501,7 @@
         // real JS properties (no HTML-attribute fallback). Rendered as an empty mount
         // point here; the real element is attached via DOM APIs in
         // _mountEmbeddedCards(), which runs after every innerHTML update.
-        return `<div class="calendar-card-mount" data-mount="calendar-card"></div>`;
+        return this._renderEmbeddedCardMount('calendar-card');
       }
       // Deliberately no separate fallback calendar here. The real
       // menstruation-calendar-card opens a full symptom-logging dialog on tap; an
@@ -2442,7 +2472,7 @@
 
       const tagName = 'menstruation-cycle-heatmap-card';
       if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
-        return `${statHeader}<div class="calendar-card-mount" data-mount="heatmap-card"></div>`;
+        return `${statHeader}${this._renderEmbeddedCardMount('heatmap-card')}`;
       }
       // Native fallback: simple 4-week × symptom grid
       const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
@@ -2896,6 +2926,10 @@
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
       if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
       if (widgetId === 'product_usage') body = this._renderProductUsage(stateObj);
+      if (widgetId === 'inventory_card') body = this._renderEmbeddedCardMount('inventory-card');
+      if (widgetId === 'timer_card') body = this._renderEmbeddedCardMount('timer-card');
+      if (widgetId === 'statistics_card') body = this._renderEmbeddedCardMount('statistics-card');
+      if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
@@ -3006,7 +3040,7 @@
       const mode = this._resolveContentMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
       if (mode === 'pregnancy') {
-        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction', 'calendar_card'].includes(id));
+        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction', 'calendar_card', 'statistics_card'].includes(id));
         if (!order.includes('fetal_development')) {
           const idx = order.indexOf('phase_timeline');
           order = idx >= 0
@@ -3018,7 +3052,7 @@
         // that depends on cycle history, phases, fertility, or temperature data.
         const menarcheHidden = [
           'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
-          'calendar_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
+          'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
           'fetal_development',
         ];
         order = order.filter((id) => !menarcheHidden.includes(id));
@@ -3503,25 +3537,61 @@
     }
 
     /**
-     * Attaches real Lovelace-style child card elements (menstruation-calendar-card,
-     * menstruation-cycle-heatmap-card) to their mount-point placeholders via DOM APIs.
-     * These cards require `.hass` and `.setConfig()` to be assigned as JS properties —
-     * they have no HTML-attribute fallback — so they cannot be embedded as innerHTML
-     * strings. Runs after every render() since the whole shadow DOM is rebuilt each time.
+     * Attaches real Lovelace-style child card elements to their mount-point
+     * placeholders via DOM APIs. These cards require `.hass` and `.setConfig()` to
+     * be assigned as JS properties — they have no HTML-attribute fallback — so they
+     * cannot be embedded as innerHTML strings. Runs after every render() since the
+     * whole shadow DOM is rebuilt each time.
      */
     _mountEmbeddedCards() {
-      if (!this._selectedEntityId || !this._hass) return;
+      if (!this._hass) return;
+      const stateObj = this._selectedEntityId ? this._hass.states?.[this._selectedEntityId] : null;
+      const profile = stateObj?.attributes?.profile;
+
       const mounts = [
-        { selector: '[data-mount="calendar-card"]', tag: 'menstruation-calendar-card' },
-        { selector: '[data-mount="heatmap-card"]', tag: 'menstruation-cycle-heatmap-card' },
+        {
+          selector: '[data-mount="calendar-card"]', tag: 'menstruation-calendar-card',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
+        },
+        {
+          selector: '[data-mount="heatmap-card"]', tag: 'menstruation-cycle-heatmap-card',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
+        },
+        {
+          // No entity required — this is general educational content, not tied to
+          // a specific profile's tracked data.
+          selector: '[data-mount="support-card"]', tag: 'menstruation-support-card',
+          config: () => ({}),
+        },
+        {
+          // Household-wide inventory; defaults to the fixed global stock entity, so
+          // no per-profile entity is needed here either.
+          selector: '[data-mount="inventory-card"]', tag: 'menstruation-product-inventory-card',
+          config: () => ({}),
+        },
+        {
+          // The countdown timer is keyed to a *different* entity than the main
+          // profile sensor: menstruation_cycle_timer.{profile}, set up by the
+          // save_timer_state service.
+          selector: '[data-mount="timer-card"]', tag: 'menstruation-countdown-timer',
+          config: () => (profile ? { entity: `menstruation_cycle_timer.${profile}` } : null),
+        },
+        {
+          selector: '[data-mount="statistics-card"]', tag: 'menstruation-statistics-card',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
+        },
       ];
-      mounts.forEach(({ selector, tag }) => {
+
+      mounts.forEach(({ selector, tag, config }) => {
         const host = this.shadowRoot?.querySelector(selector);
         if (!host || typeof customElements === 'undefined' || !customElements.get(tag)) return;
+        const cfg = config();
+        if (cfg === null) return;
         try {
           const el = document.createElement(tag);
-          el.setConfig({ entity: this._selectedEntityId });
+          el.setConfig(cfg);
           el.hass = this._hass;
+          host.innerHTML = '';
           host.appendChild(el);
         } catch (err) {
           // eslint-disable-next-line no-console
