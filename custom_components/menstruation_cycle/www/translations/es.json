@@ -701,5 +701,6 @@
   "dashboard_widget_support_card": "Apoyo y educación",
   "dashboard_birth": "Nacimiento",
   "dashboard_days_remaining": "Días restantes",
-  "dashboard_postpartum_disclaimer": "La recuperación varía mucho de una persona a otra — este período es una guía aproximada, no una indicación médica."
+  "dashboard_postpartum_disclaimer": "La recuperación varía mucho de una persona a otra — este período es una guía aproximada, no una indicación médica.",
+  "dashboard_card_unavailable": "Tarjeta no disponible — comprueba que el recurso esté correctamente registrado en Home Assistant (recarga en HACS, borra la caché del navegador)."
 }
