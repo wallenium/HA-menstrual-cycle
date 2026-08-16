@@ -23,9 +23,12 @@
         "data": {
           "friendly_name": "Visningsnamn",
           "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)",
+          "birth_date": "Födelsedatum (ÅÅÅÅ-MM-DD, valfritt — möjliggör åldersvisning och förbättrar läget före menarche)",
           "period_duration_days": "Mensens längd (dagar)",
           "pregnancy_enabled": "Aktivera graviditetsläge",
           "pregnancy_start_date": "Graviditetens startdatum (ÅÅÅÅ-MM-DD)",
+          "pregnancy_high_risk": "Riskgraviditet",
+          "pregnancy_risk_notes": "Anteckningar om risker (valfritt, t.ex. tillstånd eller uppföljningsfokus)",
           "pre_menarche_enabled": "Aktivera spårning före menarche",
           "estimated_menarche_date": "Uppskattat menarche-datum (ÅÅÅÅ-MM-DD)",
           "family_menarche_age": "Menarche-ålder i familjen (8–20, valfritt)",

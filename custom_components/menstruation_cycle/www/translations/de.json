@@ -659,5 +659,15 @@
   "fetal_skill_37_2": "Lunge nähert sich der Reife",
   "fetal_size_40": "Kürbis",
   "fetal_skill_40_1": "Gilt als ausgereift („reif“ ab SSW 39)",
-  "fetal_skill_40_2": "Bereit für die Geburt"
+  "fetal_skill_40_2": "Bereit für die Geburt",
+  "dashboard_menarche_estimate_age": "Sehr grobe Schätzung anhand des Alters — wird genauer, sobald Anzeichen erfasst werden",
+  "dashboard_age_label": "Alter",
+  "dashboard_birth_date_hint": "Geburtsdatum in den Integrationseinstellungen hinterlegen, um Alter und Vor-der-Menarche-Schätzung zu verbessern.",
+  "dashboard_high_risk_pregnancy": "Risikoschwangerschaft",
+  "dashboard_high_risk_monitoring": "Engmaschigere Kontrolle empfohlen",
+  "dashboard_high_risk_milestone_note": "Bei Risikoschwangerschaften sind meist engmaschigere, individuell festgelegte Kontrolltermine üblich — zusätzlich zu den Standardterminen oben. Bitte mit der behandelnden Praxis abstimmen.",
+  "pregnancy_risk_notes": "Notizen",
+  "nfp_analysis": "NFP",
+  "legend_cervix_peak": "Zervixschleim-Höhepunkt erkannt",
+  "temperature_rise_day": "Temperaturanstieg"
 }

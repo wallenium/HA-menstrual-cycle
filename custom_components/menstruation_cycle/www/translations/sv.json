@@ -626,5 +626,15 @@
   "fetal_skill_37_2": "Lungorna närmar sig mognad",
   "fetal_size_40": "Pumpa",
   "fetal_skill_40_1": "Anses fullgången (\"fullgången\" från vecka 39)",
-  "fetal_skill_40_2": "Redo för förlossning"
+  "fetal_skill_40_2": "Redo för förlossning",
+  "dashboard_menarche_estimate_age": "Mycket grov uppskattning baserad på ålder — blir mer exakt när tecken registreras",
+  "dashboard_age_label": "Ålder",
+  "dashboard_birth_date_hint": "Lägg till ett födelsedatum i integrationsinställningarna för att visa ålder och förbättra uppskattningen inför menarche.",
+  "dashboard_high_risk_pregnancy": "Riskgraviditet",
+  "dashboard_high_risk_monitoring": "Tätare uppföljning rekommenderas",
+  "dashboard_high_risk_milestone_note": "Riskgraviditeter innebär oftast ytterligare, individuellt schemalagda kontroller utöver standardbesöken ovan — samordna gärna med din vårdgivare.",
+  "pregnancy_risk_notes": "Anteckningar",
+  "nfp_analysis": "NFP",
+  "legend_cervix_peak": "Cervixslemtopp upptäckt",
+  "temperature_rise_day": "Temperaturhöjning"
 }

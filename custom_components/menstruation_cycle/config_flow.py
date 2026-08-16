@@ -12,6 +12,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import slugify
 
 from .const import (
+    CONF_BIRTH_DATE,
     CONF_ESTIMATED_MENARCHE_DATE,
     CONF_FAMILY_MENARCHE_AGE,
     CONF_FRIENDLY_NAME,
@@ -24,6 +25,8 @@ from .const import (
     CONF_PERIOD_DURATION_DAYS,
     CONF_PRE_MENARCHE_ENABLED,
     CONF_PREGNANCY_ENABLED,
+    CONF_PREGNANCY_HIGH_RISK,
+    CONF_PREGNANCY_RISK_NOTES,
     CONF_PREGNANCY_START_DATE,
     CONF_PROFILE,
     CONF_CYCLE_LENGTH_OVERRIDE,
@@ -209,6 +212,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
         current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
         current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
+        current_birth_date = str(self._entry.data.get(CONF_BIRTH_DATE, "") or "")
+        current_pregnancy_high_risk = bool(pregnancy_data.get("high_risk", False))
+        current_pregnancy_risk_notes = str(pregnancy_data.get("risk_notes", "") or "")
         current_show_dashboard = bool(
             self._entry.options.get(
                 CONF_DASHBOARD_ENABLED,
@@ -237,10 +243,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE, "")).strip()
             men_date_raw = str(user_input.get(CONF_ESTIMATED_MENARCHE_DATE, "")).strip()
             meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE, "")).strip()
+            birth_date_raw = str(user_input.get(CONF_BIRTH_DATE, "")).strip()
 
             preg_date_parsed = _parse_date_opt(preg_date_raw)
             men_date_parsed = _parse_date_opt(men_date_raw)
             meno_date_parsed = _parse_date_opt(meno_date_raw)
+            birth_date_parsed = _parse_date_opt(birth_date_raw)
 
             if preg_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_PREGNANCY_START_DATE] = "invalid_date"
@@ -248,6 +256,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 errors[CONF_ESTIMATED_MENARCHE_DATE] = "invalid_date"
             if meno_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_MENOPAUSE_START_DATE] = "invalid_date"
+            if birth_date_parsed is _INVALID_DATE_SENTINEL:
+                errors[CONF_BIRTH_DATE] = "invalid_date"
+            elif birth_date_parsed and birth_date_parsed > date.today().isoformat():
+                errors[CONF_BIRTH_DATE] = "invalid_date"
 
             # Validate family menarche age
             family_age_raw = str(user_input.get(CONF_FAMILY_MENARCHE_AGE, "")).strip()
@@ -296,6 +308,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 new_pregnancy_data = {
                     "is_pregnant": pregnancy_enabled,
                     "start_date": new_preg_start,
+                    "high_risk": bool(user_input.get(CONF_PREGNANCY_HIGH_RISK, False)),
+                    "risk_notes": str(user_input.get(CONF_PREGNANCY_RISK_NOTES, "")).strip(),
                 }
                 new_menarche_data = {
                     "tracking_active": pre_menarche_enabled,
@@ -366,6 +380,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         CONF_FRIENDLY_NAME: new_friendly_name,
                         CONF_ICON: new_icon,
                         CONF_ONBOARDING_STAGE: new_onboarding_stage,
+                        CONF_BIRTH_DATE: birth_date_parsed or None,
                     },
                     title=new_friendly_name,
                 )
@@ -394,6 +409,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
                 vol.Optional(CONF_ICON, default=current_icon): str,
+                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date): str,
                 vol.Required(
                     CONF_PERIOD_DURATION_DAYS,
                     default=current_period_duration,
@@ -405,6 +421,14 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_PREGNANCY_START_DATE,
                     default=pregnancy_data.get("start_date") or "",
+                ): str,
+                vol.Optional(
+                    CONF_PREGNANCY_HIGH_RISK,
+                    default=current_pregnancy_high_risk,
+                ): bool,
+                vol.Optional(
+                    CONF_PREGNANCY_RISK_NOTES,
+                    default=current_pregnancy_risk_notes,
                 ): str,
                 vol.Optional(
                     CONF_PRE_MENARCHE_ENABLED,

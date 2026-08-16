@@ -626,5 +626,15 @@
   "fetal_skill_37_2": "Les poumons approchent de la maturité",
   "fetal_size_40": "Citrouille",
   "fetal_skill_40_1": "Considéré comme à terme (« à terme » dès la semaine 39)",
-  "fetal_skill_40_2": "Prêt pour la naissance"
+  "fetal_skill_40_2": "Prêt pour la naissance",
+  "dashboard_menarche_estimate_age": "Estimation très approximative basée sur l'âge — devient plus précise une fois des signes enregistrés",
+  "dashboard_age_label": "Âge",
+  "dashboard_birth_date_hint": "Renseignez une date de naissance dans les paramètres de l'intégration pour afficher l'âge et améliorer l'estimation pré-ménarche.",
+  "dashboard_high_risk_pregnancy": "Grossesse à risque",
+  "dashboard_high_risk_monitoring": "Surveillance plus rapprochée recommandée",
+  "dashboard_high_risk_milestone_note": "Les grossesses à risque impliquent généralement des consultations supplémentaires, programmées individuellement, en plus de celles indiquées ci-dessus — merci de vous coordonner avec votre professionnel de santé.",
+  "pregnancy_risk_notes": "Notes",
+  "nfp_analysis": "MNF",
+  "legend_cervix_peak": "Pic de glaire cervicale détecté",
+  "temperature_rise_day": "Hausse thermique"
 }

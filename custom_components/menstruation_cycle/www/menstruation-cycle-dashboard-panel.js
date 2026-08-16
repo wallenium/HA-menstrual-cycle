@@ -101,6 +101,16 @@
     dashboard_fetal_size_label: 'Size comparison',
     dashboard_menarche_estimate_from: 'Estimate based on',
     dashboard_menarche_estimate_generic: 'Rough estimate — becomes more precise once dated signs are logged',
+    dashboard_menarche_estimate_age: 'Very rough estimate based on age — becomes more precise once signs are logged',
+    dashboard_age_label: 'Age',
+    dashboard_birth_date_hint: 'Add a birth date in the integration settings to show age and improve the pre-menarche estimate.',
+    dashboard_high_risk_pregnancy: 'High-risk pregnancy',
+    dashboard_high_risk_monitoring: 'Closer monitoring recommended',
+    dashboard_high_risk_milestone_note: 'High-risk pregnancies usually involve additional, individually scheduled check-ups beyond the standard ones above — please coordinate with your care provider.',
+    pregnancy_risk_notes: 'Notes',
+    nfp_analysis: 'NFP',
+    temperature_rise_day: 'Temperature rise',
+    legend_cervix_peak: 'Cervical mucus peak detected',
     dashboard_week_unit: 'Week',
     dashboard_due_date_short: 'Due',
     trimester_1: '1st Trimester',
@@ -242,6 +252,7 @@
     { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, span: 7 },
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
     { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, span: 7 },
+    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 6 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
@@ -257,6 +268,7 @@
     'basal_temp',
     'phase_donut',
     'cycle_history',
+    'calendar_card',
     'symptom_heatmap',
     'anomaly_insights',
     'pain_mood_trend',
@@ -276,6 +288,7 @@
         cycle_history: false,
         phase_donut: true,
         basal_temp: false,
+        calendar_card: false,
         symptom_heatmap: false,
         anomaly_insights: false,
         pain_mood_trend: false,
@@ -296,6 +309,7 @@
         cycle_history: true,
         phase_donut: true,
         basal_temp: true,
+        calendar_card: true,
         symptom_heatmap: true,
         anomaly_insights: true,
         pain_mood_trend: true,
@@ -1446,6 +1460,21 @@
       const maxY = Math.max(...allLens) + 3;
       const yRange = maxY - minY || 1;
 
+      // Merged from the former standalone statistics card: min/max/std.dev/count
+      // computed over the same recent-cycles window, shown as a compact stat strip.
+      const minLen = Math.min(...allLens);
+      const maxLen = Math.max(...allLens);
+      const stdDev = allLens.length >= 2
+        ? Math.round(Math.sqrt(allLens.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / allLens.length) * 10) / 10
+        : null;
+      const statStrip = `
+        <div class="kpi-strip" style="margin-bottom:10px;">
+          <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">↓</span><span class="kpi-value">${minLen}d</span><span class="kpi-label">Min</span></div>
+          <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">↑</span><span class="kpi-value">${maxLen}d</span><span class="kpi-label">Max</span></div>
+          ${stdDev !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">±</span><span class="kpi-value">${stdDev}d</span><span class="kpi-label">${this._t('dashboard_anomaly_consistency')}</span></div>` : ''}
+          <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">#</span><span class="kpi-value">${allLens.length}</span><span class="kpi-label">${this._t('dashboard_widget_cycle_history')}</span></div>
+        </div>`;
+
       const barW = Math.max(2, Math.floor(chartW / recent.length) - 3);
       const gap = (chartW - barW * recent.length) / Math.max(1, recent.length - 1);
 
@@ -1489,6 +1518,7 @@
 
       return `
         <div class="cycle-history-wrap" role="img" aria-label="${escapeHtml(titleText)}">
+          ${statStrip}
           <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
             <title>${escapeHtml(titleText)}</title>
             ${yLabels}
@@ -1661,6 +1691,11 @@
       if (confidence !== null && confidence !== undefined) {
         kpis.push(`<div class="kpi-item mc-plum"><span class="kpi-icon" aria-hidden="true">🎯</span><span class="kpi-value">${escapeHtml(confidence)}</span><span class="kpi-label">${this._t('period_forecast_confidence')}</span></div>`);
       }
+      // Merged from the former standalone statistics card: NFP (symptothermal) analysis
+      const nfpAnalysis = attrs.nfp_analysis || {};
+      if (!discreetMode && nfpAnalysis.confidence_level) {
+        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(nfpAnalysis.confidence_level)}</span><span class="kpi-label">${this._t('nfp_analysis') || 'NFP'}</span></div>`);
+      }
 
       return `
         <div class="hero-layout" role="region" aria-label="Cycle at a glance">
@@ -1683,6 +1718,8 @@
       }
       const trimester = weeksPregnantRaw < 13 ? 1 : (weeksPregnantRaw < 27 ? 2 : 3);
       const weekUnit = this._t('dashboard_week_unit');
+      const isHighRisk = !!(attrs.pregnancy_high_risk ?? (attrs.pregnancy_data || {}).high_risk);
+      const riskNotes = attrs.pregnancy_risk_notes ?? (attrs.pregnancy_data || {}).risk_notes ?? null;
 
       const cx = 100, cy = 100, r = 82, sw = 15;
       const circumference = 2 * Math.PI * r;
@@ -1715,17 +1752,22 @@
           <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
           <div class="hw-sub">${escapeHtml(weekUnit)}</div>
           <div class="hw-tag">${this._t('trimester_' + trimester)}</div>
+          ${isHighRisk ? `<div class="hw-tag" style="margin-top:5px;background:var(--mc-amber-tint,#FBEEDC);color:#8a5a12;">⚠ ${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</div>` : ''}
         </div>`;
 
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
       kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
+      if (isHighRisk) {
+        kpis.push(`<div class="kpi-item" style="background:var(--mc-amber-tint,#FBEEDC);"><span class="kpi-icon" aria-hidden="true">⚠️</span><span class="kpi-value" style="color:#8a5a12;">${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</span><span class="kpi-label">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</span></div>`);
+      }
 
       return `
         <div class="hero-layout" role="region" aria-label="Pregnancy at a glance">
           <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
           <div class="kpi-strip">${kpis.join('')}</div>
-        </div>`;
+        </div>
+        ${isHighRisk && riskNotes ? `<p class="helper" style="margin-top:10px;font-size:0.72rem;"><strong>${this._t('pregnancy_risk_notes') || 'Notizen'}:</strong> ${escapeHtml(riskNotes)}</p>` : ''}`;
     }
 
     _renderMenarcheHero(stateObj, discreetMode) {
@@ -1738,6 +1780,17 @@
       const dynamic = _estimateMenarcheFromSigns(signs);
       const fallbackEstDate = attrs.estimated_menarche_date ?? (attrs.menarche_data || {}).estimated_date ?? null;
       const fallbackDaysUntil = attrs.days_until_menarche ?? null;
+      // Weakest fallback: birth_date + population-typical menarche age (~12), only used
+      // when nothing more specific (dated signs, family history) is available.
+      let ageBasedEstimate = null;
+      if (!dynamic && !fallbackEstDate && attrs.birth_date) {
+        const born = new Date(attrs.birth_date);
+        if (!Number.isNaN(born.getTime())) {
+          const est = new Date(born);
+          est.setFullYear(est.getFullYear() + 12);
+          ageBasedEstimate = est;
+        }
+      }
 
       const today = new Date(this._todayIso());
       let estDateStr; let daysUntil; let pct; let sourceNote;
@@ -1750,13 +1803,23 @@
         const elapsed = today - anchor;
         pct = totalSpan > 0 ? Math.round(Math.min(100, Math.max(0, (elapsed / totalSpan) * 100))) : 100;
         sourceNote = `${this._t('dashboard_menarche_estimate_from') || 'Schätzung basiert auf'}: ${this._t(dynamic.sourceSign) || dynamic.sourceSign}`;
-      } else {
+      } else if (fallbackEstDate) {
         estDateStr = fallbackEstDate;
         daysUntil = fallbackDaysUntil;
         pct = Math.round((observedCount / signKeys.length) * 100);
         sourceNote = observedCount > 0
           ? (this._t('dashboard_menarche_estimate_generic') || 'Grobschätzung — Datum wird genauer, sobald Anzeichen mit Datum erfasst sind')
           : '';
+      } else if (ageBasedEstimate) {
+        estDateStr = ageBasedEstimate.toISOString().slice(0, 10);
+        daysUntil = Math.round((ageBasedEstimate - today) / 86400000);
+        pct = Math.round((observedCount / signKeys.length) * 100);
+        sourceNote = this._t('dashboard_menarche_estimate_age') || 'Sehr grobe Schätzung anhand des Alters — wird genauer, sobald Anzeichen erfasst werden.';
+      } else {
+        estDateStr = null;
+        daysUntil = null;
+        pct = Math.round((observedCount / signKeys.length) * 100);
+        sourceNote = '';
       }
 
       return `
@@ -1774,7 +1837,9 @@
           <div class="kpi-strip" style="margin-top:14px;">
             <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('days_until_menarche')}</span></div>
             <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${observedCount}/${signKeys.length}</span><span class="kpi-label">${this._t('dashboard_widget_progress')}</span></div>
+            ${attrs.age_at_tracking !== null && attrs.age_at_tracking !== undefined ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🎂</span><span class="kpi-value">${escapeHtml(attrs.age_at_tracking)}</span><span class="kpi-label">${this._t('dashboard_age_label') || 'Alter'}</span></div>` : ''}
           </div>
+          ${attrs.age_at_tracking === null || attrs.age_at_tracking === undefined ? `<p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_birth_date_hint') || 'Geburtsdatum in den Integrationseinstellungen hinterlegen, um Alter und Vor-der-Menarche-Schätzung zu verbessern.'}</p>` : ''}
           ${sourceNote ? `<p class="helper" style="margin-top:8px;font-size:0.7rem;">${escapeHtml(sourceNote)}</p>` : ''}
           <p class="helper" style="margin-top:2px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>
         </div>`;
@@ -1786,6 +1851,18 @@
       if (mode === 'pregnancy') return this._renderPregnancyMilestones(stateObj);
       if (mode === 'menarche') return this._renderMenarcheChecklist(stateObj);
       return this._renderCyclePhaseOverview(stateObj, discreetMode);
+    }
+
+    _renderNfpSummaryLine(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const nfp = attrs.nfp_analysis;
+      if (!nfp || typeof nfp !== 'object' || !nfp.ovulation_detected) return '';
+      const parts = [];
+      if (nfp.temperature_rise_day) parts.push(`${this._t('temperature_rise_day') || 'Temperaturanstieg'}: ${escapeHtml(nfp.temperature_rise_day)}`);
+      if (nfp.temperature_peak_day) parts.push(`${this._t('nfp_temp_peak') || 'Temperaturhöchstwert'}: ${escapeHtml(nfp.temperature_peak_day)}`);
+      if (nfp.cervical_mucus_peak || nfp.cervix_peak) parts.push(this._t('legend_cervix_peak') || 'Zervixschleim-Höhepunkt erkannt');
+      if (!parts.length) return '';
+      return `<p class="helper" style="margin-top:4px;font-size:0.7rem;">${parts.join(' · ')}</p>`;
     }
 
     _renderCyclePhaseOverview(stateObj, discreetMode) {
@@ -1887,6 +1964,7 @@
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--primary-text-color,#2B1B24);margin-right:5px;vertical-align:middle"></span>LH-Anstieg (Eisprung)</span>
         </div>
         <p class="helper" style="margin-top:6px;font-size:0.7rem;">Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten.</p>
+        ${this._renderNfpSummaryLine(stateObj)}
       `;
 
       const titleText = `Cycle phase overview – day ${cycleDay} of ${cycleLength}`;
@@ -1923,7 +2001,11 @@
           <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(weekUnit)} ${m.week}</div>
         </div>`;
       }).join('<div style="flex:0.4;height:2px;background:var(--divider-color,#e5e7eb);align-self:flex-start;margin-top:6px;"></div>');
-      return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>`;
+      const isHighRisk = !!(attrs.pregnancy_high_risk ?? (attrs.pregnancy_data || {}).high_risk);
+      const riskNote = isHighRisk
+        ? `<p class="helper" style="margin-top:8px;font-size:0.72rem;">⚠ ${this._t('dashboard_high_risk_milestone_note') || 'Bei Risikoschwangerschaften sind meist engmaschigere, individuell festgelegte Kontrolltermine üblich — zusätzlich zu den Standardterminen oben. Bitte mit der behandelnden Praxis abstimmen.'}</p>`
+        : '';
+      return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>${riskNote}`;
     }
 
     _renderFetalDevelopment(stateObj) {
@@ -2464,6 +2546,7 @@
         return `<article class="card ${spanClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
       }
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
+      if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
@@ -2520,7 +2603,7 @@
       const mode = this._resolveMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
       if (mode === 'pregnancy') {
-        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction'].includes(id));
+        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction', 'calendar_card'].includes(id));
         if (!order.includes('fetal_development')) {
           const idx = order.indexOf('phase_timeline');
           order = idx >= 0
@@ -2532,7 +2615,7 @@
         // that depends on cycle history, phases, fertility, or temperature data.
         const menarcheHidden = [
           'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
-          'symptom_heatmap', 'anomaly_insights', 'pain_mood_trend', 'year_overview',
+          'calendar_card', 'symptom_heatmap', 'anomaly_insights', 'pain_mood_trend', 'year_overview',
           'fetal_development',
         ];
         order = order.filter((id) => !menarcheHidden.includes(id));

@@ -626,5 +626,15 @@
   "fetal_skill_37_2": "Los pulmones se acercan a la madurez",
   "fetal_size_40": "Calabaza",
   "fetal_skill_40_1": "Se considera a término (\"a término\" desde la semana 39)",
-  "fetal_skill_40_2": "Listo para nacer"
+  "fetal_skill_40_2": "Listo para nacer",
+  "dashboard_menarche_estimate_age": "Estimación muy aproximada basada en la edad — se vuelve más precisa al registrar signos",
+  "dashboard_age_label": "Edad",
+  "dashboard_birth_date_hint": "Añade una fecha de nacimiento en la configuración de la integración para mostrar la edad y mejorar la estimación pre-menarquia.",
+  "dashboard_high_risk_pregnancy": "Embarazo de alto riesgo",
+  "dashboard_high_risk_monitoring": "Se recomienda un seguimiento más estrecho",
+  "dashboard_high_risk_milestone_note": "Los embarazos de alto riesgo suelen implicar controles adicionales programados de forma individual, además de los estándar indicados arriba — coordina esto con tu profesional de salud.",
+  "pregnancy_risk_notes": "Notas",
+  "nfp_analysis": "PFN",
+  "legend_cervix_peak": "Pico de moco cervical detectado",
+  "temperature_rise_day": "Aumento térmico"
 }

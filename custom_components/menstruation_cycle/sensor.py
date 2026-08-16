@@ -24,6 +24,7 @@ from .const import (
     ATTR_AGE_AT_TRACKING,
     ATTR_AVG_CYCLE_LENGTH,
     ATTR_AWAITING_MENARCHE,
+    ATTR_BIRTH_DATE,
     ATTR_BLEEDING_BLOCKS,
     ATTR_DAYS_UNTIL_MENARCHE,
     ATTR_DAYS_UNTIL_NEXT_START,
@@ -43,6 +44,8 @@ from .const import (
     ATTR_PRE_MENARCHE_DATA,
     ATTR_PREDICTION_DAY_CONFIDENCE,
     ATTR_PREGNANCY_DATA,
+    ATTR_PREGNANCY_HIGH_RISK,
+    ATTR_PREGNANCY_RISK_NOTES,
     ATTR_PREGNANCY_START_DATE,
     ATTR_SYMPTOM_HISTORY,
     ATTR_WEEKS_PREGNANT,
@@ -54,6 +57,7 @@ from .const import (
     ATTR_PREDICTION_GATING,
     ATTR_FERTILITY_FORECAST,
     ATTR_LEARNING_PHASE,
+    CONF_BIRTH_DATE,
     CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
     DEFAULT_NFP_ANALYSIS_MODE,
@@ -1126,12 +1130,18 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_PREGNANCY_START_DATE: model.pregnancy_start_date,
             ATTR_WEEKS_PREGNANT: model.weeks_pregnant,
             ATTR_DUE_DATE: model.due_date,
+            ATTR_PREGNANCY_HIGH_RISK: bool(runtime.pregnancy_data.get("high_risk", False)),
+            ATTR_PREGNANCY_RISK_NOTES: runtime.pregnancy_data.get("risk_notes") or None,
             ATTR_PREGNANCY_DATA: {
                 "is_pregnant": model.is_pregnant,
                 "start_date": model.pregnancy_start_date,
                 "weeks_pregnant": model.weeks_pregnant,
                 "due_date": model.due_date,
+                "high_risk": bool(runtime.pregnancy_data.get("high_risk", False)),
+                "risk_notes": runtime.pregnancy_data.get("risk_notes") or None,
             },
+            ATTR_BIRTH_DATE: self._entry.data.get(CONF_BIRTH_DATE),
+            ATTR_AGE_AT_TRACKING: self._calculate_age(self._entry.data.get(CONF_BIRTH_DATE)),
             ATTR_ESTIMATED_MENARCHE_DATE: model.menarche_data.get("estimated_date"),
             ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(model.menarche_data),
             "menarche_data": model.menarche_data,
@@ -1182,6 +1192,22 @@ class MenstruationGaugeSensor(SensorEntity):
             return (est_date - today).days
         except (TypeError, ValueError):
             return None
+
+    def _calculate_age(self, birth_date: str | None) -> int | None:
+        """Calculate current age in whole years from a stored birth_date."""
+        if not birth_date:
+            return None
+        try:
+            born = date.fromisoformat(str(birth_date))
+        except (TypeError, ValueError):
+            return None
+        today = dt_util.now().date()
+        if born > today:
+            return None
+        years = today.year - born.year
+        if (today.month, today.day) < (born.month, born.day):
+            years -= 1
+        return max(0, years)
 
     @property
     def state(self) -> StateType:

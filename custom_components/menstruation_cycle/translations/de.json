@@ -23,9 +23,12 @@
         "data": {
           "friendly_name": "Anzeigename",
           "icon": "Icon (optional, z. B. mdi:calendar-heart)",
+          "birth_date": "Geburtsdatum (JJJJ-MM-TT, optional — ermöglicht Altersanzeige und verbessert den Vor-der-Menarche-Modus)",
           "period_duration_days": "Periodendauer (Tage)",
           "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
           "pregnancy_start_date": "Schwangerschafts-Startdatum (JJJJ-MM-TT)",
+          "pregnancy_high_risk": "Risikoschwangerschaft",
+          "pregnancy_risk_notes": "Notizen zur Risikoschwangerschaft (optional, z. B. Befund oder Kontrollschwerpunkt)",
           "pre_menarche_enabled": "Prä-Menarche-Tracking aktivieren",
           "estimated_menarche_date": "Voraussichtliches Menarche-Datum (JJJJ-MM-TT)",
           "family_menarche_age": "Menarche-Alter in der Familie (8–20, optional)",

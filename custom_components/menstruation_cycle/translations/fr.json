@@ -23,9 +23,12 @@
         "data": {
           "friendly_name": "Nom d'affichage",
           "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
+          "birth_date": "Date de naissance (AAAA-MM-JJ, facultatif — permet l'affichage de l'âge et améliore le mode pré-ménarche)",
           "period_duration_days": "Durée des règles (jours)",
           "pregnancy_enabled": "Activer le mode grossesse",
           "pregnancy_start_date": "Date de début de grossesse (AAAA-MM-JJ)",
+          "pregnancy_high_risk": "Grossesse à risque",
+          "pregnancy_risk_notes": "Notes sur les risques (facultatif, ex. pathologie ou point de surveillance)",
           "pre_menarche_enabled": "Activer le suivi pré-ménarche",
           "estimated_menarche_date": "Date estimée des premières règles (AAAA-MM-JJ)",
           "family_menarche_age": "Âge des premières règles dans la famille (8–20, facultatif)",

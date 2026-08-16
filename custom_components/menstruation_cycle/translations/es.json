@@ -23,9 +23,12 @@
         "data": {
           "friendly_name": "Nombre para mostrar",
           "icon": "Icono (opcional, p. ej. mdi:calendar-heart)",
+          "birth_date": "Fecha de nacimiento (AAAA-MM-DD, opcional — permite mostrar la edad y mejora el modo pre-menarquia)",
           "period_duration_days": "Duración del período (días)",
           "pregnancy_enabled": "Activar modo de embarazo",
           "pregnancy_start_date": "Fecha de inicio del embarazo (AAAA-MM-DD)",
+          "pregnancy_high_risk": "Embarazo de alto riesgo",
+          "pregnancy_risk_notes": "Notas de riesgo (opcional, p. ej. afección o punto de control)",
           "pre_menarche_enabled": "Activar seguimiento previo a la menarquia",
           "estimated_menarche_date": "Fecha estimada de la menarquia (AAAA-MM-DD)",
           "family_menarche_age": "Edad de menarquia en la familia (8–20, opcional)",

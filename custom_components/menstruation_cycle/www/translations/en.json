@@ -659,5 +659,15 @@
   "fetal_skill_37_2": "Lungs approaching maturity",
   "fetal_size_40": "Pumpkin",
   "fetal_skill_40_1": "Considered full-term (\"term\" from week 39)",
-  "fetal_skill_40_2": "Ready for birth"
+  "fetal_skill_40_2": "Ready for birth",
+  "dashboard_menarche_estimate_age": "Very rough estimate based on age — becomes more precise once signs are logged",
+  "dashboard_age_label": "Age",
+  "dashboard_birth_date_hint": "Add a birth date in the integration settings to show age and improve the pre-menarche estimate.",
+  "dashboard_high_risk_pregnancy": "High-risk pregnancy",
+  "dashboard_high_risk_monitoring": "Closer monitoring recommended",
+  "dashboard_high_risk_milestone_note": "High-risk pregnancies usually involve additional, individually scheduled check-ups beyond the standard ones above — please coordinate with your care provider.",
+  "pregnancy_risk_notes": "Notes",
+  "nfp_analysis": "NFP",
+  "legend_cervix_peak": "Cervical mucus peak detected",
+  "temperature_rise_day": "Temperature rise"
 }
