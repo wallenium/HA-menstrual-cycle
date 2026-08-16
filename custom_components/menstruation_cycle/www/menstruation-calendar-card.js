@@ -789,6 +789,47 @@ class MenstruationCalendarCard extends HTMLElement {
     return this._t('save');
   }
 
+  /**
+   * Opens the day-edit modal, first fetching that day's data directly via the
+   * get_symptom service (which reads the full, uncapped stored history) instead of
+   * relying only on the symptom_history sensor attribute, which is capped to the
+   * most recent ~30 entries to keep the entity's attribute payload size reasonable.
+   * Without this, editing an older day whose entry has aged out of that window would
+   * show an empty form even though the day's data is safely stored — and saving from
+   * that empty-looking form risked silently overwriting real values with "none".
+   */
+  async _openSymptomModalForDay(iso) {
+    await this._refreshSymptomOverrideForDay(iso);
+    this._modalIso = iso;
+    this._render();
+    this.dispatchEvent(new CustomEvent('menstruation-calendar-day-click', {
+      detail: { date: iso, entity_id: this._resolveEntityId() },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  async _refreshSymptomOverrideForDay(iso) {
+    this._symptomOverrides = this._symptomOverrides || {};
+    if (!this._hass?.callService) return;
+    try {
+      const entityId = this._resolveEntityId();
+      const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
+      // Modern HA frontend signature: callService(domain, service, data, target,
+      // notifyOnError, returnResponse). Older frontends without response support
+      // will throw or return undefined here — caught below, falls back silently to
+      // whatever's already in the (possibly capped) symptom_history attribute
+      // rather than blocking the modal from opening.
+      const result = await this._hass.callService('menstruation_cycle', 'get_symptom', payload, undefined, false, true);
+      const response = result?.response;
+      if (response && response.found !== false) {
+        this._symptomOverrides[iso] = response;
+      }
+    } catch (_err) {
+      // Non-fatal — see comment above.
+    }
+  }
+
   _renderSymptomModal(iso, model) {
     const dt = this._parseISO(iso);
     const locale = this._hass?.locale?.language || 'en';
@@ -797,7 +838,7 @@ class MenstruationCalendarCard extends HTMLElement {
       : iso;
 
     const isPeriodDay = model.confirmedSet.has(iso);
-    const existing = model.symptomByDate?.[iso] || {};
+    const existing = this._symptomOverrides?.[iso] || model.symptomByDate?.[iso] || {};
     const isPreMenarche = model.state === 'pre_menarche';
     const isPregnant = Boolean(model.pregnancyInfo?.isPregnant);
     const periodModalContext = this._periodModalContext(iso, model);
@@ -1472,13 +1513,7 @@ class MenstruationCalendarCard extends HTMLElement {
       const iso = dayBtn?.getAttribute?.('data-iso');
       if (iso) {
         this._focusedIso = iso;
-        this._modalIso = iso;
-        this._render();
-        this.dispatchEvent(new CustomEvent('menstruation-calendar-day-click', {
-          detail: { date: iso, entity_id: this._resolveEntityId() },
-          bubbles: true,
-          composed: true,
-        }));
+        this._openSymptomModalForDay(iso);
       }
     });
 
@@ -1492,8 +1527,7 @@ class MenstruationCalendarCard extends HTMLElement {
         const iso = ev.target.getAttribute('data-iso');
         if (iso) {
           this._focusedIso = iso;
-          this._modalIso = iso;
-          this._render();
+          this._openSymptomModalForDay(iso);
         }
       }
     });
