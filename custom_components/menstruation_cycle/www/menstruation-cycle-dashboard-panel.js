@@ -636,23 +636,26 @@
       this.shadowRoot?.addEventListener('submit', (event) => this._handleSubmit(event));
 
       // Several real Lovelace-style cards (calendar, heatmap, support, product
-      // inventory, countdown timer, statistics) are registered as Lovelace resources
-      // and load asynchronously. A one-time synchronous check at render time can miss
-      // any of them if this panel renders before their script finishes loading — so
-      // watch each one and re-render once it becomes defined, upgrading each mount
-      // point from its "loading…" placeholder to the real card automatically, without
-      // a page reload.
-      const embeddedCardTags = [
-        'menstruation-calendar-card',
-        'menstruation-cycle-heatmap-card',
-        'menstruation-support-card',
-        'menstruation-product-inventory-card',
-        'menstruation-countdown-timer',
-        'menstruation-statistics-card',
-      ];
+      // inventory, countdown timer, statistics) live in their own script files.
+      // As plain Lovelace *resources* they may never actually get requested by the
+      // browser in a custom sidebar-panel context (unlike a normal Lovelace view,
+      // which auto-loads its configured resources) — so don't just wait for them to
+      // maybe show up; actively inject a <script src="..."> for each one ourselves,
+      // the same way _ensureI18nLoaded() already does for the i18n script. This
+      // guarantees the request happens regardless of how HA treats resources for
+      // custom panels.
+      const embeddedCardScripts = {
+        'menstruation-calendar-card': 'menstruation-calendar-card.js',
+        'menstruation-cycle-heatmap-card': 'menstruation-cycle-heatmap-card.js',
+        'menstruation-support-card': 'menstruation-support-card.js',
+        'menstruation-product-inventory-card': 'menstruation-product-inventory-card.js',
+        'menstruation-countdown-timer': 'menstruation-countdown-timer.js',
+        'menstruation-statistics-card': 'menstruation-statistics-card.js',
+      };
       if (typeof customElements !== 'undefined') {
-        embeddedCardTags.forEach((tag) => {
+        Object.entries(embeddedCardScripts).forEach(([tag, fileName]) => {
           if (!customElements.get(tag)) {
+            this._ensureCardScriptLoaded(fileName);
             const timeoutMs = 20000;
             let settled = false;
             customElements.whenDefined(tag).then(() => {
@@ -864,6 +867,36 @@
       });
 
       return i18nScriptPromise;
+    }
+
+    /**
+     * Actively injects a <script src="..."> for one of the 6 embedded card files if
+     * it isn't already present in the document, instead of passively assuming Home
+     * Assistant already loaded it as a Lovelace resource. A custom sidebar panel
+     * doesn't get the same automatic resource-loading a normal Lovelace view does,
+     * so without this the browser may simply never request these files at all.
+     * Deduplicates against concurrent calls and against a script tag already present
+     * (e.g. because it *was* auto-loaded as a resource after all).
+     */
+    _ensureCardScriptLoaded(fileName) {
+      if (typeof document === 'undefined') return;
+      this._loadedCardScripts = this._loadedCardScripts || new Set();
+      if (this._loadedCardScripts.has(fileName)) return;
+
+      const scriptPath = `/menstruation_cycle/${fileName}`;
+      const already = listDocumentScripts().some((script) => matchesScriptPath(script, scriptPath));
+      if (already) {
+        this._loadedCardScripts.add(fileName);
+        return;
+      }
+
+      this._loadedCardScripts.add(fileName);
+      const resourceVersion = extractResourceVersion();
+      const script = document.createElement('script');
+      script.src = resourceVersion ? `${scriptPath}?v=${encodeURIComponent(resourceVersion)}` : scriptPath;
+      script.async = true;
+      script.dataset.menstruationCycleCard = fileName;
+      (document.head || document.body || document.documentElement)?.appendChild?.(script);
     }
 
     _loadI18nLanguage(lang) {
