@@ -754,5 +754,7 @@
   "opt_significant_changes": "Deutliche Veränderungen",
   "opt_clear_to_white": "Klar bis weiß",
   "opt_none": "Keine",
-  "dashboard_past_fertile_disclaimer": "Vergangene fruchtbare Fenster sind rückblickend geschätzt (Kalendermethode), keine gemessenen Werte."
+  "dashboard_past_fertile_disclaimer": "Fruchtbare Fenster außerhalb des aktuellen Zyklus sind geschätzt (Kalendermethode), keine gemessenen oder garantierten Werte.",
+  "dashboard_year_prev": "Vorheriges Jahr",
+  "dashboard_year_next": "Nächstes Jahr"
 }

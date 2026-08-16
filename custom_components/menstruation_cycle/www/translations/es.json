@@ -721,5 +721,7 @@
   "opt_significant_changes": "Cambios significativos",
   "opt_clear_to_white": "Transparente a blanco",
   "opt_none": "Ninguno",
-  "dashboard_past_fertile_disclaimer": "Las ventanas fértiles pasadas se estiman de forma retrospectiva (método del calendario), no son valores medidos."
+  "dashboard_past_fertile_disclaimer": "Las ventanas fértiles fuera del ciclo actual son estimadas (método del calendario), no son valores medidos ni garantizados.",
+  "dashboard_year_prev": "Año anterior",
+  "dashboard_year_next": "Año siguiente"
 }

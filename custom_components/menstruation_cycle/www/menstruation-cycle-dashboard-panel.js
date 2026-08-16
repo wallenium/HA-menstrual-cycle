@@ -166,7 +166,9 @@
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
     dashboard_calendar_loading: 'Loading…',
     dashboard_card_unavailable: 'Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache).',
-    dashboard_past_fertile_disclaimer: 'Past fertile windows are estimated retrospectively (calendar method), not measured values.',
+    dashboard_past_fertile_disclaimer: 'Fertile windows outside the current cycle are estimated (calendar method), not measured or guaranteed values.',
+    dashboard_year_prev: 'Previous year',
+    dashboard_year_next: 'Next year',
     dashboard_menarche_checklist_hint: 'Tap to log a sign. Feeds automatically into the estimate above.',
     remove: 'Remove',
     opt_stage_1: 'Stage 1',
@@ -615,6 +617,7 @@
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
       this._expandedSign = null;
+      this._yearOverviewYear = null;
       this._i18nLanguagePromises = {};
       this._lastRenderSig = null;
       this._debugEnabled = this._readDebugFlag();
@@ -1409,6 +1412,12 @@
         this._logPreMenarcheSign(target.dataset.sign, target.dataset.stage);
       } else if (action === 'remove-sign' && target.dataset.sign) {
         this._removePreMenarcheSign(target.dataset.sign);
+      } else if (action === 'year-overview-prev' || action === 'year-overview-next' || action === 'year-overview-today') {
+        const current = this._yearOverviewYear || new Date().getFullYear();
+        if (action === 'year-overview-prev') this._yearOverviewYear = current - 1;
+        else if (action === 'year-overview-next') this._yearOverviewYear = current + 1;
+        else this._yearOverviewYear = null;
+        this.render();
       }
     }
 
@@ -3109,42 +3118,44 @@
     _renderYearOverview(stateObj) {
       const attrs = stateObj?.attributes || {};
       const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
-      const forecast = attrs.period_forecast || {};
-      const predictedStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+      const predictedStarts = Array.isArray(attrs.predicted_cycle_starts) ? attrs.predicted_cycle_starts : [];
+      const predictedStartSet = new Set(predictedStarts);
       const fertility = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : {};
       const fertileStart = fertility.fertile_window_start ?? attrs.fertile_window_start ?? null;
       const fertileEnd = fertility.fertile_window_end ?? attrs.fertile_window_end ?? null;
       const ovulationDay = fertility.ovulation_estimate ?? attrs.ovulation_day ?? null;
 
       const today = new Date();
-      const currentYear = today.getFullYear();
-      const startYear = today.getMonth() < 6 ? currentYear - 1 : currentYear;
+      const selectedYear = this._yearOverviewYear || today.getFullYear();
       const isDe = this._lang === 'de';
 
-      // Past fertile windows/ovulation days aren't tracked by the backend (it only
-      // computes fertility_forecast live for the current cycle) — so estimate them
-      // retrospectively here for each completed past cycle, using the standard
-      // ~14-day luteal-phase assumption (next period start minus 14 days), the same
-      // convention already used for the current-cycle ring visualization above.
-      // Fertile window = the 5 days leading up to and including ovulation day —
-      // sperm can survive several days, so this is the widely-used calendar-method
-      // window, not a measured/confirmed value.
-      const pastOvulationDays = new Set();
-      const pastFertileDays = new Set();
-      const sortedStarts = allStarts.slice().sort();
-      for (let i = 0; i < sortedStarts.length - 1; i++) {
-        const nextStart = new Date(sortedStarts[i + 1]);
+      // Fertile windows/ovulation days for cycles other than the current one aren't
+      // tracked by the backend (it only computes fertility_forecast live for the
+      // current cycle) — so estimate them here for every other known or predicted
+      // cycle gap, using the standard ~14-day luteal-phase assumption (next period
+      // start minus 14 days), the same convention already used for the current-cycle
+      // ring visualization elsewhere on this page. Fertile window = the 5 days
+      // leading up to and including ovulation day — sperm can survive several days,
+      // so this is the widely-used calendar-method window, not a measured/confirmed
+      // value. Combining real past starts with predicted future starts into one
+      // sorted sequence lets the same gap-based loop cover both past and future
+      // cycles uniformly.
+      const estOvulationDays = new Set();
+      const estFertileDays = new Set();
+      const allKnownStarts = Array.from(new Set([...allStarts, ...predictedStarts])).sort();
+      for (let i = 0; i < allKnownStarts.length - 1; i++) {
+        const nextStart = new Date(allKnownStarts[i + 1]);
         if (Number.isNaN(nextStart.getTime())) continue;
-        const cycleLen = Math.round((nextStart - new Date(sortedStarts[i])) / 86400000);
+        const cycleLen = Math.round((nextStart - new Date(allKnownStarts[i])) / 86400000);
         if (cycleLen < 15 || cycleLen > 60) continue; // skip implausible gaps (e.g. missed logging)
         const ovDate = new Date(nextStart.getTime() - 14 * 86400000);
-        pastOvulationDays.add(ovDate.toISOString().slice(0, 10));
+        estOvulationDays.add(ovDate.toISOString().slice(0, 10));
         for (let off = 5; off >= 1; off--) {
           const fDate = new Date(ovDate.getTime() - off * 86400000);
-          pastFertileDays.add(fDate.toISOString().slice(0, 10));
+          estFertileDays.add(fDate.toISOString().slice(0, 10));
         }
       }
-      const hasPastFertileData = pastOvulationDays.size > 0;
+      const hasEstimatedFertileData = estOvulationDays.size > 0;
 
       const isInFertileWindow = (isoDate) => {
         if (!fertileStart) return false;
@@ -3155,12 +3166,11 @@
       };
 
       const months = [];
-      for (let m = 0; m < 12; m++) {
-        const monthDate = new Date(startYear, today.getMonth() - 11 + m, 1);
-        const yr = monthDate.getFullYear();
-        const mo = monthDate.getMonth();
+      for (let mo = 0; mo < 12; mo++) {
+        const monthDate = new Date(selectedYear, mo, 1);
+        const yr = selectedYear;
         const daysInMonth = new Date(yr, mo + 1, 0).getDate();
-        const monthLabel = monthDate.toLocaleDateString(isDe ? 'de-DE' : 'en-US', { month: 'short', year: '2-digit' });
+        const monthLabel = monthDate.toLocaleDateString(isDe ? 'de-DE' : 'en-US', { month: 'short' });
         const isCurrentMonth = yr === today.getFullYear() && mo === today.getMonth();
         const firstWeekday = new Date(yr, mo, 1).getDay();
         const leadOffset = isDe ? (firstWeekday === 0 ? 6 : firstWeekday - 1) : firstWeekday;
@@ -3170,9 +3180,9 @@
         for (let d = 1; d <= daysInMonth; d++) {
           const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           const isPeriodStart = allStarts.includes(isoDate);
-          const isPredicted = predictedStart && isoDate === predictedStart;
-          const isOvulation = (ovulationDay && isoDate === ovulationDay) || pastOvulationDays.has(isoDate);
-          const isFertile = !isOvulation && (isInFertileWindow(isoDate) || pastFertileDays.has(isoDate));
+          const isPredictedStart = !isPeriodStart && predictedStartSet.has(isoDate);
+          const isOvulation = (ovulationDay && isoDate === ovulationDay) || estOvulationDays.has(isoDate);
+          const isFertile = !isOvulation && (isInFertileWindow(isoDate) || estFertileDays.has(isoDate));
           const isToday = isCurrentMonth && d === today.getDate();
 
           let bg = 'var(--divider-color,#e5e7eb)';
@@ -3180,7 +3190,7 @@
           else if (isPeriodStart) bg = 'var(--mc-rose-deep)';
           else if (isOvulation) bg = 'var(--mc-sage-deep,#3F5A47)';
           else if (isFertile) bg = 'var(--mc-amber,#E3A23D)';
-          else if (isPredicted) bg = 'rgba(232,99,125,0.32)';
+          else if (isPredictedStart) bg = 'rgba(232,99,125,0.32)';
 
           dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${escapeHtml(this._formatDate(isoDate))}"></div>`);
         }
@@ -3196,17 +3206,26 @@
       const legend = `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
-          ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
-          ${(fertileStart || hasPastFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
-          ${(ovulationDay || hasPastFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}
+          ${predictedStarts.length ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
+          ${(fertileStart || hasEstimatedFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
+          ${(ovulationDay || hasEstimatedFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
-        ${hasPastFertileData ? `<p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_past_fertile_disclaimer') || 'Vergangene fruchtbare Fenster sind rückblickend geschätzt (Kalendermethode), keine gemessenen Werte.'}</p>` : ''}
+        ${hasEstimatedFertileData ? `<p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_past_fertile_disclaimer') || 'Fruchtbare Fenster außerhalb des aktuellen Zyklus sind geschätzt (Kalendermethode), keine gemessenen oder garantierten Werte.'}</p>` : ''}
         ${this._renderIcsSubscribeLink(attrs)}
+      `;
+
+      const yearNav = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <button type="button" data-action="year-overview-prev" aria-label="${this._t('dashboard_year_prev') || 'Vorheriges Jahr'}" style="border:1px solid var(--divider-color,#d1d5db);border-radius:8px;background:var(--card-background-color,#fff);padding:4px 10px;font-size:13px;cursor:pointer;color:var(--primary-text-color,inherit);">‹</button>
+          <button type="button" data-action="year-overview-today" style="font-family:var(--mc-font-display);font-size:1rem;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--primary-text-color,inherit);">${selectedYear}</button>
+          <button type="button" data-action="year-overview-next" aria-label="${this._t('dashboard_year_next') || 'Nächstes Jahr'}" style="border:1px solid var(--divider-color,#d1d5db);border-radius:8px;background:var(--card-background-color,#fff);padding:4px 10px;font-size:13px;cursor:pointer;color:var(--primary-text-color,inherit);">›</button>
+        </div>
       `;
 
       return `
         <div class="year-overview-wrap" role="region" aria-label="${escapeHtml(this._t('dashboard_widget_year_overview'))}">
+          ${yearNav}
           <div class="year-months-grid">${months.join('')}</div>
           ${legend}
         </div>

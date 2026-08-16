@@ -721,5 +721,7 @@
   "opt_significant_changes": "Betydande förändringar",
   "opt_clear_to_white": "Klar till vit",
   "opt_none": "Inga",
-  "dashboard_past_fertile_disclaimer": "Tidigare fertila fönster är retrospektivt uppskattade (kalendermetoden), inte uppmätta värden."
+  "dashboard_past_fertile_disclaimer": "Fertila fönster utanför den aktuella cykeln är uppskattade (kalendermetoden), inte uppmätta eller garanterade värden.",
+  "dashboard_year_prev": "Föregående år",
+  "dashboard_year_next": "Nästa år"
 }

@@ -754,5 +754,7 @@
   "opt_significant_changes": "Significant changes",
   "opt_clear_to_white": "Clear to white",
   "opt_none": "None",
-  "dashboard_past_fertile_disclaimer": "Past fertile windows are estimated retrospectively (calendar method), not measured values."
+  "dashboard_past_fertile_disclaimer": "Fertile windows outside the current cycle are estimated (calendar method), not measured or guaranteed values.",
+  "dashboard_year_prev": "Previous year",
+  "dashboard_year_next": "Next year"
 }
