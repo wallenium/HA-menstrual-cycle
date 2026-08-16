@@ -769,5 +769,6 @@
   "pre_menarche_desc_breast_development_stage_5": "Mature stage — areola settles back into the overall breast contour.",
   "dashboard_pain_type_singular": "pain type",
   "dashboard_pain_type_plural": "pain types",
-  "dashboard_pain_types_count": "Number of pain types"
+  "dashboard_pain_types_count": "Number of pain types",
+  "acne": "skin changes"
 }
