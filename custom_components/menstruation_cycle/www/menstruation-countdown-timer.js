@@ -437,7 +437,7 @@ class MenstruationCountdownTimer extends HTMLElement {
   }
 
   renderPostpartumMode(cardContent, attributes) {
-    const birthDate = attributes?.birth_date || new Date().toISOString();
+    const birthDate = attributes?.postpartum_data?.start_date || attributes?.birth_date || new Date().toISOString();
     const daysSinceBirth = this.calculateDaysSince(birthDate);
     const weeksSinceBirth = Math.floor(daysSinceBirth / 7);
     const postpartumIcon = this._getStatusAnimatedIcon("postpartum", attributes);

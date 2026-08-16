@@ -50,6 +50,9 @@ from .const import (
     ATTR_SYMPTOM_HISTORY,
     ATTR_WEEKS_PREGNANT,
     ATTR_MENOPAUSE_DATA,
+    ATTR_IS_POSTPARTUM,
+    ATTR_POSTPARTUM_DATA,
+    ATTR_POSTPARTUM_DURATION,
     ATTR_NFP_ANALYSIS,
     ATTR_ONBOARDING_STAGE,
     ATTR_ONBOARDING_STAGE_EFFECTIVE,
@@ -1159,6 +1162,14 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_MENOPAUSE_DATA: model.menopause_data,
             "days_since_last_period": model.days_since_last_period,
             "menopause_months_tracked": model.menopause_months_tracked,
+            ATTR_IS_POSTPARTUM: bool(model.noncycle_data.get("is_postpartum", False)),
+            ATTR_POSTPARTUM_DURATION: model.noncycle_data.get("postpartum_duration_days") or 42,
+            ATTR_POSTPARTUM_DATA: {
+                "is_postpartum": bool(model.noncycle_data.get("is_postpartum", False)),
+                "start_date": model.noncycle_data.get("postpartum_start_date"),
+                "duration_days": model.noncycle_data.get("postpartum_duration_days") or 42,
+                "days_since_birth": self._calculate_days_since(model.noncycle_data.get("postpartum_start_date")),
+            },
             "noncycle_data": model.noncycle_data,
             "profile": runtime.profile,
             "entry_id": self._entry.entry_id,
@@ -1267,6 +1278,19 @@ class MenstruationGaugeSensor(SensorEntity):
         if (today.month, today.day) < (born.month, born.day):
             years -= 1
         return max(0, years)
+
+    def _calculate_days_since(self, iso_date: str | None) -> int | None:
+        """Return whole days elapsed since a stored ISO date, or None if unset/invalid."""
+        if not iso_date:
+            return None
+        try:
+            start = date.fromisoformat(str(iso_date))
+        except (TypeError, ValueError):
+            return None
+        today = dt_util.now().date()
+        if start > today:
+            return None
+        return (today - start).days
 
     @property
     def state(self) -> StateType:

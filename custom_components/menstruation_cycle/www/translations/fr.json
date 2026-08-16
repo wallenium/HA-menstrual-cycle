@@ -698,5 +698,8 @@
   "dashboard_calendar_loading": "Chargement…",
   "dashboard_widget_inventory_card": "Inventaire des produits",
   "dashboard_widget_timer_card": "Minuteur",
-  "dashboard_widget_support_card": "Soutien et éducation"
+  "dashboard_widget_support_card": "Soutien et éducation",
+  "dashboard_birth": "Naissance",
+  "dashboard_days_remaining": "Jours restants",
+  "dashboard_postpartum_disclaimer": "La récupération varie beaucoup d'une personne à l'autre — cette période est un repère approximatif, pas une prescription médicale."
 }

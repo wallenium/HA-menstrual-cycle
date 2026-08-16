@@ -168,6 +168,13 @@
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_support_card: 'Support & Education',
+    dashboard_birth: 'Birth',
+    days: 'days',
+    dashboard_days_remaining: 'Days remaining',
+    dashboard_postpartum_disclaimer: 'Recovery varies a lot from person to person — this window is a rough guide, not a medical prescription.',
+    days_postpartum: 'Days postpartum',
+    weeks_postpartum: 'Weeks postpartum',
+    week: 'Week',
     dashboard_loading: 'Loading…',
     dashboard_onboarding_title: 'Welcome! No data logged yet.',
     dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
@@ -1781,6 +1788,7 @@
       const attrs = stateObj?.attributes || {};
       const state = stateObj?.state;
       if (attrs.is_pregnant || state === 'pregnant') return 'pregnancy';
+      if (attrs.is_postpartum || state === 'postpartum') return 'postpartum';
       if ((attrs.menopause_data || {}).is_menopause || state === 'menopause') return 'menopause';
       const stage = attrs.onboarding_stage_effective || attrs.onboarding_stage;
       if (stage === 'pre_menarche' || state === 'pre_menarche') return 'menarche';
@@ -1793,6 +1801,7 @@
       if (mode === 'pregnancy') return this._renderPregnancyHero(stateObj, discreetMode);
       if (mode === 'menarche') return this._renderMenarcheHero(stateObj, discreetMode);
       if (mode === 'menopause') return this._renderMenopauseHero(stateObj, discreetMode);
+      if (mode === 'postpartum') return this._renderPostpartumHero(stateObj, discreetMode);
       return this._renderCycleHero(stateObj, discreetMode);
     }
 
@@ -2084,6 +2093,41 @@
             <div class="kpi-item ${isConfirmed ? 'mc-plum' : ''}"><span class="kpi-icon" aria-hidden="true">${isConfirmed ? '✓' : '◐'}</span><span class="kpi-value" style="font-size:1rem;">${isConfirmed ? (this._t('dashboard_menopause_confirmed') || 'Bestätigt') : (this._t('dashboard_perimenopause') || 'Perimenopause')}</span><span class="kpi-label">${this._t('dashboard_label_state')}</span></div>
           </div>
           <p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>
+        </div>`;
+    }
+
+    _renderPostpartumHero(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const postpartumData = attrs.postpartum_data && typeof attrs.postpartum_data === 'object' ? attrs.postpartum_data : {};
+      const daysSinceBirth = postpartumData.days_since_birth ?? null;
+      const durationDays = postpartumData.duration_days ?? attrs.postpartum_duration ?? 42;
+      const pct = daysSinceBirth !== null
+        ? Math.round(Math.min(100, Math.max(0, (daysSinceBirth / durationDays) * 100)))
+        : 0;
+      const daysRemaining = daysSinceBirth !== null ? Math.max(0, durationDays - daysSinceBirth) : null;
+      const weeksSinceBirth = daysSinceBirth !== null ? Math.floor(daysSinceBirth / 7) : null;
+      const totalWeeks = Math.round(durationDays / 7);
+
+      const statusIcon = !discreetMode ? this._statusIconHtml('postpartum', 32) : '';
+      return `
+        <div>
+          ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
+          <div class="progress-holder">
+            <div class="progress-track" style="position:relative;height:14px;border-radius:999px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
+              <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), var(--mc-rose));"></div>
+              <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+              <span>${this._t('dashboard_birth') || 'Geburt'}</span>
+              <span>${weeksSinceBirth !== null ? `${this._t('week')} ${weeksSinceBirth} / ${totalWeeks}` : `${durationDays} ${this._t('days') || 'Tage'}`}</span>
+            </div>
+          </div>
+          <div class="kpi-strip" style="margin-top:14px;">
+            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">👶</span><span class="kpi-value">${daysSinceBirth !== null ? escapeHtml(daysSinceBirth) : '—'}</span><span class="kpi-label">${this._t('days_postpartum') || 'Tage Wochenbett'}</span></div>
+            ${daysRemaining !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${escapeHtml(daysRemaining)}</span><span class="kpi-label">${this._t('dashboard_days_remaining') || 'Tage verbleibend'}</span></div>` : ''}
+            ${weeksSinceBirth !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${escapeHtml(weeksSinceBirth)}</span><span class="kpi-label">${this._t('weeks_postpartum') || 'Wochen Wochenbett'}</span></div>` : ''}
+          </div>
+          <p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_postpartum_disclaimer') || 'Rückbildung verläuft individuell sehr unterschiedlich — dieser Zeitraum ist eine grobe Orientierung, keine medizinische Vorgabe.'}</p>
         </div>`;
     }
 
@@ -3119,6 +3163,15 @@
           'anomaly_insights', 'fetal_development',
         ];
         order = order.filter((id) => !menopauseHidden.includes(id));
+      } else if (mode === 'postpartum') {
+        // No cycle to predict during the postpartum window — hide the same
+        // cycle/fertility-dependent widgets as pregnancy, but keep symptom/product
+        // tracking (recovery symptoms, bleeding, product usage are still relevant).
+        const postpartumHidden = [
+          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card',
+        ];
+        order = order.filter((id) => !postpartumHidden.includes(id));
       } else {
         order = order.filter((id) => id !== 'fetal_development');
       }

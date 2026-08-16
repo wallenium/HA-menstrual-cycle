@@ -464,7 +464,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
       iconMarkup = this._getCachedIcon('postpartum-default', () =>
         window.ProductIcons?.getPostpartumIcon?.('default') || this._statusIcon(statusKey, status.color, attrs)
       );
-      const birthDateNorm = this._normalizeISO(attrs.birth_date);
+      const birthDateNorm = this._normalizeISO(attrs.postpartum_data?.start_date || attrs.birth_date);
       const postpartumDuration = Math.max(1, parseInt(String(attrs.postpartum_duration || '42'), 10) || 42);
 
       let daysSinceBirth = 0;

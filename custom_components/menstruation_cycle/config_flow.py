@@ -27,6 +27,9 @@ from .const import (
     CONF_PREGNANCY_ENABLED,
     CONF_PREGNANCY_HIGH_RISK,
     CONF_PREGNANCY_RISK_NOTES,
+    CONF_POSTPARTUM_ENABLED,
+    CONF_POSTPARTUM_START_DATE,
+    CONF_POSTPARTUM_DURATION_DAYS,
     CONF_PREGNANCY_START_DATE,
     CONF_PROFILE,
     CONF_CYCLE_LENGTH_OVERRIDE,
@@ -180,6 +183,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             pregnancy_data: dict = runtime.pregnancy_data
             menarche_data: dict = runtime.menarche_data
             menopause_data: dict = runtime.menopause_data
+            noncycle_data: dict = runtime.noncycle_data
             current_cycle_length_override: int = runtime.cycle_length_override or 0
             current_onboarding_stage: str = str(getattr(runtime, "onboarding_stage", DEFAULT_ONBOARDING_STAGE))
         else:
@@ -206,6 +210,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 },
             )
             menopause_data = stored.get("menopause_data", {"is_menopause": False, "start_date": None})
+            noncycle_data = stored.get("noncycle_data") or {
+                "has_noncycle": False, "doctor_report_exported": False,
+                "is_postpartum": False, "postpartum_start_date": None, "postpartum_duration_days": 42,
+            }
             current_cycle_length_override = stored.get("cycle_length_override") or 0
             current_onboarding_stage = str(stored.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE))
         if current_onboarding_stage not in ONBOARDING_STAGES:
@@ -215,6 +223,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         current_birth_date = str(self._entry.data.get(CONF_BIRTH_DATE, "") or "")
         current_pregnancy_high_risk = bool(pregnancy_data.get("high_risk", False))
         current_pregnancy_risk_notes = str(pregnancy_data.get("risk_notes", "") or "")
+        current_postpartum_enabled = bool(noncycle_data.get("is_postpartum", False))
+        current_postpartum_start_date = noncycle_data.get("postpartum_start_date") or None
+        current_postpartum_duration_days = int(noncycle_data.get("postpartum_duration_days") or 42)
         current_show_dashboard = bool(
             self._entry.options.get(
                 CONF_DASHBOARD_ENABLED,
@@ -243,10 +254,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE) or "").strip()
             meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE) or "").strip()
             birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
+            postpartum_date_raw = str(user_input.get(CONF_POSTPARTUM_START_DATE) or "").strip()
 
             preg_date_parsed = _parse_date_opt(preg_date_raw)
             meno_date_parsed = _parse_date_opt(meno_date_raw)
             birth_date_parsed = _parse_date_opt(birth_date_raw)
+            postpartum_date_parsed = _parse_date_opt(postpartum_date_raw)
 
             if preg_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_PREGNANCY_START_DATE] = "invalid_date"
@@ -256,6 +269,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 errors[CONF_BIRTH_DATE] = "invalid_date"
             elif birth_date_parsed and birth_date_parsed > date.today().isoformat():
                 errors[CONF_BIRTH_DATE] = "invalid_date"
+            if postpartum_date_parsed is _INVALID_DATE_SENTINEL:
+                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
+            elif postpartum_date_parsed and postpartum_date_parsed > date.today().isoformat():
+                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
 
             # Validate family menarche age
             family_age_raw = str(user_input.get(CONF_FAMILY_MENARCHE_AGE, "")).strip()
@@ -321,6 +338,22 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     "start_date": meno_date_parsed if meno_date_parsed is not _INVALID_DATE_SENTINEL else None,
                 }
 
+                postpartum_enabled = bool(user_input.get(CONF_POSTPARTUM_ENABLED, False))
+                new_postpartum_start = postpartum_date_parsed if postpartum_date_parsed is not _INVALID_DATE_SENTINEL else None
+                if new_postpartum_start:
+                    postpartum_enabled = True
+                raw_postpartum_duration = user_input.get(CONF_POSTPARTUM_DURATION_DAYS, current_postpartum_duration_days)
+                try:
+                    new_postpartum_duration = max(1, min(365, int(raw_postpartum_duration)))
+                except (TypeError, ValueError):
+                    new_postpartum_duration = 42
+                new_noncycle_data = {
+                    **noncycle_data,
+                    "is_postpartum": postpartum_enabled,
+                    "postpartum_start_date": new_postpartum_start,
+                    "postpartum_duration_days": new_postpartum_duration,
+                }
+
                 if runtime is not None:
                     # Update in-memory runtime
                     runtime.friendly_name = new_friendly_name
@@ -329,6 +362,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     runtime.pregnancy_data = new_pregnancy_data
                     runtime.menarche_data = new_menarche_data
                     runtime.menopause_data = new_menopause_data
+                    runtime.noncycle_data = new_noncycle_data
                     runtime.cycle_length_override = new_cycle_length_override
                     runtime.onboarding_stage = new_onboarding_stage
 
@@ -365,7 +399,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         new_menarche_data,
                         stored_full.get("pre_menarche_data"),
                         new_menopause_data,
-                        stored_full.get("noncycle_data"),
+                        new_noncycle_data,
                         cycle_length_override=new_cycle_length_override,
                         onboarding_stage=new_onboarding_stage,
                     )
@@ -444,6 +478,18 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_MENOPAUSE_START_DATE,
                     default=menopause_data.get("start_date") or None,
                 ): selector.DateSelector(),
+                vol.Optional(
+                    CONF_POSTPARTUM_ENABLED,
+                    default=current_postpartum_enabled,
+                ): bool,
+                vol.Optional(
+                    CONF_POSTPARTUM_START_DATE,
+                    default=current_postpartum_start_date,
+                ): selector.DateSelector(),
+                vol.Optional(
+                    CONF_POSTPARTUM_DURATION_DAYS,
+                    default=current_postpartum_duration_days,
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
                 vol.Optional(
                     CONF_CYCLE_LENGTH_OVERRIDE,
                     default=current_cycle_length_override,

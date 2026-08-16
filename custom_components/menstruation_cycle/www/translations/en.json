@@ -731,5 +731,8 @@
   "dashboard_calendar_loading": "Loading…",
   "dashboard_widget_inventory_card": "Product Inventory",
   "dashboard_widget_timer_card": "Timer",
-  "dashboard_widget_support_card": "Support & Education"
+  "dashboard_widget_support_card": "Support & Education",
+  "dashboard_birth": "Birth",
+  "dashboard_days_remaining": "Days remaining",
+  "dashboard_postpartum_disclaimer": "Recovery varies a lot from person to person — this window is a rough guide, not a medical prescription."
 }

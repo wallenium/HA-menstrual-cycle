@@ -20,6 +20,7 @@ from .const import (
     STATE_FERTILE,
     STATE_MENARCHE,
     STATE_MENOPAUSE,
+    STATE_POSTPARTUM,
     STATE_NEUTRAL,
     STATE_PERIOD,
     STATE_PMS,
@@ -2185,6 +2186,71 @@ def build_cycle_model(
                 "reason": "pre_menarche_mode",
             },
         )
+
+    # If postpartum mode is enabled and still within the configured window
+    # (default 42 days / 6 weeks), report state=postpartum and suppress cycle/
+    # fertility predictions, since there's no meaningful cycle to predict yet.
+    # Once the window elapses, falls through to normal cycle logic automatically —
+    # no manual "end postpartum mode" step required.
+    if nc_data.get("is_postpartum") is True:
+        postpartum_start_raw = nc_data.get("postpartum_start_date")
+        postpartum_duration = 42
+        try:
+            postpartum_duration = max(1, min(365, int(nc_data.get("postpartum_duration_days") or 42)))
+        except (TypeError, ValueError):
+            postpartum_duration = 42
+
+        postpartum_start_date: date | None = None
+        if postpartum_start_raw:
+            try:
+                postpartum_start_date = date.fromisoformat(str(postpartum_start_raw))
+            except ValueError:
+                postpartum_start_date = None
+
+        days_since_birth = (now - postpartum_start_date).days if postpartum_start_date else None
+        still_in_window = (
+            postpartum_start_date is not None
+            and days_since_birth is not None
+            and 0 <= days_since_birth < postpartum_duration
+        )
+
+        if still_in_window:
+            return CycleModel(
+                history=normalized,
+                grouped_starts=grouped_cycle_starts(normalized),
+                bleeding_blocks=[],
+                next_predicted_start=None,
+                predicted_cycle_starts=[],
+                avg_cycle_length=None,
+                fertile_window_start=None,
+                fertile_window_end=None,
+                ovulation_day=None,
+                days_until_next_start=None,
+                period_duration_days=period_duration_days,
+                learned_period_duration_days=None,
+                current_period=None,
+                state=STATE_POSTPARTUM,
+                symptom_history=symptoms,
+                is_pregnant=False,
+                pregnancy_start_date=None,
+                weeks_pregnant=None,
+                due_date=None,
+                menarche_data=men_data,
+                pre_menarche_data=pre_men_data,
+                menopause_data=meno_data,
+                noncycle_data=nc_data,
+                nfp_analysis=None,
+                learned_ovulation_offset=None,
+                nfp_mode=nfp_mode,
+                period_forecast=None,
+                fertility_forecast=None,
+                symptom_correlation_insights=[],
+                symptom_correlation_insights_reason="unavailable_for_postpartum",
+                onboarding_stage=requested_stage,
+                onboarding_stage_effective=requested_stage,
+                learning_phase=False,
+                prediction_gating={"precision_allowed": False, "confidence": "low", "reason": "postpartum_mode"},
+            )
 
     # If menopause mode is enabled, suppress cycle/fertility predictions and instead
     # surface time-since-last-period and time-since-menopause-start, which is what's

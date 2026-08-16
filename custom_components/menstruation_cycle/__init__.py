@@ -246,7 +246,13 @@ class MenstruationRuntime:
     menarche_data: dict[str, Any] = field(default_factory=lambda: {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None})
     pre_menarche_data: dict[str, Any] = field(default_factory=lambda: {"signs": {}, "tanner_stage": None})
     menopause_data: dict[str, Any] = field(default_factory=lambda: {"is_menopause": False, "start_date": None})
-    noncycle_data: dict[str, Any] = field(default_factory=lambda: {"has_noncycle": False, "doctor_report_exported": False})
+    noncycle_data: dict[str, Any] = field(default_factory=lambda: {
+        "has_noncycle": False,
+        "doctor_report_exported": False,
+        "is_postpartum": False,
+        "postpartum_start_date": None,
+        "postpartum_duration_days": 42,
+    })
     onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
     unregister_midnight_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None

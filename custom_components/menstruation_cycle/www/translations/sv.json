@@ -698,5 +698,8 @@
   "dashboard_calendar_loading": "Laddar…",
   "dashboard_widget_inventory_card": "Produktinventering",
   "dashboard_widget_timer_card": "Timer",
-  "dashboard_widget_support_card": "Stöd och information"
+  "dashboard_widget_support_card": "Stöd och information",
+  "dashboard_birth": "Förlossning",
+  "dashboard_days_remaining": "Dagar kvar",
+  "dashboard_postpartum_disclaimer": "Återhämtningen varierar mycket mellan olika personer — denna period är en grov riktlinje, inte en medicinsk föreskrift."
 }
