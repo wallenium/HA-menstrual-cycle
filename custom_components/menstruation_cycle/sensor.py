@@ -146,7 +146,6 @@ PRODUCT_USAGE_PRODUCT_ALIASES = {
 
 _DROPPED_ATTRIBUTE_KEYS = {
     ATTR_PREDICTION_DAY_CONFIDENCE,
-    "entry_id",
     "friendly_name",
     "menarche_data",
     "noncycle_data",
