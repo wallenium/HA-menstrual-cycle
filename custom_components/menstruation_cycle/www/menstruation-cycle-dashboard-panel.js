@@ -2059,7 +2059,7 @@
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
       if (!discreetMode) {
-        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${ovulationEst ? escapeHtml(ovulationEst) : '—'}</span><span class="kpi-label">${this._t('dashboard_fertility_ovulation')}</span></div>`);
+        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${ovulationEst ? escapeHtml(this._formatDate(ovulationEst)) : '—'}</span><span class="kpi-label">${this._t('dashboard_fertility_ovulation')}</span></div>`);
       }
       if (confidence !== null && confidence !== undefined) {
         kpis.push(`<div class="kpi-item mc-plum"><span class="kpi-icon" aria-hidden="true">🎯</span><span class="kpi-value">${escapeHtml(confidence)}</span><span class="kpi-label">${this._t('period_forecast_confidence')}</span></div>`);
@@ -2596,7 +2596,7 @@
       const totalDays = phases.reduce((s, p) => s + p.days, 0);
       const scale = cycleLength / (totalDays || cycleLength);
       let cumAngle = -90; // start at top
-      const cx = 60; const cy = 60; const R = 48; const innerR = 30;
+      const cx = 100; const cy = 100; const R = 80; const innerR = 50;
       const toRad = (deg) => (deg * Math.PI) / 180;
 
       const matchPhase = (ph) => {
@@ -2637,26 +2637,26 @@
         const ly = cy + labelR * Math.sin(toRad(midAngle));
 
         return `<path d="${pathD}" fill="${ph.color}" opacity="${opacity}" stroke="${strokeColor}" stroke-width="${strokeW}"/>
-                <text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="8" fill="#fff" font-weight="${isActive ? '700' : '400'}" pointer-events="none">${ph.label}</text>`;
+                <text x="${lx.toFixed(1)}" y="${(ly + 5).toFixed(1)}" text-anchor="middle" font-size="13" fill="#fff" font-weight="${isActive ? '700' : '400'}" pointer-events="none">${ph.label}</text>`;
       }).join('');
 
       // Center day text
       const centerLabel = cycleDay > 0
-        ? `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="18" font-family="Fraunces, serif" font-weight="500" fill="var(--mc-rose-deep,#C43F5E)">${cycleDay}</text>
-           <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day')).toUpperCase()}</text>`
-        : `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">—</text>`;
+        ? `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="30" font-family="Fraunces, serif" font-weight="500" fill="var(--mc-rose-deep,#C43F5E)">${cycleDay}</text>
+           <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day')).toUpperCase()}</text>`
+        : `<text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" fill="var(--secondary-text-color,#6b7280)">—</text>`;
 
       // Legend below
       const legendItems = phases.map((ph, idx) => {
         const isActive = idx === activeIdx;
-        return `<span style="display:inline-flex;align-items:center;gap:4px;font-family:var(--mc-font-mono);font-size:0.68rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 600 : 400}">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
+        return `<span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--mc-font-mono);font-size:0.78rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 600 : 400}">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
         </span>`;
       }).join('');
 
       return `
         <div class="phase-donut-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_phase_donut_title'))}">
-          <svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0;">
+          <svg viewBox="0 0 200 200" width="180" height="180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0;">
             <title>${escapeHtml(this._t('dashboard_phase_donut_title'))}</title>
             ${slices}
             ${centerLabel}
@@ -3077,11 +3077,23 @@
       const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
       const forecast = attrs.period_forecast || {};
       const predictedStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+      const fertility = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : {};
+      const fertileStart = fertility.fertile_window_start ?? attrs.fertile_window_start ?? null;
+      const fertileEnd = fertility.fertile_window_end ?? attrs.fertile_window_end ?? null;
+      const ovulationDay = fertility.ovulation_estimate ?? attrs.ovulation_day ?? null;
 
       const today = new Date();
       const currentYear = today.getFullYear();
       const startYear = today.getMonth() < 6 ? currentYear - 1 : currentYear;
       const isDe = this._lang === 'de';
+
+      const isInFertileWindow = (isoDate) => {
+        if (!fertileStart) return false;
+        const d = new Date(isoDate);
+        const ws = new Date(fertileStart);
+        const we = fertileEnd ? new Date(fertileEnd) : ws;
+        return d >= ws && d <= we;
+      };
 
       const months = [];
       for (let m = 0; m < 12; m++) {
@@ -3100,11 +3112,15 @@
           const isoDate = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           const isPeriodStart = allStarts.includes(isoDate);
           const isPredicted = predictedStart && isoDate === predictedStart;
+          const isOvulation = ovulationDay && isoDate === ovulationDay;
+          const isFertile = !isOvulation && isInFertileWindow(isoDate);
           const isToday = isCurrentMonth && d === today.getDate();
 
           let bg = 'var(--divider-color,#e5e7eb)';
           if (isToday) bg = 'var(--mc-plum,#6B3654)';
           else if (isPeriodStart) bg = 'var(--mc-rose-deep)';
+          else if (isOvulation) bg = 'var(--mc-sage-deep,#3F5A47)';
+          else if (isFertile) bg = 'var(--mc-amber,#E3A23D)';
           else if (isPredicted) bg = 'rgba(232,99,125,0.32)';
 
           dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${escapeHtml(this._formatDate(isoDate))}"></div>`);
@@ -3122,6 +3138,8 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))}</span>
           ${predictedStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
+          ${fertileStart ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
+          ${ovulationDay ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-sage-deep,#3F5A47);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_ovulation'))}</span>` : ''}
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-plum,#6B3654);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_today'))}</span>
         </div>
         ${this._renderIcsSubscribeLink(attrs)}
@@ -3735,14 +3753,15 @@
           .phase-donut-wrap {
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            gap: 20px;
             flex-wrap: wrap;
           }
           .phase-donut-legend {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            flex: 1 1 80px;
+            gap: 6px;
+            flex: 0 0 auto;
           }
           /* Basal temperature */
           .bbt-wrap { width: 100%; }
