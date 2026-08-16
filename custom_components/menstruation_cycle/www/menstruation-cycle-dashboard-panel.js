@@ -245,14 +245,17 @@
       this._message = '';
       this._pending = false;
       this._quickLogScratch = { mood: '', note: '' };
-      this._i18nRenderToken = 0;
       this._i18nLanguagePromises = {};
-      this._lastSelectedSignature = null;
-      this._lastAvailableEntitiesSignature = '';
+      this._lastRenderSig = null;
       this._debugEnabled = this._readDebugFlag();
       this._availableEntities = null;
       this._entitiesPromise = null;
       this._registryLoaded = false;
+      // Single-flight scheduler state
+      this._updateScheduled = false;
+      this._updateRunning = false;
+      // Incrementing version bumped on every prefs write, used in render signature
+      this._prefsVersion = 0;
     }
 
     connectedCallback() {
@@ -263,25 +266,69 @@
 
     set hass(hass) {
       this._hass = hass;
-      const previousLang = this._lang;
-      this._lang = this._detectLang();
-      const languageChanged = previousLang !== this._lang;
+      this._requestUpdateFromHass();
+    }
 
-      // Trigger entity discovery once per component lifetime; do not re-fetch on every hass tick.
+    /**
+     * Lightweight scheduler: coalesces rapid hass ticks into a single _processUpdate() run.
+     * Multiple calls while an update is already running are collapsed into one queued run.
+     */
+    _requestUpdateFromHass() {
+      if (this._updateRunning) {
+        // An update is in progress — mark that another pass is needed when it finishes.
+        if (!this._updateScheduled) {
+          this._updateScheduled = true;
+          this._debug('update coalesced');
+        }
+        return;
+      }
+      if (this._updateScheduled) {
+        // Already queued for the next microtask; nothing more to do.
+        return;
+      }
+      this._updateScheduled = true;
+      Promise.resolve().then(() => this._drainUpdateQueue());
+    }
+
+    _drainUpdateQueue() {
+      this._updateScheduled = false;
+      this._updateRunning = true;
+      let chain = Promise.resolve();
+      try {
+        chain = this._processUpdate();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[menstruation-cycle] _processUpdate threw synchronously:', err);
+      }
+      Promise.resolve(chain)
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error('[menstruation-cycle] _processUpdate rejected:', err);
+        })
+        .finally(() => {
+          this._updateRunning = false;
+          if (this._updateScheduled) {
+            // Another hass tick arrived while we were running — process once more.
+            this._drainUpdateQueue();
+          }
+        });
+    }
+
+    async _processUpdate() {
+      // 1. Detect language change and ensure i18n is loaded (cached after first load per lang).
+      const newLang = this._detectLang();
+      if (newLang !== this._lang) {
+        this._lang = newLang;
+        await this._loadI18nLanguageOnce(newLang).catch(() => null);
+      }
+
+      // 2. Trigger entity discovery once per component lifetime.
       if (!this._registryLoaded && !this._entitiesPromise) {
         this._entitiesPromise = this._loadEntitiesFromRegistry()
           .then((entities) => {
             this._availableEntities = entities;
             this._registryLoaded = true;
             this._entitiesPromise = null;
-            this._applyEntitySelection();
-            // Only render when the loaded registry actually changes the visible signature.
-            const stateObjAfter = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
-            const sigAfter = this._buildSelectedEntitySignature(stateObjAfter);
-            if (sigAfter !== this._lastSelectedSignature) {
-              this._lastSelectedSignature = sigAfter;
-              this.render();
-            }
           })
           .catch((err) => {
             // eslint-disable-next-line no-console
@@ -289,84 +336,50 @@
             this._availableEntities = this._getAvailableEntitiesFallback();
             this._registryLoaded = true;
             this._entitiesPromise = null;
-            this._applyEntitySelection();
-            const stateObjAfter = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
-            const sigAfter = this._buildSelectedEntitySignature(stateObjAfter);
-            if (sigAfter !== this._lastSelectedSignature) {
-              this._lastSelectedSignature = sigAfter;
-              this.render();
-            }
           });
+        // Wait for the first discovery to finish before proceeding.
+        await this._entitiesPromise;
       }
 
-      // Resolve selected entity: preserve existing selection if still valid,
-      // only fall back when there is no selection or the selected entity disappeared.
-      const userId = this._hass?.user?.id;
+      // 3. Stabilize entity selection (change only if current selection is invalid/missing).
       const available = this._availableEntities || this._getAvailableEntitiesFallback();
-      const availableSignature = available.map((entity) => `${entity.entityId}:${entity.name}`).join('|');
-      const availableChanged = availableSignature !== this._lastAvailableEntitiesSignature;
-      const selectedBefore = this._selectedEntityId;
-      let stateObj = null;
-
+      const userId = this._hass?.user?.id;
       if (available.length > 0) {
         const currentStillValid = this._selectedEntityId && available.some((e) => e.entityId === this._selectedEntityId);
         if (!currentStillValid) {
-          // No valid selection yet — try to restore from localStorage, then fall back to first
           const savedEntityId = userId ? this._getSelectedEntity(userId) : null;
           const found = savedEntityId ? available.find((e) => e.entityId === savedEntityId) : null;
-          this._selectedEntityId = (found || available[0]).entityId;
+          const next = (found || available[0]).entityId;
+          if (next !== this._selectedEntityId) {
+            this._debug('selection changed (invalid -> fallback)', { before: this._selectedEntityId, after: next });
+            this._selectedEntityId = next;
+          }
         }
-        stateObj = this._hass?.states?.[this._selectedEntityId] || null;
-      } else {
+      } else if (this._selectedEntityId !== null) {
+        this._debug('selection changed (invalid -> fallback)', { before: this._selectedEntityId, after: null });
         this._selectedEntityId = null;
-        stateObj = null;
-      }
-      const selectedChanged = selectedBefore !== this._selectedEntityId;
-      this._debug('available entities', available.map((entity) => entity.entityId));
-      this._debug('selected entity update', { before: selectedBefore, after: this._selectedEntityId });
-
-      const previousProfile = this._activeProfile;
-      const previousMode = this._activeMode;
-      this._activeProfile = stateObj?.attributes?.profile || 'default';
-      this._activeMode = this._resolveMode(stateObj);
-      const profileChanged = previousProfile !== this._activeProfile;
-      const modeChanged = previousMode !== this._activeMode;
-      let prefsChanged = false;
-      if (!this._prefs || this._prefs.__profile !== this._activeProfile || this._prefs.__mode !== this._activeMode) {
-        this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
-        prefsChanged = true;
       }
 
-      const selectedSignature = this._buildSelectedEntitySignature(stateObj);
-      const signatureChanged = selectedSignature !== this._lastSelectedSignature;
-      const renderReasons = [];
-      if (languageChanged) renderReasons.push('language_changed');
-      if (selectedChanged) renderReasons.push('selected_entity_changed');
-      if (profileChanged) renderReasons.push('profile_changed');
-      if (modeChanged) renderReasons.push('mode_changed');
-      if (prefsChanged) renderReasons.push('prefs_changed');
-      if (signatureChanged) renderReasons.push('selected_state_changed');
-      if (availableChanged) renderReasons.push('available_entities_changed');
-      if (!renderReasons.length) {
-        this._debug('render skipped: signature unchanged');
+      // 4. Derive profile/mode/prefs from selected entity (no storage writes here).
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const newProfile = stateObj?.attributes?.profile || 'default';
+      const newMode = this._resolveMode(stateObj);
+      if (!this._prefs || this._prefs.__profile !== newProfile || this._prefs.__mode !== newMode) {
+        this._activeProfile = newProfile;
+        this._activeMode = newMode;
+        this._prefs = this._loadPrefs(newProfile, newMode);
+        this._prefsVersion++;
+      }
+
+      // 5. Compute canonical render signature and gate rendering.
+      const nextSig = this._buildRenderSig(stateObj);
+      if (nextSig === this._lastRenderSig) {
+        this._debug('skip render (sig unchanged)');
         return;
       }
-
-      this._lastSelectedSignature = selectedSignature;
-      this._lastAvailableEntitiesSignature = availableSignature;
-      this._debug('render reason', renderReasons.join(','));
-
-      if (languageChanged) {
-        const renderToken = ++this._i18nRenderToken;
-        this._loadI18nLanguageOnce(this._lang)
-          .catch(() => null)
-          .finally(() => {
-            if (renderToken !== this._i18nRenderToken) return;
-            this.render();
-          });
-        return;
-      }
-
+      const reason = this._describeSigChange(this._lastRenderSig, nextSig);
+      this._debug(`render (sig changed: ${reason})`);
+      this._lastRenderSig = nextSig;
       this.render();
     }
 
@@ -471,6 +484,59 @@
       return JSON.stringify(signaturePayload);
     }
 
+    /**
+     * Canonical render signature covering all fields that affect what is rendered.
+     * render() is called only when this value changes between scheduler runs.
+     */
+    _buildRenderSig(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const available = this._availableEntities || [];
+      return JSON.stringify({
+        lang: this._lang,
+        selectedEntityId: this._selectedEntityId || null,
+        entityState: stateObj?.state ?? null,
+        entityAttrs: {
+          profile: attrs.profile ?? null,
+          entry_id: attrs.entry_id ?? null,
+          friendly_name: attrs.friendly_name ?? null,
+          onboarding_stage_effective: attrs.onboarding_stage_effective ?? null,
+          onboarding_stage: attrs.onboarding_stage ?? null,
+          cycle_day: attrs.cycle_day ?? null,
+          days_until_next_start: attrs.days_until_next_start ?? null,
+          next_predicted_start: attrs.next_predicted_start ?? null,
+          period_forecast: attrs.period_forecast ?? null,
+          progress_badges: attrs.progress_badges ?? null,
+          average_cycle_length: attrs.average_cycle_length ?? null,
+          cycle_length_avg: attrs.cycle_length_avg ?? null,
+          prediction_gating: attrs.prediction_gating ?? null,
+        },
+        editMode: this._editMode,
+        prefsVersion: this._prefsVersion,
+        availableCount: available.length,
+        availableIds: available.map((e) => e.entityId).join('|'),
+      });
+    }
+
+    /** Returns a human-readable reason string for why the signature changed. */
+    _describeSigChange(prev, next) {
+      if (!prev) return 'initial';
+      try {
+        const a = JSON.parse(prev);
+        const b = JSON.parse(next);
+        const reasons = [];
+        if (a.lang !== b.lang) reasons.push('lang');
+        if (a.selectedEntityId !== b.selectedEntityId) reasons.push('selectedEntityId');
+        if (a.entityState !== b.entityState) reasons.push('entityState');
+        if (JSON.stringify(a.entityAttrs) !== JSON.stringify(b.entityAttrs)) reasons.push('entityAttrs');
+        if (a.editMode !== b.editMode) reasons.push('editMode');
+        if (a.prefsVersion !== b.prefsVersion) reasons.push('prefsVersion');
+        if (a.availableCount !== b.availableCount || a.availableIds !== b.availableIds) reasons.push('availableEntities');
+        return reasons.join(',') || 'unknown';
+      } catch (_e) {
+        return 'parse_error';
+      }
+    }
+
     _readDebugFlag() {
       try {
         if (typeof window === 'undefined') return false;
@@ -532,6 +598,7 @@
       if (!this._prefs) return;
       const { __profile, __mode, ...persisted } = this._prefs;
       localStorage.setItem(this._storageKey(this._activeProfile), JSON.stringify(persisted));
+      this._prefsVersion++;
     }
 
     _findPrimaryState() {
@@ -682,6 +749,9 @@
       this._activeProfile = stateObj?.attributes?.profile || 'default';
       this._activeMode = this._resolveMode(stateObj);
       this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
+      this._prefsVersion++;
+      // Force render regardless of sig — entity was explicitly changed by user
+      this._lastRenderSig = null;
       this.render();
     }
 
