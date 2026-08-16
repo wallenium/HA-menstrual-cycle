@@ -250,6 +250,8 @@
       this._lastSelectedSignature = null;
       this._lastAvailableEntitiesSignature = '';
       this._debugEnabled = this._readDebugFlag();
+      this._availableEntities = null;
+      this._entitiesPromise = null;
     }
 
     connectedCallback() {
@@ -264,10 +266,29 @@
       this._lang = this._detectLang();
       const languageChanged = previousLang !== this._lang;
 
+      // Trigger entity discovery once (or re-trigger if hass connection changed).
+      if (!this._entitiesPromise) {
+        this._entitiesPromise = this._loadEntitiesFromRegistry()
+          .then((entities) => {
+            this._availableEntities = entities;
+            this._entitiesPromise = null; // allow refresh on next hass set if needed
+            this._applyEntitySelection();
+            this.render();
+          })
+          .catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('[menstruation-cycle] Entity registry load failed, falling back to state scan:', err);
+            this._availableEntities = this._getAvailableEntitiesFallback();
+            this._entitiesPromise = null;
+            this._applyEntitySelection();
+            this.render();
+          });
+      }
+
       // Resolve selected entity: preserve existing selection if still valid,
       // only fall back when there is no selection or the selected entity disappeared.
       const userId = this._hass?.user?.id;
-      const available = this._getAvailableEntities();
+      const available = this._availableEntities || this._getAvailableEntitiesFallback();
       const availableSignature = available.map((entity) => `${entity.entityId}:${entity.name}`).join('|');
       const availableChanged = availableSignature !== this._lastAvailableEntitiesSignature;
       const selectedBefore = this._selectedEntityId;
@@ -505,7 +526,7 @@
       return entries[0][1];
     }
 
-    _getAvailableEntities() {
+    _getAvailableEntitiesFallback() {
       const states = this._hass?.states || {};
       const allSensors = Object.entries(states).filter(([id]) => id.startsWith('sensor.'));
 
@@ -547,6 +568,70 @@
       }
 
       return entities.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    async _loadEntitiesFromRegistry() {
+      if (!this._hass?.connection) throw new Error('No hass connection');
+      const conn = this._hass.connection;
+
+      // 1. Get all config entries for this integration
+      const configEntries = await conn.sendMessagePromise({ type: 'config_entries/get' });
+      const integrationEntryIds = new Set(
+        (Array.isArray(configEntries) ? configEntries : [])
+          .filter((entry) => entry.domain === 'menstruation_cycle')
+          .map((entry) => entry.entry_id)
+      );
+
+      if (integrationEntryIds.size === 0) {
+        this._debug('No menstruation_cycle config entries found, using fallback');
+        return this._getAvailableEntitiesFallback();
+      }
+
+      // 2. Get entity registry and filter to our integration's sensors
+      const entityRegistry = await conn.sendMessagePromise({ type: 'config/entity_registry/list' });
+      const registeredEntityIds = new Set(
+        (Array.isArray(entityRegistry) ? entityRegistry : [])
+          .filter(
+            (entry) =>
+              entry.config_entry_id &&
+              integrationEntryIds.has(entry.config_entry_id) &&
+              entry.entity_id.startsWith('sensor.') &&
+              !entry.entity_id.includes('period_products')
+          )
+          .map((entry) => entry.entity_id)
+      );
+
+      // 3. Map to current states
+      const states = this._hass?.states || {};
+      const entities = Array.from(registeredEntityIds)
+        .filter((entityId) => entityId in states)
+        .map((entityId) => {
+          const state = states[entityId];
+          return {
+            entityId,
+            name: state?.attributes?.friendly_name || entityId,
+            profile: state?.attributes?.profile || '',
+          };
+        });
+
+      entities.sort((a, b) => a.name.localeCompare(b.name));
+      this._debug('Registry-discovered entities', entities.map((e) => e.entityId));
+      return entities;
+    }
+
+    _applyEntitySelection() {
+      const available = this._availableEntities || [];
+      const userId = this._hass?.user?.id;
+      if (available.length > 0) {
+        const currentStillValid = this._selectedEntityId && available.some((e) => e.entityId === this._selectedEntityId);
+        if (!currentStillValid) {
+          const savedEntityId = userId ? this._getSelectedEntity(userId) : null;
+          const found = savedEntityId ? available.find((e) => e.entityId === savedEntityId) : null;
+          this._selectedEntityId = (found || available[0]).entityId;
+        }
+      } else {
+        this._selectedEntityId = null;
+      }
     }
 
     _selectedEntityKey(userId) {
@@ -995,7 +1080,7 @@
     _renderContent() {
       if (!this.shadowRoot) return;
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
-      const availableEntities = this._getAvailableEntities();
+      const availableEntities = this._availableEntities || this._getAvailableEntitiesFallback();
       const discreetMode = !!this._prefs?.discreetMode;
       const cards = (this._prefs?.widgetOrder || WIDGET_IDS)
         .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
