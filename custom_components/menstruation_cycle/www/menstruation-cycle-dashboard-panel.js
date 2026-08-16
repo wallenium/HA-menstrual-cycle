@@ -122,22 +122,26 @@
   };
 
   const WIDGET_DEFS = [
-    { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
-    { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
-    { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
+    { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
+    { id: 'phase_timeline', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
+    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
     { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false, wide: true },
     { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, wide: true },
-    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
+    { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
+    { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
+    { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
     { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
     { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
     { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
   ];
 
-  // Default widget order surfaces graph-first cards near the top
+  // Default widget order: graph-first / visual cockpit layout
   const WIDGET_IDS_GRAPH_FIRST = [
+    'kpi_strip',
+    'phase_timeline',
+    'statistics_card',
     'gauge_card',
     'calendar_card',
-    'statistics_card',
     'today_status',
     'upcoming_window',
     'quick_log',
@@ -153,6 +157,8 @@
       discreetMode: true,
       widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
+        kpi_strip: true,
+        phase_timeline: true,
         quick_log: true,
         today_status: true,
         upcoming_window: true,
@@ -172,6 +178,8 @@
       discreetMode: false,
       widgetOrder: WIDGET_IDS_GRAPH_FIRST,
       widgetVisibility: {
+        kpi_strip: true,
+        phase_timeline: true,
         quick_log: true,
         today_status: true,
         upcoming_window: true,
@@ -475,6 +483,8 @@
         average_cycle_length: attrs.average_cycle_length ?? null,
         cycle_length_avg: attrs.cycle_length_avg ?? null,
         prediction_gating: attrs.prediction_gating ?? null,
+        current_phase: attrs.current_phase ?? null,
+        phase_day: attrs.phase_day ?? null,
       };
       const signaturePayload = {
         entityId: this._selectedEntityId || null,
@@ -509,6 +519,8 @@
           average_cycle_length: attrs.average_cycle_length ?? null,
           cycle_length_avg: attrs.cycle_length_avg ?? null,
           prediction_gating: attrs.prediction_gating ?? null,
+          current_phase: attrs.current_phase ?? null,
+          phase_day: attrs.phase_day ?? null,
         },
         editMode: this._editMode,
         prefsVersion: this._prefsVersion,
@@ -1032,7 +1044,7 @@
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
       const tagName = 'menstruation-gauge-card';
-      if (!customElements.get(tagName)) {
+      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
         return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
       }
       const entityId = escapeHtml(this._selectedEntityId);
@@ -1044,7 +1056,7 @@
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
       const tagName = 'menstruation-calendar-card';
-      if (!customElements.get(tagName)) {
+      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
         return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
       }
       const entityId = escapeHtml(this._selectedEntityId);
@@ -1056,11 +1068,152 @@
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
       const tagName = 'menstruation-statistics-card';
-      if (!customElements.get(tagName)) {
+      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
         return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
       }
       const entityId = escapeHtml(this._selectedEntityId);
       return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+    }
+
+    _renderKpiStrip(stateObj, discreetMode) {
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = attrs.cycle_day ?? null;
+      const cycleLengthAvg = attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      const phase = discreetMode ? null : (attrs.current_phase ?? attrs.state ?? stateObj?.state ?? null);
+      const forecast = attrs.period_forecast || {};
+      const daysUntil = attrs.days_until_next_start ?? forecast.days_until ?? null;
+      const confidence = forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
+
+      const kpis = [];
+
+      kpis.push(`
+        <div class="kpi-item">
+          <span class="kpi-icon" aria-hidden="true">📅</span>
+          <span class="kpi-value">${cycleDay !== null ? escapeHtml(cycleDay) : '—'}</span>
+          <span class="kpi-label">${this._t('cycle_day')}</span>
+        </div>
+      `);
+
+      if (!discreetMode) {
+        kpis.push(`
+          <div class="kpi-item">
+            <span class="kpi-icon" aria-hidden="true">🌸</span>
+            <span class="kpi-value">${phase !== null ? escapeHtml(phase) : '—'}</span>
+            <span class="kpi-label">${this._t('dashboard_label_state')}</span>
+          </div>
+        `);
+      }
+
+      kpis.push(`
+        <div class="kpi-item">
+          <span class="kpi-icon" aria-hidden="true">⏳</span>
+          <span class="kpi-value">${daysUntil !== null ? escapeHtml(daysUntil) : '—'}</span>
+          <span class="kpi-label">${this._t('days_until_menarche')}</span>
+        </div>
+      `);
+
+      if (confidence !== null) {
+        kpis.push(`
+          <div class="kpi-item">
+            <span class="kpi-icon" aria-hidden="true">🎯</span>
+            <span class="kpi-value">${escapeHtml(confidence)}</span>
+            <span class="kpi-label">${this._t('period_forecast_confidence')}</span>
+          </div>
+        `);
+      }
+
+      return `<div class="kpi-strip" role="region" aria-label="Cycle at a glance">${kpis.join('')}</div>`;
+    }
+
+    _renderPhaseTimeline(stateObj, discreetMode) {
+      if (discreetMode) return `<div class="helper">${this._t('dashboard_discreet_note')}</div>`;
+
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
+      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const currentPhase = String(attrs.current_phase ?? attrs.state ?? stateObj?.state ?? '').toLowerCase();
+
+      // Phase definitions: [id, label, startFraction, endFraction, color]
+      const phases = [
+        { id: 'menstrual',   label: 'Menstrual',   start: 0,      end: 0.179, color: '#e05c7a' },
+        { id: 'follicular',  label: 'Follicular',  start: 0.179,  end: 0.464, color: '#f97316' },
+        { id: 'ovulation',   label: 'Ovulation',   start: 0.464,  end: 0.536, color: '#a855f7' },
+        { id: 'luteal',      label: 'Luteal',      start: 0.536,  end: 1.0,   color: '#3b82f6' },
+      ];
+
+      const W = 400;
+      const H = 56;
+      const trackY = 22;
+      const trackH = 14;
+      const labelY = H - 4;
+      const tickY2 = trackY + trackH + 6;
+
+      // Match current phase by substring
+      const matchPhase = (ph) => {
+        const p = ph.id;
+        if (currentPhase.includes(p)) return true;
+        if (p === 'menstrual' && (currentPhase.includes('period') || currentPhase.includes('bleeding'))) return true;
+        if (p === 'ovulation' && currentPhase.includes('ovulat')) return true;
+        return false;
+      };
+      const activePhaseIdx = phases.findIndex(matchPhase);
+
+      // Today marker position
+      const todayFrac = cycleLength > 0 ? Math.min(1, Math.max(0, (cycleDay - 1) / cycleLength)) : 0;
+      const todayX = Math.round(todayFrac * W);
+
+      // Build phase segments
+      const segmentRects = phases.map((ph, idx) => {
+        const x = Math.round(ph.start * W);
+        const w = Math.max(1, Math.round((ph.end - ph.start) * W));
+        const isActive = idx === activePhaseIdx;
+        const opacity = isActive ? '1' : '0.35';
+        const stroke = isActive ? 'rgba(255,255,255,0.5)' : 'none';
+        return `<rect x="${x}" y="${trackY}" width="${w}" height="${trackH}" fill="${ph.color}" opacity="${opacity}" stroke="${stroke}" stroke-width="${isActive ? 1.5 : 0}" rx="0"/>`;
+      }).join('');
+
+      // Track border/radius overlay
+      const trackBorder = `<rect x="0" y="${trackY}" width="${W}" height="${trackH}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="1" rx="7"/>`;
+
+      // Phase labels (short, centered in segment)
+      const phaseLabels = phases.map((ph, idx) => {
+        const cx = Math.round((ph.start + ph.end) / 2 * W);
+        const isActive = idx === activePhaseIdx;
+        const shortLabel = ph.label.slice(0, 3);
+        return `<text x="${cx}" y="${labelY}" text-anchor="middle" font-size="9" fill="${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'}" font-weight="${isActive ? '700' : '400'}">${shortLabel}</text>`;
+      }).join('');
+
+      // Day tick marks at cycle quarters
+      const ticks = [7, 14, 21].map((day) => {
+        const x = Math.round((day / cycleLength) * W);
+        return `<line x1="${x}" y1="${trackY + trackH}" x2="${x}" y2="${tickY2}" stroke="var(--divider-color,#d1d5db)" stroke-width="1"/>
+                <text x="${x}" y="${tickY2 + 8}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${day}</text>`;
+      }).join('');
+
+      // Today marker (triangle + line)
+      const markerColor = 'var(--primary-color,#2563eb)';
+      const markerLine = `<line x1="${todayX}" y1="${trackY - 1}" x2="${todayX}" y2="${trackY + trackH + 1}" stroke="${markerColor}" stroke-width="2"/>`;
+      const markerTri = `<polygon points="${todayX},${trackY - 7} ${todayX - 5},${trackY - 1} ${todayX + 5},${trackY - 1}" fill="${markerColor}"/>`;
+      const markerLabel = cycleDay > 0
+        ? `<text x="${Math.min(W - 10, Math.max(10, todayX))}" y="${trackY - 10}" text-anchor="middle" font-size="9" fill="${markerColor}" font-weight="600">${this._t('cycle_day')} ${escapeHtml(cycleDay)}</text>`
+        : '';
+
+      const titleText = `Cycle phase timeline – day ${cycleDay} of ${cycleLength}`;
+
+      return `
+        <div class="phase-timeline-wrap" role="img" aria-label="${escapeHtml(titleText)}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
+            <title>${escapeHtml(titleText)}</title>
+            ${segmentRects}
+            ${trackBorder}
+            ${ticks}
+            ${phaseLabels}
+            ${markerLine}
+            ${markerTri}
+            ${markerLabel}
+          </svg>
+        </div>
+      `;
     }
 
     _renderEditPanel() {
@@ -1111,6 +1264,16 @@
       if (discreetMode && widgetId === 'my_info') return '';
       const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
       let body = '';
+      if (widgetId === 'kpi_strip') {
+        const strip = this._renderKpiStrip(stateObj, discreetMode);
+        const wideClass = 'card--wide';
+        return `<article class="card ${wideClass} card--hero" aria-label="Cycle at a glance">${strip}</article>`;
+      }
+      if (widgetId === 'phase_timeline') {
+        const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
+        const wideClass = 'card--wide';
+        return `<article class="card ${wideClass}"><h2>${this._t('dashboard_widget_today_status')}</h2>${timeline}</article>`;
+      }
       if (widgetId === 'quick_log') body = this._renderQuickLogCard(discreetMode);
       if (widgetId === 'today_status') body = this._renderTodayCard(stateObj, discreetMode);
       if (widgetId === 'upcoming_window') body = this._renderUpcomingCard(stateObj);
@@ -1125,10 +1288,7 @@
       const wideClass = def?.wide ? 'card--wide' : '';
       const cardClasses = ['card', sensitiveClass, wideClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      const trendChips = ['gauge_card', 'calendar_card', 'statistics_card'].includes(widgetId) && stateObj
-        ? this._renderTrendChips(stateObj)
-        : '';
-      return `<article class="${cardClasses}"><h2>${title}</h2>${trendChips}${body}</article>`;
+      return `<article class="${cardClasses}"><h2>${title}</h2>${body}</article>`;
     }
 
     _renderEntityPicker(availableEntities) {
@@ -1241,7 +1401,46 @@
             .card--wide { grid-column: span 2; }
           }
           @media (min-width: 900px) {
-            .card--wide { grid-column: span 2; }
+            .card--wide { grid-column: span 3; }
+          }
+          /* Hero KPI card */
+          .card--hero { padding: 12px 16px; }
+          .kpi-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: stretch;
+          }
+          .kpi-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            background: var(--secondary-background-color, #f3f4f6);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            min-width: 72px;
+            flex: 1 1 72px;
+          }
+          .kpi-icon { font-size: 1.25rem; line-height: 1; }
+          .kpi-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-text-color, #1f2937);
+            line-height: 1.2;
+          }
+          .kpi-label {
+            font-size: 0.7rem;
+            color: var(--secondary-text-color, #6b7280);
+            text-align: center;
+            line-height: 1.2;
+          }
+          /* Phase timeline */
+          .phase-timeline-wrap {
+            width: 100%;
+            overflow: visible;
+            padding: 8px 0 4px;
           }
           .trend-chips {
             display: flex;
@@ -1359,6 +1558,8 @@
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
             .card--wide { grid-column: 1 / -1; }
+            .kpi-strip { gap: 8px; }
+            .kpi-item { min-width: 60px; padding: 8px 10px; }
           }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
