@@ -1313,7 +1313,19 @@
 
       const symptomData = {};
       if (bleeding) symptomData.bleeding_strength = bleeding;
-      if (pain && pain !== 'none') symptomData.pain = [pain];
+      if (pain && pain !== 'none') {
+        // `pain` is a multi-select field on the backend (add_symptom merges per key,
+        // replacing the whole value — not per array item), so sending just this one
+        // selection would silently wipe out any other pain types already logged for
+        // today via the full calendar card. Merge with what's already there instead.
+        const todayIso = this._todayIso();
+        const attrsForMerge = stateObj?.attributes || {};
+        const todayHistory = Array.isArray(attrsForMerge.symptom_history)
+          ? attrsForMerge.symptom_history.find((e) => e?.date === todayIso)
+          : null;
+        const existingPain = Array.isArray(todayHistory?.pain) ? todayHistory.pain : [];
+        symptomData.pain = Array.from(new Set([...existingPain, pain]));
+      }
 
       this._quickLogScratch = { mood, note };
       if (!Object.keys(symptomData).length) {
