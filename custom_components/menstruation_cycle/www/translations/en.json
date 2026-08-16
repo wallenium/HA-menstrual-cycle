@@ -554,5 +554,16 @@
   "dashboard_move_down_aria": "Move {widget} widget down",
   "dashboard_save_aria": "Save dashboard layout",
   "dashboard_cancel_aria": "Cancel dashboard edits",
-  "dashboard_reset_aria": "Reset dashboard to mode defaults"
+  "dashboard_reset_aria": "Reset dashboard to mode defaults",
+  "dashboard_widget_cycle_history": "Cycle History",
+  "dashboard_widget_pregnancy_prediction": "Pregnancy Prediction",
+  "dashboard_not_enough_data": "Not enough data yet.",
+  "dashboard_prediction_disclaimer": "Estimation only — not medical advice.",
+  "dashboard_cycle_history_avg": "Average",
+  "dashboard_cycle_history_length": "Length (days)",
+  "dashboard_cycle_history_outlier": "Outlier",
+  "dashboard_fertility_window": "Fertile window",
+  "dashboard_fertility_ovulation": "Est. ovulation",
+  "dashboard_fertility_confidence": "Confidence",
+  "dashboard_today": "Today"
 }

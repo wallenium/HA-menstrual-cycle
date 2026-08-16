@@ -554,5 +554,16 @@
   "dashboard_move_down_aria": "Widget {widget} nach unten verschieben",
   "dashboard_save_aria": "Dashboard-Layout speichern",
   "dashboard_cancel_aria": "Dashboard-Bearbeitung abbrechen",
-  "dashboard_reset_aria": "Dashboard auf Standardeinstellungen zurücksetzen"
+  "dashboard_reset_aria": "Dashboard auf Standardeinstellungen zurücksetzen",
+  "dashboard_widget_cycle_history": "Zyklushistorie",
+  "dashboard_widget_pregnancy_prediction": "Schwangerschaftsprognose",
+  "dashboard_not_enough_data": "Noch nicht genug Daten.",
+  "dashboard_prediction_disclaimer": "Nur Schätzung — keine medizinische Aussage.",
+  "dashboard_cycle_history_avg": "Durchschnitt",
+  "dashboard_cycle_history_length": "Länge (Tage)",
+  "dashboard_cycle_history_outlier": "Ausreißer",
+  "dashboard_fertility_window": "Fruchtbares Fenster",
+  "dashboard_fertility_ovulation": "Geschätzte Ovulation",
+  "dashboard_fertility_confidence": "Konfidenz",
+  "dashboard_today": "Heute"
 }

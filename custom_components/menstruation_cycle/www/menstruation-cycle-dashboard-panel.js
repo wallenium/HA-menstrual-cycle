@@ -41,6 +41,17 @@
     dashboard_widget_gauge_card: 'Gauge',
     dashboard_widget_calendar_card: 'Calendar',
     dashboard_widget_statistics_card: 'Statistics',
+    dashboard_widget_cycle_history: 'Cycle History',
+    dashboard_widget_pregnancy_prediction: 'Pregnancy Prediction',
+    dashboard_not_enough_data: 'Not enough data yet.',
+    dashboard_prediction_disclaimer: 'Estimation only — not medical advice.',
+    dashboard_cycle_history_avg: 'Average',
+    dashboard_cycle_history_length: 'Length (days)',
+    dashboard_cycle_history_outlier: 'Outlier',
+    dashboard_fertility_window: 'Fertile window',
+    dashboard_fertility_ovulation: 'Est. ovulation',
+    dashboard_fertility_confidence: 'Confidence',
+    dashboard_today: 'Today',
     dashboard_widget_reminders: 'Reminders Summary',
     dashboard_widget_progress: 'Progress & Badges',
     dashboard_widget_my_info: 'My Info',
@@ -125,6 +136,8 @@
     { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
     { id: 'phase_timeline', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
+    { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, wide: true },
+    { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, wide: true },
     { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false, wide: true },
     { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, wide: true },
     { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
@@ -140,6 +153,8 @@
     'kpi_strip',
     'phase_timeline',
     'statistics_card',
+    'cycle_history',
+    'pregnancy_prediction',
     'gauge_card',
     'calendar_card',
     'today_status',
@@ -165,6 +180,8 @@
         gauge_card: false,
         calendar_card: false,
         statistics_card: false,
+        cycle_history: false,
+        pregnancy_prediction: false,
         reminders: true,
         progress: false,
         my_info: false,
@@ -186,6 +203,8 @@
         gauge_card: true,
         calendar_card: true,
         statistics_card: true,
+        cycle_history: true,
+        pregnancy_prediction: true,
         reminders: true,
         progress: true,
         my_info: true,
@@ -521,6 +540,8 @@
           prediction_gating: attrs.prediction_gating ?? null,
           current_phase: attrs.current_phase ?? null,
           phase_day: attrs.phase_day ?? null,
+          grouped_starts: attrs.grouped_starts ?? null,
+          fertility_forecast: attrs.fertility_forecast ?? null,
         },
         editMode: this._editMode,
         prefsVersion: this._prefsVersion,
@@ -664,6 +685,10 @@
       }
 
       return entities.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    _getAvailableEntities() {
+      return this._availableEntities || this._getAvailableEntitiesFallback();
     }
 
     async _loadEntitiesFromRegistry() {
@@ -1064,15 +1089,238 @@
     }
 
     _renderStatisticsCard(stateObj) {
-      if (!this._selectedEntityId) {
-        return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
+      const attrs = stateObj?.attributes || {};
+      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+      const cycleLengths = [];
+      for (let i = 1; i < allStarts.length; i++) {
+        const len = Math.round((new Date(allStarts[i]) - new Date(allStarts[i - 1])) / 86400000);
+        if (len > 10 && len < 80) cycleLengths.push(len);
       }
-      const tagName = 'menstruation-statistics-card';
-      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
-        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      const avgLen = attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      const computedAvg = cycleLengths.length
+        ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length * 10) / 10
+        : null;
+      const avg = avgLen !== null ? Number(avgLen) : computedAvg;
+      const minLen = cycleLengths.length ? Math.min(...cycleLengths) : null;
+      const maxLen = cycleLengths.length ? Math.max(...cycleLengths) : null;
+      const stdDev = cycleLengths.length >= 2
+        ? (() => {
+            const m = avg;
+            const variance = cycleLengths.reduce((a, b) => a + Math.pow(b - m, 2), 0) / cycleLengths.length;
+            return Math.round(Math.sqrt(variance) * 10) / 10;
+          })()
+        : null;
+
+      if (avg === null && cycleLengths.length === 0) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       }
-      const entityId = escapeHtml(this._selectedEntityId);
-      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+
+      const statItems = [];
+      if (avg !== null) statItems.push({ icon: '📊', label: this._t('dashboard_cycle_history_avg'), value: `${avg}d` });
+      if (minLen !== null) statItems.push({ icon: '↓', label: 'Min', value: `${minLen}d` });
+      if (maxLen !== null) statItems.push({ icon: '↑', label: 'Max', value: `${maxLen}d` });
+      if (stdDev !== null) statItems.push({ icon: '±', label: 'Std dev', value: `${stdDev}d` });
+      if (cycleLengths.length > 0) statItems.push({ icon: '#', label: 'Cycles', value: String(cycleLengths.length) });
+
+      return `<div class="stats-grid">${statItems.map((item) => `
+        <div class="stat-tile">
+          <span class="stat-icon" aria-hidden="true">${item.icon}</span>
+          <span class="stat-value">${escapeHtml(item.value)}</span>
+          <span class="stat-label">${escapeHtml(item.label)}</span>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    _renderCycleHistoryGraph(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+      const cycleLengths = [];
+      for (let i = 1; i < allStarts.length; i++) {
+        const len = Math.round((new Date(allStarts[i]) - new Date(allStarts[i - 1])) / 86400000);
+        if (len > 10 && len < 80) cycleLengths.push({ len, start: allStarts[i - 1] });
+      }
+
+      if (cycleLengths.length === 0) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      const recent = cycleLengths.slice(-12);
+      const avgLen = attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? null;
+      const avg = avgLen !== null
+        ? Number(avgLen)
+        : Math.round(recent.reduce((a, b) => a + b.len, 0) / recent.length * 10) / 10;
+
+      const W = 400;
+      const H = 90;
+      const padLeft = 28;
+      const padRight = 8;
+      const padTop = 8;
+      const padBottom = 24;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+
+      const allLens = recent.map((c) => c.len);
+      const minY = Math.max(0, Math.min(...allLens) - 3);
+      const maxY = Math.max(...allLens) + 3;
+      const yRange = maxY - minY || 1;
+
+      const barW = Math.max(2, Math.floor(chartW / recent.length) - 3);
+      const gap = (chartW - barW * recent.length) / Math.max(1, recent.length - 1);
+
+      const avgX1 = padLeft;
+      const avgX2 = W - padRight;
+      const avgYPos = padTop + chartH - ((avg - minY) / yRange) * chartH;
+
+      const outlierThreshold = 8;
+      const bars = recent.map((c, idx) => {
+        const x = padLeft + idx * (barW + gap);
+        const barH2 = Math.max(2, ((c.len - minY) / yRange) * chartH);
+        const y = padTop + chartH - barH2;
+        const isOutlier = avg !== null && Math.abs(c.len - avg) > outlierThreshold;
+        const fill = isOutlier ? '#f97316' : 'var(--primary-color,#2563eb)';
+        const label = String(c.len);
+        const cx = x + barW / 2;
+        return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${barW}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.75" rx="2"/>
+                <text x="${Math.round(cx)}" y="${Math.round(y - 3)}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(label)}</text>`;
+      }).join('');
+
+      // Y-axis labels
+      const yLabels = [minY, Math.round((minY + maxY) / 2), maxY].map((v) => {
+        const yPos = padTop + chartH - ((v - minY) / yRange) * chartH;
+        return `<text x="${padLeft - 3}" y="${Math.round(yPos + 3)}" text-anchor="end" font-size="8" fill="var(--secondary-text-color,#9ca3af)">${v}</text>`;
+      }).join('');
+
+      // X-axis labels (first and last)
+      const xLabels = recent.length >= 2 ? [0, recent.length - 1].map((idx) => {
+        const x = padLeft + idx * (barW + gap) + barW / 2;
+        const dateStr = recent[idx].start ? recent[idx].start.slice(5) : String(idx + 1);
+        const anchor = idx === 0 ? 'start' : 'end';
+        return `<text x="${Math.round(x)}" y="${H - 4}" text-anchor="${anchor}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(dateStr)}</text>`;
+      }).join('') : '';
+
+      const avgLine = avg !== null
+        ? `<line x1="${avgX1}" y1="${Math.round(avgYPos)}" x2="${avgX2}" y2="${Math.round(avgYPos)}" stroke="var(--accent-color,#10b981)" stroke-width="1.5" stroke-dasharray="4 3"/>
+           <text x="${avgX2 + 2}" y="${Math.round(avgYPos + 3)}" font-size="8" fill="var(--accent-color,#10b981)">${this._t('dashboard_cycle_history_avg')}</text>`
+        : '';
+
+      const titleText = `${this._t('dashboard_widget_cycle_history')} — ${this._t('dashboard_cycle_history_length')}`;
+
+      return `
+        <div class="cycle-history-wrap" role="img" aria-label="${escapeHtml(titleText)}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
+            <title>${escapeHtml(titleText)}</title>
+            ${yLabels}
+            ${bars}
+            ${avgLine}
+            ${xLabels}
+          </svg>
+          <div class="cycle-history-legend">
+            <span class="legend-dot" style="background:var(--primary-color,#2563eb)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
+            <span class="legend-dot" style="background:#f97316"></span><span>${this._t('dashboard_cycle_history_outlier')}</span>
+            <span class="legend-dash" style="background:var(--accent-color,#10b981)"></span><span>${this._t('dashboard_cycle_history_avg')}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    _renderPregnancyPredictionGraph(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const ff = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : null;
+      const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
+      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+
+      if (!ff && !cycleLength) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      // Build a probability curve across the cycle using a Gaussian approximation around ovulation
+      const ovulationDay = ff?.ovulation_day
+        ? Number(ff.ovulation_day)
+        : Math.round(cycleLength * 0.536);
+      const fertileStart = ff?.window_start_day
+        ? Number(ff.window_start_day)
+        : Math.max(1, ovulationDay - 4);
+      const fertileEnd = ff?.window_end_day
+        ? Number(ff.window_end_day)
+        : Math.min(cycleLength, ovulationDay + 2);
+
+      const W = 400;
+      const H = 80;
+      const padLeft = 8;
+      const padRight = 8;
+      const padTop = 8;
+      const padBottom = 20;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+      const sigma = 2.5;
+
+      // Generate probability points
+      const points = [];
+      for (let d = 1; d <= cycleLength; d++) {
+        const prob = Math.exp(-0.5 * Math.pow((d - ovulationDay) / sigma, 2));
+        points.push({ d, prob });
+      }
+      const maxProb = Math.max(...points.map((p) => p.prob));
+
+      const toX = (d) => padLeft + ((d - 1) / (cycleLength - 1 || 1)) * chartW;
+      const toY = (p) => padTop + chartH - (p / maxProb) * chartH;
+
+      // Fertile window fill
+      const fillX1 = toX(fertileStart);
+      const fillX2 = toX(fertileEnd);
+      const fillWidth = Math.max(1, fillX2 - fillX1);
+      const fertileRect = `<rect x="${Math.round(fillX1)}" y="${padTop}" width="${Math.round(fillWidth)}" height="${chartH}" fill="var(--accent-color,#10b981)" opacity="0.12" rx="2"/>`;
+
+      // Probability curve path
+      const pathD = points.map((p, idx) => {
+        const x = Math.round(toX(p.d));
+        const y = Math.round(toY(p.prob));
+        return `${idx === 0 ? 'M' : 'L'}${x},${y}`;
+      }).join(' ');
+      const curve = `<path d="${pathD}" fill="none" stroke="var(--accent-color,#10b981)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+      // Today marker
+      const todayX = Math.round(toX(cycleDay > 0 ? cycleDay : 1));
+      const todayLine = cycleDay > 0
+        ? `<line x1="${todayX}" y1="${padTop}" x2="${todayX}" y2="${padTop + chartH}" stroke="var(--primary-color,#2563eb)" stroke-width="1.5"/>
+           <text x="${Math.min(W - 30, Math.max(10, todayX))}" y="${padTop - 1}" font-size="8" fill="var(--primary-color,#2563eb)" text-anchor="middle">${this._t('dashboard_today')}</text>`
+        : '';
+
+      // Ovulation marker
+      const ovX = Math.round(toX(ovulationDay));
+      const ovY = Math.round(toY(1));
+      const ovMarker = `<circle cx="${ovX}" cy="${ovY}" r="4" fill="var(--accent-color,#10b981)" opacity="0.9"/>
+                        <text x="${Math.min(W - 20, Math.max(20, ovX))}" y="${ovY - 7}" font-size="8" fill="var(--accent-color,#10b981)" text-anchor="middle">${this._t('dashboard_fertility_ovulation')}</text>`;
+
+      // X-axis day labels
+      const xLabels = [1, ovulationDay, cycleLength].map((d) => {
+        const x = Math.round(toX(d));
+        const anchor = d === 1 ? 'start' : d === cycleLength ? 'end' : 'middle';
+        return `<text x="${x}" y="${H - 2}" text-anchor="${anchor}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${d}</text>`;
+      }).join('');
+
+      const confidence = ff?.confidence ?? attrs.prediction_gating?.confidence ?? null;
+      const confBadge = confidence
+        ? `<span class="pred-badge">${this._t('dashboard_fertility_confidence')}: <strong>${escapeHtml(confidence)}</strong></span>`
+        : '';
+      const disclaimer = `<p class="helper pred-disclaimer">${this._t('dashboard_prediction_disclaimer')}</p>`;
+
+      const titleText = this._t('dashboard_widget_pregnancy_prediction');
+
+      return `
+        <div class="pred-wrap" role="img" aria-label="${escapeHtml(titleText)}">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
+            <title>${escapeHtml(titleText)}</title>
+            ${fertileRect}
+            ${curve}
+            ${todayLine}
+            ${ovMarker}
+            ${xLabels}
+          </svg>
+          <div class="pred-meta">${confBadge}</div>
+          ${disclaimer}
+        </div>
+      `;
     }
 
     _renderKpiStrip(stateObj, discreetMode) {
@@ -1280,6 +1528,8 @@
       if (widgetId === 'gauge_card') body = this._renderGaugeCard(stateObj);
       if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
       if (widgetId === 'statistics_card') body = this._renderStatisticsCard(stateObj);
+      if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
+      if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'reminders') body = this._renderRemindersCard();
       if (widgetId === 'progress') body = this._renderProgressCard(stateObj);
       if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);
@@ -1554,6 +1804,71 @@
           .message { min-height: 1.4rem; font-size: .875rem; color: var(--secondary-text-color, #4b5563); }
           ul { margin: 4px 0 0; padding: 0 0 0 18px; }
           ul li { font-size: 0.875rem; padding: 3px 0; }
+          /* Statistics card native layout */
+          .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .stat-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--secondary-background-color, #f3f4f6);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            min-width: 64px;
+            flex: 1 1 64px;
+          }
+          .stat-icon { font-size: 1rem; line-height: 1; }
+          .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--primary-text-color, #1f2937); }
+          .stat-label { font-size: 0.7rem; color: var(--secondary-text-color, #6b7280); text-align: center; }
+          /* Cycle history graph */
+          .cycle-history-wrap { width: 100%; }
+          .cycle-history-legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: var(--secondary-text-color, #6b7280);
+          }
+          .legend-dot {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+          }
+          .legend-dash {
+            display: inline-block;
+            width: 16px; height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+          }
+          /* Pregnancy prediction graph */
+          .pred-wrap { width: 100%; }
+          .pred-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+          }
+          .pred-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: var(--secondary-background-color, #f3f4f6);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            font-size: 0.75rem;
+            color: var(--secondary-text-color, #4b5563);
+          }
+          .pred-disclaimer {
+            margin: 6px 0 0;
+            font-style: italic;
+          }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
