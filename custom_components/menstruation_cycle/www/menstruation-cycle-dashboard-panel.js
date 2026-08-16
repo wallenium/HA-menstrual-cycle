@@ -9,6 +9,7 @@
     onboarding_stage: 'Onboarding stage',
     cycle_day: 'Cycle Day',
     days_until_menarche: 'Days until menarche',
+    dashboard_days_until_next: 'Days until next period',
     bleeding_strength: 'Bleeding',
     bleeding_none: 'None',
     bleeding_light: 'Light',
@@ -981,7 +982,7 @@
       return `
         <div class="kv"><span>${this._t('dashboard_label_state')}</span><strong>${escapeHtml(discreetMode ? this._t('dashboard_neutral_state') : state)}</strong></div>
         <div class="kv"><span>${this._t('cycle_day')}</span><strong>${escapeHtml(cycleDay)}</strong></div>
-        <div class="kv"><span>${this._t('days_until_menarche')}</span><strong>${escapeHtml(attrs.days_until_next_start ?? this._t('unknown'))}</strong></div>
+        <div class="kv"><span>${this._t('dashboard_days_until_next')}</span><strong>${escapeHtml(attrs.days_until_next_start ?? attrs.days_until_menarche ?? this._t('unknown'))}</strong></div>
       `;
     }
 
@@ -1025,10 +1026,14 @@
       const attrs = stateObj?.attributes || {};
       const displayName = this._prefs?.myInfo?.displayName || attrs.friendly_name || attrs.profile || this._t('unknown');
       const pronouns = this._prefs?.myInfo?.pronouns || this._t('dashboard_not_set');
+      const phase = attrs.current_phase ?? stateObj?.state ?? null;
+      const stage = String(attrs.onboarding_stage_effective || attrs.onboarding_stage || '').toLowerCase();
+      const isMenarche = stage === 'pre_menarche' || stage === 'early_menarche';
       return `
         <div class="kv"><span>${this._t('friendly_name')}</span><strong>${escapeHtml(displayName)}</strong></div>
         <div class="kv"><span>${this._t('dashboard_pronouns')}</span><strong>${escapeHtml(pronouns)}</strong></div>
-        <div class="kv"><span>${this._t('onboarding_stage')}</span><strong>${escapeHtml(this._activeMode)}</strong></div>
+        ${phase ? `<div class="kv"><span>${this._t('dashboard_label_state')}</span><strong>${escapeHtml(phase)}</strong></div>` : ''}
+        ${isMenarche ? `<div class="kv"><span>${this._t('onboarding_stage')}</span><strong>${escapeHtml(stage)}</strong></div>` : ''}
       `;
     }
 
@@ -1069,11 +1074,43 @@
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
       const tagName = 'menstruation-gauge-card';
-      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
-        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
+        const entityId = escapeHtml(this._selectedEntityId);
+        return `<${tagName} entity-id="${entityId}"></${tagName}>`;
       }
-      const entityId = escapeHtml(this._selectedEntityId);
-      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+      // Native fallback: render a simple arc gauge using the cycle-day progress
+      const attrs = stateObj?.attributes || {};
+      const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
+      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const progress = Math.min(1, Math.max(0, cycleDay / cycleLength));
+      const phase = attrs.current_phase ?? stateObj?.state ?? '';
+
+      const R = 54;
+      const cx = 70;
+      const cy = 70;
+      const circumference = Math.PI * R; // half-circle arc length
+      const arcOffset = circumference * (1 - progress);
+      const phaseColors = {
+        menstrual: '#e05c7a', follicular: '#f97316', ovulation: '#a855f7', luteal: '#3b82f6',
+      };
+      const phaseLower = String(phase).toLowerCase();
+      let color = '#2563eb';
+      for (const [key, val] of Object.entries(phaseColors)) {
+        if (phaseLower.includes(key)) { color = val; break; }
+      }
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 0;">
+          <svg viewBox="0 0 140 80" width="140" height="80" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16,70 A54,54 0 0,1 124,70" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="10" stroke-linecap="round"/>
+            <path d="M16,70 A54,54 0 0,1 124,70" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+              stroke-dasharray="${circumference}" stroke-dashoffset="${Math.round(arcOffset * 10) / 10}" style="transition:stroke-dashoffset 0.4s;"/>
+            <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="20" font-weight="700" fill="var(--primary-text-color,#1f2937)">${cycleDay}</text>
+            <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="9" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day'))}</text>
+          </svg>
+          ${phase ? `<div class="helper" style="text-align:center">${escapeHtml(phase)}</div>` : ''}
+        </div>
+      `;
     }
 
     _renderCalendarCard(stateObj) {
@@ -1081,11 +1118,85 @@
         return `<div class="helper">${this._t('dashboard_no_entity_selected')}</div>`;
       }
       const tagName = 'menstruation-calendar-card';
-      if (typeof customElements === 'undefined' || !customElements.get(tagName)) {
-        return `<div class="helper">${this._t('dashboard_component_unavailable')}</div>`;
+      if (typeof customElements !== 'undefined' && customElements.get(tagName)) {
+        const entityId = escapeHtml(this._selectedEntityId);
+        return `<${tagName} entity-id="${entityId}"></${tagName}>`;
       }
-      const entityId = escapeHtml(this._selectedEntityId);
-      return `<${tagName} entity-id="${entityId}"></${tagName}>`;
+      // Native fallback: mini calendar showing current month with period-start markers
+      const attrs = stateObj?.attributes || {};
+      const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [];
+      const forecast = attrs.period_forecast || {};
+      const windowStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+      const windowEnd = forecast.window_end ?? null;
+
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const todayDate = today.getDate();
+
+      const monthLabel = today.toLocaleDateString(this._lang === 'de' ? 'de-DE' : 'en-US', { month: 'long', year: 'numeric' });
+
+      const startDates = new Set(
+        allStarts
+          .filter((d) => d && d.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
+          .map((d) => parseInt(d.slice(8, 10), 10))
+      );
+
+      const inWindow = (day) => {
+        if (!windowStart) return false;
+        const d = new Date(year, month, day);
+        const ws = new Date(windowStart);
+        const we = windowEnd ? new Date(windowEnd) : ws;
+        return d >= ws && d <= we;
+      };
+
+      const dayNames = this._lang === 'de'
+        ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+        : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+      const headerCells = dayNames.map((d) => `<th style="font-size:0.7rem;color:var(--secondary-text-color,#6b7280);padding:2px 0;text-align:center">${d}</th>`).join('');
+
+      const cells = [];
+      // Leading empty cells
+      const leadOffset = this._lang === 'de' ? (firstDay === 0 ? 6 : firstDay - 1) : firstDay;
+      for (let i = 0; i < leadOffset; i++) cells.push('<td></td>');
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday = day === todayDate;
+        const isPeriodStart = startDates.has(day);
+        const isPredicted = inWindow(day);
+        let bg = 'transparent';
+        let border = '';
+        if (isToday) { bg = 'var(--primary-color,#2563eb)'; }
+        else if (isPeriodStart) { bg = '#e05c7a'; }
+        else if (isPredicted) { bg = 'rgba(224,92,122,0.18)'; border = 'border:1px dashed #e05c7a;'; }
+        const color = (isToday || isPeriodStart) ? '#fff' : 'inherit';
+        cells.push(`<td style="text-align:center;padding:2px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};${border}color:${color};font-size:0.75rem;font-weight:${isToday ? 700 : 400}">${day}</span></td>`);
+      }
+
+      const rows = [];
+      for (let i = 0; i < cells.length; i += 7) {
+        rows.push(`<tr>${cells.slice(i, i + 7).join('')}</tr>`);
+      }
+
+      const legend = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e05c7a;margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_label_state')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(224,92,122,0.18);border:1px dashed #e05c7a;margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_fertility_window')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary-color,#2563eb);margin-right:4px;vertical-align:middle"></span>${this._t('dashboard_today')}</span>
+        </div>
+      `;
+
+      return `
+        <div style="overflow-x:auto;">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:6px;">${escapeHtml(monthLabel)}</div>
+          <table style="border-collapse:collapse;width:100%;">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${rows.join('')}</tbody>
+          </table>
+          ${legend}
+        </div>
+      `;
     }
 
     _renderStatisticsCard(stateObj) {
@@ -1356,7 +1467,7 @@
         <div class="kpi-item">
           <span class="kpi-icon" aria-hidden="true">⏳</span>
           <span class="kpi-value">${daysUntil !== null ? escapeHtml(daysUntil) : '—'}</span>
-          <span class="kpi-label">${this._t('days_until_menarche')}</span>
+          <span class="kpi-label">${this._t('dashboard_days_until_next')}</span>
         </div>
       `);
 
