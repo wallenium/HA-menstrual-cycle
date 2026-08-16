@@ -1123,6 +1123,29 @@
       return `${y}-${m}-${d}`;
     }
 
+    // Maps our 5 supported language codes to full locale codes for date formatting.
+    _localeCode() {
+      const map = { de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', sv: 'sv-SE' };
+      return map[this._lang] || 'en-US';
+    }
+
+    /**
+     * Formats an ISO date string (YYYY-MM-DD) for display in the person's language
+     * (e.g. "16.08.2026" for German, "8/16/2026" for English) instead of showing the
+     * raw ISO string. Returns the original value unchanged if it isn't a valid date,
+     * so callers can safely pass through already-formatted or placeholder values.
+     */
+    _formatDate(isoString, options = { day: '2-digit', month: '2-digit', year: 'numeric' }) {
+      if (!isoString) return isoString;
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return isoString;
+      try {
+        return d.toLocaleDateString(this._localeCode(), options);
+      } catch (_err) {
+        return isoString;
+      }
+    }
+
     async _saveQuickLog(form) {
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       if (!this._hass || !stateObj) return;
@@ -1970,7 +1993,7 @@
 
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
-      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(dueDate) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
+      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(this._formatDate(dueDate)) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
       if (isHighRisk) {
         kpis.push(`<div class="kpi-item" style="background:var(--mc-amber-tint,#FBEEDC);"><span class="kpi-icon" aria-hidden="true">⚠️</span><span class="kpi-value" style="color:var(--mc-amber-deep,#8a5a12);">${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</span><span class="kpi-label">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</span></div>`);
       }
@@ -2046,7 +2069,7 @@
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
               <span>${observedCount} / ${signKeys.length} ${this._t('dashboard_widget_progress')}</span>
-              <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDateStr ? escapeHtml(estDateStr) : '—')}</span>
+              <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDateStr ? escapeHtml(this._formatDate(estDateStr)) : '—')}</span>
             </div>
           </div>
           <div class="kpi-strip" style="margin-top:14px;">
@@ -2376,7 +2399,7 @@
       const items = signDefs.map((s) => {
         const entry = _normalizeSignEntry(signs[s.key]);
         const done = entry !== null;
-        const detail = done ? `${escapeHtml(entry.stage)}${entry.loggedAt ? ` · ${escapeHtml(entry.loggedAt)}` : ''}` : '';
+        const detail = done ? `${escapeHtml(entry.stage)}${entry.loggedAt ? ` · ${escapeHtml(this._formatDate(entry.loggedAt))}` : ''}` : '';
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
           <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
           <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(s.labelKey))}${done ? ` — ${detail}` : ''}</div>
@@ -2791,7 +2814,7 @@
         const inProgress = badge.state === 'in_progress';
         let detail = '';
         if (earned && badge.earned_at) {
-          detail = `${this._t('dashboard_badge_earned_on') || 'Erreicht am'} ${escapeHtml(badge.earned_at)}`;
+          detail = `${this._t('dashboard_badge_earned_on') || 'Erreicht am'} ${escapeHtml(this._formatDate(badge.earned_at))}`;
         } else if (inProgress && badge.progress_target) {
           detail = `${escapeHtml(badge.progress_value)} / ${escapeHtml(badge.progress_target)}`;
         }
@@ -2915,7 +2938,7 @@
           else if (isPeriodStart) bg = 'var(--mc-rose-deep)';
           else if (isPredicted) bg = 'rgba(232,99,125,0.32)';
 
-          dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${isoDate}"></div>`);
+          dayCells.push(`<div class="year-day-cell" style="background:${bg};" title="${escapeHtml(this._formatDate(isoDate))}"></div>`);
         }
 
         months.push(`
