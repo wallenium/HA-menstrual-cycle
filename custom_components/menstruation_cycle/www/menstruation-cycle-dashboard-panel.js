@@ -155,48 +155,30 @@
   };
 
   const WIDGET_DEFS = [
-    { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
-    { id: 'phase_timeline', title: 'dashboard_widget_today_status', sensitive: false, wide: true },
-    { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, wide: true },
-    { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, wide: true },
-    { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, wide: true },
-    { id: 'gauge_card', title: 'dashboard_widget_gauge_card', sensitive: false, wide: true },
-    { id: 'calendar_card', title: 'dashboard_widget_calendar_card', sensitive: false, wide: true },
-    { id: 'today_status', title: 'dashboard_widget_today_status', sensitive: false },
-    { id: 'upcoming_window', title: 'dashboard_widget_upcoming_window', sensitive: false },
-    { id: 'quick_log', title: 'dashboard_widget_quick_log', sensitive: true },
-    { id: 'reminders', title: 'dashboard_widget_reminders', sensitive: false },
-    { id: 'progress', title: 'dashboard_widget_progress', sensitive: false },
-    { id: 'my_info', title: 'dashboard_widget_my_info', sensitive: true },
-    { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, wide: false },
-    { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, wide: true },
-    { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, wide: true },
-    { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, wide: false },
-    { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, wide: true },
-    { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, wide: true },
+    { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
+    { id: 'phase_timeline', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
+    { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, span: 5 },
+    { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, span: 7 },
+    { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
+    { id: 'cycle_history', title: 'dashboard_widget_cycle_history', sensitive: false, span: 7 },
+    { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 6 },
+    { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 6 },
+    { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
+    { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
   ];
 
-  // Default widget order: graph-first / visual cockpit layout
+  // Default widget order matches the approved mockup layout exactly
   const WIDGET_IDS_GRAPH_FIRST = [
     'kpi_strip',
     'phase_timeline',
-    'phase_donut',
-    'statistics_card',
-    'cycle_history',
-    'basal_temp',
     'pregnancy_prediction',
+    'basal_temp',
+    'phase_donut',
+    'cycle_history',
     'symptom_heatmap',
-    'pain_mood_trend',
     'anomaly_insights',
+    'pain_mood_trend',
     'year_overview',
-    'gauge_card',
-    'calendar_card',
-    'today_status',
-    'upcoming_window',
-    'quick_log',
-    'reminders',
-    'progress',
-    'my_info',
   ];
 
   const WIDGET_IDS = WIDGET_DEFS.map((widget) => widget.id);
@@ -208,17 +190,8 @@
       widgetVisibility: {
         kpi_strip: true,
         phase_timeline: true,
-        quick_log: true,
-        today_status: true,
-        upcoming_window: true,
-        gauge_card: false,
-        calendar_card: false,
-        statistics_card: false,
-        cycle_history: false,
         pregnancy_prediction: false,
-        reminders: true,
-        progress: false,
-        my_info: false,
+        cycle_history: false,
         phase_donut: true,
         basal_temp: false,
         symptom_heatmap: false,
@@ -237,17 +210,8 @@
       widgetVisibility: {
         kpi_strip: true,
         phase_timeline: true,
-        quick_log: true,
-        today_status: true,
-        upcoming_window: true,
-        gauge_card: true,
-        calendar_card: true,
-        statistics_card: true,
-        cycle_history: true,
         pregnancy_prediction: true,
-        reminders: true,
-        progress: true,
-        my_info: true,
+        cycle_history: true,
         phase_donut: true,
         basal_temp: true,
         symptom_heatmap: true,
@@ -1382,82 +1346,68 @@
     }
 
     _renderPregnancyPredictionGraph(stateObj) {
+      const mode = this._resolveMode(stateObj);
+      if (mode !== 'cycle') return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+
       const attrs = stateObj?.attributes || {};
       const ff = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : null;
       const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
-      const cycleLength = Number(attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
+      const cycleLength = Number(attrs.avg_cycle_length ?? attrs.average_cycle_length ?? attrs.cycle_length_avg ?? 28) || 28;
 
       if (!ff && !cycleLength) {
         return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       }
 
-      // Build a probability curve across the cycle using a Gaussian approximation around ovulation
-      const ovulationDay = ff?.ovulation_day
-        ? Number(ff.ovulation_day)
-        : Math.round(cycleLength * 0.536);
-      const fertileStart = ff?.window_start_day
-        ? Number(ff.window_start_day)
-        : Math.max(1, ovulationDay - 4);
-      const fertileEnd = ff?.window_end_day
-        ? Number(ff.window_end_day)
-        : Math.min(cycleLength, ovulationDay + 2);
+      let ovulationDay = null;
+      if (ff?.ovulation_estimate && attrs.cycle_start_date) {
+        const diff = Math.round((new Date(ff.ovulation_estimate) - new Date(attrs.cycle_start_date)) / 86400000) + 1;
+        if (diff > 0 && diff <= cycleLength) ovulationDay = diff;
+      }
+      if (ovulationDay === null && attrs.ovulation_day) ovulationDay = Number(attrs.ovulation_day);
+      if (ovulationDay === null) ovulationDay = Math.round(cycleLength * 0.536);
 
-      const W = 400;
-      const H = 80;
-      const padLeft = 8;
-      const padRight = 8;
-      const padTop = 8;
-      const padBottom = 20;
-      const chartW = W - padLeft - padRight;
-      const chartH = H - padTop - padBottom;
-      const sigma = 2.5;
+      const W = 480, H = 220, padL = 38, padR = 14, padT = 18, padB = 30;
+      const chartW = W - padL - padR, chartH = H - padT - padB;
+      const sigma = 2.2;
 
-      // Generate probability points
       const points = [];
       for (let d = 1; d <= cycleLength; d++) {
-        const prob = Math.exp(-0.5 * Math.pow((d - ovulationDay) / sigma, 2));
+        const gauss = Math.exp(-0.5 * Math.pow((d - ovulationDay) / sigma, 2));
+        const prob = Math.round(gauss * 30 * 10) / 10; // peak ~30% at ovulation day
         points.push({ d, prob });
       }
-      const maxProb = Math.max(...points.map((p) => p.prob));
+      const maxAxis = 32;
+      const x = (d) => padL + (d - 1) / (cycleLength - 1 || 1) * chartW;
+      const y = (v) => padT + (maxAxis - v) / maxAxis * chartH;
 
-      const toX = (d) => padLeft + ((d - 1) / (cycleLength - 1 || 1)) * chartW;
-      const toY = (p) => padTop + chartH - (p / maxProb) * chartH;
+      const gridLines = [0, 10, 20, 30].map((v) =>
+        `<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
+         <text x="4" y="${(y(v) + 3).toFixed(1)}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v}%</text>`
+      ).join('');
 
-      // Fertile window fill
-      const fillX1 = toX(fertileStart);
-      const fillX2 = toX(fertileEnd);
-      const fillWidth = Math.max(1, fillX2 - fillX1);
-      const fertileRect = `<rect x="${Math.round(fillX1)}" y="${padTop}" width="${Math.round(fillWidth)}" height="${chartH}" fill="var(--accent-color,#10b981)" opacity="0.12" rx="2"/>`;
+      let areaD = `M${x(1).toFixed(1)},${y(0).toFixed(1)} `;
+      points.forEach((p) => { areaD += `L${x(p.d).toFixed(1)},${y(p.prob).toFixed(1)} `; });
+      areaD += `L${x(cycleLength).toFixed(1)},${y(0).toFixed(1)} Z`;
 
-      // Probability curve path
-      const pathD = points.map((p, idx) => {
-        const x = Math.round(toX(p.d));
-        const y = Math.round(toY(p.prob));
-        return `${idx === 0 ? 'M' : 'L'}${x},${y}`;
-      }).join(' ');
-      const curve = `<path d="${pathD}" fill="none" stroke="var(--accent-color,#10b981)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+      let lineD = `M${x(1).toFixed(1)},${y(points[0].prob).toFixed(1)} `;
+      points.forEach((p, i) => { if (i > 0) lineD += `L${x(p.d).toFixed(1)},${y(p.prob).toFixed(1)} `; });
 
-      // Today marker
-      const todayX = Math.round(toX(cycleDay > 0 ? cycleDay : 1));
-      const todayLine = cycleDay > 0
-        ? `<line x1="${todayX}" y1="${padTop}" x2="${todayX}" y2="${padTop + chartH}" stroke="var(--primary-color,#2563eb)" stroke-width="1.5"/>
-           <text x="${Math.min(W - 30, Math.max(10, todayX))}" y="${padTop - 1}" font-size="8" fill="var(--primary-color,#2563eb)" text-anchor="middle">${this._t('dashboard_today')}</text>`
+      const todayD = cycleDay > 0 ? Math.min(cycleDay, cycleLength) : null;
+      const todayMarker = todayD
+        ? (() => {
+            const pt = points[todayD - 1];
+            return `<line x1="${x(todayD).toFixed(1)}" x2="${x(todayD).toFixed(1)}" y1="${padT}" y2="${H - padB}" stroke="var(--primary-text-color,#2B1B24)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                    <circle cx="${x(todayD).toFixed(1)}" cy="${y(pt.prob).toFixed(1)}" r="5" fill="var(--primary-text-color,#2B1B24)"/>
+                    <text x="${(x(todayD) + 8).toFixed(1)}" y="${(y(pt.prob) - 8).toFixed(1)}" font-size="11" font-family="IBM Plex Mono, monospace" font-weight="600" fill="var(--primary-text-color,#2B1B24)">${this._t('dashboard_today')}: ~${pt.prob}%</text>`;
+          })()
         : '';
 
-      // Ovulation marker
-      const ovX = Math.round(toX(ovulationDay));
-      const ovY = Math.round(toY(1));
-      const ovMarker = `<circle cx="${ovX}" cy="${ovY}" r="4" fill="var(--accent-color,#10b981)" opacity="0.9"/>
-                        <text x="${Math.min(W - 20, Math.max(20, ovX))}" y="${ovY - 7}" font-size="8" fill="var(--accent-color,#10b981)" text-anchor="middle">${this._t('dashboard_fertility_ovulation')}</text>`;
+      const xLabels = [1, Math.round(cycleLength * 0.25), Math.round(cycleLength * 0.5), Math.round(cycleLength * 0.75), cycleLength]
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .map((d) => `<text x="${x(d).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${this._t('cycle_day')} ${d}</text>`)
+        .join('');
 
-      // X-axis day labels
-      const xLabels = [1, ovulationDay, cycleLength].map((d) => {
-        const x = Math.round(toX(d));
-        const anchor = d === 1 ? 'start' : d === cycleLength ? 'end' : 'middle';
-        return `<text x="${x}" y="${H - 2}" text-anchor="${anchor}" font-size="7" fill="var(--secondary-text-color,#9ca3af)">${d}</text>`;
-      }).join('');
-
-      const confidence = ff?.confidence ?? attrs.prediction_gating?.confidence ?? null;
+      const confidence = ff?.window_confidence ?? ff?.confidence ?? attrs.prediction_gating?.confidence ?? null;
       const confBadge = confidence
         ? `<span class="pred-badge">${this._t('dashboard_fertility_confidence')}: <strong>${escapeHtml(confidence)}</strong></span>`
         : '';
@@ -1469,10 +1419,10 @@
         <div class="pred-wrap" role="img" aria-label="${escapeHtml(titleText)}">
           <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
             <title>${escapeHtml(titleText)}</title>
-            ${fertileRect}
-            ${curve}
-            ${todayLine}
-            ${ovMarker}
+            ${gridLines}
+            <path d="${areaD}" fill="var(--mc-rose-deep,#C43F5E)" opacity="0.18"/>
+            <path d="${lineD}" fill="none" stroke="var(--mc-rose-deep,#C43F5E)" stroke-width="2.2" stroke-linejoin="round"/>
+            ${todayMarker}
             ${xLabels}
           </svg>
           <div class="pred-meta">${confBadge}</div>
@@ -2273,27 +2223,19 @@
 
     _renderWidget(widgetId, stateObj, discreetMode) {
       if (this._prefs?.widgetVisibility?.[widgetId] === false) return '';
-      if (discreetMode && widgetId === 'my_info') return '';
       const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
+      const spanClass = `span-${def?.span || 6}`;
       let body = '';
       if (widgetId === 'kpi_strip') {
         const strip = this._renderHeroWheel(stateObj, discreetMode);
-        const wideClass = 'card--wide';
-        return `<article class="card ${wideClass} card--hero" aria-label="Cycle at a glance">${strip}</article>`;
+        return `<article class="card ${spanClass} card--hero" aria-label="Cycle at a glance">${strip}</article>`;
       }
       if (widgetId === 'phase_timeline') {
         const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
-        const wideClass = 'card--wide';
         const mode = this._resolveMode(stateObj);
         const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : 'dashboard_widget_today_status');
-        return `<article class="card ${wideClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
+        return `<article class="card ${spanClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
       }
-      if (widgetId === 'quick_log') body = this._renderQuickLogCard(discreetMode);
-      if (widgetId === 'today_status') body = this._renderTodayCard(stateObj, discreetMode);
-      if (widgetId === 'upcoming_window') body = this._renderUpcomingCard(stateObj);
-      if (widgetId === 'gauge_card') body = this._renderGaugeCard(stateObj);
-      if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
-      if (widgetId === 'statistics_card') body = this._renderStatisticsCard(stateObj);
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
@@ -2302,13 +2244,9 @@
       if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
-      if (widgetId === 'reminders') body = this._renderRemindersCard();
-      if (widgetId === 'progress') body = this._renderProgressCard(stateObj);
-      if (widgetId === 'my_info') body = this._renderMyInfoCard(stateObj);
 
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
-      const wideClass = def?.wide ? 'card--wide' : '';
-      const cardClasses = ['card', sensitiveClass, wideClass].filter(Boolean).join(' ');
+      const cardClasses = ['card', spanClass, sensitiveClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
       return `<article class="${cardClasses}"><h2>${title}</h2>${body}</article>`;
     }
@@ -2405,13 +2343,10 @@
           .grid {
             display: grid;
             gap: 16px;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(12, 1fr);
           }
-          @media (min-width: 640px) {
-            .grid { grid-template-columns: repeat(2, 1fr); }
-          }
-          @media (min-width: 900px) {
-            .grid { grid-template-columns: repeat(3, 1fr); }
+          @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
           }
           .card {
             background: var(--card-background-color, #fff);
@@ -2422,6 +2357,7 @@
             gap: 10px;
             box-shadow: 0 1px 2px rgba(43,27,36,.04), 0 8px 24px -14px rgba(43,27,36,.22);
             transition: box-shadow 0.15s;
+            grid-column: span 12;
           }
           .card:hover { box-shadow: 0 2px 8px rgba(43,27,36,.08), 0 12px 28px -12px rgba(43,27,36,.16); }
           .card h2 {
@@ -2431,12 +2367,14 @@
             color: var(--primary-text-color, #1f2937);
             letter-spacing: -0.005em;
           }
-          .card--wide { grid-column: 1 / -1; }
-          @media (min-width: 640px) {
-            .card--wide { grid-column: span 2; }
-          }
-          @media (min-width: 900px) {
-            .card--wide { grid-column: span 3; }
+          .span-4 { grid-column: span 4; }
+          .span-5 { grid-column: span 5; }
+          .span-6 { grid-column: span 6; }
+          .span-7 { grid-column: span 7; }
+          .span-8 { grid-column: span 8; }
+          .span-12 { grid-column: span 12; }
+          @media (max-width: 900px) {
+            .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 1; }
           }
           /* Hero card */
           .card--hero { padding: 20px 22px; }
@@ -2737,7 +2675,6 @@
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
-            .card--wide { grid-column: 1 / -1; }
             .kpi-strip { gap: 8px; }
             .kpi-item { min-width: 60px; padding: 8px 10px; }
           }
