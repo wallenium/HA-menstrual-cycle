@@ -161,6 +161,9 @@
     dashboard_this_cycle: 'This cycle',
     dashboard_avg_short: 'Avg.',
     dashboard_stock_hint: 'Stock from the household inventory (shared across all profiles).',
+    dashboard_period_day_label: 'Period',
+    dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
+    dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
     dashboard_loading: 'Loading…',
     dashboard_onboarding_title: 'Welcome! No data logged yet.',
     dashboard_onboarding_hint: 'Log your first cycle day to see predictions, charts, and insights.',
@@ -1783,6 +1786,14 @@
           ${!discreetMode && phase ? `<div class="hw-tag">${escapeHtml(phase)}</div>` : ''}
         </div>`;
 
+      // current_bleeding_block: lifecycle-aware detail for the *active* period
+      // (days_elapsed / effective_duration), distinct from the overall cycle_day.
+      const bleedingBlock = attrs.current_bleeding_block && typeof attrs.current_bleeding_block === 'object'
+        ? attrs.current_bleeding_block : null;
+      const periodDayNote = (!discreetMode && bleedingBlock && bleedingBlock.is_active)
+        ? `<p class="helper" style="margin-top:10px;font-size:0.72rem;">🩸 ${this._t('dashboard_period_day_label') || 'Periode'}: ${this._t('cycle_day')} ${escapeHtml(bleedingBlock.days_elapsed)} / ${escapeHtml(bleedingBlock.effective_duration)}</p>`
+        : '';
+
       const kpis = [];
       kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
       if (!discreetMode) {
@@ -1797,11 +1808,28 @@
         kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(nfpAnalysis.confidence_level)}</span><span class="kpi-label">${this._t('nfp_analysis') || 'NFP'}</span></div>`);
       }
 
+      // learning_phase / prediction_gating: the backend explicitly flags when
+      // predictions are still low-confidence (too little/irregular data yet) — worth
+      // surfacing honestly, with the real numbers, rather than a generic disclaimer.
+      const gating = attrs.prediction_gating && typeof attrs.prediction_gating === 'object' ? attrs.prediction_gating : null;
+      let learningNote = '';
+      if (attrs.learning_phase) {
+        if (gating && gating.valid_cycles !== undefined && gating.thresholds?.min_valid_cycles !== undefined) {
+          const tmpl = this._t('dashboard_learning_phase_progress') || 'Lernphase — {have} von {need} Zyklen für zuverlässigere Vorhersagen erfasst.';
+          const msg = tmpl.replace('{have}', escapeHtml(gating.valid_cycles)).replace('{need}', escapeHtml(gating.thresholds.min_valid_cycles));
+          learningNote = `<p class="helper" style="margin-top:4px;font-size:0.7rem;">📘 ${msg}</p>`;
+        } else {
+          learningNote = `<p class="helper" style="margin-top:4px;font-size:0.7rem;">📘 ${this._t('dashboard_learning_phase') || 'Lernphase — Vorhersagen sind noch grob, werden mit mehr erfassten Zyklen genauer.'}</p>`;
+        }
+      }
+
       return `
         <div class="hero-layout" role="region" aria-label="Cycle at a glance">
           <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
           <div class="kpi-strip">${kpis.join('')}</div>
-        </div>`;
+        </div>
+        ${periodDayNote}
+        ${learningNote}`;
     }
 
     _renderPregnancyHero(stateObj, discreetMode) {

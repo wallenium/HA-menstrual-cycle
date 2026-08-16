@@ -724,5 +724,8 @@
   "dashboard_today_short": "Heute",
   "dashboard_this_cycle": "Zyklus",
   "dashboard_avg_short": "Ø",
-  "dashboard_stock_hint": "Bestand aus dem Haushalts-Inventar (gemeinsam für alle Profile)."
+  "dashboard_stock_hint": "Bestand aus dem Haushalts-Inventar (gemeinsam für alle Profile).",
+  "dashboard_period_day_label": "Periode",
+  "dashboard_learning_phase": "Lernphase — Vorhersagen sind noch grob, werden mit mehr erfassten Zyklen genauer.",
+  "dashboard_learning_phase_progress": "Lernphase — {have} von {need} Zyklen für zuverlässigere Vorhersagen erfasst."
 }

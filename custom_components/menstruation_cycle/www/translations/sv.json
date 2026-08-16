@@ -691,5 +691,8 @@
   "dashboard_today_short": "Idag",
   "dashboard_this_cycle": "Denna cykel",
   "dashboard_avg_short": "Genomsn.",
-  "dashboard_stock_hint": "Lager från hushållsinventeringen (delat mellan alla profiler)."
+  "dashboard_stock_hint": "Lager från hushållsinventeringen (delat mellan alla profiler).",
+  "dashboard_period_day_label": "Mens",
+  "dashboard_learning_phase": "Inlärningsfas — prognoserna är fortfarande grova, de blir mer exakta med fler loggade cykler.",
+  "dashboard_learning_phase_progress": "Inlärningsfas — {have} av {need} cykler loggade för mer tillförlitliga prognoser."
 }

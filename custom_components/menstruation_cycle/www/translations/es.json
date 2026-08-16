@@ -691,5 +691,8 @@
   "dashboard_today_short": "Hoy",
   "dashboard_this_cycle": "Este ciclo",
   "dashboard_avg_short": "Prom.",
-  "dashboard_stock_hint": "Existencias del inventario del hogar (compartido entre todos los perfiles)."
+  "dashboard_stock_hint": "Existencias del inventario del hogar (compartido entre todos los perfiles).",
+  "dashboard_period_day_label": "Menstruación",
+  "dashboard_learning_phase": "Fase de aprendizaje — las predicciones aún son aproximadas, se volverán más precisas con más ciclos registrados.",
+  "dashboard_learning_phase_progress": "Fase de aprendizaje — {have} de {need} ciclos registrados para predicciones más fiables."
 }

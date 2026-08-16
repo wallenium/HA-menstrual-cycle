@@ -691,5 +691,8 @@
   "dashboard_today_short": "Aujourd'hui",
   "dashboard_this_cycle": "Ce cycle",
   "dashboard_avg_short": "Moy.",
-  "dashboard_stock_hint": "Stock provenant de l'inventaire du foyer (partagé entre tous les profils)."
+  "dashboard_stock_hint": "Stock provenant de l'inventaire du foyer (partagé entre tous les profils).",
+  "dashboard_period_day_label": "Règles",
+  "dashboard_learning_phase": "Phase d'apprentissage — les prévisions sont encore approximatives, elles s'affineront avec plus de cycles enregistrés.",
+  "dashboard_learning_phase_progress": "Phase d'apprentissage — {have} cycles sur {need} enregistrés pour des prévisions plus fiables."
 }

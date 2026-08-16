@@ -724,5 +724,8 @@
   "dashboard_today_short": "Today",
   "dashboard_this_cycle": "This cycle",
   "dashboard_avg_short": "Avg.",
-  "dashboard_stock_hint": "Stock from the household inventory (shared across all profiles)."
+  "dashboard_stock_hint": "Stock from the household inventory (shared across all profiles).",
+  "dashboard_period_day_label": "Period",
+  "dashboard_learning_phase": "Learning phase — predictions are still rough, they get more precise with more logged cycles.",
+  "dashboard_learning_phase_progress": "Learning phase — {have} of {need} cycles logged for more reliable predictions."
 }
