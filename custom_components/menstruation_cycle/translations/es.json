@@ -7,7 +7,8 @@
         "data": {
           "profile": "Nombre de usuario/Perfil",
           "friendly_name": "Nombre para mostrar",
-          "icon": "Icono (opcional, p. ej. mdi:calendar-heart)"
+          "icon": "Icono (opcional, p. ej. mdi:calendar-heart)",
+          "onboarding_stage": "Etapa de incorporación"
         }
       }
     },
@@ -38,6 +39,8 @@
           "postpartum_duration_days": "Duración del seguimiento posparto (días, 42 por defecto)",
           "cycle_length_override": "Anular duración del ciclo (días, 0 = automático)",
           "nfp_analysis_mode": "Modo de análisis PFN",
+          "num_predictions": "Número de predicciones de ciclos futuros",
+          "onboarding_stage": "Etapa de incorporación",
           "show_cycle_dashboard": "Mostrar el panel del ciclo en la barra lateral",
           "cycle_dashboard_default_page": "Preferir el panel del ciclo como página de inicio",
           "dashboard_discreet_mode": "Modo discreto (etiquetas que priorizan la privacidad)",
@@ -69,7 +72,9 @@
           "dashboard_widget_reminders": "Muestra recordatorios diarios y avisos para revisar el kit.",
           "dashboard_widget_progress": "Muestra las insignias de progreso obtenidas.",
           "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
-          "dashboard_default_landing": "Opción para usar el panel del ciclo como página predeterminada/de inicio, si la configuración de Home Assistant lo permite."
+          "dashboard_default_landing": "Opción para usar el panel del ciclo como página predeterminada/de inicio, si la configuración de Home Assistant lo permite.",
+          "num_predictions": "Cuántos inicios de ciclo futuros generar (1–12). El valor predeterminado es 6.",
+          "onboarding_stage": "Elige pre-menarquia, fase de aprendizaje temprana tras la menarquia, o ciclo establecido."
         }
       }
     },

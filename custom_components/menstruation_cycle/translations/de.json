@@ -7,7 +7,8 @@
         "data": {
           "profile": "Benutzername/Profil",
           "friendly_name": "Anzeigename",
-          "icon": "Icon (optional, z. B. mdi:calendar-heart)"
+          "icon": "Icon (optional, z. B. mdi:calendar-heart)",
+          "onboarding_stage": "Einstiegsphase"
         }
       }
     },
@@ -38,6 +39,8 @@
           "postpartum_duration_days": "Wochenbett-Zeitraum (Tage, Standard 42)",
           "cycle_length_override": "Zyklus-Länge überschreiben (Tage, 0 = automatisch)",
           "nfp_analysis_mode": "NFP-Analysemodus",
+          "num_predictions": "Anzahl zukünftiger Zyklusvorhersagen",
+          "onboarding_stage": "Einstiegsphase",
           "show_cycle_dashboard": "Cycle Dashboard in der Seitenleiste anzeigen",
           "cycle_dashboard_default_page": "Cycle Dashboard als Startseite bevorzugen",
           "dashboard_discreet_mode": "Diskreter Modus (datenschutzfreundliche Bezeichnungen)",
@@ -69,7 +72,9 @@
           "dashboard_widget_reminders": "Zeigt tägliche Erinnerungen und Hinweise zur Vorratsprüfung an.",
           "dashboard_widget_progress": "Zeigt erreichte Fortschrittsabzeichen an.",
           "dashboard_enabled": "Fügt der Home-Assistant-Seitenleiste optional eine eigene Cycle-Dashboard-Seite hinzu.",
-          "dashboard_default_landing": "Einstellung, um das Cycle Dashboard als Standard-/Startseite zu nutzen, sofern dies vom Home-Assistant-Setup unterstützt wird."
+          "dashboard_default_landing": "Einstellung, um das Cycle Dashboard als Standard-/Startseite zu nutzen, sofern dies vom Home-Assistant-Setup unterstützt wird.",
+          "num_predictions": "Wie viele zukünftige Zyklusstarts erzeugt werden sollen (1–12). Standard ist 6.",
+          "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen."
         }
       }
     },

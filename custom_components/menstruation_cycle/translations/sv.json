@@ -7,7 +7,8 @@
         "data": {
           "profile": "Användarnamn/Profil",
           "friendly_name": "Visningsnamn",
-          "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)"
+          "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)",
+          "onboarding_stage": "Introduktionsfas"
         }
       }
     },
@@ -38,6 +39,8 @@
           "postpartum_duration_days": "Uppföljningsperiod efter förlossning (dagar, standard 42)",
           "cycle_length_override": "Åsidosätt cykellängd (dagar, 0 = automatiskt)",
           "nfp_analysis_mode": "NFP-analysläge",
+          "num_predictions": "Antal framtida cykelprognoser",
+          "onboarding_stage": "Introduktionsfas",
           "show_cycle_dashboard": "Visa cykel-dashboard i sidopanelen",
           "cycle_dashboard_default_page": "Föredra cykel-dashboard som startsida",
           "dashboard_discreet_mode": "Diskret läge (integritetsvänliga etiketter)",
@@ -69,7 +72,9 @@
           "dashboard_widget_reminders": "Visar dagliga påminnelser och tips om att kontrollera förråd.",
           "dashboard_widget_progress": "Visar intjänade framstegsmärken.",
           "dashboard_enabled": "Lägger till en valfri, egen Cykel-dashboard-sida i Home Assistants sidopanel.",
-          "dashboard_default_landing": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta."
+          "dashboard_default_landing": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta.",
+          "num_predictions": "Hur många framtida cykelstarter som ska genereras (1–12). Standard är 6.",
+          "onboarding_stage": "Välj förmenarche, tidig inlärningsfas efter menarche, eller etablerad cykel."
         }
       }
     },

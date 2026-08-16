@@ -7,7 +7,8 @@
         "data": {
           "profile": "Nom d'utilisateur/Profil",
           "friendly_name": "Nom convivial",
-          "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)"
+          "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
+          "onboarding_stage": "Étape d'intégration"
         }
       }
     },
@@ -38,6 +39,8 @@
           "postpartum_duration_days": "Durée de suivi post-partum (jours, 42 par défaut)",
           "cycle_length_override": "Forcer la durée du cycle (jours, 0 = automatique)",
           "nfp_analysis_mode": "Mode d'analyse PFN",
+          "num_predictions": "Nombre de prévisions de cycles futurs",
+          "onboarding_stage": "Étape d'intégration",
           "show_cycle_dashboard": "Afficher le tableau de bord du cycle dans la barre latérale",
           "cycle_dashboard_default_page": "Préférer le tableau de bord du cycle comme page d'accueil",
           "dashboard_discreet_mode": "Mode discret (libellés axés sur la confidentialité)",
@@ -69,7 +72,9 @@
           "dashboard_widget_reminders": "Affiche les rappels quotidiens et les indications de vérification du nécessaire.",
           "dashboard_widget_progress": "Affiche les badges de progression obtenus.",
           "dashboard_enabled": "Ajoute une page dédiée facultative « Tableau de bord du cycle » à la barre latérale de Home Assistant.",
-          "dashboard_default_landing": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet."
+          "dashboard_default_landing": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet.",
+          "num_predictions": "Nombre de débuts de cycle futurs à générer (1–12). Par défaut : 6.",
+          "onboarding_stage": "Choisissez pré-ménarche, phase d'apprentissage post-ménarche précoce, ou cycle établi."
         }
       }
     },

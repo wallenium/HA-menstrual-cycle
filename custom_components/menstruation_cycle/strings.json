@@ -39,6 +39,7 @@
           "postpartum_duration_days": "Postpartum tracking window (days, default 42)",
           "cycle_length_override": "Cycle length override (days, 0 = auto)",
           "num_predictions": "Number of future cycle predictions",
+          "nfp_analysis_mode": "NFP analysis mode",
           "onboarding_stage": "Onboarding stage",
           "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
           "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
@@ -72,7 +73,8 @@
           "dashboard_widget_today_status": "Show today's cycle status and day number.",
           "dashboard_widget_upcoming_window": "Show the upcoming fertile window or period forecast.",
           "dashboard_widget_reminders": "Show daily reminders and kit-check cues.",
-          "dashboard_widget_progress": "Show earned progress badges and tracking milestones."
+          "dashboard_widget_progress": "Show earned progress badges and tracking milestones.",
+          "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle."
         }
       }
     },
