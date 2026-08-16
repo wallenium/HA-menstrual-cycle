@@ -97,6 +97,14 @@
     phase_menstruation: 'Menstruation',
     phase_follicular: 'Follicular',
     phase_luteal: 'Luteal',
+    dashboard_widget_fetal_development: 'Fetal Development',
+    dashboard_fetal_size_label: 'Size comparison',
+    dashboard_menarche_estimate_from: 'Estimate based on',
+    dashboard_menarche_estimate_generic: 'Rough estimate — becomes more precise once dated signs are logged',
+    discharge: 'discharge',
+    height_spurt: 'growth spurt',
+    breast: 'breast development',
+    pubic_hair: 'pubic hair',
   };
   const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
   const I18N_SCRIPT_SELECTOR = 'script[src]';
@@ -165,6 +173,7 @@
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
+    { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
   ];
 
   // Default widget order matches the approved mockup layout exactly
@@ -224,6 +233,84 @@
         pronouns: '',
       },
     },
+  };
+
+  // General pregnancy-education milestones by week — original wording, illustrative only, not medical advice.
+  const FETAL_DEVELOPMENT_STAGES = [
+    { maxWeek: 5, size: 'Mohnsamen', skills: ['Herz beginnt sich zu bilden', 'Neuralrohr entsteht'] },
+    { maxWeek: 7, size: 'Heidelbeere', skills: ['Herzschlag messbar', 'Arm- und Beinansätze bilden sich'] },
+    { maxWeek: 9, size: 'Himbeere', skills: ['Finger- und Zehenansätze erkennbar', 'Erste Bewegungen (noch nicht spürbar)'] },
+    { maxWeek: 11, size: 'Limette', skills: ['Alle wichtigen Organe angelegt', 'Kann die Faust ballen'] },
+    { maxWeek: 13, size: 'Pfirsich', skills: ['Reflexe entwickeln sich', 'Fingernägel beginnen zu wachsen'] },
+    { maxWeek: 15, size: 'Apfel', skills: ['Kann Gesicht runzeln und grimassieren', 'Hört erste gedämpfte Geräusche'] },
+    { maxWeek: 17, size: 'Avocado', skills: ['Übt Saug- und Schluckbewegungen', 'Skelett verhärtet sich zunehmend'] },
+    { maxWeek: 19, size: 'Süßkartoffel', skills: ['Bewegungen oft erstmals spürbar', 'Entwickelt Schlaf-Wach-Rhythmus'] },
+    { maxWeek: 21, size: 'Banane', skills: ['Reagiert auf Geräusche von außen', 'Wimpern und Augenbrauen sichtbar'] },
+    { maxWeek: 23, size: 'Papaya', skills: ['Gesichtszüge deutlich erkennbar', 'Übt Atembewegungen (noch ohne Luft)'] },
+    { maxWeek: 25, size: 'Aubergine', skills: ['Reagiert auf Licht', 'Fettpölsterchen beginnen sich zu bilden'] },
+    { maxWeek: 27, size: 'Blumenkohl', skills: ['Augen öffnen sich zeitweise', 'Kann Schluckauf haben'] },
+    { maxWeek: 29, size: 'Butternusskürbis', skills: ['Gehirn entwickelt sich rasant weiter', 'Reagiert stärker auf Stimmen'] },
+    { maxWeek: 31, size: 'Kokosnuss', skills: ['Kräftigere, koordiniertere Bewegungen', 'Regt sich in erkennbaren Wach-/Schlafphasen'] },
+    { maxWeek: 33, size: 'Ananas', skills: ['Knochen härten weiter aus (außer Schädel)', 'Übt regelmäßiges Atmen'] },
+    { maxWeek: 35, size: 'Honigmelone', skills: ['Immunsystem reift weiter', 'Dreht sich meist in Kopflage'] },
+    { maxWeek: 37, size: 'Wirsingkohl', skills: ['Greifreflex gut ausgeprägt', 'Lunge nähert sich der Reife'] },
+    { maxWeek: 40, size: 'Kürbis', skills: ['Gilt als ausgereift (\u201Ereif\u201C ab SSW 39)', 'Bereit für die Geburt'] },
+  ];
+
+  // Reads a single pre-menarche sign entry in either the legacy plain-string format
+  // (just the stage) or the current {stage, logged_at, updated_at} format.
+  const _normalizeSignEntry = (raw) => {
+    if (raw == null || raw === '' || raw === 'none') return null;
+    if (typeof raw === 'object') {
+      const stage = raw.stage ?? null;
+      if (stage == null || stage === '' || stage === 'none') return null;
+      return { stage: String(stage), loggedAt: raw.logged_at || raw.updated_at || null };
+    }
+    // Legacy: plain string stage, no date available.
+    return { stage: String(raw), loggedAt: null };
+  };
+
+  // Typical (widely-known, general) lead time from a sign's onset to menarche, used only
+  // when we have a real logged_at date for that sign. Ordered by how proximate/reliable
+  // the signal is — discharge is the closest predictor, breast/pubic hair the least.
+  // These are illustrative averages with wide individual variation, not a diagnosis.
+  const MENARCHE_OFFSET_DAYS = {
+    discharge: 270,      // ~9 months (typical range ~6-12 months before menarche)
+    height_spurt: 365,   // ~12 months (growth spurt peak typically precedes menarche by ~1 year)
+    breast: 640,         // ~21 months (thelarche typically precedes menarche by ~2 years)
+    pubic_hair: 610,      // ~20 months
+  };
+  const MENARCHE_SIGN_PRIORITY = ['discharge', 'height_spurt', 'breast', 'pubic_hair'];
+
+  /**
+   * Builds a dynamic menarche estimate from whichever logged, dated sign is most
+   * proximate/reliable. Returns null if no dated signs are available yet.
+   */
+  const _estimateMenarcheFromSigns = (signs) => {
+    for (const key of MENARCHE_SIGN_PRIORITY) {
+      const entry = _normalizeSignEntry(signs[key]);
+      if (!entry || !entry.loggedAt) continue;
+      if (key === 'height_spurt' && !['moderate', 'significant'].includes(entry.stage)) continue;
+      const anchor = new Date(entry.loggedAt);
+      if (Number.isNaN(anchor.getTime())) continue;
+      const estimated = new Date(anchor.getTime() + MENARCHE_OFFSET_DAYS[key] * 86400000);
+      return { anchorDate: entry.loggedAt, estimatedDate: estimated, sourceSign: key };
+    }
+    return null;
+  };
+
+  const _fetalStageForWeek = (week) => {
+    const w = Math.max(4, Math.min(40, Math.round(week)));
+    return FETAL_DEVELOPMENT_STAGES.find((s) => w <= s.maxWeek) || FETAL_DEVELOPMENT_STAGES[FETAL_DEVELOPMENT_STAGES.length - 1];
+  };
+
+  // Maps a pregnancy week (1-40) onto the matching pregnancy month (preg_01.svg = month 1,
+  // ... preg_09.svg = month 9), using standard 4-week pregnancy months. Weeks 37-40 stay
+  // clamped to month 9 (full term).
+  const _pregnancyAssetIndex = (week) => {
+    const w = Math.max(1, Math.min(40, week));
+    const month = Math.min(9, Math.max(1, Math.ceil(w / 4)));
+    return String(month).padStart(2, '0');
   };
 
   const escapeHtml = (value) => String(value ?? '')
@@ -1569,13 +1656,34 @@
 
     _renderMenarcheHero(stateObj, discreetMode) {
       const attrs = stateObj?.attributes || {};
-      const daysUntil = attrs.days_until_menarche ?? null;
-      const estDate = attrs.estimated_menarche_date ?? (attrs.menarche_data || {}).estimated_date ?? null;
       const preMenData = attrs.pre_menarche_data || {};
       const signs = preMenData.signs && typeof preMenData.signs === 'object' ? preMenData.signs : {};
       const signKeys = ['pubic_hair', 'breast', 'height_spurt', 'mood', 'acne', 'body_odor', 'discharge'];
-      const observedCount = signKeys.filter((k) => signs[k] != null && signs[k] !== '' && signs[k] !== 'none').length;
-      const pct = Math.round((observedCount / signKeys.length) * 100);
+      const observedCount = signKeys.filter((k) => _normalizeSignEntry(signs[k]) !== null).length;
+
+      const dynamic = _estimateMenarcheFromSigns(signs);
+      const fallbackEstDate = attrs.estimated_menarche_date ?? (attrs.menarche_data || {}).estimated_date ?? null;
+      const fallbackDaysUntil = attrs.days_until_menarche ?? null;
+
+      const today = new Date(this._todayIso());
+      let estDateStr; let daysUntil; let pct; let sourceNote;
+
+      if (dynamic) {
+        estDateStr = dynamic.estimatedDate.toISOString().slice(0, 10);
+        daysUntil = Math.round((dynamic.estimatedDate - today) / 86400000);
+        const anchor = new Date(dynamic.anchorDate);
+        const totalSpan = dynamic.estimatedDate - anchor;
+        const elapsed = today - anchor;
+        pct = totalSpan > 0 ? Math.round(Math.min(100, Math.max(0, (elapsed / totalSpan) * 100))) : 100;
+        sourceNote = `${this._t('dashboard_menarche_estimate_from') || 'Schätzung basiert auf'}: ${this._t(dynamic.sourceSign) || dynamic.sourceSign}`;
+      } else {
+        estDateStr = fallbackEstDate;
+        daysUntil = fallbackDaysUntil;
+        pct = Math.round((observedCount / signKeys.length) * 100);
+        sourceNote = observedCount > 0
+          ? (this._t('dashboard_menarche_estimate_generic') || 'Grobschätzung — Datum wird genauer, sobald Anzeichen mit Datum erfasst sind')
+          : '';
+      }
 
       return `
         <div>
@@ -1586,13 +1694,15 @@
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
               <span>${observedCount} / ${signKeys.length} ${this._t('dashboard_widget_progress')}</span>
-              <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDate ? escapeHtml(estDate) : '—')}</span>
+              <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDateStr ? escapeHtml(estDateStr) : '—')}</span>
             </div>
           </div>
           <div class="kpi-strip" style="margin-top:14px;">
             <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('days_until_menarche')}</span></div>
             <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${observedCount}/${signKeys.length}</span><span class="kpi-label">${this._t('dashboard_widget_progress')}</span></div>
           </div>
+          ${sourceNote ? `<p class="helper" style="margin-top:8px;font-size:0.7rem;">${escapeHtml(sourceNote)}</p>` : ''}
+          <p class="helper" style="margin-top:2px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>
         </div>`;
     }
 
@@ -1741,6 +1851,46 @@
       return `<div style="display:flex;align-items:flex-start;overflow-x:auto;padding:8px 2px;gap:2px;">${items}</div>`;
     }
 
+    _renderFetalDevelopment(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const weeksPregnantRaw = Number(attrs.weeks_pregnant ?? 0) || 0;
+      if (weeksPregnantRaw < 4) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+      const week = Math.max(4, Math.min(40, Math.round(weeksPregnantRaw)));
+      const stage = _fetalStageForWeek(week);
+
+      const skillItems = stage.skills.map((s) => `
+        <div class="anomaly-item info">
+          <span class="anomaly-dot"></span>
+          <div class="anomaly-body">
+            <p class="anomaly-text">${escapeHtml(s)}</p>
+          </div>
+        </div>
+      `).join('');
+
+      const assetIdx = _pregnancyAssetIndex(week);
+      const illustration = `
+        <div style="width:110px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <img src="/menstruation_cycle/assets/pregnancy/preg_${assetIdx}.svg" width="84" height="172"
+               alt="Silhouette SSW ${week}" style="max-width:100%;height:auto;" loading="lazy"
+               onerror="this.style.display='none';"/>
+        </div>`;
+
+      return `
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+          ${illustration}
+          <div class="kpi-item mc-rose" style="min-width:150px;">
+            <span class="kpi-icon" aria-hidden="true">🌱</span>
+            <span class="kpi-value">SSW ${week}</span>
+            <span class="kpi-label">${this._t('dashboard_fetal_size_label')}: ${escapeHtml(stage.size)}</span>
+          </div>
+          <div style="flex:1;min-width:220px;display:grid;gap:8px;">${skillItems}</div>
+        </div>
+        <p class="helper" style="margin-top:10px;font-size:0.7rem;">${this._t('dashboard_prediction_disclaimer')}</p>
+      `;
+    }
+
     _renderMenarcheChecklist(stateObj) {
       const attrs = stateObj?.attributes || {};
       const preMenData = attrs.pre_menarche_data || {};
@@ -1755,11 +1905,12 @@
         { key: 'body_odor', label: 'Körpergeruch-Veränderung' },
       ];
       const items = signDefs.map((s) => {
-        const val = signs[s.key];
-        const done = val != null && val !== '' && val !== 'none';
+        const entry = _normalizeSignEntry(signs[s.key]);
+        const done = entry !== null;
+        const detail = done ? `${escapeHtml(entry.stage)}${entry.loggedAt ? ` · ${escapeHtml(entry.loggedAt)}` : ''}` : '';
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
           <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
-          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(s.label)}${done ? ` — ${escapeHtml(String(val))}` : ''}</div>
+          <div style="font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(s.label)}${done ? ` — ${detail}` : ''}</div>
         </div>`;
       }).join('');
       return `<div>${items}</div>`;
@@ -2143,7 +2294,7 @@
           const isPredicted = predictedStart && isoDate === predictedStart;
           const isToday = isCurrentMonth && d === today.getDate();
 
-          let fill = 'transparent';
+          let fill = 'var(--divider-color,#e5e7eb)';
           if (isToday) fill = 'var(--mc-plum,#6B3654)';
           else if (isPeriodStart) fill = 'var(--mc-rose-deep)';
           else if (isPredicted) fill = 'rgba(232,99,125,0.32)';
@@ -2244,6 +2395,7 @@
       if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
+      if (widgetId === 'fetal_development') body = this._renderFetalDevelopment(stateObj);
 
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
       const cardClasses = ['card', spanClass, sensitiveClass].filter(Boolean).join(' ');
@@ -2289,7 +2441,29 @@
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       const availableEntities = this._availableEntities || this._getAvailableEntitiesFallback();
       const discreetMode = !!this._prefs?.discreetMode;
-      const cards = (this._prefs?.widgetOrder || WIDGET_IDS)
+      const mode = this._resolveMode(stateObj);
+      let order = this._prefs?.widgetOrder || WIDGET_IDS;
+      if (mode === 'pregnancy') {
+        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction'].includes(id));
+        if (!order.includes('fetal_development')) {
+          const idx = order.indexOf('phase_timeline');
+          order = idx >= 0
+            ? [...order.slice(0, idx + 1), 'fetal_development', ...order.slice(idx + 1)]
+            : [...order, 'fetal_development'];
+        }
+      } else if (mode === 'menarche') {
+        // Before the first period there's no cycle to analyze — hide everything
+        // that depends on cycle history, phases, fertility, or temperature data.
+        const menarcheHidden = [
+          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'symptom_heatmap', 'anomaly_insights', 'pain_mood_trend', 'year_overview',
+          'fetal_development',
+        ];
+        order = order.filter((id) => !menarcheHidden.includes(id));
+      } else {
+        order = order.filter((id) => id !== 'fetal_development');
+      }
+      const cards = order
         .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
         .filter(Boolean);
       const cardHtml = cards.length

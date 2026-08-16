@@ -1845,7 +1845,7 @@ async def _async_handle_get_menarche_info(hass: HomeAssistant, call: ServiceCall
 
 
 async def _async_handle_add_pre_menarche_sign(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Add or update a pre-menarche body sign."""
+    """Add or update a pre-menarche body sign, tracking when it was first observed."""
     runtime = _runtime_for_call(hass, call)
     sign = str(call.data[SERVICE_FIELD_PRE_MENARCHE_SIGN])
     stage = str(call.data[SERVICE_FIELD_TANNER_STAGE])
@@ -1860,7 +1860,21 @@ async def _async_handle_add_pre_menarche_sign(hass: HomeAssistant, call: Service
 
     if not isinstance(runtime.pre_menarche_data.get("signs"), dict):
         runtime.pre_menarche_data["signs"] = {}
-    runtime.pre_menarche_data["signs"][sign] = stage
+
+    today_iso = dt_util.now().date().isoformat()
+    existing = runtime.pre_menarche_data["signs"].get(sign)
+    # Preserve the original first-observed date across repeated/updated logs of the
+    # same sign (e.g. moving from stage 2 to stage 3), so the dashboard's dynamic
+    # estimate is anchored to onset, not to the most recent edit.
+    first_observed = today_iso
+    if isinstance(existing, dict) and existing.get("logged_at"):
+        first_observed = str(existing["logged_at"])
+
+    runtime.pre_menarche_data["signs"][sign] = {
+        "stage": stage,
+        "logged_at": first_observed,
+        "updated_at": today_iso,
+    }
     await _async_save_and_notify(hass, runtime)
 
 
