@@ -75,6 +75,8 @@
     dashboard_move_down_aria: 'Move {widget} widget down',
     dashboard_drag_to_reorder: 'Drag to reorder',
     dashboard_last_updated: 'Last updated',
+    dashboard_sensor_unavailable: 'Sensor currently unavailable',
+    dashboard_sensor_unavailable_hint: 'The entity currently reports "unavailable" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds.',
     dashboard_save_aria: 'Save dashboard layout',
     dashboard_cancel_aria: 'Cancel dashboard edits',
     dashboard_reset_aria: 'Reset dashboard to mode defaults',
@@ -672,12 +674,34 @@
       // Tags that never became defined within the timeout in _watchEmbeddedCard(),
       // used to show an honest "not available" message instead of an infinite spinner.
       this._embeddedCardTimedOut = new Set();
+
+      // Bound once here (not as inline arrow functions in connectedCallback) so the
+      // same function reference is reused across every connectedCallback call. Home
+      // Assistant can reconnect this panel element when navigating away and back in
+      // the sidebar, firing connectedCallback more than once per session — with a
+      // stable reference, addEventListener's built-in dedup (same type + same
+      // callback = no-op) prevents listeners from stacking up and firing multiple
+      // times per interaction.
+      this._boundHandleClick = (event) => this._handleClick(event);
+      this._boundHandleChange = (event) => this._handleChange(event);
+      this._boundHandleSubmit = (event) => this._handleSubmit(event);
+      this._boundDragPointerDown = (event) => this._handleDragPointerDown(event);
+      this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
+      this._boundDragPointerUp = (event) => this._handleDragPointerUp(event);
+    }
+
+    disconnectedCallback() {
+      // Clear any in-progress drag so a stuck 'dragging' visual state can't survive
+      // into a future reconnect. Event listeners are tied to the shadowRoot (which is
+      // destroyed with the element) so they don't need explicit removal here, and the
+      // setTimeout-based resource-loading polls are self-terminating.
+      this._dragState = null;
     }
 
     connectedCallback() {
-      this.shadowRoot?.addEventListener('click', (event) => this._handleClick(event));
-      this.shadowRoot?.addEventListener('change', (event) => this._handleChange(event));
-      this.shadowRoot?.addEventListener('submit', (event) => this._handleSubmit(event));
+      this.shadowRoot?.addEventListener('click', this._boundHandleClick);
+      this.shadowRoot?.addEventListener('change', this._boundHandleChange);
+      this.shadowRoot?.addEventListener('submit', this._boundHandleSubmit);
 
       // Widget reordering drag-and-drop (edit mode). Uses Pointer Events rather than
       // the native HTML5 Drag-and-Drop API, since that API has poor/inconsistent
@@ -686,10 +710,10 @@
       // once here via delegation (not re-attached per render) since drag state needs
       // to persist across pointermove events without the whole panel re-rendering
       // mid-drag, which would destroy the dragged DOM node.
-      this.shadowRoot?.addEventListener('pointerdown', (event) => this._handleDragPointerDown(event));
-      this.shadowRoot?.addEventListener('pointermove', (event) => this._handleDragPointerMove(event));
-      this.shadowRoot?.addEventListener('pointerup', (event) => this._handleDragPointerUp(event));
-      this.shadowRoot?.addEventListener('pointercancel', (event) => this._handleDragPointerUp(event));
+      this.shadowRoot?.addEventListener('pointerdown', this._boundDragPointerDown);
+      this.shadowRoot?.addEventListener('pointermove', this._boundDragPointerMove);
+      this.shadowRoot?.addEventListener('pointerup', this._boundDragPointerUp);
+      this.shadowRoot?.addEventListener('pointercancel', this._boundDragPointerUp);
 
       // Several real Lovelace-style cards (calendar, heatmap, support, product
       // inventory, countdown timer, statistics) live in their own script files.
@@ -3578,6 +3602,39 @@
       }
     }
 
+    _renderUnavailableState(stateObj, availableEntities) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block; height: 100%;
+            color: var(--primary-text-color, #1f2937);
+            font-family: 'Inter', var(--paper-font-body1_-_font-family, sans-serif);
+          }
+          .mc-unavailable-page { padding: 16px; display: grid; gap: 16px; }
+          .mc-unavailable-card {
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 20px;
+            padding: 40px 24px;
+            text-align: center;
+          }
+          .mc-unavailable-icon { font-size: 2rem; margin-bottom: 10px; }
+          .mc-unavailable-title { font-family: var(--mc-font-display, serif); font-size: 1.1rem; font-weight: 500; margin: 0 0 8px; }
+        </style>
+        <div class="mc-unavailable-page">
+          <header class="toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <h1 style="margin:0;font-size:1.25rem;">${this._t('dashboard_page_title')}</h1>
+            ${this._renderEntityPicker(availableEntities)}
+          </header>
+          <div class="mc-unavailable-card">
+            <div class="mc-unavailable-icon" aria-hidden="true">⚠️</div>
+            <p class="mc-unavailable-title">${this._t('dashboard_sensor_unavailable') || 'Sensor gerade nicht verfügbar'}</p>
+            <p class="helper">${this._t('dashboard_sensor_unavailable_hint') || 'Die Entity meldet aktuell "nicht verfügbar" — das passiert z. B. kurz nach einem Neustart oder während die Integration neu lädt. Meist behebt sich das von selbst innerhalb weniger Sekunden.'}</p>
+          </div>
+        </div>
+      `;
+    }
+
     _renderLoadingState() {
       const skeletonCards = Array.from({ length: 4 }).map((_, i) => `
         <div class="mc-skel-card" style="animation-delay:${i * 80}ms;"></div>
@@ -3634,6 +3691,12 @@
       }
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       const availableEntities = this._availableEntities || this._getAvailableEntitiesFallback();
+
+      if (stateObj && stateObj.state === 'unavailable') {
+        this._renderUnavailableState(stateObj, availableEntities);
+        return;
+      }
+
       const discreetMode = !!this._prefs?.discreetMode;
       const mode = this._resolveContentMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
