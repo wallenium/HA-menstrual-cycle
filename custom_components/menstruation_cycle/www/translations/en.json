@@ -776,5 +776,7 @@
   "dashboard_last_updated": "Last updated",
   "conflict_warning": "This data was changed on another device in the meantime. Overwrite it with your version anyway?",
   "dashboard_sensor_unavailable": "Sensor currently unavailable",
-  "dashboard_sensor_unavailable_hint": "The entity currently reports \"unavailable\" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds."
+  "dashboard_sensor_unavailable_hint": "The entity currently reports \"unavailable\" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds.",
+  "dashboard_discreet_quick_on_aria": "Turn on discreet mode",
+  "dashboard_discreet_quick_off_aria": "Turn off discreet mode"
 }

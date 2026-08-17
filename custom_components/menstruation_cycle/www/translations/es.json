@@ -743,5 +743,7 @@
   "dashboard_last_updated": "Última actualización",
   "conflict_warning": "Estos datos se modificaron mientras tanto en otro dispositivo. ¿Sobrescribirlos de todos modos con tu versión?",
   "dashboard_sensor_unavailable": "Sensor no disponible actualmente",
-  "dashboard_sensor_unavailable_hint": "La entidad indica actualmente \"no disponible\" — esto puede ocurrir brevemente tras un reinicio o mientras se recarga la integración. Suele resolverse solo en unos segundos."
+  "dashboard_sensor_unavailable_hint": "La entidad indica actualmente \"no disponible\" — esto puede ocurrir brevemente tras un reinicio o mientras se recarga la integración. Suele resolverse solo en unos segundos.",
+  "dashboard_discreet_quick_on_aria": "Activar modo discreto",
+  "dashboard_discreet_quick_off_aria": "Desactivar modo discreto"
 }

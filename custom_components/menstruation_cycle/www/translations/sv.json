@@ -743,5 +743,7 @@
   "dashboard_last_updated": "Senast uppdaterad",
   "conflict_warning": "Dessa uppgifter har ändrats på en annan enhet under tiden. Skriv över dem ändå med din version?",
   "dashboard_sensor_unavailable": "Sensorn är för närvarande otillgänglig",
-  "dashboard_sensor_unavailable_hint": "Entiteten rapporterar för närvarande \"otillgänglig\" — detta kan hända kortvarigt efter en omstart eller medan integrationen laddas om. Det löser sig oftast av sig själv inom några sekunder."
+  "dashboard_sensor_unavailable_hint": "Entiteten rapporterar för närvarande \"otillgänglig\" — detta kan hända kortvarigt efter en omstart eller medan integrationen laddas om. Det löser sig oftast av sig själv inom några sekunder.",
+  "dashboard_discreet_quick_on_aria": "Aktivera diskret läge",
+  "dashboard_discreet_quick_off_aria": "Inaktivera diskret läge"
 }

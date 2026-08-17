@@ -77,6 +77,8 @@
     dashboard_last_updated: 'Last updated',
     dashboard_sensor_unavailable: 'Sensor currently unavailable',
     dashboard_sensor_unavailable_hint: 'The entity currently reports "unavailable" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds.',
+    dashboard_discreet_quick_on_aria: 'Turn on discreet mode',
+    dashboard_discreet_quick_off_aria: 'Turn off discreet mode',
     dashboard_save_aria: 'Save dashboard layout',
     dashboard_cancel_aria: 'Cancel dashboard edits',
     dashboard_reset_aria: 'Reset dashboard to mode defaults',
@@ -1528,6 +1530,12 @@
           this._editMode = false;
         }
         this.render();
+      } else if (action === 'toggle-discreet-quick') {
+        if (this._prefs) {
+          this._prefs = { ...this._prefs, discreetMode: !this._prefs.discreetMode };
+          this._savePrefs();
+          this.render();
+        }
       } else if (action === 'save-edit') {
         if (this._editDraft) {
           const { __profile, __mode, ...saved } = this._editDraft;
@@ -4211,6 +4219,7 @@
             <h1>${this._t('dashboard_page_title')}</h1>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               ${this._renderEntityPicker(availableEntities)}
+              ${!this._editMode ? `<button type="button" data-action="toggle-discreet-quick" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" title="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" style="font-size:1.1rem;line-height:1;padding:6px 10px;">${discreetMode ? '🙈' : '👁️'}</button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
             </div>
           </header>
