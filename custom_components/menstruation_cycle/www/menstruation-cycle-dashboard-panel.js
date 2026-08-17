@@ -2246,7 +2246,7 @@
       const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
 
       const wheelSvg = `
-        <svg viewBox="0 0 200 200" width="100%" height="280" style="max-width:280px;display:block;" role="img" aria-label="${this._t('cycle_day')} ${escapeHtml(cycleDay)} / ${escapeHtml(cycleLength)}">
+        <svg viewBox="0 0 200 200" width="100%" style="max-width:280px;height:auto;display:block;" role="img" aria-label="${this._t('cycle_day')} ${escapeHtml(cycleDay)} / ${escapeHtml(cycleLength)}">
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
           ${ringSegs}
           ${marker}
@@ -3997,6 +3997,27 @@
             color: var(--secondary-text-color, #6b7280);
             white-space: nowrap;
           }
+          /* Discreet-mode quick toggle, matching the mockup's label + pill-switch */
+          .toolbar button.discreet-toggle {
+            display: flex; align-items: center; gap: 9px;
+            font-size: 0.8125rem; color: var(--secondary-text-color, #6b7280);
+            font-weight: 400;
+            background: transparent; border: none; padding: 4px 2px;
+          }
+          .toolbar button.discreet-toggle:hover { background: transparent; border-color: transparent; }
+          .switch {
+            width: 34px; height: 20px; border-radius: 999px;
+            background: var(--mc-plum-tint); position: relative;
+            border: 1px solid var(--divider-color, #e5e7eb);
+            flex: none;
+          }
+          .switch::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--mc-plum); transition: left .18s ease;
+          }
+          .switch.on { background: var(--mc-rose-tint); }
+          .switch.on::after { left: 16px; background: var(--mc-rose-deep); }
           .grid {
             display: grid;
             gap: 16px;
@@ -4009,7 +4030,7 @@
             background: var(--card-background-color, #fff);
             border: 1px solid var(--divider-color, #e5e7eb);
             border-radius: 20px;
-            padding: 18px 20px;
+            padding: 26px 26px 22px;
             display: grid;
             gap: 10px;
             box-shadow: 0 1px 2px rgba(43,27,36,.04), 0 8px 24px -14px rgba(43,27,36,.22);
@@ -4033,19 +4054,12 @@
           @media (max-width: 900px) {
             .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 1; }
           }
-          /* Hero wheel: 280px is the intended size (matches the mockup), shrinking
-             on narrower screens so it doesn't dominate a phone-width layout. */
-          @media (max-width: 480px) {
-            .hero-wheel-holder svg { max-width: 220px !important; height: 220px !important; }
-          }
-          @media (max-width: 360px) {
-            .hero-wheel-holder svg { max-width: 180px !important; height: 180px !important; }
-          }
           /* Hero card */
-          .card--hero { padding: 20px 22px; }
-          .hero-layout { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: center; }
-          @media (max-width: 640px) { .hero-layout { grid-template-columns: 1fr; justify-items: center; } }
-          .hero-wheel-holder { position: relative; width: 200px; height: 200px; flex: none; }
+          .card--hero { padding: 26px 26px 22px; }
+          .hero-layout { display: grid; grid-template-columns: 280px 1fr; gap: 8px; align-items: center; }
+          @media (max-width: 920px) { .hero-layout { grid-template-columns: 1fr; justify-items: center; text-align: center; } }
+          .hero-wheel-holder { position: relative; width: 280px; height: 280px; flex: none; }
+          @media (max-width: 920px) { .hero-wheel-holder { width: 220px; height: 220px; } }
           .hero-wheel-center {
             position: absolute; inset: 0; display: flex; flex-direction: column;
             align-items: center; justify-content: center; text-align: center;
@@ -4140,7 +4154,6 @@
           /* Status icon badge on the hero wheel — deliberately outside the ring's
              center content (not overlapping the day number/label), small by default,
              growing on hover for anyone using a mouse without needing it enlarged. */
-          .hero-wheel-holder { position: relative; }
           .hero-status-badge {
             position: absolute; top: 2px; right: 2px;
             width: 30px; height: 30px; border-radius: 50%;
@@ -4468,7 +4481,11 @@
             <div class="header-right">
               ${this._renderEntityPicker(availableEntities)}
               ${this._renderTodayPill()}
-              ${!this._editMode ? `<button type="button" data-action="toggle-discreet-quick" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" title="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" style="font-size:1.1rem;line-height:1;padding:6px 10px;">${discreetMode ? '🙈' : '👁️'}</button>` : ''}
+              ${!this._editMode ? `
+                <button type="button" class="discreet-toggle" data-action="toggle-discreet-quick" role="switch" aria-checked="${discreetMode}" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}">
+                  <span>${this._t('dashboard_discreet_mode')}</span>
+                  <div class="switch${discreetMode ? ' on' : ''}"></div>
+                </button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
             </div>
           </header>
