@@ -771,5 +771,8 @@
   "dashboard_pain_type_plural": "Schmerzarten",
   "dashboard_pain_types_count": "Anzahl Schmerzarten",
   "acne": "Hautveränderungen",
-  "dashboard_days_short": "T"
+  "dashboard_days_short": "T",
+  "dashboard_drag_to_reorder": "Ziehen zum Sortieren",
+  "dashboard_last_updated": "Zuletzt aktualisiert",
+  "conflict_warning": "Diese Daten wurden zwischenzeitlich auf einem anderen Gerät geändert. Trotzdem mit deiner Version überschreiben?"
 }

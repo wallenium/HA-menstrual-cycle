@@ -73,6 +73,8 @@
     dashboard_toggle_widget_aria: 'Toggle {widget} widget visibility',
     dashboard_move_up_aria: 'Move {widget} widget up',
     dashboard_move_down_aria: 'Move {widget} widget down',
+    dashboard_drag_to_reorder: 'Drag to reorder',
+    dashboard_last_updated: 'Last updated',
     dashboard_save_aria: 'Save dashboard layout',
     dashboard_cancel_aria: 'Cancel dashboard edits',
     dashboard_reset_aria: 'Reset dashboard to mode defaults',
@@ -676,6 +678,18 @@
       this.shadowRoot?.addEventListener('click', (event) => this._handleClick(event));
       this.shadowRoot?.addEventListener('change', (event) => this._handleChange(event));
       this.shadowRoot?.addEventListener('submit', (event) => this._handleSubmit(event));
+
+      // Widget reordering drag-and-drop (edit mode). Uses Pointer Events rather than
+      // the native HTML5 Drag-and-Drop API, since that API has poor/inconsistent
+      // touch support — and Home Assistant dashboards are very commonly used on
+      // phones/tablets, where a mouse-only reorder gesture would be unusable. Attached
+      // once here via delegation (not re-attached per render) since drag state needs
+      // to persist across pointermove events without the whole panel re-rendering
+      // mid-drag, which would destroy the dragged DOM node.
+      this.shadowRoot?.addEventListener('pointerdown', (event) => this._handleDragPointerDown(event));
+      this.shadowRoot?.addEventListener('pointermove', (event) => this._handleDragPointerMove(event));
+      this.shadowRoot?.addEventListener('pointerup', (event) => this._handleDragPointerUp(event));
+      this.shadowRoot?.addEventListener('pointercancel', (event) => this._handleDragPointerUp(event));
 
       // Several real Lovelace-style cards (calendar, heatmap, support, product
       // inventory, countdown timer, statistics) live in their own script files.
@@ -1302,6 +1316,23 @@
       }
     }
 
+    /**
+     * Formats a full ISO datetime (e.g. a state's last_updated/last_changed) as a
+     * localized date + time string, used for the "last updated" indicator.
+     */
+    _formatDateTime(isoString) {
+      if (!isoString) return null;
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return null;
+      try {
+        return d.toLocaleString(this._localeCode(), {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        });
+      } catch (_err) {
+        return null;
+      }
+    }
+
     async _saveQuickLog(form) {
       const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
       if (!this._hass || !stateObj) return;
@@ -1395,6 +1426,51 @@
         // update_entity may be unavailable in some environments — non-fatal.
       }
       this.render();
+    }
+
+    _handleDragPointerDown(event) {
+      const handle = event.target.closest?.('[data-drag-handle]');
+      if (!handle) return;
+      const row = handle.closest('.edit-row');
+      if (!row || !this._editDraft) return;
+      this._dragState = { widgetId: row.dataset.widgetId, pointerId: event.pointerId };
+      row.setPointerCapture?.(event.pointerId);
+      row.classList.add('dragging');
+      event.preventDefault();
+    }
+
+    _handleDragPointerMove(event) {
+      if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
+      const container = this.shadowRoot?.querySelector('.edit-widget-list');
+      const dragRow = this.shadowRoot?.querySelector(`.edit-row[data-widget-id="${this._dragState.widgetId}"]`);
+      if (!container || !dragRow) return;
+
+      const rows = Array.from(container.querySelectorAll('.edit-row')).filter((r) => r !== dragRow);
+      const y = event.clientY;
+      for (const row of rows) {
+        const rect = row.getBoundingClientRect();
+        if (y >= rect.top && y <= rect.bottom) {
+          const insertBefore = y < rect.top + rect.height / 2;
+          container.insertBefore(dragRow, insertBefore ? row : row.nextSibling);
+          break;
+        }
+      }
+      event.preventDefault();
+    }
+
+    _handleDragPointerUp(event) {
+      if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
+      const container = this.shadowRoot?.querySelector('.edit-widget-list');
+      const dragRow = this.shadowRoot?.querySelector(`.edit-row[data-widget-id="${this._dragState.widgetId}"]`);
+      dragRow?.classList.remove('dragging');
+      dragRow?.releasePointerCapture?.(event.pointerId);
+      this._dragState = null;
+
+      if (container && this._editDraft) {
+        const newOrder = Array.from(container.querySelectorAll('.edit-row')).map((r) => r.dataset.widgetId);
+        this._editDraft.widgetOrder = newOrder;
+        this.render();
+      }
     }
 
     _moveWidget(id, direction) {
@@ -3370,12 +3446,24 @@
     _renderEditPanel() {
       if (!this._editMode || !this._editDraft) return '';
       const draft = this._editDraft;
-      const rows = WIDGET_DEFS.map((widget) => {
+      const widgetById = {};
+      WIDGET_DEFS.forEach((w) => { widgetById[w.id] = w; });
+      // Show widgets in their actual current order, not the fixed definition order —
+      // otherwise the up/down (and now drag) reordering wouldn't visibly do anything.
+      // Any widget missing from widgetOrder (e.g. newly added since the person's last
+      // save) is appended at the end so it's still reachable/toggleable.
+      const orderedIds = [
+        ...draft.widgetOrder.filter((id) => widgetById[id]),
+        ...WIDGET_DEFS.map((w) => w.id).filter((id) => !draft.widgetOrder.includes(id)),
+      ];
+      const rows = orderedIds.map((widgetId) => {
+        const widget = widgetById[widgetId];
         const visible = draft.widgetVisibility[widget.id] !== false;
         const idx = draft.widgetOrder.indexOf(widget.id);
         const widgetLabel = this._t(widget.title);
         return `
-          <div class="edit-row">
+          <div class="edit-row" data-widget-id="${widget.id}">
+            <span class="edit-drag-handle" data-drag-handle="true" aria-hidden="true" title="${this._t('dashboard_drag_to_reorder') || 'Ziehen zum Sortieren'}">⠿</span>
             <label>
               <input type="checkbox" data-widget-visibility="${widget.id}" ${visible ? 'checked' : ''}
                 aria-label="${this._t('dashboard_toggle_widget_aria').replace('{widget}', widgetLabel)}"/>
@@ -3400,7 +3488,7 @@
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
           <p class="helper">${this._t('dashboard_widget_order_label')}</p>
-          ${rows}
+          <div class="edit-widget-list">${rows}</div>
           <div class="edit-actions">
             <button type="button" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
             <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
@@ -3447,6 +3535,14 @@
       const cardClasses = ['card', spanClass, sensitiveClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
       return `<article class="${cardClasses}"><h2>${title}</h2>${body}</article>`;
+    }
+
+    _renderLastUpdated(stateObj) {
+      if (!stateObj) return '';
+      const ts = stateObj.last_updated || stateObj.last_changed;
+      const formatted = this._formatDateTime(ts);
+      if (!formatted) return '';
+      return `<p class="helper" style="margin:2px 0 0;font-size:0.7rem;">${this._t('dashboard_last_updated') || 'Zuletzt aktualisiert'}: ${escapeHtml(formatted)}</p>`;
     }
 
     _renderEntityPicker(availableEntities) {
@@ -3824,9 +3920,24 @@
             background: var(--secondary-background-color, #f9fafb);
           }
           .edit-mode h2 { margin: 0; font-size: 1rem; font-weight: 600; }
-          .edit-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6); }
+          .edit-widget-list { position: relative; }
+          .edit-row {
+            display: flex; justify-content: space-between; gap: 8px; align-items: center;
+            padding: 6px 0; border-bottom: 1px solid var(--divider-color, #f3f4f6);
+            background: var(--card-background-color, #fff);
+          }
           .edit-row:last-of-type { border-bottom: none; }
-          .edit-row label { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; }
+          .edit-row label { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; flex: 1; min-width: 0; }
+          .edit-drag-handle {
+            flex: none; cursor: grab; font-size: 16px; line-height: 1;
+            color: var(--secondary-text-color, #9ca3af); padding: 4px 6px;
+            touch-action: none; user-select: none; -webkit-user-select: none;
+          }
+          .edit-row.dragging {
+            opacity: 0.85; box-shadow: 0 4px 14px rgba(0,0,0,0.15); border-radius: 10px;
+            position: relative; z-index: 5; cursor: grabbing;
+          }
+          .edit-row.dragging .edit-drag-handle { cursor: grabbing; }
           .edit-buttons { display: flex; gap: 6px; }
           .edit-buttons button {
             border: 1px solid var(--divider-color, #d1d5db);
@@ -4040,6 +4151,7 @@
               ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
             </div>
           </header>
+          ${this._renderLastUpdated(stateObj)}
           <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
           ${this._renderEditPanel()}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>

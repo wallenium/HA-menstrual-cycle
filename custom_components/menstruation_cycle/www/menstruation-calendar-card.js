@@ -142,6 +142,7 @@ class MenstruationCalendarCard extends HTMLElement {
         of_cycle: 'of cycle',
         no_data: 'No data',
         edit_symptoms: 'Edit symptoms',
+        conflict_warning: 'This data was changed on another device in the meantime. Overwrite it with your version anyway?',
         save: 'Save',
         close: 'Close',
         fertile: 'Fertile',
@@ -962,6 +963,35 @@ class MenstruationCalendarCard extends HTMLElement {
     const autoConfirmDays = symptomData.bleeding_strength && symptomData.bleeding_strength !== 'none'
       ? this._daysToAutoConfirm(iso, model, periodModalContext.continuationBlock)
       : [];
+
+    // Conflict check: has another device/session changed this day's data since this
+    // modal was opened (e.g. a second phone/tablet editing the same profile at the
+    // same time)? Re-fetch fresh, uncapped data and compare against the snapshot
+    // taken at open-time (_refreshSymptomOverrideForDay). If they differ, warn before
+    // silently overwriting someone else's more recent change.
+    const openedSnapshot = this._symptomOverrides?.[iso] || null;
+    if (openedSnapshot) {
+      let freshData = null;
+      try {
+        const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
+        const result = await this._hass.callService('menstruation_cycle', 'get_symptom', payload, undefined, false, true);
+        freshData = result?.response;
+      } catch (_err) {
+        freshData = null; // response-calls unsupported on this HA frontend — skip check
+      }
+      if (freshData && freshData.found !== false) {
+        const keys = new Set([...Object.keys(freshData), ...Object.keys(openedSnapshot)]);
+        keys.delete('date');
+        keys.delete('found');
+        const changed = Array.from(keys).some(
+          (k) => JSON.stringify(freshData[k] ?? null) !== JSON.stringify(openedSnapshot[k] ?? null)
+        );
+        if (changed) {
+          const proceed = window.confirm(this._t('conflict_warning'));
+          if (!proceed) return; // leave the modal open with the person's in-progress edits intact
+        }
+      }
+    }
 
     this._modalIso = null;
 

@@ -771,5 +771,8 @@
   "dashboard_pain_type_plural": "pain types",
   "dashboard_pain_types_count": "Number of pain types",
   "acne": "skin changes",
-  "dashboard_days_short": "d"
+  "dashboard_days_short": "d",
+  "dashboard_drag_to_reorder": "Drag to reorder",
+  "dashboard_last_updated": "Last updated",
+  "conflict_warning": "This data was changed on another device in the meantime. Overwrite it with your version anyway?"
 }

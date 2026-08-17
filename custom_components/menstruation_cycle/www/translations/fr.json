@@ -738,5 +738,8 @@
   "dashboard_pain_type_plural": "types de douleur",
   "dashboard_pain_types_count": "Nombre de types de douleur",
   "acne": "changements cutanés",
-  "dashboard_days_short": "j"
+  "dashboard_days_short": "j",
+  "dashboard_drag_to_reorder": "Glisser pour réorganiser",
+  "dashboard_last_updated": "Dernière mise à jour",
+  "conflict_warning": "Ces données ont été modifiées entre-temps sur un autre appareil. Les écraser quand même avec votre version ?"
 }

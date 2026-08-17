@@ -1330,15 +1330,30 @@ async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry
 
 
 async def _async_load_timer_state(hass: HomeAssistant, profile: str) -> None:
-    """Load persisted timer state and expose it as a virtual HA state for the frontend."""
+    """Load persisted timer state and expose it as a virtual HA state for the frontend.
+
+    Always sets a state — even a fresh default "idle" one when nothing has been
+    saved yet — so that `menstruation_cycle_timer.{profile}` exists as soon as the
+    integration loads, rather than only appearing after the timer has been used at
+    least once. Without this, any card/consumer that assumes the entity exists
+    (e.g. the countdown-timer card) would find nothing for a profile that's never
+    touched the timer.
+    """
     store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.timer_state.{profile}")
     timer_state = await store.async_load()
-    if isinstance(timer_state, dict):
-        hass.states.async_set(
-            f"menstruation_cycle_timer.{profile}",
-            "active" if timer_state.get("is_running") else "idle",
-            timer_state,
-        )
+    if not isinstance(timer_state, dict):
+        timer_state = {
+            "remaining_seconds": 0,
+            "total_seconds": 0,
+            "selected_product": None,
+            "is_running": False,
+            "saved_at": 0,
+        }
+    hass.states.async_set(
+        f"menstruation_cycle_timer.{profile}",
+        "active" if timer_state.get("is_running") else "idle",
+        timer_state,
+    )
 
 
 async def _async_handle_save_timer_state(hass: HomeAssistant, call: ServiceCall) -> None:

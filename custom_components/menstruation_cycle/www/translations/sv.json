@@ -738,5 +738,8 @@
   "dashboard_pain_type_plural": "smärttyper",
   "dashboard_pain_types_count": "Antal smärttyper",
   "acne": "hudförändringar",
-  "dashboard_days_short": "d"
+  "dashboard_days_short": "d",
+  "dashboard_drag_to_reorder": "Dra för att sortera om",
+  "dashboard_last_updated": "Senast uppdaterad",
+  "conflict_warning": "Dessa uppgifter har ändrats på en annan enhet under tiden. Skriv över dem ändå med din version?"
 }
