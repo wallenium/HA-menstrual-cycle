@@ -774,5 +774,7 @@
   "dashboard_days_short": "T",
   "dashboard_drag_to_reorder": "Ziehen zum Sortieren",
   "dashboard_last_updated": "Zuletzt aktualisiert",
-  "conflict_warning": "Diese Daten wurden zwischenzeitlich auf einem anderen Gerät geändert. Trotzdem mit deiner Version überschreiben?"
+  "conflict_warning": "Diese Daten wurden zwischenzeitlich auf einem anderen Gerät geändert. Trotzdem mit deiner Version überschreiben?",
+  "dashboard_sensor_unavailable": "Sensor gerade nicht verfügbar",
+  "dashboard_sensor_unavailable_hint": "Die Entity meldet aktuell \"nicht verfügbar\" — das passiert z. B. kurz nach einem Neustart oder während die Integration neu lädt. Meist behebt sich das von selbst innerhalb weniger Sekunden."
 }

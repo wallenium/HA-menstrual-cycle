@@ -741,5 +741,7 @@
   "dashboard_days_short": "d",
   "dashboard_drag_to_reorder": "Dra för att sortera om",
   "dashboard_last_updated": "Senast uppdaterad",
-  "conflict_warning": "Dessa uppgifter har ändrats på en annan enhet under tiden. Skriv över dem ändå med din version?"
+  "conflict_warning": "Dessa uppgifter har ändrats på en annan enhet under tiden. Skriv över dem ändå med din version?",
+  "dashboard_sensor_unavailable": "Sensorn är för närvarande otillgänglig",
+  "dashboard_sensor_unavailable_hint": "Entiteten rapporterar för närvarande \"otillgänglig\" — detta kan hända kortvarigt efter en omstart eller medan integrationen laddas om. Det löser sig oftast av sig själv inom några sekunder."
 }
