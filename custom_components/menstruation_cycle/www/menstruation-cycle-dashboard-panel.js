@@ -1548,6 +1548,8 @@
           this._savePrefs();
           this.render();
         }
+      } else if (action === 'select-entity' && target.dataset.entityId) {
+        this._handleEntityChange(target.dataset.entityId);
       } else if (action === 'save-edit') {
         if (this._editDraft) {
           const { __profile, __mode, ...saved } = this._editDraft;
@@ -3677,6 +3679,17 @@
       return `<article class="${cardClasses}"><h2>${title}</h2>${body}</article>`;
     }
 
+    _renderTodayPill() {
+      const today = new Date();
+      let formatted;
+      try {
+        formatted = today.toLocaleDateString(this._localeCode(), { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (_err) {
+        formatted = this._formatDate(this._todayIso());
+      }
+      return `<div class="today-pill">${escapeHtml(formatted)}</div>`;
+    }
+
     _renderLastUpdated(stateObj) {
       if (!stateObj) return '';
       const ts = stateObj.last_updated || stateObj.last_changed;
@@ -3688,6 +3701,18 @@
     _renderEntityPicker(availableEntities) {
       const entities = Array.isArray(availableEntities) ? availableEntities.filter(Boolean) : [];
       if (entities.length === 0) return '';
+
+      if (entities.length <= 5) {
+        const buttons = entities.map((entity) => {
+          const entityId = String(entity?.entityId ?? '');
+          const name = String(entity?.name ?? entityId ?? 'Unknown');
+          if (!entityId) return '';
+          const active = entityId === this._selectedEntityId;
+          return `<button type="button" class="mode-btn${active ? ' active' : ''}" data-action="select-entity" data-entity-id="${escapeHtml(entityId)}" aria-pressed="${active}">${escapeHtml(name)}</button>`;
+        }).filter(Boolean).join('');
+        return `<div class="mode-switch" role="tablist" aria-label="${this._t('dashboard_entity_picker_aria')}">${buttons}</div>`;
+      }
+
       const options = entities
         .map((entity) => {
           const entityId = String(entity?.entityId ?? '');
@@ -3736,6 +3761,10 @@
           }
           .mc-unavailable-icon { font-size: 2rem; margin-bottom: 10px; }
           .mc-unavailable-title { font-family: var(--mc-font-display, serif); font-size: 1.1rem; font-weight: 500; margin: 0 0 8px; }
+          .mode-switch { display: flex; gap: 3px; background: var(--mc-sand, #f3ebe7); border: 1px solid var(--divider-color, #e5e7eb); border-radius: 999px; padding: 3px; flex-wrap: wrap; }
+          .mode-btn { border: none; background: transparent; cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--secondary-text-color, #6b7280); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
+          .mode-btn.active { background: var(--card-background-color, #fff); color: #C43F5E; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+          .entity-picker { border: 1px solid var(--divider-color, #d1d5db); border-radius: 999px; padding: 7px 12px; background: var(--card-background-color, #fff); color: inherit; font-size: 0.875rem; }
         </style>
         <div class="mc-unavailable-page">
           <header class="toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -3932,6 +3961,41 @@
             color: inherit;
             cursor: pointer;
             font-size: 0.875rem;
+          }
+          .brand { display: flex; align-items: center; }
+          .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+          /* Pill-style entity switcher — used instead of the dropdown when there are
+             5 or fewer available entities, matching the mockup's mode-switch look. */
+          .mode-switch {
+            display: flex; gap: 3px;
+            background: var(--mc-sand);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 999px;
+            padding: 3px;
+            flex-wrap: wrap;
+          }
+          .mode-btn {
+            border: none; background: transparent; cursor: pointer;
+            font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
+            color: var(--secondary-text-color, #6b7280);
+            padding: 7px 14px;
+            border-radius: 999px;
+            transition: background .15s ease, color .15s ease;
+            white-space: nowrap;
+          }
+          .mode-btn.active {
+            background: var(--card-background-color, #fff);
+            color: var(--mc-rose-deep);
+            box-shadow: 0 1px 2px rgba(0,0,0,.08);
+          }
+          .today-pill {
+            font-family: var(--mc-font-mono);
+            font-size: 0.78rem;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--mc-sand);
+            color: var(--secondary-text-color, #6b7280);
+            white-space: nowrap;
           }
           .grid {
             display: grid;
@@ -4398,9 +4462,12 @@
         </style>
         <main class="page">
           <header class="toolbar">
-            <h1>${this._t('dashboard_page_title')}</h1>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div class="brand">
+              <h1>${this._t('dashboard_page_title')}</h1>
+            </div>
+            <div class="header-right">
               ${this._renderEntityPicker(availableEntities)}
+              ${this._renderTodayPill()}
               ${!this._editMode ? `<button type="button" data-action="toggle-discreet-quick" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" title="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}" style="font-size:1.1rem;line-height:1;padding:6px 10px;">${discreetMode ? '🙈' : '👁️'}</button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
             </div>
