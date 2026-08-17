@@ -745,5 +745,12 @@
   "dashboard_sensor_unavailable": "Capteur actuellement indisponible",
   "dashboard_sensor_unavailable_hint": "L'entité indique actuellement « indisponible » — cela peut arriver brièvement après un redémarrage ou pendant le rechargement de l'intégration. Cela se résout généralement en quelques secondes.",
   "dashboard_discreet_quick_on_aria": "Activer le mode discret",
-  "dashboard_discreet_quick_off_aria": "Désactiver le mode discret"
+  "dashboard_discreet_quick_off_aria": "Désactiver le mode discret",
+  "ygs_reassure_age_title": "Mon âge est-il normal ?",
+  "ygs_reassure_age_early": "Tes premières règles pourraient arriver très tôt. C'est rare, mais pas forcément un problème — mieux vaut en parler à un médecin pour être sûre.",
+  "ygs_reassure_age_typical_early": "Tu es encore jeune — certaines filles ont leurs premières règles à cet âge. C'est tout à fait normal.",
+  "ygs_reassure_age_typical": "Ton âge se situe exactement dans la tranche habituelle où la plupart des filles ont leurs premières règles (environ 10 à 15 ans).",
+  "ygs_reassure_age_typical_late": "Tu es un peu en retard par rapport à la moyenne, mais c'est tout à fait normal — chaque corps a son propre rythme.",
+  "ygs_reassure_age_late": "Si tes premières règles ne sont pas encore arrivées, ce n'est généralement pas inquiétant — mais cela peut valoir la peine d'en parler chez le médecin.",
+  "ygs_kit_check_proximity": "Bientôt"
 }

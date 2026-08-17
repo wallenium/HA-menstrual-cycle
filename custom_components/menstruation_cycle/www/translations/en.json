@@ -778,5 +778,12 @@
   "dashboard_sensor_unavailable": "Sensor currently unavailable",
   "dashboard_sensor_unavailable_hint": "The entity currently reports \"unavailable\" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds.",
   "dashboard_discreet_quick_on_aria": "Turn on discreet mode",
-  "dashboard_discreet_quick_off_aria": "Turn off discreet mode"
+  "dashboard_discreet_quick_off_aria": "Turn off discreet mode",
+  "ygs_reassure_age_title": "Is my age normal?",
+  "ygs_reassure_age_early": "Your first period may come very early. That's uncommon, but not automatically a problem — it's worth checking in with a doctor just to be sure.",
+  "ygs_reassure_age_typical_early": "You're still young — some girls start their first period around this age. That's completely normal.",
+  "ygs_reassure_age_typical": "Your age is right in the typical range where most girls get their first period (roughly 10 to 15 years old).",
+  "ygs_reassure_age_typical_late": "You're a bit later than average, but that's still completely normal — every body has its own timing.",
+  "ygs_reassure_age_late": "If your first period hasn't started yet, that's usually not a cause for worry — but it can be worth mentioning at a doctor's visit.",
+  "ygs_kit_check_proximity": "Getting close"
 }

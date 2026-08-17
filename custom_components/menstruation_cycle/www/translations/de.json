@@ -778,5 +778,12 @@
   "dashboard_sensor_unavailable": "Sensor gerade nicht verfügbar",
   "dashboard_sensor_unavailable_hint": "Die Entity meldet aktuell \"nicht verfügbar\" — das passiert z. B. kurz nach einem Neustart oder während die Integration neu lädt. Meist behebt sich das von selbst innerhalb weniger Sekunden.",
   "dashboard_discreet_quick_on_aria": "Diskreten Modus einschalten",
-  "dashboard_discreet_quick_off_aria": "Diskreten Modus ausschalten"
+  "dashboard_discreet_quick_off_aria": "Diskreten Modus ausschalten",
+  "ygs_reassure_age_title": "Ist mein Alter normal?",
+  "ygs_reassure_age_early": "Deine erste Periode könnte sehr früh kommen. Das ist selten, aber kein automatisches Problem — sprich am besten mit einer Ärztin oder einem Arzt, um sicherzugehen.",
+  "ygs_reassure_age_typical_early": "Du bist noch jung — die erste Periode kann bei manchen Mädchen schon in diesem Alter beginnen. Das ist völlig normal.",
+  "ygs_reassure_age_typical": "Dein Alter liegt genau im typischen Bereich, in dem die meisten Mädchen ihre erste Periode bekommen (etwa 10 bis 15 Jahre).",
+  "ygs_reassure_age_typical_late": "Du bist etwas später dran als der Durchschnitt, aber das ist immer noch völlig normal — jeder Körper hat sein eigenes Tempo.",
+  "ygs_reassure_age_late": "Falls deine erste Periode bis jetzt noch nicht eingesetzt hat, ist das meistens kein Grund zur Sorge — es kann aber sinnvoll sein, das bei einem Arztbesuch anzusprechen.",
+  "ygs_kit_check_proximity": "Bald soweit"
 }

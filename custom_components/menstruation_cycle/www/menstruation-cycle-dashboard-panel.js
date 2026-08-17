@@ -4254,10 +4254,12 @@
           config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
         },
         {
-          // No entity required — this is general educational content, not tied to
-          // a specific profile's tracked data.
+          // Entity is now optional-but-used: powers the age-aware reassurance card
+          // and the kit-check proximity badge when available, while everything else
+          // in this card (glossary, hygiene guides, other reassurance topics) stays
+          // general educational content independent of any specific profile's data.
           selector: '[data-mount="support-card"]', tag: 'menstruation-support-card',
-          config: () => ({}),
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : {}),
         },
         {
           // Household-wide inventory; defaults to the fixed global stock entity, so

@@ -745,5 +745,12 @@
   "dashboard_sensor_unavailable": "Sensor no disponible actualmente",
   "dashboard_sensor_unavailable_hint": "La entidad indica actualmente \"no disponible\" — esto puede ocurrir brevemente tras un reinicio o mientras se recarga la integración. Suele resolverse solo en unos segundos.",
   "dashboard_discreet_quick_on_aria": "Activar modo discreto",
-  "dashboard_discreet_quick_off_aria": "Desactivar modo discreto"
+  "dashboard_discreet_quick_off_aria": "Desactivar modo discreto",
+  "ygs_reassure_age_title": "¿Es normal mi edad?",
+  "ygs_reassure_age_early": "Tu primera menstruación podría llegar muy pronto. Es poco frecuente, pero no es necesariamente un problema — conviene consultarlo con un médico para estar segura.",
+  "ygs_reassure_age_typical_early": "Todavía eres joven — algunas chicas tienen su primera menstruación a esta edad. Es totalmente normal.",
+  "ygs_reassure_age_typical": "Tu edad está justo en el rango típico en el que la mayoría de las chicas tienen su primera menstruación (aproximadamente entre 10 y 15 años).",
+  "ygs_reassure_age_typical_late": "Vas un poco más tarde que la media, pero sigue siendo totalmente normal — cada cuerpo tiene su propio ritmo.",
+  "ygs_reassure_age_late": "Si tu primera menstruación aún no ha llegado, normalmente no es motivo de preocupación — pero puede ser buena idea mencionarlo en una consulta médica.",
+  "ygs_kit_check_proximity": "Se acerca"
 }

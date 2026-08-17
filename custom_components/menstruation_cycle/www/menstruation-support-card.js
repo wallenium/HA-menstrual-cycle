@@ -136,8 +136,13 @@ class YoungGirlsSupportCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const prevAttrs = this._entityAttrs;
     this._hass = hass;
+    const entityId = this._config?.entity;
+    this._entityAttrs = entityId ? hass?.states?.[entityId]?.attributes || null : null;
+    const attrsChanged = JSON.stringify(prevAttrs) !== JSON.stringify(this._entityAttrs);
     this._loadI18n();
+    if (attrsChanged && this._strings) this._render();
   }
 
   _loadI18n() {
@@ -221,6 +226,19 @@ class YoungGirlsSupportCard extends HTMLElement {
 
   // ---- Reminders section -------------------------------------------------
 
+  /**
+   * Small "getting close" badge for the kit-check reminder when the menarche
+   * estimate is under 60 days away — the reminder itself stays always-available
+   * (timing is inherently uncertain, and it's a fine habit at any point during
+   * pre-menarche tracking), but this makes it feel more relevantly urgent as the
+   * estimate approaches, without changing when the reminder can be toggled on.
+   */
+  _kitCheckProximityBadge() {
+    const days = this._entityAttrs?.days_until_menarche;
+    if (days === undefined || days === null || days < 0 || days > 60) return '';
+    return ` <span class="ygs-proximity-badge">${_ygsEsc(this._t('ygs_kit_check_proximity'))}</span>`;
+  }
+
   _renderReminders() {
     const state = this._reminderState || {};
     const settingsOpen = this._reminderSettingsOpen;
@@ -230,10 +248,11 @@ class YoungGirlsSupportCard extends HTMLElement {
       const enabled = !!s.enabled;
       const time = s.time || r.defaultTime;
       const checkId = `ygs-rem-${r.id}`;
+      const proximityBadge = r.id === 'kit_check' ? this._kitCheckProximityBadge() : '';
       return `
         <div class="reminder-row ${enabled ? 'reminder-enabled' : ''}">
           <span class="reminder-icon" aria-hidden="true">${r.icon}</span>
-          <span class="reminder-label">${_ygsEsc(this._t('ygs_rem_' + r.id))}</span>
+          <span class="reminder-label">${_ygsEsc(this._t('ygs_rem_' + r.id))}${proximityBadge}</span>
           <span class="reminder-preview">${_ygsEsc(this._t('ygs_rem_' + r.id + '_text'))}</span>
           <label class="ygs-toggle" aria-label="${_ygsEsc(this._t('ygs_rem_toggle'))} ${_ygsEsc(this._t('ygs_rem_' + r.id))}">
             <input type="checkbox" id="${checkId}" data-reminder-id="${r.id}" class="rem-toggle-input" ${enabled ? 'checked' : ''}>
@@ -485,6 +504,8 @@ class YoungGirlsSupportCard extends HTMLElement {
       </div>
     `).join('');
 
+    const ageCard = this._renderAgeReassuranceCard();
+
     return `
       <section class="ygs-section" aria-labelledby="ygs-reassure-heading">
         <h3 id="ygs-reassure-heading" class="ygs-section-title">
@@ -492,10 +513,43 @@ class YoungGirlsSupportCard extends HTMLElement {
         </h3>
         <p class="ygs-section-desc">${_ygsEsc(this._t('ygs_reassure_desc'))}</p>
         <div class="reassurance-grid">
-          ${cards}
+          ${ageCard}${cards}
         </div>
         <p class="ygs-disclaimer-note">${_ygsEsc(this._t('ygs_reassure_disclaimer'))}</p>
       </section>
+    `;
+  }
+
+  /**
+   * Age-aware "is this normal for me?" card — only rendered when a real age is
+   * available (entity connected + birth_date configured on the profile). Addresses
+   * a very common early worry ("am I too early/too late?") with the general typical
+   * range, distinct from the other 3 topics which are about cycle *characteristics*
+   * rather than age itself. Framed reassuringly either way, with the same
+   * talk-to-someone escalation note as the other cards for the one case (no period
+   * yet by the upper end of the typical range) where checking in with a doctor is a
+   * reasonable, non-alarming next step.
+   */
+  _renderAgeReassuranceCard() {
+    const age = this._entityAttrs?.age_at_tracking;
+    if (age === undefined || age === null) return '';
+
+    let bodyKey;
+    if (age < 9) bodyKey = 'ygs_reassure_age_early';
+    else if (age <= 11) bodyKey = 'ygs_reassure_age_typical_early';
+    else if (age <= 13) bodyKey = 'ygs_reassure_age_typical';
+    else if (age <= 15) bodyKey = 'ygs_reassure_age_typical_late';
+    else bodyKey = 'ygs_reassure_age_late';
+
+    return `
+      <div class="reassurance-card">
+        <h4 class="reassurance-topic">${_ygsEsc(this._t('ygs_reassure_age_title'))}</h4>
+        <p class="reassurance-body">${_ygsEsc(this._t(bodyKey))}</p>
+        <p class="reassurance-escalation">
+          <span aria-hidden="true">💬</span>
+          ${_ygsEsc(this._t('ygs_reassure_escalation'))}
+        </p>
+      </div>
     `;
   }
 
@@ -760,6 +814,18 @@ class YoungGirlsSupportCard extends HTMLElement {
 
       .reminder-enabled .reminder-label {
         color: var(--ygs-accent);
+      }
+
+      .ygs-proximity-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: var(--ygs-accent, #E8637D);
+        color: #fff;
+        vertical-align: middle;
+        margin-left: 4px;
       }
 
       /* Reminder settings */

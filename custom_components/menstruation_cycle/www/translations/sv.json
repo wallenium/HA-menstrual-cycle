@@ -745,5 +745,12 @@
   "dashboard_sensor_unavailable": "Sensorn är för närvarande otillgänglig",
   "dashboard_sensor_unavailable_hint": "Entiteten rapporterar för närvarande \"otillgänglig\" — detta kan hända kortvarigt efter en omstart eller medan integrationen laddas om. Det löser sig oftast av sig själv inom några sekunder.",
   "dashboard_discreet_quick_on_aria": "Aktivera diskret läge",
-  "dashboard_discreet_quick_off_aria": "Inaktivera diskret läge"
+  "dashboard_discreet_quick_off_aria": "Inaktivera diskret läge",
+  "ygs_reassure_age_title": "Är min ålder normal?",
+  "ygs_reassure_age_early": "Din första mens kan komma väldigt tidigt. Det är ovanligt, men inte automatiskt ett problem — det är bra att kolla med en läkare för säkerhets skull.",
+  "ygs_reassure_age_typical_early": "Du är fortfarande ung — vissa tjejer får sin första mens runt den här åldern. Det är helt normalt.",
+  "ygs_reassure_age_typical": "Din ålder ligger precis i det typiska intervallet där de flesta tjejer får sin första mens (cirka 10 till 15 år).",
+  "ygs_reassure_age_typical_late": "Du är lite senare än genomsnittet, men det är fortfarande helt normalt — varje kropp har sin egen takt.",
+  "ygs_reassure_age_late": "Om din första mens inte har kommit än är det oftast ingen anledning till oro — men det kan vara värt att nämna vid ett läkarbesök.",
+  "ygs_kit_check_proximity": "Snart dags"
 }
