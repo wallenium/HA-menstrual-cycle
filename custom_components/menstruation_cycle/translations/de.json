@@ -57,7 +57,6 @@
           "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus. Das Startdatum wird automatisch aus dem letzten Zyklus-Start übernommen, falls nicht angegeben.",
           "pregnancy_start_date": "Erster Tag der letzten Menstruation (LMP). Leer lassen, um den letzten erfassten Zyklus-Start zu verwenden.",
           "pre_menarche_enabled": "Pubertätszeichen vor der ersten Periode (Menarche) verfolgen.",
-          "estimated_menarche_date": "Voraussichtliches Datum der ersten Periode. Wird für das Countdown-Tracking verwendet.",
           "family_menarche_age": "Menarche-Alter in der Familie (Mutter/Schwester) zur Schätzung des erwarteten Alters.",
           "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus.",
           "menopause_start_date": "Datum des Menopause-Beginns (JJJJ-MM-TT). Leer lassen, falls unbekannt.",

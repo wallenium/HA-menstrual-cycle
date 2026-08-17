@@ -57,7 +57,6 @@
           "pregnancy_enabled": "Activates pregnancy tracking mode. The pregnancy start date is auto-filled from the last cycle start if left empty.",
           "pregnancy_start_date": "First day of last menstruation (LMP). Leave empty to use the last recorded cycle start.",
           "pre_menarche_enabled": "Track puberty signs before the first period (menarche).",
-          "estimated_menarche_date": "Estimated date of the first period. Used for countdown tracking.",
           "family_menarche_age": "Age of menarche in the family (mother/sister) used to estimate the expected age.",
           "menopause_enabled": "Activates menopause tracking mode.",
           "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",

@@ -57,7 +57,6 @@
           "pregnancy_enabled": "Active le mode de suivi de la grossesse. La date de début de grossesse est renseignée automatiquement à partir du dernier début de cycle si le champ est laissé vide.",
           "pregnancy_start_date": "Premier jour des dernières règles (DDR). Laissez vide pour utiliser le dernier début de cycle enregistré.",
           "pre_menarche_enabled": "Suivre les signes de puberté avant les premières règles (ménarche).",
-          "estimated_menarche_date": "Date estimée des premières règles. Utilisée pour le compte à rebours.",
           "family_menarche_age": "Âge des premières règles dans la famille (mère/sœur), utilisé pour estimer l'âge attendu.",
           "menopause_enabled": "Active le mode de suivi de la ménopause.",
           "menopause_start_date": "Date à laquelle la ménopause a commencé (AAAA-MM-JJ). Laissez vide si inconnue.",

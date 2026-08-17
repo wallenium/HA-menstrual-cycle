@@ -57,7 +57,6 @@
           "pregnancy_enabled": "Aktiverar spårningsläge för graviditet. Graviditetens startdatum fylls automatiskt i från senaste cykelstart om det lämnas tomt.",
           "pregnancy_start_date": "Första dagen av senaste mens (LMP). Lämna tomt för att använda senast registrerade cykelstart.",
           "pre_menarche_enabled": "Spåra pubertetstecken innan första mensen (menarche).",
-          "estimated_menarche_date": "Uppskattat datum för första mensen. Används för nedräkning.",
           "family_menarche_age": "Menarche-ålder i familjen (mamma/syster), används för att uppskatta förväntad ålder.",
           "menopause_enabled": "Aktiverar spårningsläge för klimakteriet.",
           "menopause_start_date": "Datum då klimakteriet började (ÅÅÅÅ-MM-DD). Lämna tomt om okänt.",

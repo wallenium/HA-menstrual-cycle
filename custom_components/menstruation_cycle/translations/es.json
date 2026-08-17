@@ -57,7 +57,6 @@
           "pregnancy_enabled": "Activa el modo de seguimiento del embarazo. La fecha de inicio del embarazo se rellena automáticamente a partir del último inicio de ciclo si se deja vacía.",
           "pregnancy_start_date": "Primer día de la última menstruación (FUM). Deja el campo vacío para usar el último inicio de ciclo registrado.",
           "pre_menarche_enabled": "Registra los signos de pubertad antes de la primera menstruación (menarquia).",
-          "estimated_menarche_date": "Fecha estimada de la primera menstruación. Se usa para la cuenta regresiva.",
           "family_menarche_age": "Edad de menarquia en la familia (madre/hermana), utilizada para estimar la edad esperada.",
           "menopause_enabled": "Activa el modo de seguimiento de la menopausia.",
           "menopause_start_date": "Fecha en que comenzó la menopausia (AAAA-MM-DD). Déjalo vacío si es desconocida.",
