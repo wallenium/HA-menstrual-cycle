@@ -79,6 +79,18 @@
     dashboard_sensor_unavailable_hint: 'The entity currently reports "unavailable" — this can happen briefly after a restart or while the integration is reloading. It usually resolves itself within a few seconds.',
     dashboard_discreet_quick_on_aria: 'Turn on discreet mode',
     dashboard_discreet_quick_off_aria: 'Turn off discreet mode',
+    dashboard_next_period: 'Next period',
+    dashboard_expected: 'expected',
+    dashboard_in_days_prefix: 'in',
+    dashboard_days_ago_prefix: 'ago',
+    dashboard_ovulation_temp_confirmed: 'Temperature rise confirmed',
+    dashboard_ovulation_calendar_based: 'calculated using the calendar method',
+    dashboard_cycle_variability: 'Cycle variability',
+    dashboard_regularity_high: 'very regular',
+    dashboard_regularity_medium: 'regular',
+    dashboard_regularity_low: 'irregular',
+    dashboard_based_on_cycles: 'based on {n} cycles',
+    dashboard_widget_cycle_phase_overview: 'Cycle Phase Overview',
     dashboard_save_aria: 'Save dashboard layout',
     dashboard_cancel_aria: 'Cancel dashboard edits',
     dashboard_reset_aria: 'Reset dashboard to mode defaults',
@@ -359,7 +371,7 @@
 
   const WIDGET_DEFS = [
     { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
-    { id: 'phase_timeline', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
+    { id: 'phase_timeline', title: 'dashboard_widget_cycle_phase_overview', sensitive: false, span: 12 },
     { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, span: 5 },
     { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, span: 7 },
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
@@ -1989,12 +2001,12 @@
         ? Number(avgLen)
         : Math.round(recent.reduce((a, b) => a + b.len, 0) / recent.length * 10) / 10;
 
-      const W = 400;
-      const H = 90;
-      const padLeft = 28;
-      const padRight = 8;
-      const padTop = 8;
-      const padBottom = 24;
+      const W = 560;
+      const H = 200;
+      const padLeft = 36;
+      const padRight = 14;
+      const padTop = 16;
+      const padBottom = 32;
       const chartW = W - padLeft - padRight;
       const chartH = H - padTop - padBottom;
 
@@ -2017,43 +2029,41 @@
           <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">#</span><span class="kpi-value">${cyclesAnalyzed}</span><span class="kpi-label">${this._t('dashboard_widget_cycle_history')}</span></div>
         </div>`;
 
-      const barW = Math.max(2, Math.floor(chartW / recent.length) - 3);
-      const gap = (chartW - barW * recent.length) / Math.max(1, recent.length - 1);
+      const barW = Math.max(4, Math.floor((chartW / recent.length) * 0.56));
+      const slotW = chartW / recent.length;
 
       const avgX1 = padLeft;
       const avgX2 = W - padRight;
       const avgYPos = padTop + chartH - ((avg - minY) / yRange) * chartH;
 
+      // Horizontal gridlines at 3 evenly-spaced, rounded values — matching the
+      // mockup's reference gridlines (26/28/30), computed dynamically from the
+      // real data range instead of a fixed static example.
+      const gridValues = [minY, Math.round((minY + maxY) / 2), maxY];
+      const gridLines = gridValues.map((v) => {
+        const yPos = padTop + chartH - ((v - minY) / yRange) * chartH;
+        return `<line x1="${padLeft}" x2="${W - padRight}" y1="${Math.round(yPos)}" y2="${Math.round(yPos)}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
+                <text x="4" y="${Math.round(yPos + 4)}" font-size="10" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v}</text>`;
+      }).join('');
+
       const outlierThreshold = 8;
       const bars = recent.map((c, idx) => {
-        const x = padLeft + idx * (barW + gap);
-        const barH2 = Math.max(2, ((c.len - minY) / yRange) * chartH);
+        const slotX = padLeft + idx * slotW;
+        const x = slotX + (slotW - barW) / 2;
+        const barH2 = Math.max(3, ((c.len - minY) / yRange) * chartH);
         const y = padTop + chartH - barH2;
         const isOutlier = avg !== null && Math.abs(c.len - avg) > outlierThreshold;
-        const fill = isOutlier ? 'var(--mc-amber)' : 'var(--mc-rose-deep)';
+        const fill = isOutlier ? 'var(--mc-amber)' : 'var(--mc-sage,#7C9885)';
         const label = String(c.len);
-        const cx = x + barW / 2;
-        return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${barW}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.75" rx="2"/>
-                <text x="${Math.round(cx)}" y="${Math.round(y - 3)}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(label)}</text>`;
+        const cx = slotX + slotW / 2;
+        return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(barW)}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.85" rx="5"/>
+                <text x="${Math.round(cx)}" y="${Math.round(y - 6)}" text-anchor="middle" font-size="10" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(label)}</text>
+                <text x="${Math.round(cx)}" y="${H - 10}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">Z${idx + 1}</text>`;
       }).join('');
-
-      // Y-axis labels
-      const yLabels = [minY, Math.round((minY + maxY) / 2), maxY].map((v) => {
-        const yPos = padTop + chartH - ((v - minY) / yRange) * chartH;
-        return `<text x="${padLeft - 3}" y="${Math.round(yPos + 3)}" text-anchor="end" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v}</text>`;
-      }).join('');
-
-      // X-axis labels (first and last)
-      const xLabels = recent.length >= 2 ? [0, recent.length - 1].map((idx) => {
-        const x = padLeft + idx * (barW + gap) + barW / 2;
-        const dateStr = recent[idx].start ? recent[idx].start.slice(5) : String(idx + 1);
-        const anchor = idx === 0 ? 'start' : 'end';
-        return `<text x="${Math.round(x)}" y="${H - 4}" text-anchor="${anchor}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(dateStr)}</text>`;
-      }).join('') : '';
 
       const avgLine = avg !== null
-        ? `<line x1="${avgX1}" y1="${Math.round(avgYPos)}" x2="${avgX2}" y2="${Math.round(avgYPos)}" stroke="var(--mc-plum,#6B3654)" stroke-width="1.5" stroke-dasharray="4 3"/>
-           <text x="${avgX2 + 2}" y="${Math.round(avgYPos + 3)}" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--mc-plum,#6B3654)">${this._t('dashboard_cycle_history_avg')}</text>`
+        ? `<line x1="${avgX1}" y1="${Math.round(avgYPos)}" x2="${avgX2}" y2="${Math.round(avgYPos)}" stroke="var(--mc-plum,#6B3654)" stroke-width="1.5" stroke-dasharray="5 4"/>
+           <text x="${avgX2 - 2}" y="${Math.round(avgYPos - 5)}" text-anchor="end" font-size="10" font-family="IBM Plex Mono, monospace" fill="var(--mc-plum,#6B3654)">${this._t('dashboard_cycle_history_avg')}: ${avg}d</text>`
         : '';
 
       const titleText = `${this._t('dashboard_widget_cycle_history')} — ${this._t('dashboard_cycle_history_length')}`;
@@ -2063,13 +2073,12 @@
           ${statStrip}
           <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
             <title>${escapeHtml(titleText)}</title>
-            ${yLabels}
+            ${gridLines}
             ${bars}
             ${avgLine}
-            ${xLabels}
           </svg>
           <div class="cycle-history-legend">
-            <span class="legend-dot" style="background:var(--mc-rose-deep,#C43F5E)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
+            <span class="legend-dot" style="background:var(--mc-sage,#7C9885)"></span><span>${this._t('dashboard_cycle_history_length')}</span>
             <span class="legend-dot" style="background:var(--mc-amber)"></span><span>${this._t('dashboard_cycle_history_outlier')}</span>
             <span class="legend-dash" style="background:var(--mc-plum,#6B3654)"></span><span>${this._t('dashboard_cycle_history_avg')}</span>
           </div>
@@ -2212,7 +2221,8 @@
       const daysUntil = attrs.days_until_next_start ?? forecast.days_until ?? null;
       const fertility = attrs.fertility_forecast || {};
       const ovulationEst = fertility.ovulation_estimate ?? attrs.ovulation_day ?? null;
-      const confidence = forecast.window_confidence ?? forecast.confidence ?? attrs.prediction_gating?.confidence ?? null;
+      const cycleStats = attrs.cycle_statistics && typeof attrs.cycle_statistics === 'object' ? attrs.cycle_statistics : null;
+      const nfpAnalysis = attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object' ? attrs.nfp_analysis : null;
 
       const cx = 100, cy = 100, r = 82, sw = 15;
       const circumference = 2 * Math.PI * r;
@@ -2234,16 +2244,24 @@
       const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
 
       const wheelSvg = `
-        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="${this._t('cycle_day')} ${escapeHtml(cycleDay)} / ${escapeHtml(cycleLength)}">
+        <svg viewBox="0 0 200 200" width="100%" height="280" style="max-width:280px;display:block;" role="img" aria-label="${this._t('cycle_day')} ${escapeHtml(cycleDay)} / ${escapeHtml(cycleLength)}">
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
           ${ringSegs}
           ${marker}
         </svg>`;
 
-      const statusIcon = !discreetMode ? this._statusIconHtml(stateObj?.state, 32) : '';
+      // Status icon lives as a small corner badge on the wheel, not inside the
+      // center content — squeezing it in above the day number made the number
+      // itself cramped/too small. Shown small by default (still visible at a
+      // glance), grows on hover for anyone using a mouse; native title attribute
+      // gives a text fallback for touch/screen readers where hover doesn't apply.
+      const statusIcon = !discreetMode ? this._statusIconHtml(stateObj?.state, 60) : '';
+      const statusBadge = statusIcon
+        ? `<div class="hero-status-badge" title="${escapeHtml(phase || stateObj?.state || '')}">${statusIcon}</div>`
+        : '';
+
       const centerHtml = `
         <div class="hero-wheel-center">
-          ${statusIcon ? `<div style="margin-bottom:4px;">${statusIcon}</div>` : ''}
           <div class="hw-num">${cycleDay || '—'}</div>
           <div class="hw-sub">${this._t('cycle_day').toUpperCase()} / ${escapeHtml(cycleLength)}</div>
           ${!discreetMode && phase ? `<div class="hw-tag">${escapeHtml(phase)}</div>` : ''}
@@ -2257,18 +2275,104 @@
         ? `<p class="helper" style="margin-top:10px;font-size:0.72rem;">🩸 ${this._t('dashboard_period_day_label') || 'Periode'}: ${this._t('cycle_day')} ${escapeHtml(bleedingBlock.days_elapsed)} / ${escapeHtml(bleedingBlock.effective_duration)}</p>`
         : '';
 
-      const kpis = [];
-      kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
+      // --- Stat 1 (rose): next period ---
+      const windowStart = forecast.window_start ?? attrs.next_predicted_start ?? null;
+      const windowEnd = forecast.window_end ?? null;
+      const nextPeriodFoot = windowStart
+        ? `${this._t('dashboard_expected') || 'erwartet'} ${escapeHtml(this._formatDate(windowStart))}${windowEnd && windowEnd !== windowStart ? ` – ${escapeHtml(this._formatDate(windowEnd))}` : ''}`
+        : '';
+      const stat1 = `
+        <div class="stat mc-rose">
+          <div class="stat-label">${this._t('dashboard_next_period') || 'Nächste Periode'}</div>
+          <div class="stat-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
+          ${nextPeriodFoot ? `<div class="stat-foot">${nextPeriodFoot}</div>` : ''}
+        </div>`;
+
+      // --- Stat 2 (plain): ovulation estimate, phrased relatively ---
+      let stat2 = '';
       if (!discreetMode) {
-        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${ovulationEst ? escapeHtml(this._formatDate(ovulationEst)) : '—'}</span><span class="kpi-label">${this._t('dashboard_fertility_ovulation')}</span></div>`);
+        let ovValue = '—';
+        let ovFoot = '';
+        if (ovulationEst) {
+          const ovDate = new Date(ovulationEst);
+          const today = new Date(this._todayIso());
+          if (!Number.isNaN(ovDate.getTime())) {
+            const diffDays = Math.round((ovDate - today) / 86400000);
+            if (diffDays === 0) ovValue = this._t('dashboard_today') || 'Heute';
+            else if (diffDays > 0) ovValue = `${this._t('dashboard_in_days_prefix') || 'in'} ${diffDays} <small>${this._t('days') || 'Tage'}</small>`;
+            else ovValue = `${this._t('dashboard_days_ago_prefix') || 'vor'} ${Math.abs(diffDays)} <small>${this._t('days') || 'Tage'}</small>`;
+          }
+          ovFoot = nfpAnalysis?.temperature_rise_detected
+            ? (this._t('dashboard_ovulation_temp_confirmed') || 'Temperaturanstieg bestätigt')
+            : (this._t('dashboard_ovulation_calendar_based') || 'berechnet nach Kalendermethode');
+        }
+        stat2 = `
+          <div class="stat">
+            <div class="stat-label">${this._t('dashboard_fertility_ovulation')}</div>
+            <div class="stat-value">${ovValue}</div>
+            ${ovFoot ? `<div class="stat-foot">${ovFoot}</div>` : ''}
+          </div>`;
       }
-      if (confidence !== null && confidence !== undefined) {
-        kpis.push(`<div class="kpi-item mc-plum"><span class="kpi-icon" aria-hidden="true">🎯</span><span class="kpi-value">${escapeHtml(confidence)}</span><span class="kpi-label">${this._t('period_forecast_confidence')}</span></div>`);
+
+      // --- Stat 3 (plum): cycle variability, computed from real recent-cycle
+      // lengths (same data source as the cycle-length chart / anomaly card) ---
+      let stat3 = '';
+      const recentCycles = Array.isArray(cycleStats?.recent_cycles)
+        ? cycleStats.recent_cycles.filter((c) => c && c.end && Number.isFinite(c.length))
+        : [];
+      if (recentCycles.length >= 2) {
+        const lens = recentCycles.map((c) => c.length);
+        const avg = lens.reduce((a, b) => a + b, 0) / lens.length;
+        const variance = lens.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / lens.length;
+        const stdDev = Math.round(Math.sqrt(variance) * 10) / 10;
+        const regularity = cycleStats?.cycle_regularity_percent;
+        let regularityLabel = '';
+        if (regularity !== undefined && regularity !== null) {
+          regularityLabel = regularity >= 85
+            ? (this._t('dashboard_regularity_high') || 'sehr regelmäßig')
+            : regularity >= 60
+              ? (this._t('dashboard_regularity_medium') || 'regelmäßig')
+              : (this._t('dashboard_regularity_low') || 'unregelmäßig');
+        }
+        stat3 = `
+          <div class="stat mc-plum">
+            <div class="stat-label">${this._t('dashboard_cycle_variability') || 'Zyklusvariabilität'}</div>
+            <div class="stat-value">± ${stdDev} <small>${this._t('days') || 'Tage'}</small></div>
+            ${regularityLabel ? `<div class="stat-foot">${regularityLabel}</div>` : ''}
+          </div>`;
       }
-      // Merged from the former standalone statistics card: NFP (symptothermal) analysis
-      const nfpAnalysis = attrs.nfp_analysis || {};
-      if (!discreetMode && nfpAnalysis.confidence_level) {
-        kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(nfpAnalysis.confidence_level)}</span><span class="kpi-label">${this._t('nfp_analysis') || 'NFP'}</span></div>`);
+
+      // --- Confidence bars ---
+      let confidenceBars = '';
+      if (!discreetMode) {
+        const bars = [];
+        if (cycleStats?.cycle_regularity_percent !== undefined && cycleStats?.cycle_regularity_percent !== null) {
+          const pct = Math.max(0, Math.min(100, Math.round(cycleStats.cycle_regularity_percent)));
+          bars.push(`
+            <div class="confidence-row">
+              <div class="confidence-label-col">
+                <div class="stat-label">${this._t('period_forecast_confidence') || 'Prognose-Konfidenz'}</div>
+                <div class="stat-foot">${(this._t('dashboard_based_on_cycles') || 'basiert auf {n} Zyklen').replace('{n}', escapeHtml(cycleStats.cycles_analyzed ?? '—'))}</div>
+              </div>
+              <div class="confidence-bar"><span style="width:${pct}%;"></span></div>
+              <div class="confidence-pct">${pct}%</div>
+            </div>`);
+        }
+        if (nfpAnalysis?.confidence_level) {
+          const tierPct = { high: 90, medium: 60, low: 30 }[String(nfpAnalysis.confidence_level).toLowerCase()] ?? 50;
+          const levelLabel = this._t('opt_' + nfpAnalysis.confidence_level) !== ('opt_' + nfpAnalysis.confidence_level)
+            ? this._t('opt_' + nfpAnalysis.confidence_level) : nfpAnalysis.confidence_level;
+          bars.push(`
+            <div class="confidence-row">
+              <div class="confidence-label-col">
+                <div class="stat-label">${this._t('nfp_analysis') || 'NFP-Konfidenz'}</div>
+                <div class="stat-foot">${escapeHtml(levelLabel)}</div>
+              </div>
+              <div class="confidence-bar"><span style="width:${tierPct}%;"></span></div>
+              <div class="confidence-pct">${tierPct}%</div>
+            </div>`);
+        }
+        confidenceBars = bars.join('');
       }
 
       // learning_phase / prediction_gating: the backend explicitly flags when
@@ -2288,8 +2392,11 @@
 
       return `
         <div class="hero-layout" role="region" aria-label="Cycle at a glance">
-          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
-          <div class="kpi-strip">${kpis.join('')}</div>
+          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}${statusBadge}</div>
+          <div>
+            <div class="stat-stack">${stat1}${stat2}${stat3}</div>
+            ${confidenceBars}
+          </div>
         </div>
         ${periodDayNote}
         ${learningNote}`;
@@ -2541,7 +2648,7 @@
         <p class="helper" style="margin-top:8px;font-size:0.7rem;">${this._t('dashboard_menopause_timeline_note') || 'Meilensteine seit der letzten erfassten Periode. Menopause gilt klinisch als bestätigt nach 12 Monaten ohne Periode.'}</p>`;
     }
 
-    _renderNfpSummaryLine(stateObj) {
+    _renderNfpSummaryLine(stateObj, inline = false) {
       const attrs = stateObj?.attributes || {};
       const nfp = attrs.nfp_analysis;
       if (!nfp || typeof nfp !== 'object' || !nfp.ovulation_detected) return '';
@@ -2550,6 +2657,7 @@
       if (nfp.temperature_peak_day) parts.push(`${this._t('nfp_temp_peak') || 'Temperaturhöchstwert'}: ${escapeHtml(nfp.temperature_peak_day)}`);
       if (nfp.cervical_mucus_peak || nfp.cervix_peak) parts.push(this._t('legend_cervix_peak') || 'Zervixschleim-Höhepunkt erkannt');
       if (!parts.length) return '';
+      if (inline) return `<span style="font-size:0.7rem;">${parts.join(' · ')}</span>`;
       return `<p class="helper" style="margin-top:4px;font-size:0.7rem;">${parts.join(' · ')}</p>`;
     }
 
@@ -2568,7 +2676,7 @@
       if (ovulationDay === null && attrs.ovulation_day) ovulationDay = Number(attrs.ovulation_day);
       if (ovulationDay === null) ovulationDay = Math.round(cycleLength * 0.5);
 
-      const W = 1180, H = 260;
+      const W = 1180, H = 300;
       const padL = 40, padR = 20, padT = 20, padB = 44;
       const bandH = 20, bandGap = 8;
       const plotB = H - padB - bandH - bandGap;
@@ -2645,21 +2753,21 @@
       `;
 
       const legend = `
-        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#6b7280);">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#6b7280);row-gap:4px;">
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#6B3654;margin-right:5px;vertical-align:middle"></span>Gebärmutterschleimhaut</span>
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E3A23D;margin-right:5px;vertical-align:middle"></span>Östrogen</span>
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3F5A47;margin-right:5px;vertical-align:middle"></span>Progesteron</span>
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--primary-text-color,#2B1B24);margin-right:5px;vertical-align:middle"></span>LH-Anstieg (Eisprung)</span>
+          <span style="font-size:0.7rem;">Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten.</span>
+          ${this._renderNfpSummaryLine(stateObj, true)}
         </div>
-        <p class="helper" style="margin-top:6px;font-size:0.7rem;">Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten.</p>
-        ${this._renderNfpSummaryLine(stateObj)}
       `;
 
       const titleText = `Cycle phase overview – day ${cycleDay} of ${cycleLength}`;
 
       return `
         <div class="phase-overview-wrap" role="img" aria-label="${escapeHtml(titleText)}">
-          <svg viewBox="0 0 ${W} ${H}" width="100%" height="260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;">
             <title>${escapeHtml(titleText)}</title>
             ${svgContent}
           </svg>
@@ -3542,7 +3650,7 @@
       if (widgetId === 'phase_timeline') {
         const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
         const mode = this._resolveContentMode(stateObj);
-        const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : (mode === 'menopause' ? 'dashboard_widget_menopause_timeline' : 'dashboard_widget_today_status'));
+        const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : (mode === 'menopause' ? 'dashboard_widget_menopause_timeline' : 'dashboard_widget_cycle_phase_overview'));
         return `<article class="card ${spanClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
       }
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
@@ -3861,6 +3969,14 @@
           @media (max-width: 900px) {
             .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 1; }
           }
+          /* Hero wheel: 280px is the intended size (matches the mockup), shrinking
+             on narrower screens so it doesn't dominate a phone-width layout. */
+          @media (max-width: 480px) {
+            .hero-wheel-holder svg { max-width: 220px !important; height: 220px !important; }
+          }
+          @media (max-width: 360px) {
+            .hero-wheel-holder svg { max-width: 180px !important; height: 180px !important; }
+          }
           /* Hero card */
           .card--hero { padding: 20px 22px; }
           .hero-layout { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: center; }
@@ -3908,6 +4024,72 @@
             letter-spacing: .04em;
             color: var(--secondary-text-color, #6b7280);
             line-height: 1.2;
+          }
+          /* Hero stat tiles (3-up) + confidence bars, matching the original mockup */
+          .stat-stack {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+          }
+          @media (max-width: 640px) {
+            .stat-stack { grid-template-columns: 1fr; }
+          }
+          .stat {
+            padding: 14px 16px 13px;
+            border-radius: 16px;
+            background: var(--mc-sand);
+          }
+          .stat .stat-label {
+            font-size: 0.68rem; color: var(--secondary-text-color, #6b7280);
+            text-transform: uppercase; letter-spacing: .05em;
+            margin-bottom: 6px;
+          }
+          .stat .stat-value {
+            font-family: var(--mc-font-display); font-size: 1.5rem; font-weight: 500;
+            color: var(--primary-text-color, #1f2937); line-height: 1.1;
+          }
+          .stat .stat-value small { font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--secondary-text-color, #6b7280); }
+          .stat .stat-foot { font-size: 0.7rem; color: var(--secondary-text-color, #6b7280); margin-top: 5px; }
+          .stat.mc-rose { background: var(--mc-rose-tint); }
+          .stat.mc-rose .stat-value { color: var(--mc-rose-deep); }
+          .stat.mc-plum { background: var(--mc-plum-tint); }
+          .stat.mc-plum .stat-value { color: var(--mc-plum); }
+          .confidence-row {
+            display: flex; align-items: center; gap: 14px; padding: 10px 4px;
+            flex-wrap: wrap;
+          }
+          .confidence-row .confidence-label-col { flex: 0 0 auto; min-width: 130px; }
+          .confidence-row .stat-label { margin-bottom: 1px; }
+          .confidence-row .stat-foot { margin-top: 1px; }
+          .confidence-bar {
+            flex: 1 1 100px; min-width: 60px; height: 6px; border-radius: 999px;
+            background: var(--divider-color, #e5e7eb); overflow: hidden;
+          }
+          .confidence-bar span {
+            display: block; height: 100%; border-radius: 999px;
+            background: linear-gradient(90deg, var(--mc-sage), var(--mc-sage-deep, #3F5A47));
+          }
+          .confidence-row .confidence-pct {
+            font-family: var(--mc-font-mono); font-size: 0.8rem;
+            color: var(--secondary-text-color, #6b7280); flex: 0 0 auto; min-width: 34px; text-align: right;
+          }
+          /* Status icon badge on the hero wheel — deliberately outside the ring's
+             center content (not overlapping the day number/label), small by default,
+             growing on hover for anyone using a mouse without needing it enlarged. */
+          .hero-wheel-holder { position: relative; }
+          .hero-status-badge {
+            position: absolute; top: 2px; right: 2px;
+            width: 30px; height: 30px; border-radius: 50%;
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; cursor: default;
+            transition: transform 0.15s ease, width 0.15s ease, height 0.15s ease;
+            z-index: 2;
+          }
+          .hero-status-badge:hover {
+            width: 64px; height: 64px; transform: translate(6px, -6px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.18);
           }
           /* Phase timeline / overview */
           .phase-timeline-wrap {

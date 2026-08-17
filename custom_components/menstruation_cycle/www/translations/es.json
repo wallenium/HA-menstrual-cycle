@@ -752,5 +752,17 @@
   "ygs_reassure_age_typical": "Tu edad está justo en el rango típico en el que la mayoría de las chicas tienen su primera menstruación (aproximadamente entre 10 y 15 años).",
   "ygs_reassure_age_typical_late": "Vas un poco más tarde que la media, pero sigue siendo totalmente normal — cada cuerpo tiene su propio ritmo.",
   "ygs_reassure_age_late": "Si tu primera menstruación aún no ha llegado, normalmente no es motivo de preocupación — pero puede ser buena idea mencionarlo en una consulta médica.",
-  "ygs_kit_check_proximity": "Se acerca"
+  "ygs_kit_check_proximity": "Se acerca",
+  "dashboard_next_period": "Próxima menstruación",
+  "dashboard_expected": "esperado",
+  "dashboard_in_days_prefix": "en",
+  "dashboard_days_ago_prefix": "hace",
+  "dashboard_ovulation_temp_confirmed": "Aumento térmico confirmado",
+  "dashboard_ovulation_calendar_based": "calculado según el método del calendario",
+  "dashboard_cycle_variability": "Variabilidad del ciclo",
+  "dashboard_regularity_high": "muy regular",
+  "dashboard_regularity_medium": "regular",
+  "dashboard_regularity_low": "irregular",
+  "dashboard_based_on_cycles": "basado en {n} ciclos",
+  "dashboard_widget_cycle_phase_overview": "Resumen de las fases del ciclo"
 }

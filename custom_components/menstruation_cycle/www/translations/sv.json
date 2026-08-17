@@ -752,5 +752,17 @@
   "ygs_reassure_age_typical": "Din ålder ligger precis i det typiska intervallet där de flesta tjejer får sin första mens (cirka 10 till 15 år).",
   "ygs_reassure_age_typical_late": "Du är lite senare än genomsnittet, men det är fortfarande helt normalt — varje kropp har sin egen takt.",
   "ygs_reassure_age_late": "Om din första mens inte har kommit än är det oftast ingen anledning till oro — men det kan vara värt att nämna vid ett läkarbesök.",
-  "ygs_kit_check_proximity": "Snart dags"
+  "ygs_kit_check_proximity": "Snart dags",
+  "dashboard_next_period": "Nästa mens",
+  "dashboard_expected": "förväntad",
+  "dashboard_in_days_prefix": "om",
+  "dashboard_days_ago_prefix": "för",
+  "dashboard_ovulation_temp_confirmed": "Temperaturhöjning bekräftad",
+  "dashboard_ovulation_calendar_based": "beräknad enligt kalendermetoden",
+  "dashboard_cycle_variability": "Cykelvariabilitet",
+  "dashboard_regularity_high": "mycket regelbunden",
+  "dashboard_regularity_medium": "regelbunden",
+  "dashboard_regularity_low": "oregelbunden",
+  "dashboard_based_on_cycles": "baserat på {n} cykler",
+  "dashboard_widget_cycle_phase_overview": "Översikt av cykelfaser"
 }

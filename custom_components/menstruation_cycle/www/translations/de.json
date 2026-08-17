@@ -785,5 +785,17 @@
   "ygs_reassure_age_typical": "Dein Alter liegt genau im typischen Bereich, in dem die meisten Mädchen ihre erste Periode bekommen (etwa 10 bis 15 Jahre).",
   "ygs_reassure_age_typical_late": "Du bist etwas später dran als der Durchschnitt, aber das ist immer noch völlig normal — jeder Körper hat sein eigenes Tempo.",
   "ygs_reassure_age_late": "Falls deine erste Periode bis jetzt noch nicht eingesetzt hat, ist das meistens kein Grund zur Sorge — es kann aber sinnvoll sein, das bei einem Arztbesuch anzusprechen.",
-  "ygs_kit_check_proximity": "Bald soweit"
+  "ygs_kit_check_proximity": "Bald soweit",
+  "dashboard_next_period": "Nächste Periode",
+  "dashboard_expected": "erwartet",
+  "dashboard_in_days_prefix": "in",
+  "dashboard_days_ago_prefix": "vor",
+  "dashboard_ovulation_temp_confirmed": "Temperaturanstieg bestätigt",
+  "dashboard_ovulation_calendar_based": "berechnet nach Kalendermethode",
+  "dashboard_cycle_variability": "Zyklusvariabilität",
+  "dashboard_regularity_high": "sehr regelmäßig",
+  "dashboard_regularity_medium": "regelmäßig",
+  "dashboard_regularity_low": "unregelmäßig",
+  "dashboard_based_on_cycles": "basiert auf {n} Zyklen",
+  "dashboard_widget_cycle_phase_overview": "Zyklusphasen im Überblick"
 }

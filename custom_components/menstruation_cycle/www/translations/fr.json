@@ -752,5 +752,17 @@
   "ygs_reassure_age_typical": "Ton âge se situe exactement dans la tranche habituelle où la plupart des filles ont leurs premières règles (environ 10 à 15 ans).",
   "ygs_reassure_age_typical_late": "Tu es un peu en retard par rapport à la moyenne, mais c'est tout à fait normal — chaque corps a son propre rythme.",
   "ygs_reassure_age_late": "Si tes premières règles ne sont pas encore arrivées, ce n'est généralement pas inquiétant — mais cela peut valoir la peine d'en parler chez le médecin.",
-  "ygs_kit_check_proximity": "Bientôt"
+  "ygs_kit_check_proximity": "Bientôt",
+  "dashboard_next_period": "Prochaines règles",
+  "dashboard_expected": "attendu",
+  "dashboard_in_days_prefix": "dans",
+  "dashboard_days_ago_prefix": "il y a",
+  "dashboard_ovulation_temp_confirmed": "Hausse thermique confirmée",
+  "dashboard_ovulation_calendar_based": "calculé selon la méthode du calendrier",
+  "dashboard_cycle_variability": "Variabilité du cycle",
+  "dashboard_regularity_high": "très régulier",
+  "dashboard_regularity_medium": "régulier",
+  "dashboard_regularity_low": "irrégulier",
+  "dashboard_based_on_cycles": "basé sur {n} cycles",
+  "dashboard_widget_cycle_phase_overview": "Aperçu des phases du cycle"
 }

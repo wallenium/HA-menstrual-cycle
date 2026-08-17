@@ -785,5 +785,17 @@
   "ygs_reassure_age_typical": "Your age is right in the typical range where most girls get their first period (roughly 10 to 15 years old).",
   "ygs_reassure_age_typical_late": "You're a bit later than average, but that's still completely normal — every body has its own timing.",
   "ygs_reassure_age_late": "If your first period hasn't started yet, that's usually not a cause for worry — but it can be worth mentioning at a doctor's visit.",
-  "ygs_kit_check_proximity": "Getting close"
+  "ygs_kit_check_proximity": "Getting close",
+  "dashboard_next_period": "Next period",
+  "dashboard_expected": "expected",
+  "dashboard_in_days_prefix": "in",
+  "dashboard_days_ago_prefix": "ago",
+  "dashboard_ovulation_temp_confirmed": "Temperature rise confirmed",
+  "dashboard_ovulation_calendar_based": "calculated using the calendar method",
+  "dashboard_cycle_variability": "Cycle variability",
+  "dashboard_regularity_high": "very regular",
+  "dashboard_regularity_medium": "regular",
+  "dashboard_regularity_low": "irregular",
+  "dashboard_based_on_cycles": "based on {n} cycles",
+  "dashboard_widget_cycle_phase_overview": "Cycle Phase Overview"
 }
