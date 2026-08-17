@@ -4107,27 +4107,27 @@
           .stat-stack {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 16px;
           }
           @media (max-width: 640px) {
             .stat-stack { grid-template-columns: 1fr; }
           }
           .stat {
-            padding: 14px 16px 13px;
+            padding: 18px 18px 16px;
             border-radius: 16px;
             background: var(--mc-sand);
           }
           .stat .stat-label {
-            font-size: 0.68rem; color: var(--secondary-text-color, #6b7280);
-            text-transform: uppercase; letter-spacing: .05em;
-            margin-bottom: 6px;
+            font-size: 11.5px; color: var(--secondary-text-color, #6b7280);
+            text-transform: uppercase; letter-spacing: .06em;
+            margin-bottom: 8px;
           }
           .stat .stat-value {
-            font-family: var(--mc-font-display); font-size: 1.5rem; font-weight: 500;
+            font-family: var(--mc-font-display); font-size: 28px; font-weight: 500;
             color: var(--primary-text-color, #1f2937); line-height: 1.1;
           }
-          .stat .stat-value small { font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--secondary-text-color, #6b7280); }
-          .stat .stat-foot { font-size: 0.7rem; color: var(--secondary-text-color, #6b7280); margin-top: 5px; }
+          .stat .stat-value small { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: var(--secondary-text-color, #6b7280); }
+          .stat .stat-foot { font-size: 12px; color: var(--secondary-text-color, #6b7280); margin-top: 6px; }
           .stat.mc-rose { background: var(--mc-rose-tint); }
           .stat.mc-rose .stat-value { color: var(--mc-rose-deep); }
           .stat.mc-plum { background: var(--mc-plum-tint); }
