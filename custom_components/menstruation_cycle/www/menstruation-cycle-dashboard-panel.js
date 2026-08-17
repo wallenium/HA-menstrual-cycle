@@ -3962,7 +3962,8 @@
             cursor: pointer;
             font-size: 0.875rem;
           }
-          .brand { display: flex; align-items: center; }
+          .brand { display: flex; align-items: center; gap: 14px; }
+          .brand-mark { width: 38px; height: 38px; flex: none; display: block; }
           .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
           /* Pill-style entity switcher — used instead of the dropdown when there are
              5 or fewer available entities, matching the mockup's mode-switch look. */
@@ -4476,6 +4477,7 @@
         <main class="page">
           <header class="toolbar">
             <div class="brand">
+              <img src="/menstruation_cycle/assets/brands/calendar.svg" class="brand-mark" alt="" width="38" height="38" loading="lazy" onerror="this.style.display='none';"/>
               <h1>${this._t('dashboard_page_title')}</h1>
             </div>
             <div class="header-right">
