@@ -76,6 +76,21 @@ def _parse_date_opt(value: str) -> str | None:
         return _INVALID_DATE_SENTINEL
 
 
+def _optional_date_key(key: str, current_value: str | None):
+    """Build a vol.Optional schema key for a DateSelector field.
+
+    Passing a literal Python None as `default=` for a selector.DateSelector()
+    field appears to trip voluptuous_serialize's schema-to-form conversion
+    (surfaces to the user as "Not a parsable type", on every date field at
+    once, regardless of which one is actually empty). Omitting `default`
+    entirely when there's no current value avoids this — voluptuous's own
+    UNDEFINED sentinel serializes fine, an explicit None value doesn't.
+    """
+    if current_value:
+        return vol.Optional(key, default=current_value)
+    return vol.Optional(key)
+
+
 class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for menstruation gauge."""
 
@@ -441,7 +456,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
                 vol.Optional(CONF_ICON, default=current_icon): str,
-                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date or None): selector.DateSelector(),
+                _optional_date_key(CONF_BIRTH_DATE, current_birth_date or None): selector.DateSelector(),
                 vol.Required(
                     CONF_PERIOD_DURATION_DAYS,
                     default=current_period_duration,
@@ -450,10 +465,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_PREGNANCY_ENABLED,
                     default=bool(pregnancy_data.get("is_pregnant", False)),
                 ): bool,
-                vol.Optional(
-                    CONF_PREGNANCY_START_DATE,
-                    default=pregnancy_data.get("start_date") or None,
-                ): selector.DateSelector(),
+                _optional_date_key(CONF_PREGNANCY_START_DATE, pregnancy_data.get("start_date")): selector.DateSelector(),
                 vol.Optional(
                     CONF_PREGNANCY_HIGH_RISK,
                     default=current_pregnancy_high_risk,
@@ -474,18 +486,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_MENOPAUSE_ENABLED,
                     default=bool(menopause_data.get("is_menopause", False)),
                 ): bool,
-                vol.Optional(
-                    CONF_MENOPAUSE_START_DATE,
-                    default=menopause_data.get("start_date") or None,
-                ): selector.DateSelector(),
+                _optional_date_key(CONF_MENOPAUSE_START_DATE, menopause_data.get("start_date")): selector.DateSelector(),
                 vol.Optional(
                     CONF_POSTPARTUM_ENABLED,
                     default=current_postpartum_enabled,
                 ): bool,
-                vol.Optional(
-                    CONF_POSTPARTUM_START_DATE,
-                    default=current_postpartum_start_date,
-                ): selector.DateSelector(),
+                _optional_date_key(CONF_POSTPARTUM_START_DATE, current_postpartum_start_date): selector.DateSelector(),
                 vol.Optional(
                     CONF_POSTPARTUM_DURATION_DAYS,
                     default=current_postpartum_duration_days,
