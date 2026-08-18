@@ -22,12 +22,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
-from homeassistant.util import slugify
 
 from .const import (
     ATTR_AGE_AT_TRACKING,
     ATTR_AVG_CYCLE_LENGTH,
     ATTR_AWAITING_MENARCHE,
+    menstruation_object_ids_for_profile,
     ATTR_BIRTH_DATE,
     ATTR_BLEEDING_BLOCKS,
     ATTR_DAYS_UNTIL_MENARCHE,
@@ -983,7 +983,7 @@ class MenstruationGaugeSensor(SensorEntity):
         # the clean display name above) so it stays findable when searching or
         # browsing a flat entity list across many integrations — "sensor.anna"
         # alone gives no hint this is cycle-tracking data.
-        self._attr_suggested_object_id = f"menstruation_{slugify(runtime.friendly_name)}"
+        self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_menstruation"]
         self._state: str = "neutral"
         self._attrs: dict[str, StateType] = {}
         self._icon: str | None = runtime.icon or None
@@ -1423,7 +1423,7 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
         # "Anna Period products today" instead of the old doubled-up
         # "Anna Anna: Period products today".
         self._attr_name = "Period products today"
-        self._attr_suggested_object_id = f"menstruation_{slugify(self._friendly_name)}_products_today"
+        self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_period_products_today"]
         self._icon = "mdi:chart-box"
         self._attr_native_unit_of_measurement = "items"
         self._attr_native_value = 0
@@ -1557,7 +1557,7 @@ class MenstruationBasalTempSensor(SensorEntity):
         # Friendly-name prefix dropped — see the product-usage sensor's comment
         # for why (device grouping now provides it automatically).
         self._attr_name = "Basal temperature"
-        self._attr_suggested_object_id = f"menstruation_{slugify(self._friendly_name)}_basal_temp"
+        self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_basal_temp"]
         self._attr_native_value: float | None = None
         self._attrs: dict[str, StateType] = {}
 

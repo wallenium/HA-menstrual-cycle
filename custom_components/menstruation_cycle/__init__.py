@@ -140,7 +140,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
-_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state", "brands"})
+_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state"})
 _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
@@ -1269,6 +1269,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.warning("Dashboard sidebar panel sync failed (non-fatal): %s", err)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Check whether this profile's entities still use the pre-"menstruation_"-
+    # prefix ID scheme (from before device grouping + searchable entity IDs were
+    # added) and raise a repair issue offering to rename them if so. Cheap
+    # registry scan, safe to run on every load.
+    from .repairs import async_check_entity_naming
+
+    async_check_entity_naming(hass, entry.entry_id, entry.title, friendly_name)
+
     return True
 
 
@@ -1282,6 +1291,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if runtime.options_update_unsub:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
+
+    from .repairs import async_delete_entity_naming_issue
+
+    async_delete_entity_naming_issue(hass, entry.entry_id)
 
     if not hass.data.get(DOMAIN):
         for service in (

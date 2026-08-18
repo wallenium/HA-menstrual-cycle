@@ -260,3 +260,22 @@ PRE_MENARCHE_SIGN_OPTIONS = {
 DEFAULT_MENARCHE_AGE_MIN = 9
 DEFAULT_MENARCHE_AGE_MAX = 16
 DEFAULT_MENARCHE_AGE_TYPICAL = 12.5
+
+# Maps each sensor's stable unique_id suffix to a function computing its
+# "menstruation_"-prefixed suggested entity object_id from a profile's
+# friendly_name. Shared between sensor.py (new entities) and repairs.py (the
+# rename repair flow for existing entities) so both always agree on the target
+# naming scheme — if they ever drifted apart, the repair flow could rename an
+# entity to something that doesn't match what a fresh entity would get.
+def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
+    """Return {unique_id_suffix: suggested_object_id} for this integration's
+    sensors, given a profile's friendly_name. Import homeassistant.util.slugify
+    at the call site (kept out of const.py to avoid pulling in HA helpers here)."""
+    from homeassistant.util import slugify
+
+    slug = slugify(friendly_name)
+    return {
+        "_menstruation": f"menstruation_{slug}",
+        "_period_products_today": f"menstruation_{slug}_products_today",
+        "_basal_temp": f"menstruation_{slug}_basal_temp",
+    }
