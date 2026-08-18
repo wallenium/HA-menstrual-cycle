@@ -1375,6 +1375,12 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
     """Consolidated product usage sensor for today's total and per-product stats."""
 
     _attr_has_entity_name = True
+    # MEASUREMENT (not TOTAL_INCREASING) — this tracks *today's* count, which
+    # resets to 0 each day rather than accumulating indefinitely, so it should
+    # be graphed as a snapshot value like a temperature reading, not a running
+    # total. Adding this unlocks the same native HA history/long-term-statistics
+    # support the basal-temperature sensor got.
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
