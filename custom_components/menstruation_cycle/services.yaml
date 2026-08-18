@@ -223,32 +223,6 @@ log_product_usage:
         select:
           options:
             - "tampon"
-
-reimport_basal_temp_statistics:
-  name: Re-import basal temperature statistics
-  description: >-
-    Force a fresh import of this profile's historical basal-temperature readings
-    into Home Assistant's long-term statistics (used by the basal-temperature
-    sensor's history graph). Normally this only runs once automatically when the
-    integration first loads; use this to retry if an earlier attempt ran under an
-    older version of the integration and silently found nothing.
-  fields:
-    entity_id:
-      required: false
-      example: "sensor.menstruation_anna"
-      selector:
-        entity:
-          domain: sensor
-    profile:
-      required: false
-      example: "anna"
-      selector:
-        text:
-    entry_id:
-      required: false
-      example: "a1b2c3d4e5f6..."
-      selector:
-        text:
             - "pad"
             - "cup"
             - "underwear"
@@ -275,6 +249,32 @@ reimport_basal_temp_statistics:
       description: Optional backfill date in YYYY-MM-DD format. Defaults to today.
       selector:
         date: {}
+
+reimport_basal_temp_statistics:
+  name: Re-import basal temperature statistics
+  description: >-
+    Force a fresh import of this profile's historical basal-temperature readings
+    into Home Assistant's long-term statistics (used by the basal-temperature
+    sensor's history graph). Normally this only runs once automatically when the
+    integration first loads; use this to retry if an earlier attempt ran under an
+    older version of the integration and silently found nothing.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.menstruation_anna"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
 
 manage_household_inventory:
   name: Manage household inventory
