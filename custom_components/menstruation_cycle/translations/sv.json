@@ -133,6 +133,24 @@
           "description": "Valfritt ISO-datum för efterregistrering. Standard är idag."
         }
       }
+    },
+    "reimport_basal_temp_statistics": {
+      "name": "Importera basaltemperaturstatistik på nytt",
+      "description": "Tvingar fram en ny import av historiska basaltemperaturvärden till Home Assistants långtidsstatistik. Körs normalt bara en gång automatiskt; använd detta för att försöka igen om ett tidigare försök inte hittade något.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Basaltemperatur- eller menstruationssensor att rikta in sig på."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profilslug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        }
+      }
     }
   },
   "issues": {

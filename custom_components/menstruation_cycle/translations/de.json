@@ -133,6 +133,24 @@
           "description": "Optionales ISO-Datum zum Nachtragen. Standardmäßig heute."
         }
       }
+    },
+    "reimport_basal_temp_statistics": {
+      "name": "Basaltemperatur-Statistik erneut importieren",
+      "description": "Erzwingt einen erneuten Import der historischen Basaltemperatur-Werte in Home Assistants Langzeitstatistik. Läuft normalerweise nur einmal automatisch; damit erneut anstoßen, falls ein früherer Versuch nichts gefunden hat.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Ziel-Basaltemperatur- oder Menstruations-Sensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfiguriertes Profil-Kürzel."
+        },
+        "entry_id": {
+          "name": "Eintrags-ID",
+          "description": "Kennung des Config-Eintrags."
+        }
+      }
     }
   },
   "issues": {

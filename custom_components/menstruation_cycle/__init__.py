@@ -85,6 +85,7 @@ from .const import (
     SERVICE_GET_SYMPTOM,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
+    SERVICE_REIMPORT_BASAL_TEMP_STATS,
     SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
     SERVICE_FIELD_CRITICAL_THRESHOLD,
     SERVICE_REFRESH_CYCLE_MODEL,
@@ -783,6 +784,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_log_product_usage(call: ServiceCall) -> None:
         await _async_handle_log_product_usage(hass, call)
 
+    async def async_reimport_basal_temp_statistics(call: ServiceCall) -> None:
+        await _async_handle_reimport_basal_temp_statistics(hass, call)
+
     async def async_manage_household_inventory(call: ServiceCall) -> None:
         await _async_handle_manage_household_inventory(hass, call)
 
@@ -910,6 +914,13 @@ def _register_domain_services(hass: HomeAssistant) -> None:
                 vol.Optional(SERVICE_FIELD_DATE): cv.string,
             }
         ),
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REIMPORT_BASAL_TEMP_STATS,
+        async_reimport_basal_temp_statistics,
+        schema=vol.Schema(common_profile_field),
     )
 
     hass.services.async_register(
@@ -1562,6 +1573,52 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
 
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:
     await _async_refresh_cycle_model(hass, _target_entry_ids_for_call(hass, call))
+
+
+async def _async_handle_reimport_basal_temp_statistics(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Force a fresh basal-temp long-term-statistics backfill.
+
+    The normal backfill (in sensor.py, on first entity load) only ever runs
+    once per profile, guarded by a persisted flag — by design, so it doesn't
+    re-scan history on every restart. But if an earlier attempt ran under a
+    stale/buggy version of the integration and silently found nothing (or hit
+    a recorder API mismatch), that flag gets set to True anyway, permanently
+    blocking any retry even after the underlying bug is fixed. This service
+    clears the flag and re-runs the backfill on demand, without needing a full
+    integration reload.
+    """
+    runtime = _runtime_for_call(hass, call)
+
+    entry_id: str | None = None
+    for candidate_entry_id, candidate_runtime in hass.data.get(DOMAIN, {}).items():
+        if candidate_runtime is runtime:
+            entry_id = candidate_entry_id
+            break
+    if entry_id is None:
+        raise HomeAssistantError("Could not resolve config entry for this profile.")
+
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError("Config entry no longer exists.")
+
+    entity_registry = er.async_get(hass)
+    basal_temp_entity_id: str | None = None
+    for entity_entry in er.async_entries_for_config_entry(entity_registry, entry_id):
+        if entity_entry.unique_id.endswith("_basal_temp"):
+            basal_temp_entity_id = entity_entry.entity_id
+            break
+    if basal_temp_entity_id is None:
+        raise HomeAssistantError(
+            "No basal-temperature sensor entity found for this profile. "
+            "It should be created automatically when the integration loads."
+        )
+
+    runtime.noncycle_data["basal_temp_stats_backfilled"] = False
+
+    from .sensor import _async_backfill_basal_temp_statistics
+
+    await _async_backfill_basal_temp_statistics(hass, entry, basal_temp_entity_id)
+    _LOGGER.info("Re-ran basal_temp statistics backfill for '%s' on demand.", basal_temp_entity_id)
 
 
 async def _async_handle_log_product_usage(hass: HomeAssistant, call: ServiceCall) -> None:

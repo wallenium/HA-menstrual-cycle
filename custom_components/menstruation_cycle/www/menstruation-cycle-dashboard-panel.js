@@ -3055,10 +3055,14 @@
 
     _renderBasalTempChart(stateObj) {
       const attrs = stateObj?.attributes || {};
-      const rawTemps = attrs.basal_temperatures ?? attrs.bbt_readings ?? null;
-      const temps = Array.isArray(rawTemps)
-        ? rawTemps.filter((t) => t && (typeof t.temperature === 'number' || typeof t.value === 'number'))
-        : [];
+      // basal_temperatures/bbt_readings were never actually set by the backend —
+      // the real data lives in symptom_history entries' basal_temp field (the
+      // same source the dedicated basal-temp sensor and get_symptom read from).
+      const history = Array.isArray(attrs.symptom_history) ? attrs.symptom_history : [];
+      const temps = history
+        .filter((entry) => entry && typeof entry === 'object' && entry.date && Number.isFinite(Number(entry.basal_temp)))
+        .map((entry) => ({ date: entry.date, temperature: Number(entry.basal_temp) }))
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
       if (temps.length < 2) {
         return `<div class="helper">${this._t('dashboard_basal_temp_no_data')}</div>`;

@@ -133,6 +133,24 @@
           "description": "Fecha ISO opcional para registro retroactivo. Por defecto, hoy."
         }
       }
+    },
+    "reimport_basal_temp_statistics": {
+      "name": "Reimportar estadísticas de temperatura basal",
+      "description": "Fuerza una nueva importación de las lecturas históricas de temperatura basal a las estadísticas a largo plazo de Home Assistant. Normalmente se ejecuta una sola vez automáticamente; úsalo para reintentar si un intento anterior no encontró nada.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor de temperatura basal o de ciclo menstrual objetivo."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Identificador de perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
     }
   },
   "issues": {

@@ -133,6 +133,24 @@
           "description": "Optional ISO date to backfill. Defaults to today."
         }
       }
+    },
+    "reimport_basal_temp_statistics": {
+      "name": "Re-import basal temperature statistics",
+      "description": "Force a fresh import of historical basal-temperature readings into Home Assistant's long-term statistics. Normally runs once automatically; use this to retry if an earlier attempt found nothing.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target basal-temperature or menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
     }
   },
   "issues": {
