@@ -1163,7 +1163,7 @@
     _findPrimaryState() {
       if (!this._hass?.states) return null;
       const entries = Object.entries(this._hass.states)
-        .filter(([entityId, state]) => entityId.startsWith('sensor.') && state?.attributes?.entry_id && state?.attributes?.profile);
+        .filter(([entityId, state]) => entityId.startsWith('sensor.') && state?.attributes?.is_primary_profile_sensor === true);
       if (!entries.length) return null;
       entries.sort(([a], [b]) => a.localeCompare(b));
       return entries[0][1];
@@ -1173,24 +1173,40 @@
       const states = this._hass?.states || {};
       const allSensors = Object.entries(states).filter(([id]) => id.startsWith('sensor.'));
 
-      const isPeriodProducts = (id) => id.includes('period_products');
-
-      // Primary strategy: integration markers (best)
+      // Primary strategy: explicit marker (best, robust to entity_id renames) —
+      // set only on the one sensor per profile meant to represent a selectable
+      // person, not on the profile's other sensors (product usage, basal temp,
+      // etc.) even though those also carry profile/entry_id attributes.
       let entities = allSensors
-        .filter(([entityId, state]) =>
-          !isPeriodProducts(entityId) &&
-          !!state?.attributes?.entry_id &&
-          !!state?.attributes?.profile
-        )
+        .filter(([, state]) => state?.attributes?.is_primary_profile_sensor === true)
         .map(([entityId, state]) => ({
           entityId,
           name: state.attributes?.friendly_name || state.attributes?.profile || entityId,
           profile: state.attributes?.profile || '',
         }));
 
+      // Fallback for older backend versions without the marker attribute yet:
+      // integration markers (entry_id + profile), excluding known non-primary
+      // per-profile sensors by entity_id pattern as a best-effort guess.
+      if (entities.length === 0) {
+        const isKnownSecondarySensor = (id) => id.includes('period_products') || id.includes('products_today') || id.includes('basal_temp');
+        entities = allSensors
+          .filter(([entityId, state]) =>
+            !isKnownSecondarySensor(entityId) &&
+            !!state?.attributes?.entry_id &&
+            !!state?.attributes?.profile
+          )
+          .map(([entityId, state]) => ({
+            entityId,
+            name: state.attributes?.friendly_name || state.attributes?.profile || entityId,
+            profile: state.attributes?.profile || '',
+          }));
+      }
+
       // Fallback if markers are missing on your setup:
       // keep non-period_products sensors that at least look cycle-related by attributes
       if (entities.length === 0) {
+        const isPeriodProducts = (id) => id.includes('period_products') || id.includes('products_today');
         entities = allSensors
           .filter(([entityId, state]) => {
             if (isPeriodProducts(entityId)) return false;

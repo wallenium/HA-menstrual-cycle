@@ -1205,6 +1205,14 @@ class MenstruationGaugeSensor(SensorEntity):
             "profile": runtime.profile,
             "entry_id": self._entry.entry_id,
             "friendly_name": runtime.friendly_name,
+            # Explicit marker so consumers (e.g. the dashboard panel's entity/profile
+            # picker) can reliably identify "this is the one sensor per profile that
+            # represents a selectable person", instead of guessing from entity_id
+            # naming patterns — which silently broke once entity IDs were renamed to
+            # the searchable "menstruation_"-prefixed scheme, since the other two
+            # per-profile sensors (product usage, basal temp) also carry profile+
+            # entry_id and no longer happened to be excluded by name.
+            "is_primary_profile_sensor": True,
             "product_usage_today": usage_stats["today"],
             "product_usage_this_cycle": usage_stats["this_cycle"],
             "product_usage_stats": usage_stats["stats"],
