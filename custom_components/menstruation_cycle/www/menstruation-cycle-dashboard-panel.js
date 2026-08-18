@@ -3935,7 +3935,7 @@
           .mc-unavailable-title { font-family: var(--mc-font-display, serif); font-size: 1.1rem; font-weight: 500; margin: 0 0 8px; }
           .mode-switch { display: flex; gap: 3px; background: var(--mc-sand, #f3ebe7); border: 1px solid var(--divider-color, #e5e7eb); border-radius: 999px; padding: 3px; flex-wrap: wrap; }
           .mode-btn { border: none; background: transparent; cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--secondary-text-color, #6b7280); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
-          .mode-btn.active { background: var(--card-background-color, #fff); color: #C43F5E; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+          .mode-btn.active { background: var(--card-background-color, #fff); color: var(--mc-rose-deep, #C43F5E); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
           .entity-picker { border: 1px solid var(--divider-color, #d1d5db); border-radius: 999px; padding: 7px 12px; background: var(--card-background-color, #fff); color: inherit; font-size: 0.875rem; }
         </style>
         <div class="mc-unavailable-page">
@@ -3971,7 +3971,7 @@
           .mc-spinner {
             width: 16px; height: 16px; border-radius: 50%;
             border: 2px solid var(--divider-color, #e5e7eb);
-            border-top-color: #C43F5E;
+            border-top-color: var(--mc-rose-deep, #C43F5E);
             animation: mc-spin 0.8s linear infinite;
           }
           @keyframes mc-spin { to { transform: rotate(360deg); } }
