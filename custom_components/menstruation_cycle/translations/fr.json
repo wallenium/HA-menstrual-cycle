@@ -117,5 +117,15 @@
         }
       }
     }
+  },
+  "issues": {
+    "migrate_config_entry": {
+      "title": "Menstruation Cycle : migration de l'intégration requise",
+      "description": "L'intégration **{old_domain}** a été renommée en **{new_domain}**.\n\nProfil : **{entry_title}**\n\nVos données de capteur et votre historique seront conservés après la migration. Cliquez sur **Réparer** pour terminer la migration."
+    },
+    "rename_entities": {
+      "title": "Menstruation Cycle : mise à jour du nommage des entités disponible",
+      "description": "Profil : **{entry_title}**\n\nLes entités suivantes utilisent encore un ancien schéma d'ID datant d'avant l'ajout du préfixe `menstruation_` pour faciliter la recherche :\n\n{renames_list}\n\nLe renommage conserve tout l'historique et les statistiques, mais **les tableaux de bord, automatisations ou scripts faisant référence à l'ancien ID devront être mis à jour manuellement** ensuite. Cliquez sur **Réparer** pour renommer, ou ignorez cette notification pour conserver les ID actuels."
+    }
   }
 }

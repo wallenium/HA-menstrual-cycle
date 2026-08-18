@@ -45,18 +45,7 @@ def async_create_entity_naming_issue(
     if not renames:
         return
 
-    lines = "\n".join(f"- `{old}` → `{new}`" for old, new in renames.items())
-    description = (
-        f"Profile: **{entry_title}**\n\n"
-        "The following entities still use an older ID scheme from before this "
-        "integration started prefixing entity IDs with `menstruation_` for "
-        "easier searching:\n\n"
-        f"{lines}\n\n"
-        "Renaming keeps all history and statistics intact, but **any dashboards, "
-        "automations, or scripts referencing the old entity ID(s) will need to "
-        "be updated manually** afterwards. Click **Fix** to rename them, or "
-        "dismiss this issue to keep the current IDs."
-    )
+    renames_list = "\n".join(f"- {old} → {new}" for old, new in renames.items())
 
     async_create_issue(
         hass,
@@ -65,8 +54,11 @@ def async_create_entity_naming_issue(
         issue_domain=DOMAIN,
         is_fixable=True,
         severity=IssueSeverity.WARNING,
-        title="Menstruation Cycle: Entity ID naming update available",
-        description=description,
+        translation_key="rename_entities",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "renames_list": renames_list,
+        },
         learn_more_url="https://github.com/wallenium/HA-menstrual-cycle/wiki/Migration",
         data={"entry_id": entry_id},
     )
@@ -153,13 +145,6 @@ def async_create_migration_issue(
         DOMAIN,
     )
 
-    description = (
-        f"The **{OLD_DOMAIN}** integration has been renamed to **{DOMAIN}**.\n\n"
-        f"Profile: **{entry_title}**\n\n"
-        "Your sensor data and history will be preserved after migration. "
-        "Click **Fix** to complete the migration."
-    )
-
     async_create_issue(
         hass,
         DOMAIN,
@@ -167,8 +152,12 @@ def async_create_migration_issue(
         issue_domain=DOMAIN,
         is_fixable=True,
         severity=IssueSeverity.WARNING,
-        title="Menstruation Cycle: Integration Migration Required",
-        description=description,
+        translation_key="migrate_config_entry",
+        translation_placeholders={
+            "old_domain": OLD_DOMAIN,
+            "new_domain": DOMAIN,
+            "entry_title": entry_title,
+        },
         learn_more_url="https://github.com/wallenium/HA-menstrual-cycle/wiki/Migration",
     )
 
