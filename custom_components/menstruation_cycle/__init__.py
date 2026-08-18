@@ -40,20 +40,12 @@ from .const import (
     ATTR_SYMPTOM_HISTORY,
     CONF_ONBOARDING_STAGE,
     CONF_SHOW_CYCLE_DASHBOARD,
-    CONF_CYCLE_DASHBOARD_DEFAULT_PAGE,
-    CONF_DASHBOARD_DISCREET_MODE,
-    CONF_DASHBOARD_WIDGETS,
     CONF_DASHBOARD_ENABLED,
-    CONF_DASHBOARD_DEFAULT_LANDING,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_NAME,
     CONF_PROFILE,
-    DASHBOARD_WIDGET_KEYS,
     DEFAULT_DASHBOARD_ENABLED,
-    DEFAULT_DASHBOARD_DEFAULT_LANDING,
-    DEFAULT_DASHBOARD_DISCREET_MODE,
-    DEFAULT_DASHBOARD_WIDGETS,
     DEFAULT_NAME,
     DEFAULT_ONBOARDING_STAGE,
     DEFAULT_PERIOD_DURATION_DAYS,
@@ -145,7 +137,6 @@ _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
 _DASHBOARD_PANEL_REGISTERED_KEY = f"{DOMAIN}_dashboard_panel_registered"
-_DASHBOARD_RUNTIME_CONFIG_KEY = f"{DOMAIN}_dashboard_runtime_config"
 _DASHBOARD_PANEL_URL_PATH = "cycle-dashboard"
 _DASHBOARD_PANEL_TITLE = "Cycle Dashboard"
 _DASHBOARD_PANEL_ICON = "mdi:view-dashboard-outline"
@@ -2110,45 +2101,6 @@ def _is_dashboard_enabled_for_entry(entry: ConfigEntry) -> bool:
     return bool(entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED))
 
 
-def _get_effective_dashboard_config(hass: HomeAssistant) -> dict[str, Any]:
-    """Compute the merged effective dashboard config across all loaded entries.
-
-    The first entry with dashboard_enabled=True wins for discreet_mode and
-    widget preferences. If no entry has the dashboard enabled, returns the
-    privacy-first defaults.
-    """
-    loaded_entry_ids = set(hass.data.get(DOMAIN, {}).keys())
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.entry_id not in loaded_entry_ids:
-            continue
-        if not _is_dashboard_enabled_for_entry(entry):
-            continue
-        raw_widgets = entry.options.get(CONF_DASHBOARD_WIDGETS)
-        if not isinstance(raw_widgets, dict):
-            raw_widgets = {}
-        widgets: dict[str, bool] = {
-            key: bool(raw_widgets.get(key, DEFAULT_DASHBOARD_WIDGETS[key]))
-            for key in DASHBOARD_WIDGET_KEYS
-        }
-        # Check new key first, fall back to legacy key for backward compat
-        if CONF_DASHBOARD_DEFAULT_LANDING in entry.options:
-            default_landing = bool(entry.options[CONF_DASHBOARD_DEFAULT_LANDING])
-        else:
-            default_landing = bool(entry.options.get(CONF_CYCLE_DASHBOARD_DEFAULT_PAGE, DEFAULT_DASHBOARD_DEFAULT_LANDING))
-        return {
-            "enabled": True,
-            "discreet_mode": bool(entry.options.get(CONF_DASHBOARD_DISCREET_MODE, DEFAULT_DASHBOARD_DISCREET_MODE)),
-            "default_landing": default_landing,
-            "widgets": widgets,
-        }
-    return {
-        "enabled": False,
-        "discreet_mode": DEFAULT_DASHBOARD_DISCREET_MODE,
-        "default_landing": DEFAULT_DASHBOARD_DEFAULT_LANDING,
-        "widgets": dict(DEFAULT_DASHBOARD_WIDGETS),
-    }
-
-
 async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
     """Register or remove the optional dashboard sidebar panel."""
     loaded_entry_ids = set(hass.data.get(DOMAIN, {}).keys())
@@ -2159,9 +2111,6 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
     ]
     should_show_panel = any(_is_dashboard_enabled_for_entry(entry) for entry in loaded_entries)
     is_registered = bool(hass.data.get(_DASHBOARD_PANEL_REGISTERED_KEY))
-
-    # Always store the effective config in hass.data for the frontend to consume.
-    hass.data[_DASHBOARD_RUNTIME_CONFIG_KEY] = _get_effective_dashboard_config(hass)
 
     try:
         from homeassistant.components import frontend as frontend_component  # noqa: PLC0415
