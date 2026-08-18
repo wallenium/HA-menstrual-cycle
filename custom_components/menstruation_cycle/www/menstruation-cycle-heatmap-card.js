@@ -43,6 +43,12 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     this._scrollHeatmap = null;
     this._scrollCueUpdateHandler = null;
     this._lastRenderSignature = null;
+    // Cache for the complete, uncompacted symptom_history, fetched via the
+    // get_full_history service — the main sensor's symptom_history attribute is
+    // subject to size-based shedding under heavy tracking history and can be
+    // dropped entirely, not just capped, so this card can't rely on it alone.
+    this._fullHistoryCache = {};
+    this._fullHistoryFetching = new Set();
   }
 
   static getConfigElement() {
@@ -395,11 +401,51 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     ];
   }
 
+  /**
+   * Fetches the complete, uncompacted symptom_history for a profile via the
+   * get_full_history service, bypassing the entity attribute size-shedding
+   * pipeline entirely. Caches per profile; re-renders once loaded.
+   */
+  async _fetchFullHistory(entityId, profile) {
+    const cacheKey = profile || entityId;
+    if (!cacheKey) return;
+    if (this._fullHistoryCache[cacheKey] || this._fullHistoryFetching.has(cacheKey)) return;
+    if (!this._hass?.connection?.sendMessagePromise) return;
+    this._fullHistoryFetching.add(cacheKey);
+    try {
+      const payload = entityId ? { entity_id: entityId, days: 180 } : { profile, days: 180 };
+      const result = await this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'get_full_history',
+        service_data: payload,
+        return_response: true,
+      });
+      const response = result?.response;
+      if (response && Array.isArray(response.symptom_history)) {
+        this._fullHistoryCache[cacheKey] = response.symptom_history;
+      } else {
+        this._fullHistoryCache[cacheKey] = [];
+      }
+    } catch (err) {
+      console.warn('[menstruation-cycle-heatmap-card] get_full_history call failed for', cacheKey, err);
+      this._fullHistoryCache[cacheKey] = []; // avoid retry-looping
+    } finally {
+      this._fullHistoryFetching.delete(cacheKey);
+    }
+    this._render(); // bypasses set hass()'s signature gate, same as a normal direct call
+  }
+
   _resolveBuiltinSymptomSources() {
     const entityId = this._resolveEntityId();
     const stateObj = entityId ? this._hass?.states?.[entityId] : undefined;
     const attrs = stateObj?.attributes || {};
-    const symptomHistory = Array.isArray(attrs.symptom_history) ? [...attrs.symptom_history] : [];
+    const profile = attrs.profile || null;
+    const cachedHistory = profile ? this._fullHistoryCache[profile] : null;
+    const symptomHistory = cachedHistory
+      ? [...cachedHistory]
+      : (Array.isArray(attrs.symptom_history) ? [...attrs.symptom_history] : []);
+    if (!cachedHistory && profile) this._fetchFullHistory(entityId, profile); // fire-and-forget
 
     if (!symptomHistory.length) {
       const todayIso = this._normalizeISO(new Date().toISOString().slice(0, 10));

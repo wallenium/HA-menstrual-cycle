@@ -151,6 +151,28 @@
           "description": "Config entry identifier."
         }
       }
+    },
+    "get_full_history": {
+      "name": "Get full history",
+      "description": "Retrieve the complete, uncompacted symptom history (and product usage) for a profile, bounded to a number of recent days. Bypasses the sensor's attribute size limits, which can drop symptom_history entirely under heavy tracking history.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "days": {
+          "name": "Days",
+          "description": "How many recent days to include (1-730). Defaults to 180."
+        }
+      }
     }
   },
   "issues": {

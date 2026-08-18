@@ -151,6 +151,28 @@
           "description": "Identifiant de l'entrée de configuration."
         }
       }
+    },
+    "get_full_history": {
+      "name": "Obtenir l'historique complet",
+      "description": "Récupère l'historique des symptômes complet et non compacté (et la consommation de produits) d'un profil, limité à un nombre de jours récents. Contourne les limites de taille des attributs du capteur, qui peuvent faire disparaître complètement symptom_history en cas d'historique de suivi important.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de cycle menstruel ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant de profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Nombre de jours récents à inclure (1-730). Par défaut : 180."
+        }
+      }
     }
   },
   "issues": {

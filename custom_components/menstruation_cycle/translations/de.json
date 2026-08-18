@@ -151,6 +151,28 @@
           "description": "Kennung des Config-Eintrags."
         }
       }
+    },
+    "get_full_history": {
+      "name": "Vollständige Historie abrufen",
+      "description": "Ruft die vollständige, ungekürzte Symptom-Historie (und den Produktverbrauch) für ein Profil ab, begrenzt auf eine Anzahl zurückliegender Tage. Umgeht die Attribut-Größenbegrenzung des Sensors, die symptom_history bei umfangreicher Trackinghistorie komplett verwerfen kann.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Ziel-Menstruations-Sensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfiguriertes Profil-Kürzel."
+        },
+        "entry_id": {
+          "name": "Eintrags-ID",
+          "description": "Kennung des Config-Eintrags."
+        },
+        "days": {
+          "name": "Tage",
+          "description": "Wie viele zurückliegende Tage einbezogen werden (1-730). Standard ist 180."
+        }
+      }
     }
   },
   "issues": {

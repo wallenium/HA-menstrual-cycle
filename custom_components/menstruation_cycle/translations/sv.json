@@ -151,6 +151,28 @@
           "description": "Identifierare för konfigurationsposten."
         }
       }
+    },
+    "get_full_history": {
+      "name": "Hämta fullständig historik",
+      "description": "Hämtar den fullständiga, okomprimerade symtomhistoriken (och produktförbrukningen) för en profil, begränsad till ett antal senaste dagar. Kringgår sensorns attributstorleksgränser, som kan göra att symptom_history försvinner helt vid omfattande spårningshistorik.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Menstruationscykel-sensor att rikta in sig på."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profilslug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "days": {
+          "name": "Dagar",
+          "description": "Hur många senaste dagar som ska inkluderas (1-730). Standard är 180."
+        }
+      }
     }
   },
   "issues": {

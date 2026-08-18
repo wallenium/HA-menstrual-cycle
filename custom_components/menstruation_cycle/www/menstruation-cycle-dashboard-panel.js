@@ -693,6 +693,15 @@
       // Tags that never became defined within the timeout in _watchEmbeddedCard(),
       // used to show an honest "not available" message instead of an infinite spinner.
       this._embeddedCardTimedOut = new Set();
+      // General-purpose cache for the complete, uncompacted symptom_history +
+      // product_usage — fetched via the get_full_history service, which reads
+      // straight from the backend's full in-memory data, bypassing the entity
+      // attribute size-shedding pipeline entirely (confirmed via logs: under
+      // heavy tracking history, symptom_history can be dropped from the sensor's
+      // attributes completely, not just capped to the most recent ~30 entries).
+      // Keyed by profile so multiple profiles' data doesn't collide.
+      this._fullHistoryCache = {};
+      this._fullHistoryFetching = new Set();
 
       // Bound once here (not as inline arrow functions in connectedCallback) so the
       // same function reference is reused across every connectedCallback call. Home
@@ -3158,12 +3167,66 @@
       `;
     }
 
-    _renderBasalTempChart(stateObj) {
+    /**
+     * Fetches the complete, uncompacted symptom_history (+ product_usage) for a
+     * profile via the get_full_history service — this reads directly from the
+     * backend's full in-memory data, bypassing the entity attribute size-shedding
+     * pipeline entirely. Used by every widget that needs more than the ~30 most
+     * recent days (basal-temp chart, symptom heatmap, pain/mood trend), so they
+     * all share one fetch + one cache instead of each having its own bespoke
+     * workaround. Caches per profile; safe to call repeatedly, only fetches once
+     * per profile per session unless explicitly invalidated.
+     */
+    async _fetchFullHistory(entityId, profile) {
+      const cacheKey = profile || entityId;
+      if (!cacheKey) return;
+      if (this._fullHistoryCache[cacheKey] || this._fullHistoryFetching.has(cacheKey)) return;
+      if (!this._hass?.connection?.sendMessagePromise) return;
+      this._fullHistoryFetching.add(cacheKey);
+      try {
+        const payload = entityId ? { entity_id: entityId, days: 180 } : { profile, days: 180 };
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'get_full_history',
+          service_data: payload,
+          return_response: true,
+        });
+        const response = result?.response;
+        if (response && Array.isArray(response.symptom_history)) {
+          this._fullHistoryCache[cacheKey] = response;
+          console.debug('[menstruation-cycle] Full history fetched for', cacheKey, `(${response.symptom_history.length} symptom entries)`);
+        } else {
+          console.warn('[menstruation-cycle] get_full_history returned no usable data for', cacheKey, '— raw result:', result);
+          this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [] };
+        }
+      } catch (err) {
+        console.warn('[menstruation-cycle] get_full_history call failed for', cacheKey, err);
+        this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [] }; // avoid retry-looping
+      } finally {
+        this._fullHistoryFetching.delete(cacheKey);
+      }
+      this.render();
+    }
+
+    /**
+     * Returns the best available symptom_history for a profile: the full,
+     * uncompacted list from _fetchFullHistory's cache if loaded, otherwise the
+     * (possibly capped or entirely absent) attrs.symptom_history as an immediate
+     * fallback while the full fetch is in flight. Triggers the fetch as a side
+     * effect if not yet cached — safe to call from any widget's render path.
+     */
+    _getFullSymptomHistory(stateObj) {
       const attrs = stateObj?.attributes || {};
-      // basal_temperatures/bbt_readings were never actually set by the backend —
-      // the real data lives in symptom_history entries' basal_temp field (the
-      // same source the dedicated basal-temp sensor and get_symptom read from).
-      const history = Array.isArray(attrs.symptom_history) ? attrs.symptom_history : [];
+      const profile = attrs.profile || null;
+      const cached = profile ? this._fullHistoryCache[profile] : null;
+      if (cached) return cached.symptom_history;
+      if (profile) this._fetchFullHistory(this._selectedEntityId, profile); // fire-and-forget, re-renders on completion
+      return Array.isArray(attrs.symptom_history) ? attrs.symptom_history : [];
+    }
+
+    _renderBasalTempChart(stateObj) {
+      const history = this._getFullSymptomHistory(stateObj);
       const temps = history
         .filter((entry) => entry && typeof entry === 'object' && entry.date && Number.isFinite(Number(entry.basal_temp)))
         .map((entry) => ({ date: entry.date, temperature: Number(entry.basal_temp) }))
@@ -3260,7 +3323,7 @@
         return `${statHeader}${this._renderEmbeddedCardMount('heatmap-card')}`;
       }
       // Native fallback: simple 4-week × symptom grid
-      const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
+      const symptomHistory = this._getFullSymptomHistory(stateObj);
 
       if (!symptomHistory || (Array.isArray(symptomHistory) && symptomHistory.length === 0)) {
         return `${statHeader}<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
@@ -3496,8 +3559,7 @@
     }
 
     _renderPainMoodTrend(stateObj) {
-      const attrs = stateObj?.attributes || {};
-      const symptomHistory = attrs.symptom_history ?? attrs.symptoms_last_30 ?? null;
+      const symptomHistory = this._getFullSymptomHistory(stateObj);
       const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-14) : [];
 
       if (entries.length < 2) {

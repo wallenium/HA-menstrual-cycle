@@ -8,7 +8,7 @@ import logging
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -83,6 +83,7 @@ from .const import (
     SERVICE_FIELD_WARNING_THRESHOLD,
     SERVICE_GET_MENARCHE_INFO,
     SERVICE_GET_SYMPTOM,
+    SERVICE_GET_FULL_HISTORY,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
     SERVICE_REIMPORT_BASAL_TEMP_STATS,
@@ -799,6 +800,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_get_symptom(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_get_symptom(hass, call)
 
+    async def async_get_full_history(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_get_full_history(hass, call)
+
     async def async_set_pregnancy_mode(call: ServiceCall) -> None:
         await _async_handle_set_pregnancy_mode(hass, call)
 
@@ -963,6 +967,13 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     if SupportsResponse is not None:
         _register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(DOMAIN, SERVICE_GET_SYMPTOM, async_get_symptom, **_register_kwargs)
+
+    _full_history_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({**common_profile_field, vol.Optional(SERVICE_FIELD_DAYS, default=180): vol.Coerce(int)}),
+    }
+    if SupportsResponse is not None:
+        _full_history_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(DOMAIN, SERVICE_GET_FULL_HISTORY, async_get_full_history, **_full_history_register_kwargs)
 
     hass.services.async_register(
         DOMAIN,
@@ -1312,6 +1323,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_ADD_SYMPTOM,
             SERVICE_REMOVE_SYMPTOM,
             SERVICE_GET_SYMPTOM,
+            SERVICE_GET_FULL_HISTORY,
             SERVICE_SET_PREGNANCY_MODE,
             SERVICE_UPDATE_PREGNANCY_DATE,
             SERVICE_SET_MENARCHE_MODE,
@@ -1847,6 +1859,52 @@ async def _async_handle_get_symptom(hass: HomeAssistant, call: ServiceCall) -> d
 
     _LOGGER.info("No symptom data found for %s", date_iso)
     return {"date": date_iso, "found": False}
+
+
+async def _async_handle_get_full_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Return the complete, uncompacted symptom_history and product_usage for a
+    profile, bounded to the last N days.
+
+    This exists because the main sensor's exposed attributes go through a
+    size-based compaction/shedding pipeline (sensor.py's
+    _build_compact_sensor_attributes): symptom_history first gets capped to the
+    most recent ~30 entries, and if the profile's overall attribute payload is
+    still too large after that, it can be dropped from the sensor entirely —
+    not just capped. That's a deliberate tradeoff to keep the sensor's own
+    state/attributes within Home Assistant's practical size limits, but it
+    means dashboard widgets that need a genuinely full history (charts,
+    heatmaps, trend lines covering more than the last handful of tracked
+    days) can't rely on the sensor's attributes for that.
+
+    A service response is not persisted into the state machine the way entity
+    attributes are, so it isn't subject to the same size pressure — reading
+    straight from the full in-memory runtime.symptom_history/product_usage
+    here always returns everything within the requested window, regardless of
+    how large the profile's overall tracking history has grown.
+    """
+    runtime = _runtime_for_call(hass, call)
+    raw_days = call.data.get(SERVICE_FIELD_DAYS, 180)
+    try:
+        days = max(1, min(730, int(raw_days)))
+    except (TypeError, ValueError):
+        days = 180
+    cutoff = (dt_util.now().date() - timedelta(days=days)).isoformat()
+
+    symptom_history = [
+        dict(entry)
+        for entry in (runtime.symptom_history or [])
+        if isinstance(entry, dict) and str(entry.get("date", "")) >= cutoff
+    ]
+    product_usage = [
+        dict(entry)
+        for entry in (runtime.product_usage or [])
+        if isinstance(entry, dict) and str(entry.get("date", "")) >= cutoff
+    ]
+    return {
+        "symptom_history": symptom_history,
+        "product_usage": product_usage,
+        "days": days,
+    }
 
 
 async def _async_handle_set_pregnancy_mode(hass: HomeAssistant, call: ServiceCall) -> None:

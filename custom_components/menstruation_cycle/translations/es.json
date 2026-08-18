@@ -151,6 +151,28 @@
           "description": "Identificador de la entrada de configuración."
         }
       }
+    },
+    "get_full_history": {
+      "name": "Obtener historial completo",
+      "description": "Recupera el historial de síntomas completo y sin compactar (y el consumo de productos) de un perfil, limitado a un número de días recientes. Evita los límites de tamaño de los atributos del sensor, que pueden eliminar por completo symptom_history con un historial de seguimiento extenso.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor de ciclo menstrual objetivo."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Identificador de perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "days": {
+          "name": "Días",
+          "description": "Cuántos días recientes incluir (1-730). El valor predeterminado es 180."
+        }
+      }
     }
   },
   "issues": {
