@@ -127,5 +127,20 @@
       "title": "Menstruation Cycle: Aktualisierung der Entity-Namen verfügbar",
       "description": "Profil: **{entry_title}**\n\nFolgende Entities nutzen noch das ältere Namensschema von vor der Umstellung auf durchsuchbare, mit `menstruation_` beginnende Entity-IDs:\n\n{renames_list}\n\nVerlauf und Statistik bleiben beim Umbenennen erhalten, aber **Dashboards, Automationen oder Skripte, die die alte Entity-ID referenzieren, müssen danach manuell angepasst werden**. Klicke auf **Reparieren**, um umzubenennen, oder ignoriere diese Meldung, um die aktuellen IDs zu behalten."
     }
+  },
+  "selector": {
+    "onboarding_stage": {
+      "options": {
+        "pre_menarche": "Vor der Menarche",
+        "early_menarche": "Frühe Lernphase nach der Menarche",
+        "established_cycle": "Etablierter Zyklus"
+      }
+    },
+    "nfp_analysis_mode": {
+      "options": {
+        "hybrid": "Hybrid (empfohlen)",
+        "strict": "Streng"
+      }
+    }
   }
 }

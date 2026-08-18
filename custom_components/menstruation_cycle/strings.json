@@ -117,5 +117,30 @@
         }
       }
     }
+  },
+  "issues": {
+    "migrate_config_entry": {
+      "title": "Menstruation Cycle: Integration Migration Required",
+      "description": "The **{old_domain}** integration has been renamed to **{new_domain}**.\n\nProfile: **{entry_title}**\n\nYour sensor data and history will be preserved after migration. Click **Fix** to complete the migration."
+    },
+    "rename_entities": {
+      "title": "Menstruation Cycle: Entity ID naming update available",
+      "description": "Profile: **{entry_title}**\n\nThe following entities still use an older ID scheme from before this integration started prefixing entity IDs with `menstruation_` for easier searching:\n\n{renames_list}\n\nRenaming keeps all history and statistics intact, but **any dashboards, automations, or scripts referencing the old entity ID(s) will need to be updated manually** afterwards. Click **Fix** to rename them, or dismiss this issue to keep the current IDs."
+    }
+  },
+  "selector": {
+    "onboarding_stage": {
+      "options": {
+        "pre_menarche": "Pre-menarche",
+        "early_menarche": "Early menarche learning phase",
+        "established_cycle": "Established cycle"
+      }
+    },
+    "nfp_analysis_mode": {
+      "options": {
+        "hybrid": "Hybrid (recommended)",
+        "strict": "Strict"
+      }
+    }
   }
 }

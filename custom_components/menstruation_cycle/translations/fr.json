@@ -127,5 +127,20 @@
       "title": "Menstruation Cycle : mise à jour du nommage des entités disponible",
       "description": "Profil : **{entry_title}**\n\nLes entités suivantes utilisent encore un ancien schéma d'ID datant d'avant l'ajout du préfixe `menstruation_` pour faciliter la recherche :\n\n{renames_list}\n\nLe renommage conserve tout l'historique et les statistiques, mais **les tableaux de bord, automatisations ou scripts faisant référence à l'ancien ID devront être mis à jour manuellement** ensuite. Cliquez sur **Réparer** pour renommer, ou ignorez cette notification pour conserver les ID actuels."
     }
+  },
+  "selector": {
+    "onboarding_stage": {
+      "options": {
+        "pre_menarche": "Pré-ménarche",
+        "early_menarche": "Phase d'apprentissage post-ménarche précoce",
+        "established_cycle": "Cycle établi"
+      }
+    },
+    "nfp_analysis_mode": {
+      "options": {
+        "hybrid": "Hybride (recommandé)",
+        "strict": "Strict"
+      }
+    }
   }
 }

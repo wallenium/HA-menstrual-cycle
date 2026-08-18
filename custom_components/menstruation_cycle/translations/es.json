@@ -127,5 +127,20 @@
       "title": "Menstruation Cycle: actualización de nombres de entidad disponible",
       "description": "Perfil: **{entry_title}**\n\nLas siguientes entidades todavía usan un esquema de ID anterior a que esta integración empezara a anteponer `menstruation_` para facilitar la búsqueda:\n\n{renames_list}\n\nRenombrar conserva todo el historial y las estadísticas, pero **los paneles, automatizaciones o scripts que referencien el ID anterior deberán actualizarse manualmente** después. Haz clic en **Reparar** para renombrarlas, o descarta este aviso para mantener los ID actuales."
     }
+  },
+  "selector": {
+    "onboarding_stage": {
+      "options": {
+        "pre_menarche": "Pre-menarquia",
+        "early_menarche": "Fase de aprendizaje temprana tras la menarquia",
+        "established_cycle": "Ciclo establecido"
+      }
+    },
+    "nfp_analysis_mode": {
+      "options": {
+        "hybrid": "Híbrido (recomendado)",
+        "strict": "Estricto"
+      }
+    }
   }
 }

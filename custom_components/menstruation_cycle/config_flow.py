@@ -475,11 +475,23 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NFP_ANALYSIS_MODE,
                     default=current_nfp_mode,
-                ): vol.In(NFP_ANALYSIS_MODES),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=NFP_ANALYSIS_MODES,
+                        translation_key="nfp_analysis_mode",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(
                     CONF_ONBOARDING_STAGE,
                     default=current_onboarding_stage,
-                ): vol.In(ONBOARDING_STAGES),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=ONBOARDING_STAGES,
+                        translation_key="onboarding_stage",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(
                     CONF_DASHBOARD_ENABLED,
                     default=current_show_dashboard,
