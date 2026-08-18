@@ -766,5 +766,8 @@
   "dashboard_based_on_cycles": "baserat på {n} cykler",
   "dashboard_widget_cycle_phase_overview": "Översikt av cykelfaser",
   "dashboard_product_add_one": "Logga {product} (+1)",
-  "dashboard_product_tap_hint": "Tryck på + för att logga dagens förbrukning med ett verkligt antal."
+  "dashboard_product_tap_hint": "Tryck på + för att logga dagens förbrukning med ett verkligt antal.",
+  "trimester_label": "Trimester",
+  "dashboard_weeks_remaining": "{n} veckor kvar",
+  "family_menarche_age": "Menarche-ålder i familjen"
 }

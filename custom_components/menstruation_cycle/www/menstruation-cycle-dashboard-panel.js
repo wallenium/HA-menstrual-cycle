@@ -181,6 +181,9 @@
     dashboard_stock_hint: 'Stock from the household inventory (shared across all profiles).',
     dashboard_product_add_one: 'Log {product} (+1)',
     dashboard_product_tap_hint: 'Tap + to log today\u2019s usage with a real count.',
+    trimester_label: 'Trimester',
+    dashboard_weeks_remaining: '{n} weeks remaining',
+    family_menarche_age: 'Family menarche age',
     dashboard_period_day_label: 'Period',
     dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
@@ -2504,33 +2507,64 @@
       const marker = `<circle cx="${mx}" cy="${my}" r="7" fill="var(--card-background-color,#fff)" stroke="var(--primary-text-color,#2B1B24)" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2.6" fill="var(--primary-text-color,#2B1B24)"/>`;
 
       const wheelSvg = `
-        <svg viewBox="0 0 200 200" width="100%" height="200" style="max-width:200px;display:block;" role="img" aria-label="${escapeHtml(weekUnit)} ${escapeHtml(weeks)}+${escapeHtml(days)}">
+        <svg viewBox="0 0 200 200" width="100%" style="max-width:280px;height:auto;display:block;" role="img" aria-label="${escapeHtml(weekUnit)} ${escapeHtml(weeks)}+${escapeHtml(days)}">
           <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--divider-color,#e5e7eb)" stroke-width="${sw}"/>
           ${ringSegs}
           ${marker}
         </svg>`;
 
-      const statusIcon = this._statusIconHtml('pregnant', 32, attrs);
+      // Status icon lives as a small corner badge on the wheel, not inside the
+      // center content — matching the cycle hero's fix (squeezing it in above the
+      // week number made the number itself cramped/too small).
+      const statusIcon = this._statusIconHtml('pregnant', 60, attrs);
+      const statusBadge = statusIcon
+        ? `<div class="hero-status-badge" title="${escapeHtml(this._t('trimester_' + trimester))}">${statusIcon}</div>`
+        : '';
+
       const centerHtml = `
         <div class="hero-wheel-center">
-          ${statusIcon ? `<div style="margin-bottom:4px;">${statusIcon}</div>` : ''}
           <div class="hw-num">${weeks}<span style="font-size:16px;">+${days}</span></div>
           <div class="hw-sub">${escapeHtml(weekUnit)}</div>
           <div class="hw-tag">${this._t('trimester_' + trimester)}</div>
-          ${isHighRisk ? `<div class="hw-tag" style="margin-top:5px;background:var(--mc-amber-tint,#FBEEDC);color:var(--mc-amber-deep,#8a5a12);">⚠ ${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</div>` : ''}
         </div>`;
 
-      const kpis = [];
-      kpis.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_until_next')}</span></div>`);
-      kpis.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${dueDate ? escapeHtml(this._formatDate(dueDate)) : '—'}</span><span class="kpi-label">${this._t('dashboard_due_date_short')}</span></div>`);
-      if (isHighRisk) {
-        kpis.push(`<div class="kpi-item" style="background:var(--mc-amber-tint,#FBEEDC);"><span class="kpi-icon" aria-hidden="true">⚠️</span><span class="kpi-value" style="color:var(--mc-amber-deep,#8a5a12);">${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</span><span class="kpi-label">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</span></div>`);
-      }
+      // --- Stat 1 (rose): due date ---
+      const stat1 = `
+        <div class="stat mc-rose">
+          <div class="stat-label">${this._t('dashboard_due_date_short') || 'Entbindungstermin'}</div>
+          <div class="stat-value">${daysUntilDue !== null ? escapeHtml(daysUntilDue) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
+          ${dueDate ? `<div class="stat-foot">${escapeHtml(this._formatDate(dueDate))}</div>` : ''}
+        </div>`;
+
+      // --- Stat 2 (plain): trimester ---
+      const trimesterWeekRanges = { 1: '1–13', 2: '14–27', 3: '28–40' };
+      const stat2 = `
+        <div class="stat">
+          <div class="stat-label">${this._t('trimester_label') || 'Trimester'}</div>
+          <div class="stat-value">${trimester} <small>/ 3</small></div>
+          <div class="stat-foot">${this._t('dashboard_week_unit')} ${trimesterWeekRanges[trimester]}</div>
+        </div>`;
+
+      // --- Stat 3 (plum, or amber if high-risk) ---
+      const stat3 = isHighRisk
+        ? `
+          <div class="stat" style="background:var(--mc-amber-tint,#FBEEDC);">
+            <div class="stat-label" style="color:var(--mc-amber-deep,#8a5a12);">⚠ ${this._t('dashboard_high_risk_pregnancy') || 'Risikoschwangerschaft'}</div>
+            <div class="stat-value" style="font-size:16px;color:var(--mc-amber-deep,#8a5a12);">${this._t('dashboard_high_risk_monitoring') || 'Engmaschigere Kontrolle empfohlen'}</div>
+          </div>`
+        : `
+          <div class="stat mc-plum">
+            <div class="stat-label">${this._t('dashboard_week_unit')}</div>
+            <div class="stat-value">${weeks}<small>+${days}</small></div>
+            <div class="stat-foot">${(this._t('dashboard_weeks_remaining') || 'noch {n} Wochen').replace('{n}', Math.max(0, totalWeeks - weeks))}</div>
+          </div>`;
 
       return `
         <div class="hero-layout" role="region" aria-label="Pregnancy at a glance">
-          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}</div>
-          <div class="kpi-strip">${kpis.join('')}</div>
+          <div class="hero-wheel-holder">${wheelSvg}${centerHtml}${statusBadge}</div>
+          <div>
+            <div class="stat-stack">${stat1}${stat2}${stat3}</div>
+          </div>
         </div>
         ${isHighRisk && riskNotes ? `<p class="helper" style="margin-top:10px;font-size:0.72rem;"><strong>${this._t('pregnancy_risk_notes') || 'Notizen'}:</strong> ${escapeHtml(riskNotes)}</p>` : ''}`;
     }
@@ -2588,6 +2622,41 @@
       }
 
       const statusIcon = !discreetMode ? this._statusIconHtml('pre_menarche', 32) : '';
+
+      // --- Stat 1 (rose): days until estimated menarche ---
+      const stat1 = `
+        <div class="stat mc-rose">
+          <div class="stat-label">${this._t('days_until_menarche')}</div>
+          <div class="stat-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
+          ${estDateStr ? `<div class="stat-foot">${escapeHtml(this._formatDate(estDateStr))}</div>` : ''}
+        </div>`;
+
+      // --- Stat 2 (plain): signs progress ---
+      const stat2 = `
+        <div class="stat">
+          <div class="stat-label">${this._t('dashboard_widget_progress')}</div>
+          <div class="stat-value">${observedCount}<small>/${signKeys.length}</small></div>
+          <div class="stat-foot">${pct}%</div>
+        </div>`;
+
+      // --- Stat 3 (plum): age, falling back to family menarche age if the
+      // person's own age isn't set, so the 3-tile grid stays balanced ---
+      const familyAge = (attrs.menarche_data || {}).family_menarche_age ?? null;
+      let stat3 = '';
+      if (attrs.age_at_tracking !== null && attrs.age_at_tracking !== undefined) {
+        stat3 = `
+          <div class="stat mc-plum">
+            <div class="stat-label">${this._t('dashboard_age_label') || 'Alter'}</div>
+            <div class="stat-value">${escapeHtml(attrs.age_at_tracking)}</div>
+          </div>`;
+      } else if (familyAge !== null && familyAge !== undefined) {
+        stat3 = `
+          <div class="stat mc-plum">
+            <div class="stat-label">${this._t('family_menarche_age') || 'Menarche-Alter Familie'}</div>
+            <div class="stat-value">${escapeHtml(familyAge)}</div>
+          </div>`;
+      }
+
       return `
         <div>
           ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
@@ -2601,11 +2670,7 @@
               <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDateStr ? escapeHtml(this._formatDate(estDateStr)) : '—')}</span>
             </div>
           </div>
-          <div class="kpi-strip" style="margin-top:14px;">
-            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'}</span><span class="kpi-label">${this._t('days_until_menarche')}</span></div>
-            <div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌱</span><span class="kpi-value">${observedCount}/${signKeys.length}</span><span class="kpi-label">${this._t('dashboard_widget_progress')}</span></div>
-            ${attrs.age_at_tracking !== null && attrs.age_at_tracking !== undefined ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🎂</span><span class="kpi-value">${escapeHtml(attrs.age_at_tracking)}</span><span class="kpi-label">${this._t('dashboard_age_label') || 'Alter'}</span></div>` : ''}
-          </div>
+          <div class="stat-stack" style="margin-top:16px;">${stat1}${stat2}${stat3}</div>
           ${attrs.age_at_tracking === null || attrs.age_at_tracking === undefined ? `<p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_birth_date_hint') || 'Geburtsdatum in den Integrationseinstellungen hinterlegen, um Alter und Vor-der-Menarche-Schätzung zu verbessern.'}</p>` : ''}
           ${sourceNote ? `<p class="helper" style="margin-top:8px;font-size:0.7rem;">${escapeHtml(sourceNote)}</p>` : ''}
           <p class="helper" style="margin-top:2px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>

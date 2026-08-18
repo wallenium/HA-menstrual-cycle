@@ -766,5 +766,8 @@
   "dashboard_based_on_cycles": "basado en {n} ciclos",
   "dashboard_widget_cycle_phase_overview": "Resumen de las fases del ciclo",
   "dashboard_product_add_one": "Registrar {product} (+1)",
-  "dashboard_product_tap_hint": "Toca + para registrar el consumo de hoy con una cantidad real."
+  "dashboard_product_tap_hint": "Toca + para registrar el consumo de hoy con una cantidad real.",
+  "trimester_label": "Trimestre",
+  "dashboard_weeks_remaining": "{n} semanas restantes",
+  "family_menarche_age": "Edad de menarquia en la familia"
 }

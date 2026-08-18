@@ -766,5 +766,8 @@
   "dashboard_based_on_cycles": "basé sur {n} cycles",
   "dashboard_widget_cycle_phase_overview": "Aperçu des phases du cycle",
   "dashboard_product_add_one": "Enregistrer {product} (+1)",
-  "dashboard_product_tap_hint": "Appuyez sur + pour enregistrer la consommation du jour avec un nombre réel."
+  "dashboard_product_tap_hint": "Appuyez sur + pour enregistrer la consommation du jour avec un nombre réel.",
+  "trimester_label": "Trimestre",
+  "dashboard_weeks_remaining": "{n} semaines restantes",
+  "family_menarche_age": "Âge de la ménarche dans la famille"
 }
