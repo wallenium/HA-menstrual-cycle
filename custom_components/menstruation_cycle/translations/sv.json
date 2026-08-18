@@ -20,60 +20,77 @@
     "step": {
       "init": {
         "title": "Inställningar för menstruationscykel",
-        "description": "Justera inställningar för cykelspårning. Ändringar sparas omedelbart.",
+        "description": "Allmänna inställningar. Aktivera valfri livsfas nedan för att konfigurera dess detaljer på nästa skärm(ar).",
         "data": {
           "friendly_name": "Visningsnamn",
           "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)",
-          "birth_date": "Födelsedatum (ÅÅÅÅ-MM-DD, valfritt — möjliggör åldersvisning och förbättrar läget före menarche)",
+          "birth_date": "Födelsedatum (ÅÅÅÅ-MM-DD, valfritt — aktiverar åldersvisning och förbättrar läget för förmenarche)",
           "period_duration_days": "Mensens längd (dagar)",
-          "pregnancy_enabled": "Aktivera graviditetsläge",
-          "pregnancy_start_date": "Graviditetens startdatum (ÅÅÅÅ-MM-DD)",
-          "pregnancy_high_risk": "Riskgraviditet",
-          "pregnancy_risk_notes": "Anteckningar om risker (valfritt, t.ex. tillstånd eller uppföljningsfokus)",
-          "pre_menarche_enabled": "Aktivera spårning före menarche",
-          "family_menarche_age": "Menarche-ålder i familjen (8–20, valfritt)",
-          "menopause_enabled": "Aktivera klimakterieläge",
-          "menopause_start_date": "Klimakteriets startdatum (ÅÅÅÅ-MM-DD)",
-          "postpartum_enabled": "Aktivera läge efter förlossning",
-          "postpartum_start_date": "Barnets födelsedatum (ÅÅÅÅ-MM-DD)",
-          "postpartum_duration_days": "Uppföljningsperiod efter förlossning (dagar, standard 42)",
           "cycle_length_override": "Åsidosätt cykellängd (dagar, 0 = automatiskt)",
-          "nfp_analysis_mode": "NFP-analysläge",
           "num_predictions": "Antal framtida cykelprognoser",
+          "nfp_analysis_mode": "NFP-analysläge",
           "onboarding_stage": "Introduktionsfas",
-          "show_cycle_dashboard": "Visa cykel-dashboard i sidopanelen",
-          "cycle_dashboard_default_page": "Föredra cykel-dashboard som startsida",
-          "dashboard_discreet_mode": "Diskret läge (integritetsvänliga etiketter)",
-          "dashboard_widget_quick_log": "Widget: Snabbregistrering",
-          "dashboard_widget_today_status": "Widget: Status idag",
-          "dashboard_widget_upcoming_window": "Widget: Kommande fönster",
-          "dashboard_widget_reminders": "Widget: Påminnelser",
-          "dashboard_widget_progress": "Widget: Framsteg och märken",
-          "dashboard_enabled": "Visa cykel-dashboard i sidopanelen",
-          "dashboard_default_landing": "Föredra cykel-dashboard som startsida"
+          "dashboard_enabled": "Visa cykelöversikt i sidopanelen",
+          "pregnancy_enabled": "Aktivera graviditetsläge",
+          "pre_menarche_enabled": "Aktivera spårning innan menarche",
+          "menopause_enabled": "Aktivera klimakterieläge",
+          "postpartum_enabled": "Aktivera läge efter förlossning"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
-          "pregnancy_enabled": "Aktiverar spårningsläge för graviditet. Graviditetens startdatum fylls automatiskt i från senaste cykelstart om det lämnas tomt.",
-          "pregnancy_start_date": "Första dagen av senaste mens (LMP). Lämna tomt för att använda senast registrerade cykelstart.",
-          "pre_menarche_enabled": "Spåra pubertetstecken innan första mensen (menarche).",
-          "family_menarche_age": "Menarche-ålder i familjen (mamma/syster), används för att uppskatta förväntad ålder.",
-          "menopause_enabled": "Aktiverar spårningsläge för klimakteriet.",
-          "menopause_start_date": "Datum då klimakteriet började (ÅÅÅÅ-MM-DD). Lämna tomt om okänt.",
-          "cycle_length_override": "Åsidosätter den automatiskt beräknade genomsnittliga cykellängden. Sätt till 0 för att använda det automatiskt beräknade värdet från historiken (rekommenderas). Sätt till 20–38 för att manuellt fastställa cykellängden som används för beräkning av fertilt fönster och ägglossning.",
-          "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'Hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln vid behov. 'Strikt' visar endast ägglossning och fertilt fönster när en temperaturökning bekräftats i aktuell cykel.",
-          "show_cycle_dashboard": "Lägger till en valfri, egen Cykel-dashboard-sida i Home Assistants sidopanel.",
-          "cycle_dashboard_default_page": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta.",
-          "dashboard_discreet_mode": "Använder neutrala, integritetsvänliga etiketter i hela dashboarden.",
-          "dashboard_widget_quick_log": "Visar widgeten för snabbregistrering.",
-          "dashboard_widget_today_status": "Visar dagens cykelstatus och dagnummer.",
-          "dashboard_widget_upcoming_window": "Visar kommande fertilt fönster eller mensprognos.",
-          "dashboard_widget_reminders": "Visar dagliga påminnelser och tips om att kontrollera förråd.",
-          "dashboard_widget_progress": "Visar intjänade framstegsmärken.",
-          "dashboard_enabled": "Lägger till en valfri, egen Cykel-dashboard-sida i Home Assistants sidopanel.",
-          "dashboard_default_landing": "Inställning för att använda cykel-dashboarden som standard-/startsida, om Home Assistant-installationen stöder detta.",
+          "cycle_length_override": "Åsidosätter den automatiskt beräknade genomsnittliga cykellängden. Ange 0 för att använda det automatiskt beräknade värdet från din historik (rekommenderas). Ange 20–38 för att manuellt fastställa den cykellängd som används för fertilt fönster och ägglossningsberäkningar.",
           "num_predictions": "Hur många framtida cykelstarter som ska genereras (1–12). Standard är 6.",
-          "onboarding_stage": "Välj förmenarche, tidig inlärningsfas efter menarche, eller etablerad cykel."
+          "onboarding_stage": "Välj förmenarche, tidig inlärningsfas efter menarche, eller etablerad cykel.",
+          "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel.",
+          "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
+          "pregnancy_enabled": "Aktiverar graviditetsspårningsläge och visar en detaljskärm härnäst.",
+          "pre_menarche_enabled": "Spårar pubertetstecken innan den första mensen (menarche) och visar en detaljskärm härnäst.",
+          "menopause_enabled": "Aktiverar klimakteriespårningsläge och visar en detaljskärm härnäst.",
+          "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst."
+        }
+      },
+      "pregnancy": {
+        "title": "Graviditetsdetaljer",
+        "description": "Konfigurera graviditetsspårning.",
+        "data": {
+          "pregnancy_start_date": "Graviditetens startdatum (ÅÅÅÅ-MM-DD)",
+          "pregnancy_high_risk": "Högriskgraviditet",
+          "pregnancy_risk_notes": "Riskanteckningar (valfritt, t.ex. tillstånd eller uppföljningsfokus)"
+        },
+        "data_description": {
+          "pregnancy_start_date": "Första dagen av senaste mens. Lämna tomt för att använda den senast registrerade cykelstarten."
+        }
+      },
+      "menarche": {
+        "title": "Detaljer om förmenarche",
+        "description": "Konfigurera spårning innan menarche.",
+        "data": {
+          "family_menarche_age": "Menarche-ålder i familjen (8–20, valfritt)"
+        },
+        "data_description": {
+          "family_menarche_age": "Ålder för menarche i familjen (mamma/syster), används för att uppskatta den förväntade åldern."
+        }
+      },
+      "menopause": {
+        "title": "Detaljer om klimakteriet",
+        "description": "Konfigurera klimakteriespårning.",
+        "data": {
+          "menopause_start_date": "Klimakteriets startdatum (ÅÅÅÅ-MM-DD)"
+        },
+        "data_description": {
+          "menopause_start_date": "Datum då klimakteriet började (ÅÅÅÅ-MM-DD). Lämna tomt om okänt."
+        }
+      },
+      "postpartum": {
+        "title": "Detaljer efter förlossning",
+        "description": "Konfigurera perioden efter förlossningen.",
+        "data": {
+          "postpartum_start_date": "Barnets födelsedatum (ÅÅÅÅ-MM-DD)",
+          "postpartum_duration_days": "Uppföljningsperiod efter förlossning (dagar, standard 42)"
+        },
+        "data_description": {
+          "postpartum_start_date": "Datum då barnet föddes. Används för att beräkna uppföljningsperioden efter förlossningen.",
+          "postpartum_duration_days": "Hur många dagar efter förlossningen som läget efter förlossning förblir aktivt (1–365). Standard är 42 (6 veckor)."
         }
       }
     },

@@ -20,60 +20,77 @@
     "step": {
       "init": {
         "title": "Paramètres du cycle menstruel",
-        "description": "Ajustez les paramètres de suivi du cycle. Les modifications sont enregistrées immédiatement.",
+        "description": "Paramètres généraux. Activez une étape de vie ci-dessous pour configurer ses détails à l'écran suivant.",
         "data": {
           "friendly_name": "Nom d'affichage",
-          "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
-          "birth_date": "Date de naissance (AAAA-MM-JJ, facultatif — permet l'affichage de l'âge et améliore le mode pré-ménarche)",
+          "icon": "Icône (optionnel, ex. mdi:calendar-heart)",
+          "birth_date": "Date de naissance (AAAA-MM-JJ, optionnel — active l'affichage de l'âge et améliore le mode pré-ménarche)",
           "period_duration_days": "Durée des règles (jours)",
-          "pregnancy_enabled": "Activer le mode grossesse",
-          "pregnancy_start_date": "Date de début de grossesse (AAAA-MM-JJ)",
-          "pregnancy_high_risk": "Grossesse à risque",
-          "pregnancy_risk_notes": "Notes sur les risques (facultatif, ex. pathologie ou point de surveillance)",
-          "pre_menarche_enabled": "Activer le suivi pré-ménarche",
-          "family_menarche_age": "Âge des premières règles dans la famille (8–20, facultatif)",
-          "menopause_enabled": "Activer le mode ménopause",
-          "menopause_start_date": "Date de début de la ménopause (AAAA-MM-JJ)",
-          "postpartum_enabled": "Activer le mode post-partum",
-          "postpartum_start_date": "Date de naissance de l'enfant (AAAA-MM-JJ)",
-          "postpartum_duration_days": "Durée de suivi post-partum (jours, 42 par défaut)",
           "cycle_length_override": "Forcer la durée du cycle (jours, 0 = automatique)",
-          "nfp_analysis_mode": "Mode d'analyse PFN",
           "num_predictions": "Nombre de prévisions de cycles futurs",
+          "nfp_analysis_mode": "Mode d'analyse NFP",
           "onboarding_stage": "Étape d'intégration",
-          "show_cycle_dashboard": "Afficher le tableau de bord du cycle dans la barre latérale",
-          "cycle_dashboard_default_page": "Préférer le tableau de bord du cycle comme page d'accueil",
-          "dashboard_discreet_mode": "Mode discret (libellés axés sur la confidentialité)",
-          "dashboard_widget_quick_log": "Widget : Saisie rapide",
-          "dashboard_widget_today_status": "Widget : Statut du jour",
-          "dashboard_widget_upcoming_window": "Widget : Prochaine fenêtre",
-          "dashboard_widget_reminders": "Widget : Rappels",
-          "dashboard_widget_progress": "Widget : Progression et badges",
           "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
-          "dashboard_default_landing": "Préférer le tableau de bord du cycle comme page d'accueil"
+          "pregnancy_enabled": "Activer le mode grossesse",
+          "pre_menarche_enabled": "Activer le suivi pré-ménarche",
+          "menopause_enabled": "Activer le mode ménopause",
+          "postpartum_enabled": "Activer le mode post-partum"
         },
         "data_description": {
-          "period_duration_days": "Nombre de jours que durent habituellement les règles (1–14).",
-          "pregnancy_enabled": "Active le mode de suivi de la grossesse. La date de début de grossesse est renseignée automatiquement à partir du dernier début de cycle si le champ est laissé vide.",
-          "pregnancy_start_date": "Premier jour des dernières règles (DDR). Laissez vide pour utiliser le dernier début de cycle enregistré.",
-          "pre_menarche_enabled": "Suivre les signes de puberté avant les premières règles (ménarche).",
-          "family_menarche_age": "Âge des premières règles dans la famille (mère/sœur), utilisé pour estimer l'âge attendu.",
-          "menopause_enabled": "Active le mode de suivi de la ménopause.",
-          "menopause_start_date": "Date à laquelle la ménopause a commencé (AAAA-MM-JJ). Laissez vide si inconnue.",
-          "cycle_length_override": "Remplace la durée moyenne du cycle calculée automatiquement. Mettez 0 pour utiliser la valeur calculée automatiquement à partir de votre historique (recommandé). Mettez une valeur entre 20 et 38 pour fixer manuellement la durée du cycle utilisée pour le calcul de la fenêtre fertile et de l'ovulation.",
-          "nfp_analysis_mode": "Détermine la façon dont l'ovulation et la fenêtre fertile sont calculées. Le mode « hybride » (par défaut) apprend à partir des données de température observées et se rabat sur la formule statistique si besoin. Le mode « strict » n'affiche l'ovulation et la fenêtre fertile que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
-          "show_cycle_dashboard": "Ajoute une page dédiée facultative « Tableau de bord du cycle » à la barre latérale de Home Assistant.",
-          "cycle_dashboard_default_page": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet.",
-          "dashboard_discreet_mode": "Utilise des libellés neutres et axés sur la confidentialité dans tout le tableau de bord.",
-          "dashboard_widget_quick_log": "Affiche le widget de saisie rapide.",
-          "dashboard_widget_today_status": "Affiche le statut du cycle et le numéro du jour actuel.",
-          "dashboard_widget_upcoming_window": "Affiche la prochaine fenêtre fertile ou la prévision des règles.",
-          "dashboard_widget_reminders": "Affiche les rappels quotidiens et les indications de vérification du nécessaire.",
-          "dashboard_widget_progress": "Affiche les badges de progression obtenus.",
-          "dashboard_enabled": "Ajoute une page dédiée facultative « Tableau de bord du cycle » à la barre latérale de Home Assistant.",
-          "dashboard_default_landing": "Option permettant d'utiliser le tableau de bord du cycle comme page par défaut/d'accueil, si la configuration Home Assistant le permet.",
-          "num_predictions": "Nombre de débuts de cycle futurs à générer (1–12). Par défaut : 6.",
-          "onboarding_stage": "Choisissez pré-ménarche, phase d'apprentissage post-ménarche précoce, ou cycle établi."
+          "period_duration_days": "Nombre de jours pendant lesquels les règles durent généralement (1 à 14).",
+          "cycle_length_override": "Remplace la durée moyenne de cycle calculée automatiquement. Mettez 0 pour utiliser la valeur calculée à partir de votre historique (recommandé). Mettez 20 à 38 pour fixer manuellement la durée utilisée pour la fenêtre de fertilité et l'ovulation.",
+          "num_predictions": "Nombre de débuts de cycle futurs à générer (1 à 12). Par défaut : 6.",
+          "onboarding_stage": "Choisissez pré-ménarche, phase d'apprentissage post-ménarche précoce, ou cycle établi.",
+          "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant.",
+          "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
+          "pregnancy_enabled": "Active le mode de suivi de grossesse et affiche un écran de détails ensuite.",
+          "pre_menarche_enabled": "Suit les signes de puberté avant les premières règles (ménarche) et affiche un écran de détails ensuite.",
+          "menopause_enabled": "Active le mode de suivi de la ménopause et affiche un écran de détails ensuite.",
+          "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite."
+        }
+      },
+      "pregnancy": {
+        "title": "Détails de la grossesse",
+        "description": "Configurer le suivi de grossesse.",
+        "data": {
+          "pregnancy_start_date": "Date de début de grossesse (AAAA-MM-JJ)",
+          "pregnancy_high_risk": "Grossesse à risque",
+          "pregnancy_risk_notes": "Notes sur les risques (optionnel, ex. affection ou point de surveillance)"
+        },
+        "data_description": {
+          "pregnancy_start_date": "Premier jour des dernières règles (DDR). Laissez vide pour utiliser le dernier début de cycle enregistré."
+        }
+      },
+      "menarche": {
+        "title": "Détails pré-ménarche",
+        "description": "Configurer le suivi pré-ménarche.",
+        "data": {
+          "family_menarche_age": "Âge de la ménarche dans la famille (8 à 20, optionnel)"
+        },
+        "data_description": {
+          "family_menarche_age": "Âge de la ménarche dans la famille (mère/sœur), utilisé pour estimer l'âge attendu."
+        }
+      },
+      "menopause": {
+        "title": "Détails de la ménopause",
+        "description": "Configurer le suivi de la ménopause.",
+        "data": {
+          "menopause_start_date": "Date de début de ménopause (AAAA-MM-JJ)"
+        },
+        "data_description": {
+          "menopause_start_date": "Date à laquelle la ménopause a commencé (AAAA-MM-JJ). Laissez vide si inconnue."
+        }
+      },
+      "postpartum": {
+        "title": "Détails post-partum",
+        "description": "Configurer la période post-partum.",
+        "data": {
+          "postpartum_start_date": "Date de naissance de l'enfant (AAAA-MM-JJ)",
+          "postpartum_duration_days": "Période de suivi post-partum (jours, 42 par défaut)"
+        },
+        "data_description": {
+          "postpartum_start_date": "Date de naissance de l'enfant. Utilisée pour calculer la période de suivi post-partum.",
+          "postpartum_duration_days": "Nombre de jours après la naissance pendant lesquels le mode post-partum reste actif (1 à 365). Par défaut : 42 (6 semaines)."
         }
       }
     },

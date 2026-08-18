@@ -57,6 +57,12 @@ from .const import (
 
 _INVALID_DATE_SENTINEL = "__invalid__"
 
+# Order in which conditional steps are shown, when their corresponding
+# enable-toggle was checked on the "init" step. A person with several life
+# stages toggled on (unusual, but not blocked) sees each relevant step once,
+# in this fixed order — not all possible combinations, just this sequence.
+_CONDITIONAL_STEP_ORDER = ["pregnancy", "menarche", "menopause", "postpartum"]
+
 
 def _parse_date_opt(value: str) -> str | None:
     """Return normalized ISO date string, None if empty, or _INVALID_DATE_SENTINEL if malformed."""
@@ -72,11 +78,10 @@ def _optional_date_key(key: str, current_value: str | None):
     """Build a vol.Optional schema key for a DateSelector field.
 
     Passing a literal Python None as `default=` for a selector.DateSelector()
-    field appears to trip voluptuous_serialize's schema-to-form conversion
-    (surfaces to the user as "Not a parsable type", on every date field at
-    once, regardless of which one is actually empty). Omitting `default`
-    entirely when there's no current value avoids this — voluptuous's own
-    UNDEFINED sentinel serializes fine, an explicit None value doesn't.
+    field trips voluptuous_serialize's schema-to-form conversion (surfaces to
+    the user as "Not a parsable type"). Omitting `default` entirely when
+    there's no current value avoids this — voluptuous's own UNDEFINED
+    sentinel serializes fine, an explicit None value doesn't.
     """
     if current_value:
         return vol.Optional(key, default=current_value)
@@ -168,20 +173,41 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
-    """Handle options for menstruation gauge."""
+    """Handle options for menstruation gauge, as a short multi-step wizard.
+
+    Step 1 ("init") collects general settings plus four enable-toggles
+    (pregnancy / pre-menarche / menopause / postpartum). Only the steps whose
+    toggle was checked are then shown, one at a time, each with just the
+    handful of fields relevant to that life stage — instead of showing all
+    ~20 fields on one page regardless of which apply. A final step saves
+    everything that was collected.
+
+    Home Assistant's data_entry_flow doesn't support a "Back" button natively;
+    this first version doesn't add one — getting a field wrong on a later step
+    means clicking through again from the start (no data is lost from earlier
+    steps within the same attempt, since it's held on `self._data` and only
+    written to storage at the very end).
+    """
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
+        # Accumulates validated values across every step; only written to
+        # storage/entry once the last relevant step completes successfully.
+        self._data: dict = {}
+        self._pending_steps: list[str] = []
+        self._runtime = None
+        self._current: dict = {}
 
-    async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
-        """Manage the options."""
+    async def _async_resolve_current(self) -> None:
+        """Resolve current runtime/storage values once, cached for every step."""
+        if self._current:
+            return
+
         from .storage import MenstruationStorage
 
-        errors: dict[str, str] = {}
-
-        # Resolve current runtime (may be absent during a reload)
         domain_data = self.hass.data.get(DOMAIN, {})
         runtime = domain_data.get(self._entry.entry_id)
+        self._runtime = runtime
 
         if runtime is not None:
             current_period_duration: int = runtime.period_duration_days
@@ -223,49 +249,190 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             }
             current_cycle_length_override = stored.get("cycle_length_override") or 0
             current_onboarding_stage = str(stored.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE))
+
         if current_onboarding_stage not in ONBOARDING_STAGES:
             current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
-        current_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
-        current_nfp_mode = self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
-        current_birth_date = str(self._entry.data.get(CONF_BIRTH_DATE, "") or "")
-        current_pregnancy_high_risk = bool(pregnancy_data.get("high_risk", False))
-        current_pregnancy_risk_notes = str(pregnancy_data.get("risk_notes", "") or "")
-        current_postpartum_enabled = bool(noncycle_data.get("is_postpartum", False))
-        current_postpartum_start_date = noncycle_data.get("postpartum_start_date") or None
-        current_postpartum_duration_days = int(noncycle_data.get("postpartum_duration_days") or 42)
-        current_show_dashboard = bool(
-            self._entry.options.get(
-                CONF_DASHBOARD_ENABLED,
-                self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED),
-            )
-        )
+
+        self._current = {
+            "period_duration": current_period_duration,
+            "friendly_name": current_friendly_name,
+            "icon": current_icon,
+            "pregnancy_data": pregnancy_data,
+            "menarche_data": menarche_data,
+            "menopause_data": menopause_data,
+            "noncycle_data": noncycle_data,
+            "cycle_length_override": current_cycle_length_override,
+            "onboarding_stage": current_onboarding_stage,
+            "num_predictions": self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS),
+            "nfp_mode": self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            "birth_date": str(self._entry.data.get(CONF_BIRTH_DATE, "") or ""),
+            "pregnancy_high_risk": bool(pregnancy_data.get("high_risk", False)),
+            "pregnancy_risk_notes": str(pregnancy_data.get("risk_notes", "") or ""),
+            "postpartum_start_date": noncycle_data.get("postpartum_start_date") or None,
+            "postpartum_duration_days": int(noncycle_data.get("postpartum_duration_days") or 42),
+            "show_dashboard": bool(
+                self._entry.options.get(
+                    CONF_DASHBOARD_ENABLED,
+                    self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED),
+                )
+            ),
+        }
+
+    async def _async_advance(self) -> FlowResult:
+        """Move to the next pending conditional step, or finish if none remain."""
+        if self._pending_steps:
+            next_step = self._pending_steps.pop(0)
+            return await getattr(self, f"async_step_{next_step}")()
+        return await self._async_finish()
+
+    # ------------------------------------------------------------------
+    # Step 1: general settings + enable-toggles
+    # ------------------------------------------------------------------
+    async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
+        """General settings and the four life-stage enable-toggles."""
+        await self._async_resolve_current()
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Validate optional date fields
-            preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE) or "").strip()
-            meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE) or "").strip()
             birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
-            postpartum_date_raw = str(user_input.get(CONF_POSTPARTUM_START_DATE) or "").strip()
-
-            preg_date_parsed = _parse_date_opt(preg_date_raw)
-            meno_date_parsed = _parse_date_opt(meno_date_raw)
             birth_date_parsed = _parse_date_opt(birth_date_raw)
-            postpartum_date_parsed = _parse_date_opt(postpartum_date_raw)
-
-            if preg_date_parsed is _INVALID_DATE_SENTINEL:
-                errors[CONF_PREGNANCY_START_DATE] = "invalid_date"
-            if meno_date_parsed is _INVALID_DATE_SENTINEL:
-                errors[CONF_MENOPAUSE_START_DATE] = "invalid_date"
             if birth_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_BIRTH_DATE] = "invalid_date"
             elif birth_date_parsed and birth_date_parsed > date.today().isoformat():
                 errors[CONF_BIRTH_DATE] = "invalid_date"
-            if postpartum_date_parsed is _INVALID_DATE_SENTINEL:
-                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
-            elif postpartum_date_parsed and postpartum_date_parsed > date.today().isoformat():
-                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
 
-            # Validate family menarche age
+            if not errors:
+                self._data[CONF_FRIENDLY_NAME] = str(user_input.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
+                self._data[CONF_ICON] = str(user_input.get(CONF_ICON, "")).strip()
+                self._data[CONF_BIRTH_DATE] = birth_date_parsed
+                self._data[CONF_PERIOD_DURATION_DAYS] = max(
+                    1, min(14, int(user_input.get(CONF_PERIOD_DURATION_DAYS, DEFAULT_PERIOD_DURATION_DAYS)))
+                )
+
+                raw_cycle_override = user_input.get(CONF_CYCLE_LENGTH_OVERRIDE, 0)
+                try:
+                    cycle_override_int = int(raw_cycle_override)
+                    self._data[CONF_CYCLE_LENGTH_OVERRIDE] = (
+                        cycle_override_int
+                        if CYCLE_LENGTH_OVERRIDE_MIN <= cycle_override_int <= CYCLE_LENGTH_OVERRIDE_MAX
+                        else None
+                    )
+                except (TypeError, ValueError):
+                    self._data[CONF_CYCLE_LENGTH_OVERRIDE] = None
+
+                self._data[CONF_NUM_PREDICTIONS] = max(
+                    1, min(MAX_NUM_PREDICTIONS, int(user_input.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)))
+                )
+                self._data[CONF_NFP_ANALYSIS_MODE] = user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
+
+                stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, self._current["onboarding_stage"])).strip().lower()
+                self._data[CONF_ONBOARDING_STAGE] = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
+                self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
+
+                self._data["_pregnancy_enabled"] = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
+                self._data["_pre_menarche_enabled"] = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
+                self._data["_menopause_enabled"] = bool(user_input.get(CONF_MENOPAUSE_ENABLED, False))
+                self._data["_postpartum_enabled"] = bool(user_input.get(CONF_POSTPARTUM_ENABLED, False))
+
+                self._pending_steps = [
+                    step
+                    for step, flag in [
+                        ("pregnancy", self._data["_pregnancy_enabled"]),
+                        ("menarche", self._data["_pre_menarche_enabled"]),
+                        ("menopause", self._data["_menopause_enabled"]),
+                        ("postpartum", self._data["_postpartum_enabled"]),
+                    ]
+                    if flag
+                ]
+                return await self._async_advance()
+
+        c = self._current
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_FRIENDLY_NAME, default=c["friendly_name"]): str,
+                vol.Optional(CONF_ICON, default=c["icon"]): str,
+                _optional_date_key(CONF_BIRTH_DATE, c["birth_date"] or None): selector.DateSelector(),
+                vol.Required(CONF_PERIOD_DURATION_DAYS, default=c["period_duration"]): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=14)
+                ),
+                vol.Optional(CONF_CYCLE_LENGTH_OVERRIDE, default=c["cycle_length_override"]): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=CYCLE_LENGTH_OVERRIDE_MAX)
+                ),
+                vol.Optional(CONF_NUM_PREDICTIONS, default=c["num_predictions"]): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=MAX_NUM_PREDICTIONS)
+                ),
+                vol.Optional(CONF_NFP_ANALYSIS_MODE, default=c["nfp_mode"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=NFP_ANALYSIS_MODES,
+                        translation_key="nfp_analysis_mode",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_ONBOARDING_STAGE, default=c["onboarding_stage"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=ONBOARDING_STAGES,
+                        translation_key="onboarding_stage",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
+                vol.Optional(
+                    CONF_PREGNANCY_ENABLED, default=bool(c["pregnancy_data"].get("is_pregnant", False))
+                ): bool,
+                vol.Optional(
+                    CONF_PRE_MENARCHE_ENABLED, default=bool(c["menarche_data"].get("tracking_active", False))
+                ): bool,
+                vol.Optional(
+                    CONF_MENOPAUSE_ENABLED, default=bool(c["menopause_data"].get("is_menopause", False))
+                ): bool,
+                vol.Optional(CONF_POSTPARTUM_ENABLED, default=bool(c["noncycle_data"].get("is_postpartum", False))): bool,
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    # ------------------------------------------------------------------
+    # Step 2 (conditional): pregnancy
+    # ------------------------------------------------------------------
+    async def async_step_pregnancy(self, user_input: dict | None = None) -> FlowResult:
+        """Pregnancy details — only shown when pregnancy was enabled in step 1."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            preg_date_raw = str(user_input.get(CONF_PREGNANCY_START_DATE) or "").strip()
+            preg_date_parsed = _parse_date_opt(preg_date_raw)
+            if preg_date_parsed is _INVALID_DATE_SENTINEL:
+                errors[CONF_PREGNANCY_START_DATE] = "invalid_date"
+
+            if not errors:
+                new_preg_start = preg_date_parsed
+                if not new_preg_start and self._runtime and self._runtime.history:
+                    # Auto-populate from the last logged cycle start if not provided.
+                    new_preg_start = sorted(self._runtime.history)[-1]
+                self._data["_pregnancy_start"] = new_preg_start
+                self._data[CONF_PREGNANCY_HIGH_RISK] = bool(user_input.get(CONF_PREGNANCY_HIGH_RISK, False))
+                self._data[CONF_PREGNANCY_RISK_NOTES] = str(user_input.get(CONF_PREGNANCY_RISK_NOTES, "")).strip()
+                return await self._async_advance()
+
+        pregnancy_data = self._current["pregnancy_data"]
+        schema = vol.Schema(
+            {
+                _optional_date_key(CONF_PREGNANCY_START_DATE, pregnancy_data.get("start_date")): selector.DateSelector(),
+                vol.Optional(
+                    CONF_PREGNANCY_HIGH_RISK, default=self._current["pregnancy_high_risk"]
+                ): bool,
+                vol.Optional(CONF_PREGNANCY_RISK_NOTES, default=self._current["pregnancy_risk_notes"]): str,
+            }
+        )
+        return self.async_show_form(step_id="pregnancy", data_schema=schema, errors=errors)
+
+    # ------------------------------------------------------------------
+    # Step 3 (conditional): pre-menarche
+    # ------------------------------------------------------------------
+    async def async_step_menarche(self, user_input: dict | None = None) -> FlowResult:
+        """Pre-menarche details — only shown when pre-menarche was enabled in step 1."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
             family_age_raw = str(user_input.get(CONF_FAMILY_MENARCHE_AGE, "")).strip()
             new_family_menarche_age: int | None = None
             if family_age_raw:
@@ -278,225 +445,204 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     errors[CONF_FAMILY_MENARCHE_AGE] = "invalid_menarche_age"
 
             if not errors:
-                new_friendly_name = str(user_input.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
-                new_icon = str(user_input.get(CONF_ICON, "")).strip()
-                new_period_duration = max(1, min(14, int(user_input.get(CONF_PERIOD_DURATION_DAYS, DEFAULT_PERIOD_DURATION_DAYS))))
-                pregnancy_enabled = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
-                pre_menarche_enabled = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
-                menopause_enabled = bool(user_input.get(CONF_MENOPAUSE_ENABLED, False))
-                new_num_predictions = max(
-                    1,
-                    min(
-                        MAX_NUM_PREDICTIONS,
-                        int(user_input.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)),
-                    ),
-                )
-                stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, current_onboarding_stage)).strip().lower()
-                new_onboarding_stage = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
+                self._data[CONF_FAMILY_MENARCHE_AGE] = new_family_menarche_age
+                return await self._async_advance()
 
-                # Parse cycle length override (0 = auto/disabled, 20-38 = override)
-                raw_cycle_override = user_input.get(CONF_CYCLE_LENGTH_OVERRIDE, 0)
-                try:
-                    cycle_override_int = int(raw_cycle_override)
-                    new_cycle_length_override: int | None = cycle_override_int if CYCLE_LENGTH_OVERRIDE_MIN <= cycle_override_int <= CYCLE_LENGTH_OVERRIDE_MAX else None
-                except (TypeError, ValueError):
-                    new_cycle_length_override = None
-
-                # Auto-populate pregnancy start date from last cycle if not provided
-                new_preg_start: str | None = preg_date_parsed if preg_date_parsed is not _INVALID_DATE_SENTINEL else None
-                if new_preg_start:
-                    pregnancy_enabled = True
-                if pregnancy_enabled and not new_preg_start and runtime and runtime.history:
-                    new_preg_start = sorted(runtime.history)[-1]
-
-                new_pregnancy_data = {
-                    "is_pregnant": pregnancy_enabled,
-                    "start_date": new_preg_start,
-                    "high_risk": bool(user_input.get(CONF_PREGNANCY_HIGH_RISK, False)),
-                    "risk_notes": str(user_input.get(CONF_PREGNANCY_RISK_NOTES, "")).strip(),
-                }
-                new_menarche_data = {
-                    "tracking_active": pre_menarche_enabled,
-                    "is_menarche": menarche_data.get("is_menarche", False),
-                    "menarche_date": menarche_data.get("menarche_date"),
-                    # No longer manually entered — computed dynamically in sensor.py
-                    # from birth_date + family_menarche_age (mother's age at menarche).
-                    "estimated_date": None,
-                    "family_menarche_age": new_family_menarche_age,
-                }
-                new_menopause_data = {
-                    "is_menopause": menopause_enabled,
-                    "start_date": meno_date_parsed if meno_date_parsed is not _INVALID_DATE_SENTINEL else None,
-                }
-
-                postpartum_enabled = bool(user_input.get(CONF_POSTPARTUM_ENABLED, False))
-                new_postpartum_start = postpartum_date_parsed if postpartum_date_parsed is not _INVALID_DATE_SENTINEL else None
-                if new_postpartum_start:
-                    postpartum_enabled = True
-                raw_postpartum_duration = user_input.get(CONF_POSTPARTUM_DURATION_DAYS, current_postpartum_duration_days)
-                try:
-                    new_postpartum_duration = max(1, min(365, int(raw_postpartum_duration)))
-                except (TypeError, ValueError):
-                    new_postpartum_duration = 42
-                new_noncycle_data = {
-                    **noncycle_data,
-                    "is_postpartum": postpartum_enabled,
-                    "postpartum_start_date": new_postpartum_start,
-                    "postpartum_duration_days": new_postpartum_duration,
-                }
-
-                if runtime is not None:
-                    # Update in-memory runtime
-                    runtime.friendly_name = new_friendly_name
-                    runtime.icon = new_icon
-                    runtime.period_duration_days = new_period_duration
-                    runtime.pregnancy_data = new_pregnancy_data
-                    runtime.menarche_data = new_menarche_data
-                    runtime.menopause_data = new_menopause_data
-                    runtime.noncycle_data = new_noncycle_data
-                    runtime.cycle_length_override = new_cycle_length_override
-                    runtime.onboarding_stage = new_onboarding_stage
-
-                    # Persist to storage
-                    await runtime.storage.async_save(
-                        runtime.history,
-                        runtime.period_duration_days,
-                        runtime.symptom_history,
-                        runtime.product_usage,
-                        runtime.pregnancy_data,
-                        runtime.menarche_data,
-                        runtime.pre_menarche_data,
-                        runtime.menopause_data,
-                        runtime.noncycle_data,
-                        cycle_length_override=new_cycle_length_override,
-                        onboarding_stage=new_onboarding_stage,
-                    )
-                    async_dispatcher_send(self.hass, SIGNAL_HISTORY_UPDATED)
-                else:
-                    # Runtime unavailable – save directly to storage
-                    profile = slugify(str(self._entry.data.get(CONF_PROFILE, ""))).strip("_") or "default"
-                    fallback_storage = MenstruationStorage(
-                        self.hass,
-                        key=f"{STORAGE_KEY}.{profile}",
-                        legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
-                    )
-                    stored_full = await fallback_storage.async_load()
-                    await fallback_storage.async_save(
-                        stored_full["history"],
-                        new_period_duration,
-                        stored_full.get("symptom_history", []),
-                        stored_full.get("product_usage", []),
-                        new_pregnancy_data,
-                        new_menarche_data,
-                        stored_full.get("pre_menarche_data"),
-                        new_menopause_data,
-                        new_noncycle_data,
-                        cycle_length_override=new_cycle_length_override,
-                        onboarding_stage=new_onboarding_stage,
-                    )
-
-                # Keep entry.data in sync for basic info fields
-                self.hass.config_entries.async_update_entry(
-                    self._entry,
-                    data={
-                        **self._entry.data,
-                        CONF_FRIENDLY_NAME: new_friendly_name,
-                        CONF_ICON: new_icon,
-                        CONF_ONBOARDING_STAGE: new_onboarding_stage,
-                        CONF_BIRTH_DATE: birth_date_parsed or None,
-                    },
-                    title=new_friendly_name,
-                )
-
-                return self.async_create_entry(
-                    title="",
-                    data={
-                        **self._entry.options,
-                        CONF_NUM_PREDICTIONS: new_num_predictions,
-                        CONF_NFP_ANALYSIS_MODE: user_input.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-                        CONF_ONBOARDING_STAGE: new_onboarding_stage,
-                        CONF_DASHBOARD_ENABLED: bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED)),
-                    },
-                )
-
-        # Build schema pre-filled with current values
+        menarche_data = self._current["menarche_data"]
         schema = vol.Schema(
             {
-                vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
-                vol.Optional(CONF_ICON, default=current_icon): str,
-                _optional_date_key(CONF_BIRTH_DATE, current_birth_date or None): selector.DateSelector(),
-                vol.Required(
-                    CONF_PERIOD_DURATION_DAYS,
-                    default=current_period_duration,
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=14)),
-                vol.Optional(
-                    CONF_PREGNANCY_ENABLED,
-                    default=bool(pregnancy_data.get("is_pregnant", False)),
-                ): bool,
-                _optional_date_key(CONF_PREGNANCY_START_DATE, pregnancy_data.get("start_date")): selector.DateSelector(),
-                vol.Optional(
-                    CONF_PREGNANCY_HIGH_RISK,
-                    default=current_pregnancy_high_risk,
-                ): bool,
-                vol.Optional(
-                    CONF_PREGNANCY_RISK_NOTES,
-                    default=current_pregnancy_risk_notes,
-                ): str,
-                vol.Optional(
-                    CONF_PRE_MENARCHE_ENABLED,
-                    default=bool(menarche_data.get("tracking_active", False)),
-                ): bool,
                 vol.Optional(
                     CONF_FAMILY_MENARCHE_AGE,
                     default=str(menarche_data.get("family_menarche_age") or ""),
                 ): str,
-                vol.Optional(
-                    CONF_MENOPAUSE_ENABLED,
-                    default=bool(menopause_data.get("is_menopause", False)),
-                ): bool,
-                _optional_date_key(CONF_MENOPAUSE_START_DATE, menopause_data.get("start_date")): selector.DateSelector(),
-                vol.Optional(
-                    CONF_POSTPARTUM_ENABLED,
-                    default=current_postpartum_enabled,
-                ): bool,
-                _optional_date_key(CONF_POSTPARTUM_START_DATE, current_postpartum_start_date): selector.DateSelector(),
-                vol.Optional(
-                    CONF_POSTPARTUM_DURATION_DAYS,
-                    default=current_postpartum_duration_days,
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
-                vol.Optional(
-                    CONF_CYCLE_LENGTH_OVERRIDE,
-                    default=current_cycle_length_override,
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CYCLE_LENGTH_OVERRIDE_MAX)),
-                vol.Optional(
-                    CONF_NUM_PREDICTIONS,
-                    default=current_num_predictions,
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=MAX_NUM_PREDICTIONS)),
-                vol.Optional(
-                    CONF_NFP_ANALYSIS_MODE,
-                    default=current_nfp_mode,
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=NFP_ANALYSIS_MODES,
-                        translation_key="nfp_analysis_mode",
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_ONBOARDING_STAGE,
-                    default=current_onboarding_stage,
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=ONBOARDING_STAGES,
-                        translation_key="onboarding_stage",
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_DASHBOARD_ENABLED,
-                    default=current_show_dashboard,
-                ): bool,
             }
         )
+        return self.async_show_form(step_id="menarche", data_schema=schema, errors=errors)
 
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+    # ------------------------------------------------------------------
+    # Step 4 (conditional): menopause
+    # ------------------------------------------------------------------
+    async def async_step_menopause(self, user_input: dict | None = None) -> FlowResult:
+        """Menopause details — only shown when menopause was enabled in step 1."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            meno_date_raw = str(user_input.get(CONF_MENOPAUSE_START_DATE) or "").strip()
+            meno_date_parsed = _parse_date_opt(meno_date_raw)
+            if meno_date_parsed is _INVALID_DATE_SENTINEL:
+                errors[CONF_MENOPAUSE_START_DATE] = "invalid_date"
+
+            if not errors:
+                self._data["_menopause_start"] = meno_date_parsed
+                return await self._async_advance()
+
+        menopause_data = self._current["menopause_data"]
+        schema = vol.Schema(
+            {
+                _optional_date_key(CONF_MENOPAUSE_START_DATE, menopause_data.get("start_date")): selector.DateSelector(),
+            }
+        )
+        return self.async_show_form(step_id="menopause", data_schema=schema, errors=errors)
+
+    # ------------------------------------------------------------------
+    # Step 5 (conditional): postpartum
+    # ------------------------------------------------------------------
+    async def async_step_postpartum(self, user_input: dict | None = None) -> FlowResult:
+        """Postpartum details — only shown when postpartum was enabled in step 1."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            postpartum_date_raw = str(user_input.get(CONF_POSTPARTUM_START_DATE) or "").strip()
+            postpartum_date_parsed = _parse_date_opt(postpartum_date_raw)
+            if postpartum_date_parsed is _INVALID_DATE_SENTINEL:
+                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
+            elif postpartum_date_parsed and postpartum_date_parsed > date.today().isoformat():
+                errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
+
+            if not errors:
+                self._data["_postpartum_start"] = postpartum_date_parsed
+                raw_postpartum_duration = user_input.get(
+                    CONF_POSTPARTUM_DURATION_DAYS, self._current["postpartum_duration_days"]
+                )
+                try:
+                    self._data[CONF_POSTPARTUM_DURATION_DAYS] = max(1, min(365, int(raw_postpartum_duration)))
+                except (TypeError, ValueError):
+                    self._data[CONF_POSTPARTUM_DURATION_DAYS] = 42
+                return await self._async_advance()
+
+        schema = vol.Schema(
+            {
+                _optional_date_key(
+                    CONF_POSTPARTUM_START_DATE, self._current["postpartum_start_date"]
+                ): selector.DateSelector(),
+                vol.Optional(
+                    CONF_POSTPARTUM_DURATION_DAYS, default=self._current["postpartum_duration_days"]
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+            }
+        )
+        return self.async_show_form(step_id="postpartum", data_schema=schema, errors=errors)
+
+    # ------------------------------------------------------------------
+    # Final: combine everything collected and save
+    # ------------------------------------------------------------------
+    async def _async_finish(self) -> FlowResult:
+        """Combine everything collected across steps and persist it."""
+        from .storage import MenstruationStorage
+
+        d = self._data
+        c = self._current
+        runtime = self._runtime
+
+        pregnancy_enabled = d.get("_pregnancy_enabled", False)
+        new_preg_start = d.get("_pregnancy_start", c["pregnancy_data"].get("start_date"))
+        if new_preg_start and "_pregnancy_start" in d:
+            pregnancy_enabled = True
+        new_pregnancy_data = {
+            "is_pregnant": pregnancy_enabled,
+            "start_date": new_preg_start,
+            "high_risk": d.get(CONF_PREGNANCY_HIGH_RISK, c["pregnancy_high_risk"]),
+            "risk_notes": d.get(CONF_PREGNANCY_RISK_NOTES, c["pregnancy_risk_notes"]),
+        }
+
+        new_menarche_data = {
+            "tracking_active": d.get("_pre_menarche_enabled", False),
+            "is_menarche": c["menarche_data"].get("is_menarche", False),
+            "menarche_date": c["menarche_data"].get("menarche_date"),
+            # Not manually entered — computed dynamically in sensor.py from
+            # birth_date + family_menarche_age (mother's age at menarche).
+            "estimated_date": None,
+            "family_menarche_age": d.get(CONF_FAMILY_MENARCHE_AGE, c["menarche_data"].get("family_menarche_age")),
+        }
+
+        new_menopause_data = {
+            "is_menopause": d.get("_menopause_enabled", False),
+            "start_date": d.get("_menopause_start", c["menopause_data"].get("start_date")),
+        }
+
+        postpartum_enabled = d.get("_postpartum_enabled", False)
+        new_postpartum_start = d.get("_postpartum_start", c["postpartum_start_date"])
+        if new_postpartum_start and "_postpartum_start" in d:
+            postpartum_enabled = True
+        new_noncycle_data = {
+            **c["noncycle_data"],
+            "is_postpartum": postpartum_enabled,
+            "postpartum_start_date": new_postpartum_start,
+            "postpartum_duration_days": d.get(CONF_POSTPARTUM_DURATION_DAYS, c["postpartum_duration_days"]),
+        }
+
+        new_friendly_name = d[CONF_FRIENDLY_NAME]
+        new_icon = d[CONF_ICON]
+        new_period_duration = d[CONF_PERIOD_DURATION_DAYS]
+        new_cycle_length_override = d[CONF_CYCLE_LENGTH_OVERRIDE]
+        new_onboarding_stage = d[CONF_ONBOARDING_STAGE]
+        birth_date_parsed = d[CONF_BIRTH_DATE]
+
+        if runtime is not None:
+            runtime.friendly_name = new_friendly_name
+            runtime.icon = new_icon
+            runtime.period_duration_days = new_period_duration
+            runtime.pregnancy_data = new_pregnancy_data
+            runtime.menarche_data = new_menarche_data
+            runtime.menopause_data = new_menopause_data
+            runtime.noncycle_data = new_noncycle_data
+            runtime.cycle_length_override = new_cycle_length_override
+            runtime.onboarding_stage = new_onboarding_stage
+
+            await runtime.storage.async_save(
+                runtime.history,
+                runtime.period_duration_days,
+                runtime.symptom_history,
+                runtime.product_usage,
+                runtime.pregnancy_data,
+                runtime.menarche_data,
+                runtime.pre_menarche_data,
+                runtime.menopause_data,
+                runtime.noncycle_data,
+                cycle_length_override=new_cycle_length_override,
+                onboarding_stage=new_onboarding_stage,
+            )
+            async_dispatcher_send(self.hass, SIGNAL_HISTORY_UPDATED)
+        else:
+            profile = slugify(str(self._entry.data.get(CONF_PROFILE, ""))).strip("_") or "default"
+            fallback_storage = MenstruationStorage(
+                self.hass,
+                key=f"{STORAGE_KEY}.{profile}",
+                legacy_key=f"{STORAGE_KEY_LEGACY}.{profile}",
+            )
+            stored_full = await fallback_storage.async_load()
+            await fallback_storage.async_save(
+                stored_full["history"],
+                new_period_duration,
+                stored_full.get("symptom_history", []),
+                stored_full.get("product_usage", []),
+                new_pregnancy_data,
+                new_menarche_data,
+                stored_full.get("pre_menarche_data"),
+                new_menopause_data,
+                new_noncycle_data,
+                cycle_length_override=new_cycle_length_override,
+                onboarding_stage=new_onboarding_stage,
+            )
+
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            data={
+                **self._entry.data,
+                CONF_FRIENDLY_NAME: new_friendly_name,
+                CONF_ICON: new_icon,
+                CONF_ONBOARDING_STAGE: new_onboarding_stage,
+                CONF_BIRTH_DATE: birth_date_parsed or None,
+            },
+            title=new_friendly_name,
+        )
+
+        return self.async_create_entry(
+            title="",
+            data={
+                **self._entry.options,
+                CONF_NUM_PREDICTIONS: d[CONF_NUM_PREDICTIONS],
+                CONF_NFP_ANALYSIS_MODE: d[CONF_NFP_ANALYSIS_MODE],
+                CONF_ONBOARDING_STAGE: new_onboarding_stage,
+                CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
+            },
+        )

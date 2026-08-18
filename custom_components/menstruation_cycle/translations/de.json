@@ -19,61 +19,78 @@
   "options": {
     "step": {
       "init": {
-        "title": "Menstruation Cycle Einstellungen",
-        "description": "Einstellungen zur Zyklusverfolgung anpassen. Änderungen werden sofort gespeichert.",
+        "title": "Menstruationszyklus-Einstellungen",
+        "description": "Allgemeine Einstellungen. Aktiviere unten eine Lebensphase, um deren Details im nächsten Bildschirm einzustellen.",
         "data": {
           "friendly_name": "Anzeigename",
-          "icon": "Icon (optional, z. B. mdi:calendar-heart)",
+          "icon": "Symbol (optional, z. B. mdi:calendar-heart)",
           "birth_date": "Geburtsdatum (JJJJ-MM-TT, optional — ermöglicht Altersanzeige und verbessert den Vor-der-Menarche-Modus)",
           "period_duration_days": "Periodendauer (Tage)",
-          "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
-          "pregnancy_start_date": "Schwangerschafts-Startdatum (JJJJ-MM-TT)",
-          "pregnancy_high_risk": "Risikoschwangerschaft",
-          "pregnancy_risk_notes": "Notizen zur Risikoschwangerschaft (optional, z. B. Befund oder Kontrollschwerpunkt)",
-          "pre_menarche_enabled": "Prä-Menarche-Tracking aktivieren",
-          "family_menarche_age": "Menarche-Alter in der Familie (8–20, optional)",
-          "menopause_enabled": "Menopause-Modus aktivieren",
-          "menopause_start_date": "Menopause-Startdatum (JJJJ-MM-TT)",
-          "postpartum_enabled": "Wochenbett-Modus aktivieren",
-          "postpartum_start_date": "Geburtsdatum des Kindes (JJJJ-MM-TT)",
-          "postpartum_duration_days": "Wochenbett-Zeitraum (Tage, Standard 42)",
-          "cycle_length_override": "Zyklus-Länge überschreiben (Tage, 0 = automatisch)",
-          "nfp_analysis_mode": "NFP-Analysemodus",
+          "cycle_length_override": "Zykluslänge überschreiben (Tage, 0 = automatisch)",
           "num_predictions": "Anzahl zukünftiger Zyklusvorhersagen",
+          "nfp_analysis_mode": "NFP-Analysemodus",
           "onboarding_stage": "Einstiegsphase",
-          "show_cycle_dashboard": "Cycle Dashboard in der Seitenleiste anzeigen",
-          "cycle_dashboard_default_page": "Cycle Dashboard als Startseite bevorzugen",
-          "dashboard_discreet_mode": "Diskreter Modus (datenschutzfreundliche Bezeichnungen)",
-          "dashboard_widget_quick_log": "Widget: Schnelleintrag",
-          "dashboard_widget_today_status": "Widget: Status heute",
-          "dashboard_widget_upcoming_window": "Widget: Nächstes Zeitfenster",
-          "dashboard_widget_reminders": "Widget: Erinnerungen",
-          "dashboard_widget_progress": "Widget: Fortschritt & Abzeichen",
-          "dashboard_enabled": "Cycle Dashboard in der Seitenleiste anzeigen",
-          "dashboard_default_landing": "Cycle Dashboard als Startseite bevorzugen"
+          "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen",
+          "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
+          "pre_menarche_enabled": "Vor-der-Menarche-Tracking aktivieren",
+          "menopause_enabled": "Menopause-Modus aktivieren",
+          "postpartum_enabled": "Wochenbett-Modus aktivieren"
         },
         "data_description": {
-          "period_duration_days": "Typische Anzahl der Periodentage (1–14).",
-          "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus. Das Startdatum wird automatisch aus dem letzten Zyklus-Start übernommen, falls nicht angegeben.",
-          "pregnancy_start_date": "Erster Tag der letzten Menstruation (LMP). Leer lassen, um den letzten erfassten Zyklus-Start zu verwenden.",
-          "pre_menarche_enabled": "Pubertätszeichen vor der ersten Periode (Menarche) verfolgen.",
-          "family_menarche_age": "Menarche-Alter in der Familie (Mutter/Schwester) zur Schätzung des erwarteten Alters.",
-          "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus.",
-          "menopause_start_date": "Datum des Menopause-Beginns (JJJJ-MM-TT). Leer lassen, falls unbekannt.",
-          "cycle_length_override": "Überschreibt die automatisch berechnete durchschnittliche Zykluslänge. 0 = automatisch aus dem Verlauf berechnen (empfohlen). 20–38 = feste Zykluslänge für Fruchtbarkeitsfenster und Eisprung-Berechnungen.",
-          "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
-          "show_cycle_dashboard": "Fügt der Home-Assistant-Seitenleiste optional eine eigene Cycle-Dashboard-Seite hinzu.",
-          "cycle_dashboard_default_page": "Einstellung, um das Cycle Dashboard als Standard-/Startseite zu nutzen, sofern dies vom Home-Assistant-Setup unterstützt wird.",
-          "dashboard_discreet_mode": "Verwendet im gesamten Dashboard neutrale, datenschutzfreundliche Bezeichnungen.",
-          "dashboard_widget_quick_log": "Zeigt das Widget 'Schnelleintrag' an.",
-          "dashboard_widget_today_status": "Zeigt den heutigen Zyklusstatus und die Tagesnummer an.",
-          "dashboard_widget_upcoming_window": "Zeigt das nächste fruchtbare Fenster bzw. die Periodenvorhersage an.",
-          "dashboard_widget_reminders": "Zeigt tägliche Erinnerungen und Hinweise zur Vorratsprüfung an.",
-          "dashboard_widget_progress": "Zeigt erreichte Fortschrittsabzeichen an.",
-          "dashboard_enabled": "Fügt der Home-Assistant-Seitenleiste optional eine eigene Cycle-Dashboard-Seite hinzu.",
-          "dashboard_default_landing": "Einstellung, um das Cycle Dashboard als Standard-/Startseite zu nutzen, sofern dies vom Home-Assistant-Setup unterstützt wird.",
+          "period_duration_days": "Anzahl der Tage, die die Periode typischerweise dauert (1–14).",
+          "cycle_length_override": "Überschreibt die automatisch berechnete durchschnittliche Zykluslänge. Auf 0 setzen, um den automatisch berechneten Wert aus deiner Historie zu verwenden (empfohlen). Auf 20–38 setzen, um die für Fruchtbarkeitsfenster und Eisprung verwendete Zykluslänge manuell festzulegen.",
           "num_predictions": "Wie viele zukünftige Zyklusstarts erzeugt werden sollen (1–12). Standard ist 6.",
-          "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen."
+          "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen.",
+          "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu.",
+          "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
+          "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
+          "pre_menarche_enabled": "Verfolgt Pubertätszeichen vor der ersten Periode (Menarche) und zeigt als Nächstes einen Detail-Bildschirm.",
+          "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
+          "postpartum_enabled": "Aktiviert den Wochenbett-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm."
+        }
+      },
+      "pregnancy": {
+        "title": "Schwangerschafts-Details",
+        "description": "Schwangerschafts-Tracking einstellen.",
+        "data": {
+          "pregnancy_start_date": "Schwangerschaftsbeginn (JJJJ-MM-TT)",
+          "pregnancy_high_risk": "Risikoschwangerschaft",
+          "pregnancy_risk_notes": "Risiko-Notizen (optional, z. B. Erkrankung oder Beobachtungsschwerpunkt)"
+        },
+        "data_description": {
+          "pregnancy_start_date": "Erster Tag der letzten Periode (LMP). Leer lassen, um den zuletzt erfassten Zyklusstart zu verwenden."
+        }
+      },
+      "menarche": {
+        "title": "Vor-der-Menarche-Details",
+        "description": "Vor-der-Menarche-Tracking einstellen.",
+        "data": {
+          "family_menarche_age": "Menarche-Alter in der Familie (8–20, optional)"
+        },
+        "data_description": {
+          "family_menarche_age": "Alter der Menarche in der Familie (Mutter/Schwester), das zur Schätzung des erwarteten Alters verwendet wird."
+        }
+      },
+      "menopause": {
+        "title": "Menopause-Details",
+        "description": "Menopause-Tracking einstellen.",
+        "data": {
+          "menopause_start_date": "Menopause-Beginn (JJJJ-MM-TT)"
+        },
+        "data_description": {
+          "menopause_start_date": "Datum, an dem die Menopause begann (JJJJ-MM-TT). Leer lassen, falls unbekannt."
+        }
+      },
+      "postpartum": {
+        "title": "Wochenbett-Details",
+        "description": "Wochenbett-Zeitraum einstellen.",
+        "data": {
+          "postpartum_start_date": "Geburtsdatum des Kindes (JJJJ-MM-TT)",
+          "postpartum_duration_days": "Wochenbett-Zeitraum (Tage, Standard 42)"
+        },
+        "data_description": {
+          "postpartum_start_date": "Geburtsdatum des Kindes. Wird zur Berechnung des Wochenbett-Zeitraums verwendet.",
+          "postpartum_duration_days": "Wie viele Tage nach der Geburt der Wochenbett-Modus aktiv bleibt (1–365). Standard ist 42 (6 Wochen)."
         }
       }
     },

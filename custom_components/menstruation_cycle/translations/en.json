@@ -20,60 +20,77 @@
     "step": {
       "init": {
         "title": "Menstruation Cycle Settings",
-        "description": "Adjust cycle tracking settings. Changes are saved immediately.",
+        "description": "General settings. Enable any life stages below to configure their details on the next screen(s).",
         "data": {
           "friendly_name": "Display name",
           "icon": "Icon (optional, e.g. mdi:calendar-heart)",
           "birth_date": "Birth date (YYYY-MM-DD, optional — enables age display and improves pre-menarche mode)",
           "period_duration_days": "Period duration (days)",
-          "pregnancy_enabled": "Enable pregnancy mode",
-          "pregnancy_start_date": "Pregnancy start date (YYYY-MM-DD)",
-          "pregnancy_high_risk": "High-risk pregnancy",
-          "pregnancy_risk_notes": "Risk notes (optional, e.g. condition or monitoring focus)",
-          "pre_menarche_enabled": "Enable pre-menarche tracking",
-          "family_menarche_age": "Family menarche age (8–20, optional)",
-          "menopause_enabled": "Enable menopause mode",
-          "menopause_start_date": "Menopause start date (YYYY-MM-DD)",
-          "postpartum_enabled": "Enable postpartum mode",
-          "postpartum_start_date": "Birth date of the baby (YYYY-MM-DD)",
-          "postpartum_duration_days": "Postpartum tracking window (days, default 42)",
           "cycle_length_override": "Cycle length override (days, 0 = auto)",
-          "nfp_analysis_mode": "NFP analysis mode",
           "num_predictions": "Number of future cycle predictions",
+          "nfp_analysis_mode": "NFP analysis mode",
           "onboarding_stage": "Onboarding stage",
-          "show_cycle_dashboard": "Show Cycle Dashboard in sidebar",
-          "cycle_dashboard_default_page": "Prefer Cycle Dashboard as start page",
-          "dashboard_discreet_mode": "Discreet mode (privacy-first labels)",
-          "dashboard_widget_quick_log": "Widget: Quick Log",
-          "dashboard_widget_today_status": "Widget: Today Status",
-          "dashboard_widget_upcoming_window": "Widget: Upcoming Window",
-          "dashboard_widget_reminders": "Widget: Reminders",
-          "dashboard_widget_progress": "Widget: Progress & Badges",
           "dashboard_enabled": "Show Cycle Dashboard in sidebar",
-          "dashboard_default_landing": "Prefer Cycle Dashboard as start page"
+          "pregnancy_enabled": "Enable pregnancy mode",
+          "pre_menarche_enabled": "Enable pre-menarche tracking",
+          "menopause_enabled": "Enable menopause mode",
+          "postpartum_enabled": "Enable postpartum mode"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
-          "pregnancy_enabled": "Activates pregnancy tracking mode. The pregnancy start date is auto-filled from the last cycle start if left empty.",
-          "pregnancy_start_date": "First day of last menstruation (LMP). Leave empty to use the last recorded cycle start.",
-          "pre_menarche_enabled": "Track puberty signs before the first period (menarche).",
-          "family_menarche_age": "Age of menarche in the family (mother/sister) used to estimate the expected age.",
-          "menopause_enabled": "Activates menopause tracking mode.",
-          "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown.",
           "cycle_length_override": "Override the automatically calculated average cycle length. Set to 0 to use the auto-calculated value from your history (recommended). Set to 20–38 to manually fix the cycle length used for fertile window and ovulation calculations.",
-          "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
-          "show_cycle_dashboard": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "cycle_dashboard_default_page": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
-          "dashboard_discreet_mode": "Use neutral, privacy-first labels throughout the dashboard.",
-          "dashboard_widget_quick_log": "Show the Quick Log widget.",
-          "dashboard_widget_today_status": "Show today's cycle status and day number.",
-          "dashboard_widget_upcoming_window": "Show the upcoming fertile window or period forecast.",
-          "dashboard_widget_reminders": "Show daily reminders and kit-check cues.",
-          "dashboard_widget_progress": "Show earned progress badges.",
-          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "dashboard_default_landing": "Preference flag for using Cycle Dashboard as the default/start page where supported by Home Assistant setup.",
           "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
-          "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle."
+          "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
+          "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
+          "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
+          "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
+          "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next."
+        }
+      },
+      "pregnancy": {
+        "title": "Pregnancy details",
+        "description": "Configure pregnancy tracking.",
+        "data": {
+          "pregnancy_start_date": "Pregnancy start date (YYYY-MM-DD)",
+          "pregnancy_high_risk": "High-risk pregnancy",
+          "pregnancy_risk_notes": "Risk notes (optional, e.g. condition or monitoring focus)"
+        },
+        "data_description": {
+          "pregnancy_start_date": "First day of last menstruation (LMP). Leave empty to use the last recorded cycle start."
+        }
+      },
+      "menarche": {
+        "title": "Pre-menarche details",
+        "description": "Configure pre-menarche tracking.",
+        "data": {
+          "family_menarche_age": "Family menarche age (8–20, optional)"
+        },
+        "data_description": {
+          "family_menarche_age": "Age of menarche in the family (mother/sister) used to estimate the expected age."
+        }
+      },
+      "menopause": {
+        "title": "Menopause details",
+        "description": "Configure menopause tracking.",
+        "data": {
+          "menopause_start_date": "Menopause start date (YYYY-MM-DD)"
+        },
+        "data_description": {
+          "menopause_start_date": "Date when menopause started (YYYY-MM-DD). Leave empty if unknown."
+        }
+      },
+      "postpartum": {
+        "title": "Postpartum details",
+        "description": "Configure the postpartum tracking window.",
+        "data": {
+          "postpartum_start_date": "Birth date of the baby (YYYY-MM-DD)",
+          "postpartum_duration_days": "Postpartum tracking window (days, default 42)"
+        },
+        "data_description": {
+          "postpartum_start_date": "Date the baby was born. Used to calculate the postpartum tracking window.",
+          "postpartum_duration_days": "How many days after birth to stay in postpartum mode (1–365). Default is 42 (6 weeks)."
         }
       }
     },
