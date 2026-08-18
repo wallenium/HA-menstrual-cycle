@@ -15,7 +15,9 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import StateType
@@ -946,6 +948,22 @@ def _get_current_bleeding_block(current_period: dict[str, Any] | None) -> dict[s
     return dict(current_period)
 
 
+def _device_info_for_entry(hass: HomeAssistant, entry: ConfigEntry) -> DeviceInfo:
+    """Build the shared DeviceInfo grouping every entity for a profile (config
+    entry) — main cycle sensor, product usage, basal temperature, etc. — under one
+    device in Settings > Devices & Services. Without this, each entity appeared
+    standalone with no way to see at a glance which profile it belonged to, which
+    matters especially for households tracking more than one person."""
+    runtime = hass.data[DOMAIN][entry.entry_id]
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=runtime.friendly_name,
+        manufacturer="HA-menstrual-cycle",
+        model="Cycle Tracker Profile",
+        entry_type=DeviceEntryType.SERVICE,
+    )
+
+
 class MenstruationGaugeSensor(SensorEntity):
     """Expose cycle state and computed attributes including symptoms and pregnancy."""
 
@@ -956,10 +974,17 @@ class MenstruationGaugeSensor(SensorEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_menstruation"
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
-        self._attr_name = runtime.friendly_name
+        # None = this is the device's primary entity; with has_entity_name + device
+        # grouping, it displays as just the device (profile) name, e.g. "Anna",
+        # instead of duplicating the name as both device and entity ("Anna Anna").
+        self._attr_name = None
         self._state: str = "neutral"
         self._attrs: dict[str, StateType] = {}
         self._icon: str | None = runtime.icon or None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return _device_info_for_entry(self.hass, self._entry)
 
     async def async_added_to_hass(self) -> None:
         """Register update signals and daily refresh."""
@@ -982,7 +1007,6 @@ class MenstruationGaugeSensor(SensorEntity):
         """Update sensor from shared runtime."""
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         today = dt_util.now().date()
-        self._attr_name = runtime.friendly_name
         self._icon = runtime.icon or None
         model = build_cycle_model(
             history=runtime.history,
@@ -1388,11 +1412,19 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
         runtime = self.hass.data[DOMAIN][entry.entry_id]
         self._friendly_name = runtime.friendly_name
         self._attr_unique_id = f"{entry.entry_id}_period_products_today"
-        self._attr_name = f"{self._friendly_name}: Period products today"
+        # Friendly-name prefix dropped — has_entity_name + device grouping already
+        # provides "Anna" as a prefix automatically, so this now shows as
+        # "Anna Period products today" instead of the old doubled-up
+        # "Anna Anna: Period products today".
+        self._attr_name = "Period products today"
         self._icon = "mdi:chart-box"
         self._attr_native_unit_of_measurement = "items"
         self._attr_native_value = 0
         self._attrs: dict[str, StateType] = {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return _device_info_for_entry(self.hass, self._entry)
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(
@@ -1411,7 +1443,6 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
     async def async_update(self) -> None:
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         self._friendly_name = runtime.friendly_name
-        self._attr_name = f"{self._friendly_name}: Period products today"
 
         stats = _build_product_usage_stats(
             runtime.history,
@@ -1516,9 +1547,15 @@ class MenstruationBasalTempSensor(SensorEntity):
         runtime = self.hass.data[DOMAIN][entry.entry_id]
         self._friendly_name = runtime.friendly_name
         self._attr_unique_id = f"{entry.entry_id}_basal_temp"
-        self._attr_name = f"{self._friendly_name}: Basal temperature"
+        # Friendly-name prefix dropped — see the product-usage sensor's comment
+        # for why (device grouping now provides it automatically).
+        self._attr_name = "Basal temperature"
         self._attr_native_value: float | None = None
         self._attrs: dict[str, StateType] = {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return _device_info_for_entry(self.hass, self._entry)
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(
@@ -1536,7 +1573,6 @@ class MenstruationBasalTempSensor(SensorEntity):
     async def async_update(self) -> None:
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         self._friendly_name = runtime.friendly_name
-        self._attr_name = f"{self._friendly_name}: Basal temperature"
 
         latest_date: str | None = None
         latest_value: float | None = None
