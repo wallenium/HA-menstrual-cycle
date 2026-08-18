@@ -1851,6 +1851,54 @@ class MenstruationGaugeCard extends HTMLElement {
     }
   }
 
+  /**
+   * Fetches this day's data directly via get_symptom (reads the full,
+   * uncapped stored history) before opening the modal, instead of relying
+   * only on the symptom_history sensor attribute, which is capped to the
+   * most recent ~30 entries. Same fix as menstruation-calendar-card.js —
+   * this card has its own separate, duplicate modal implementation, so the
+   * fix has to be applied here independently too.
+   */
+  async _openSymptomModalForDay(iso) {
+    await this._refreshSymptomOverrideForDay(iso);
+    this._modalIso = iso;
+    this._render();
+  }
+
+  async _refreshSymptomOverrideForDay(iso) {
+    this._symptomOverrides = this._symptomOverrides || {};
+    if (!this._hass?.connection?.sendMessagePromise) {
+      console.warn('[menstruation-gauge-card] hass.connection unavailable — cannot fetch fresh day data.');
+      return;
+    }
+    const entityId = this._resolveEntityId();
+    if (!entityId) {
+      console.warn('[menstruation-gauge-card] Could not resolve an entity_id for this card — get_symptom call skipped, modal will use the (possibly capped) symptom_history attribute for', iso);
+    }
+    try {
+      const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
+      // hass.callService()'s return_response support doesn't reliably surface the
+      // actual response data in every HA frontend version — calling the WebSocket
+      // API directly with return_response:true is the mechanism that does work.
+      const result = await this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'get_symptom',
+        service_data: payload,
+        return_response: true,
+      });
+      const response = result?.response;
+      if (response && response.found !== false) {
+        this._symptomOverrides[iso] = response;
+        console.debug('[menstruation-gauge-card] get_symptom fetched fresh data for', iso, response);
+      } else {
+        console.debug('[menstruation-gauge-card] get_symptom returned no data for', iso, '— raw result:', result);
+      }
+    } catch (err) {
+      console.warn('[menstruation-gauge-card] get_symptom call failed for', iso, '— falling back to the (possibly capped) symptom_history attribute.', err);
+    }
+  }
+
   _renderSymptomModal(iso, model, palette) {
     const dt = this._parseISO(iso);
     const locale = this._hass?.locale?.language || 'de';
@@ -1859,7 +1907,7 @@ class MenstruationGaugeCard extends HTMLElement {
       : iso;
 
     const isPeriodDay = model.confirmedSet.has(iso);
-    const existing = model.symptomByDate?.[iso] || {};
+    const existing = this._symptomOverrides?.[iso] || model.symptomByDate?.[iso] || {};
     const isPreMenarche = model.state === 'pre_menarche';
     const isPregnant = Boolean(model.pregnancyInfo?.isPregnant);
     const periodModalContext = this._periodModalContext(iso, model);
@@ -2281,8 +2329,7 @@ class MenstruationGaugeCard extends HTMLElement {
           ev.preventDefault();
           const iso = dayBtn.getAttribute('data-iso');
           if (iso) {
-            this._modalIso = iso;
-            this._render();
+            this._openSymptomModalForDay(iso);
           }
           return;
         }

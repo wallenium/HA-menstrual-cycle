@@ -812,8 +812,8 @@ class MenstruationCalendarCard extends HTMLElement {
 
   async _refreshSymptomOverrideForDay(iso) {
     this._symptomOverrides = this._symptomOverrides || {};
-    if (!this._hass?.callService) {
-      console.warn('[menstruation-calendar-card] hass.callService unavailable — cannot fetch fresh day data.');
+    if (!this._hass?.connection?.sendMessagePromise) {
+      console.warn('[menstruation-calendar-card] hass.connection unavailable — cannot fetch fresh day data.');
       return;
     }
     const entityId = this._resolveEntityId();
@@ -822,12 +822,18 @@ class MenstruationCalendarCard extends HTMLElement {
     }
     try {
       const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
-      // Modern HA frontend signature: callService(domain, service, data, target,
-      // notifyOnError, returnResponse). Older frontends without response support
-      // will throw or return undefined here — caught below, falls back silently to
-      // whatever's already in the (possibly capped) symptom_history attribute
-      // rather than blocking the modal from opening.
-      const result = await this._hass.callService('menstruation_cycle', 'get_symptom', payload, undefined, false, true);
+      // hass.callService()'s return_response support doesn't reliably surface the
+      // actual response data in every HA frontend version (confirmed: it can come
+      // back as just {context, user_id} with no response key at all). Calling the
+      // WebSocket API directly with return_response:true is the lower-level,
+      // documented mechanism that does work.
+      const result = await this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'get_symptom',
+        service_data: payload,
+        return_response: true,
+      });
       const response = result?.response;
       if (response && response.found !== false) {
         this._symptomOverrides[iso] = response;
@@ -983,7 +989,13 @@ class MenstruationCalendarCard extends HTMLElement {
       let freshData = null;
       try {
         const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
-        const result = await this._hass.callService('menstruation_cycle', 'get_symptom', payload, undefined, false, true);
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'get_symptom',
+          service_data: payload,
+          return_response: true,
+        });
         freshData = result?.response;
       } catch (_err) {
         freshData = null; // response-calls unsupported on this HA frontend — skip check
