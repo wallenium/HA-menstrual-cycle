@@ -2066,6 +2066,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             cycle_model.fertility_forecast,
             cycle_model.avg_cycle_length,
             horizon_months,
+            hass.config.language,
         )
 
         return Response(

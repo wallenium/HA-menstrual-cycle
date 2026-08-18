@@ -10,7 +10,68 @@ from .const import ICS_HORIZON_MONTHS_DEFAULT, ICS_HORIZON_MONTHS_MAX
 from .model import project_range_windows
 
 _PRODID = "-//menstruation_cycle//HA Menstrual Cycle//EN"
-_CALNAME = "Menstrual Cycle Predictions"
+
+# Small, self-contained translation table for the handful of strings an
+# external calendar client (Google/Apple Calendar etc.) actually sees. This
+# feed is fetched by calendar apps via a subscription URL, not through an
+# authenticated HA session, so there's no per-request browser language to use
+# — hass.config.language (how the HA instance itself is set up) is the only
+# consistently-available signal, passed in by the caller as `lang`.
+_ICS_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "calname": "Menstrual Cycle Predictions",
+        "period": "Period (predicted)",
+        "fertile_window": "Fertile window (predicted)",
+        "ovulation": "Ovulation (predicted)",
+        "source_predicted": "Source: predicted",
+        "source_prefix": "Source",
+        "confidence": "confidence",
+    },
+    "de": {
+        "calname": "Zyklusvorhersagen",
+        "period": "Periode (vorhergesagt)",
+        "fertile_window": "Fruchtbares Fenster (vorhergesagt)",
+        "ovulation": "Eisprung (vorhergesagt)",
+        "source_predicted": "Quelle: Vorhersage",
+        "source_prefix": "Quelle",
+        "confidence": "Konfidenz",
+    },
+    "fr": {
+        "calname": "Prévisions du cycle menstruel",
+        "period": "Règles (prévu)",
+        "fertile_window": "Fenêtre de fertilité (prévu)",
+        "ovulation": "Ovulation (prévu)",
+        "source_predicted": "Source : prévision",
+        "source_prefix": "Source",
+        "confidence": "confiance",
+    },
+    "es": {
+        "calname": "Predicciones del ciclo menstrual",
+        "period": "Menstruación (previsto)",
+        "fertile_window": "Ventana fértil (previsto)",
+        "ovulation": "Ovulación (previsto)",
+        "source_predicted": "Fuente: predicción",
+        "source_prefix": "Fuente",
+        "confidence": "confianza",
+    },
+    "sv": {
+        "calname": "Cykelprognoser",
+        "period": "Mens (förutspått)",
+        "fertile_window": "Fertilt fönster (förutspått)",
+        "ovulation": "Ägglossning (förutspått)",
+        "source_predicted": "Källa: prognos",
+        "source_prefix": "Källa",
+        "confidence": "konfidens",
+    },
+}
+
+
+def _ics_strings(lang: str | None) -> dict[str, str]:
+    """Resolve the translation table for a language code, falling back to
+    English for anything unset or unsupported. Only looks at the first two
+    letters, so regional variants (e.g. "de-AT", "en-GB") still match."""
+    key = str(lang or "en").strip().lower()[:2]
+    return _ICS_STRINGS.get(key, _ICS_STRINGS["en"])
 
 
 def _format_date(d: date) -> str:
@@ -60,6 +121,7 @@ def generate_ics(
     fertility_forecast: dict[str, Any] | None,
     avg_cycle_length: int | None = None,
     horizon_months: int = ICS_HORIZON_MONTHS_DEFAULT,
+    lang: str | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -70,10 +132,15 @@ def generate_ics(
         avg_cycle_length: Average cycle length in days (used for projection).
         horizon_months: Number of months to project forward (bounded to
             ICS_HORIZON_MONTHS_MAX).
+        lang: Language code for calendar name/event text (e.g. "de", "en").
+            Typically hass.config.language, since this feed is fetched by
+            external calendar apps with no per-request browser language
+            available. Falls back to English if unset/unsupported.
 
     Returns:
         UTF-8 encoded VCALENDAR bytes (CRLF line endings per RFC 5545).
     """
+    strings = _ics_strings(lang)
     horizon_months = max(1, min(ICS_HORIZON_MONTHS_MAX, int(horizon_months)))
     today = date.today()
     range_end = today + timedelta(days=horizon_months * 31)
@@ -92,7 +159,7 @@ def generate_ics(
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
         f"PRODID:{_PRODID}",
-        f"X-WR-CALNAME:{_CALNAME}",
+        f"X-WR-CALNAME:{strings['calname']}",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
     ]
@@ -109,14 +176,14 @@ def generate_ics(
             except (KeyError, TypeError, ValueError):
                 continue
             uid = _deterministic_uid(entry_id, "period", window["start"])
-            desc = f"Source: predicted"
+            desc = strings["source_predicted"]
             if period_confidence:
-                desc += f"; confidence: {period_confidence}"
+                desc += f"; {strings['confidence']}: {period_confidence}"
             lines.extend(
                 _vevent_lines(
                     uid=uid,
                     dtstamp=dtstamp,
-                    summary="Period (predicted)",
+                    summary=strings["period"],
                     start=p_start,
                     end_exclusive=p_end + timedelta(days=1),
                     description=desc,
@@ -132,14 +199,14 @@ def generate_ics(
                 continue
 
             fw_uid = _deterministic_uid(entry_id, "fertile", window["fertile_start"])
-            fw_desc = f"Source: {fertility_source}"
+            fw_desc = f"{strings['source_prefix']}: {fertility_source}"
             if fertility_confidence:
-                fw_desc += f"; confidence: {fertility_confidence}"
+                fw_desc += f"; {strings['confidence']}: {fertility_confidence}"
             lines.extend(
                 _vevent_lines(
                     uid=fw_uid,
                     dtstamp=dtstamp,
-                    summary="Fertile window (predicted)",
+                    summary=strings["fertile_window"],
                     start=f_start,
                     end_exclusive=f_end + timedelta(days=1),
                     description=fw_desc,
@@ -147,14 +214,14 @@ def generate_ics(
             )
 
             ov_uid = _deterministic_uid(entry_id, "ovulation", window["ovulation"])
-            ov_desc = f"Source: {fertility_source}"
+            ov_desc = f"{strings['source_prefix']}: {fertility_source}"
             if fertility_confidence:
-                ov_desc += f"; confidence: {fertility_confidence}"
+                ov_desc += f"; {strings['confidence']}: {fertility_confidence}"
             lines.extend(
                 _vevent_lines(
                     uid=ov_uid,
                     dtstamp=dtstamp,
-                    summary="Ovulation (predicted)",
+                    summary=strings["ovulation"],
                     start=ov,
                     end_exclusive=ov + timedelta(days=1),
                     description=ov_desc,
