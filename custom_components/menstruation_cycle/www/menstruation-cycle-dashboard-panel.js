@@ -3226,6 +3226,7 @@
     }
 
     _renderBasalTempChart(stateObj) {
+      const attrs = stateObj?.attributes || {};
       const history = this._getFullSymptomHistory(stateObj);
       const temps = history
         .filter((entry) => entry && typeof entry === 'object' && entry.date && Number.isFinite(Number(entry.basal_temp)))
