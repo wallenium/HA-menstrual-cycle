@@ -202,11 +202,24 @@ class YoungGirlsSupportCard extends HTMLElement {
     const cfg = this._config || {};
     const sections = [];
 
-    if (cfg.show_reminders !== false) sections.push(this._renderReminders());
-    if (cfg.show_glossary !== false) sections.push(this._renderGlossary());
-    if (cfg.show_phases_graphic !== false) sections.push(this._renderPhasesGraphic());
-    if (cfg.show_hygiene_cards !== false) sections.push(this._renderHygieneCards());
-    if (cfg.show_reassurance_cards !== false) sections.push(this._renderReassuranceCards());
+    // Each section is rendered defensively: if one throws (bad data shape,
+    // unexpected attribute value, etc.), only that section is skipped —
+    // previously a single failing section would blank the entire card with
+    // no visible explanation, since nothing here caught exceptions.
+    const safeRender = (label, fn) => {
+      try {
+        return fn.call(this);
+      } catch (err) {
+        console.error(`[menstruation-support-card] Section "${label}" failed to render:`, err);
+        return `<p class="ygs-section-desc" style="color:var(--error-color,#b91c1c);">⚠ ${label} — render error, see console.</p>`;
+      }
+    };
+
+    if (cfg.show_reminders !== false) sections.push(safeRender('reminders', this._renderReminders));
+    if (cfg.show_glossary !== false) sections.push(safeRender('glossary', this._renderGlossary));
+    if (cfg.show_phases_graphic !== false) sections.push(safeRender('phases_graphic', this._renderPhasesGraphic));
+    if (cfg.show_hygiene_cards !== false) sections.push(safeRender('hygiene_cards', this._renderHygieneCards));
+    if (cfg.show_reassurance_cards !== false) sections.push(safeRender('reassurance_cards', this._renderReassuranceCards));
 
     this.shadowRoot.innerHTML = `
       ${this._renderStyles()}
