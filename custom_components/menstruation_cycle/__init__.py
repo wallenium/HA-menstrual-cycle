@@ -252,6 +252,7 @@ class MenstruationRuntime:
         "is_postpartum": False,
         "postpartum_start_date": None,
         "postpartum_duration_days": 42,
+        "basal_temp_stats_backfilled": False,
     })
     onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
     unregister_midnight_listener: Callable[[], None] | None = None

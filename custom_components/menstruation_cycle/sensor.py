@@ -11,8 +11,9 @@ import math
 import re
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -95,6 +96,7 @@ async def async_setup_entry(
         [
             MenstruationGaugeSensor(hass, entry),
             ProductUsageStatsConsolidatedSensor(hass, entry),
+            MenstruationBasalTempSensor(hass, entry),
         ],
         True,
     )
@@ -1461,3 +1463,208 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
 
     def _handle_daily_refresh(self, _now: datetime) -> None:
         self._safe_schedule_update()
+
+
+async def _async_save_backfill_flag(runtime: Any) -> None:
+    """Minimal local persist of runtime.noncycle_data (used only for the
+    one-time basal_temp_stats_backfilled flag). Doesn't need the full
+    model-refresh/dispatch behavior that __init__.py's _async_save_and_notify
+    does for user-facing edits — this just needs the flag to survive a restart.
+    """
+    await runtime.storage.async_save(
+        runtime.history,
+        runtime.period_duration_days,
+        runtime.symptom_history,
+        runtime.product_usage,
+        runtime.pregnancy_data,
+        runtime.menarche_data,
+        runtime.pre_menarche_data,
+        runtime.menopause_data,
+        runtime.noncycle_data,
+        cycle_length_override=runtime.cycle_length_override,
+        onboarding_stage=runtime.onboarding_stage,
+    )
+
+
+class MenstruationBasalTempSensor(SensorEntity):
+    """Dedicated basal-temperature sensor.
+
+    Basal temperature previously only existed buried inside the main gauge
+    sensor's `symptom_history` attribute — fine for reading a single day's value,
+    but it meant no native Home Assistant history/statistics graph, no long-term
+    statistics, and no easy Grafana export, since none of that works from an
+    attribute list. This sensor exposes the same data as a proper numeric
+    measurement entity (device_class=temperature, state_class=measurement) so it
+    gets all of that automatically going forward.
+    """
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_icon = "mdi:thermometer"
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.hass = hass
+        self._entry = entry
+        runtime = self.hass.data[DOMAIN][entry.entry_id]
+        self._friendly_name = runtime.friendly_name
+        self._attr_unique_id = f"{entry.entry_id}_basal_temp"
+        self._attr_name = f"{self._friendly_name}: Basal temperature"
+        self._attr_native_value: float | None = None
+        self._attrs: dict[str, StateType] = {}
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_HISTORY_UPDATED, self._handle_runtime_update)
+        )
+        await self.async_update()
+        # One-time backfill of historical basal_temp entries into HA's own
+        # long-term statistics, so the new entity's history graph shows the full
+        # existing record instead of starting empty from today. Runs after the
+        # entity is registered (needs its own entity_id) and only once ever,
+        # guarded by a persisted flag — safe to leave enabled permanently since it
+        # no-ops on every subsequent load.
+        await _async_backfill_basal_temp_statistics(self.hass, self._entry, self.entity_id)
+
+    async def async_update(self) -> None:
+        runtime = self.hass.data[DOMAIN][self._entry.entry_id]
+        self._friendly_name = runtime.friendly_name
+        self._attr_name = f"{self._friendly_name}: Basal temperature"
+
+        latest_date: str | None = None
+        latest_value: float | None = None
+        for entry in runtime.symptom_history or []:
+            if not isinstance(entry, dict):
+                continue
+            raw_temp = entry.get("basal_temp")
+            entry_date = entry.get("date")
+            if raw_temp in (None, "") or not entry_date:
+                continue
+            try:
+                temp_value = float(raw_temp)
+            except (TypeError, ValueError):
+                continue
+            if latest_date is None or str(entry_date) > latest_date:
+                latest_date = str(entry_date)
+                latest_value = temp_value
+
+        self._attr_native_value = latest_value
+        self._attrs = {
+            "profile": runtime.profile,
+            "friendly_name": runtime.friendly_name,
+            "date": latest_date,
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict[str, StateType]:
+        return self._attrs
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
+    def available(self) -> bool:
+        return self._entry.entry_id in self.hass.data.get(DOMAIN, {})
+
+    def _safe_schedule_update(self) -> None:
+        if not self.hass:
+            return
+
+        def _do_update() -> None:
+            if self.hass and self.hass.is_running:
+                self.async_schedule_update_ha_state(True)
+
+        self.hass.loop.call_soon_threadsafe(_do_update)
+
+    def _handle_runtime_update(self) -> None:
+        self._safe_schedule_update()
+
+
+async def _async_backfill_basal_temp_statistics(
+    hass: HomeAssistant, entry: ConfigEntry, entity_id: str
+) -> None:
+    """One-time import of historical basal_temp entries into the recorder's
+    long-term statistics table, so the new sensor's history graph reflects the
+    full existing record instead of only data logged from now on.
+
+    Guarded by a persisted flag in noncycle_data so this only ever runs once per
+    config entry, and wrapped defensively since the recorder statistics API has
+    shifted across Home Assistant versions — a failure here should never break
+    integration setup, just skip the backfill and log a warning.
+    """
+    runtime = hass.data[DOMAIN][entry.entry_id]
+    if runtime.noncycle_data.get("basal_temp_stats_backfilled"):
+        return
+
+    try:
+        from homeassistant.components.recorder import get_instance
+        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+        from homeassistant.components.recorder.statistics import async_import_statistics
+        from homeassistant.components.recorder.db_schema import Statistics
+    except ImportError:
+        _LOGGER.debug("Recorder component unavailable — skipping basal_temp statistics backfill.")
+        return
+
+    points: list[StatisticData] = []
+    seen_hours: set[Any] = set()
+    for hist_entry in runtime.symptom_history or []:
+        if not isinstance(hist_entry, dict):
+            continue
+        raw_temp = hist_entry.get("basal_temp")
+        entry_date = hist_entry.get("date")
+        if raw_temp in (None, "") or not entry_date:
+            continue
+        try:
+            temp_value = float(raw_temp)
+            day = date.fromisoformat(str(entry_date))
+        except (TypeError, ValueError):
+            continue
+        # Statistics are stored hourly; anchor each day's single reading to local
+        # midnight so every day gets exactly one point.
+        start = dt_util.start_of_local_day(day)
+        if start in seen_hours:
+            continue
+        seen_hours.add(start)
+        points.append(StatisticData(start=start, mean=temp_value, min=temp_value, max=temp_value))
+
+    if not points:
+        # Nothing to backfill (no historical basal_temp data yet) — still mark as
+        # done so we don't re-scan on every future restart for no reason.
+        runtime.noncycle_data["basal_temp_stats_backfilled"] = True
+        await _async_save_backfill_flag(runtime)
+        return
+
+    points.sort(key=lambda p: p["start"])
+    metadata = StatisticMetaData(
+        has_mean=True,
+        has_sum=False,
+        name=f"{runtime.friendly_name}: Basal temperature",
+        source="recorder",
+        statistic_id=entity_id,
+        unit_of_measurement=UnitOfTemperature.CELSIUS,
+    )
+
+    try:
+        get_instance(hass).async_import_statistics(metadata, points, Statistics)
+    except Exception:  # noqa: BLE001 — defensive: never let a recorder API
+        # mismatch across HA versions break integration setup.
+        try:
+            # Some HA versions expose this as a standalone function instead of
+            # (or in addition to) the Recorder instance method above.
+            async_import_statistics(hass, metadata, points)
+        except Exception:
+            _LOGGER.warning(
+                "Could not backfill basal_temp statistics for %s — the recorder "
+                "statistics API may differ on this Home Assistant version. The "
+                "sensor itself still works normally; only historical backfill "
+                "was skipped.",
+                entity_id,
+                exc_info=True,
+            )
+            return
+
+    runtime.noncycle_data["basal_temp_stats_backfilled"] = True
+    await _async_save_backfill_flag(runtime)
+    _LOGGER.info("Backfilled %d historical basal_temp readings into %s statistics.", len(points), entity_id)
