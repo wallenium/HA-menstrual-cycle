@@ -2690,6 +2690,32 @@
       const daysRemaining = daysSinceLastPeriod !== null ? Math.max(0, confirmThresholdDays - daysSinceLastPeriod) : null;
 
       const statusIcon = !discreetMode ? this._statusIconHtml('menopause', 32) : '';
+
+      const stat1 = `
+        <div class="stat mc-rose">
+          <div class="stat-label">${this._t('dashboard_days_since_last_period') || 'Tage seit letzter Periode'}</div>
+          <div class="stat-value">${daysSinceLastPeriod !== null ? escapeHtml(daysSinceLastPeriod) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
+        </div>`;
+
+      const stat2 = daysRemaining !== null && !isConfirmed
+        ? `
+          <div class="stat">
+            <div class="stat-label">${this._t('dashboard_days_to_confirmed') || 'Tage bis bestätigt'}</div>
+            <div class="stat-value">${escapeHtml(daysRemaining)} <small>${this._t('days') || 'Tage'}</small></div>
+          </div>`
+        : `
+          <div class="stat">
+            <div class="stat-label">${this._t('dashboard_months_tracked') || 'Monate erfasst'}</div>
+            <div class="stat-value">${monthsTracked !== null ? escapeHtml(monthsTracked) : '—'}</div>
+          </div>`;
+
+      const stat3 = `
+        <div class="stat${isConfirmed ? ' mc-plum' : ''}">
+          <div class="stat-label">${this._t('dashboard_label_state')}</div>
+          <div class="stat-value" style="font-size:20px;">${isConfirmed ? `✓ ${this._t('dashboard_menopause_confirmed') || 'Bestätigt'}` : `◐ ${this._t('dashboard_perimenopause') || 'Perimenopause'}`}</div>
+          ${monthsTracked !== null && (daysRemaining === null || isConfirmed) ? `<div class="stat-foot">${escapeHtml(monthsTracked)} ${this._t('dashboard_months_tracked') || 'Monate erfasst'}</div>` : ''}
+        </div>`;
+
       return `
         <div>
           ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
@@ -2703,12 +2729,7 @@
               <span>${this._t('dashboard_menopause_threshold') || '12 Monate ohne Periode'}</span>
             </div>
           </div>
-          <div class="kpi-strip" style="margin-top:14px;">
-            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">📅</span><span class="kpi-value">${daysSinceLastPeriod !== null ? escapeHtml(daysSinceLastPeriod) : '—'}</span><span class="kpi-label">${this._t('dashboard_days_since_last_period') || 'Tage seit letzter Periode'}</span></div>
-            ${daysRemaining !== null && !isConfirmed ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${escapeHtml(daysRemaining)}</span><span class="kpi-label">${this._t('dashboard_days_to_confirmed') || 'Tage bis bestätigt'}</span></div>` : ''}
-            ${monthsTracked !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${escapeHtml(monthsTracked)}</span><span class="kpi-label">${this._t('dashboard_months_tracked') || 'Monate erfasst'}</span></div>` : ''}
-            <div class="kpi-item ${isConfirmed ? 'mc-plum' : ''}"><span class="kpi-icon" aria-hidden="true">${isConfirmed ? '✓' : '◐'}</span><span class="kpi-value" style="font-size:1rem;">${isConfirmed ? (this._t('dashboard_menopause_confirmed') || 'Bestätigt') : (this._t('dashboard_perimenopause') || 'Perimenopause')}</span><span class="kpi-label">${this._t('dashboard_label_state')}</span></div>
-          </div>
+          <div class="stat-stack" style="margin-top:16px;">${stat1}${stat2}${stat3}</div>
           <p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer')}</p>
         </div>`;
     }
@@ -2726,6 +2747,29 @@
       const totalWeeks = Math.round(durationDays / 7);
 
       const statusIcon = !discreetMode ? this._statusIconHtml('postpartum', 32) : '';
+
+      const stat1 = `
+        <div class="stat mc-rose">
+          <div class="stat-label">${this._t('days_postpartum') || 'Tage Wochenbett'}</div>
+          <div class="stat-value">${daysSinceBirth !== null ? escapeHtml(daysSinceBirth) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
+        </div>`;
+
+      const stat2 = daysRemaining !== null
+        ? `
+          <div class="stat">
+            <div class="stat-label">${this._t('dashboard_days_remaining') || 'Tage verbleibend'}</div>
+            <div class="stat-value">${escapeHtml(daysRemaining)} <small>${this._t('days') || 'Tage'}</small></div>
+          </div>`
+        : '';
+
+      const stat3 = weeksSinceBirth !== null
+        ? `
+          <div class="stat mc-plum">
+            <div class="stat-label">${this._t('weeks_postpartum') || 'Wochen Wochenbett'}</div>
+            <div class="stat-value">${escapeHtml(weeksSinceBirth)} <small>/ ${totalWeeks}</small></div>
+          </div>`
+        : '';
+
       return `
         <div>
           ${statusIcon ? `<div style="text-align:center;margin-bottom:10px;">${statusIcon}</div>` : ''}
@@ -2739,11 +2783,7 @@
               <span>${weeksSinceBirth !== null ? `${this._t('week')} ${weeksSinceBirth} / ${totalWeeks}` : `${durationDays} ${this._t('days') || 'Tage'}`}</span>
             </div>
           </div>
-          <div class="kpi-strip" style="margin-top:14px;">
-            <div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">👶</span><span class="kpi-value">${daysSinceBirth !== null ? escapeHtml(daysSinceBirth) : '—'}</span><span class="kpi-label">${this._t('days_postpartum') || 'Tage Wochenbett'}</span></div>
-            ${daysRemaining !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">⏳</span><span class="kpi-value">${escapeHtml(daysRemaining)}</span><span class="kpi-label">${this._t('dashboard_days_remaining') || 'Tage verbleibend'}</span></div>` : ''}
-            ${weeksSinceBirth !== null ? `<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🗓️</span><span class="kpi-value">${escapeHtml(weeksSinceBirth)}</span><span class="kpi-label">${this._t('weeks_postpartum') || 'Wochen Wochenbett'}</span></div>` : ''}
-          </div>
+          <div class="stat-stack" style="margin-top:16px;">${stat1}${stat2}${stat3}</div>
           <p class="helper" style="margin-top:8px;font-size:0.68rem;">${this._t('dashboard_postpartum_disclaimer') || 'Rückbildung verläuft individuell sehr unterschiedlich — dieser Zeitraum ist eine grobe Orientierung, keine medizinische Vorgabe.'}</p>
         </div>`;
     }
