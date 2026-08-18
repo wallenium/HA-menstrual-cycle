@@ -1,10 +1,10 @@
 {
   "domain": "menstruation_cycle",
   "name": "Menstruation Cycle",
+  "after_dependencies": ["recorder"],
   "codeowners": ["@wallenium"],
   "config_flow": true,
   "dependencies": ["lovelace"],
-  "after_dependencies": ["recorder"],
   "documentation": "https://github.com/wallenium/HA-menstrual-cycle/wiki",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/wallenium/HA-menstrual-cycle/issues",
