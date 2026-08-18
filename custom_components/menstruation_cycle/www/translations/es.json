@@ -764,5 +764,7 @@
   "dashboard_regularity_medium": "regular",
   "dashboard_regularity_low": "irregular",
   "dashboard_based_on_cycles": "basado en {n} ciclos",
-  "dashboard_widget_cycle_phase_overview": "Resumen de las fases del ciclo"
+  "dashboard_widget_cycle_phase_overview": "Resumen de las fases del ciclo",
+  "dashboard_product_add_one": "Registrar {product} (+1)",
+  "dashboard_product_tap_hint": "Toca + para registrar el consumo de hoy con una cantidad real."
 }

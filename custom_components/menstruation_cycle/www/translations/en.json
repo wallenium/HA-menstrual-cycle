@@ -797,5 +797,7 @@
   "dashboard_regularity_medium": "regular",
   "dashboard_regularity_low": "irregular",
   "dashboard_based_on_cycles": "based on {n} cycles",
-  "dashboard_widget_cycle_phase_overview": "Cycle Phase Overview"
+  "dashboard_widget_cycle_phase_overview": "Cycle Phase Overview",
+  "dashboard_product_add_one": "Log {product} (+1)",
+  "dashboard_product_tap_hint": "Tap + to log today's usage with a real count."
 }

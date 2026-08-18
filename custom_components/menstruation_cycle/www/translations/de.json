@@ -797,5 +797,7 @@
   "dashboard_regularity_medium": "regelmäßig",
   "dashboard_regularity_low": "unregelmäßig",
   "dashboard_based_on_cycles": "basiert auf {n} Zyklen",
-  "dashboard_widget_cycle_phase_overview": "Zyklusphasen im Überblick"
+  "dashboard_widget_cycle_phase_overview": "Zyklusphasen im Überblick",
+  "dashboard_product_add_one": "{product} erfassen (+1)",
+  "dashboard_product_tap_hint": "+ tippen, um den heutigen Verbrauch mit echter Stückzahl zu erfassen."
 }

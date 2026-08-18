@@ -179,6 +179,8 @@
     dashboard_this_cycle: 'This cycle',
     dashboard_avg_short: 'Avg.',
     dashboard_stock_hint: 'Stock from the household inventory (shared across all profiles).',
+    dashboard_product_add_one: 'Log {product} (+1)',
+    dashboard_product_tap_hint: 'Tap + to log today\u2019s usage with a real count.',
     dashboard_period_day_label: 'Period',
     dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
@@ -1466,6 +1468,39 @@
       this.render();
     }
 
+    /**
+     * Tap-to-log +1 usage for a product, calling the dedicated log_product_usage
+     * service with a real quantity — this is the fix for product usage always
+     * showing 1: the hygiene checkboxes in the symptom modal can only express
+     * "which product types were used" with no quantity, so every checked product
+     * was silently counted as exactly 1 regardless of how many were actually used.
+     * This button calls the service that DOES support a real quantity, one tap
+     * per unit used, giving an accurate running count.
+     */
+    async _logProductUsage(product) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'log_product_usage', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          product,
+          action: 'used',
+          quantity: 1,
+        });
+        this._message = this._t('symptom_saved');
+      } catch (_error) {
+        this._message = this._t('symptom_save_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     _handleDragPointerDown(event) {
       const handle = event.target.closest?.('[data-drag-handle]');
       if (!handle) return;
@@ -1550,6 +1585,8 @@
         }
       } else if (action === 'select-entity' && target.dataset.entityId) {
         this._handleEntityChange(target.dataset.entityId);
+      } else if (action === 'log-product' && target.dataset.product) {
+        this._logProductUsage(target.dataset.product);
       } else if (action === 'save-edit') {
         if (this._editDraft) {
           const { __profile, __mode, ...saved } = this._editDraft;
@@ -1836,19 +1873,11 @@
       const stats = attrs.product_usage_stats && typeof attrs.product_usage_stats === 'object' ? attrs.product_usage_stats : {};
       const averagePerCycle = stats.average_per_cycle || {};
 
-      const hasAnyData = ['tampon', 'pad', 'cup', 'liner', 'underwear'].some(
-        (p) => (today[p] || thisCycle[p] || averagePerCycle[p]) > 0
-      );
-
       // Household inventory lives on its own, profile-independent entity, set up by
       // the household-inventory feature (fixed entity id, not per selected profile).
       const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
       const inventory = inventoryState?.attributes?.inventory || null;
       const thresholds = inventoryState?.attributes?.thresholds || {};
-
-      if (!hasAnyData && !inventory) {
-        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
-      }
 
       const products = ['tampon', 'pad', 'cup', 'liner', 'underwear'];
       const rows = products.map((key) => {
@@ -1881,14 +1910,18 @@
               </div>
             </div>
             ${stockBadge}
+            <button type="button" data-action="log-product" data-product="${key}"
+              aria-label="${(this._t('dashboard_product_add_one') || '{product} erfassen (+1)').replace('{product}', escapeHtml(label))}"
+              style="width:28px;height:28px;border-radius:50%;border:1px solid var(--mc-rose-deep);background:var(--mc-rose-tint);font-size:15px;line-height:1;cursor:pointer;color:var(--mc-rose-deep);font-weight:700;flex:none;">+</button>
           </div>`;
       }).join('');
 
       const inventoryHint = inventory
         ? `<p class="helper" style="margin-top:10px;font-size:0.7rem;">${this._t('dashboard_stock_hint') || 'Bestand aus dem Haushalts-Inventar (gemeinsam für alle Profile).'}</p>`
         : '';
+      const tapHint = `<p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_product_tap_hint') || '+ tippen, um den heutigen Verbrauch mit echter Stückzahl zu erfassen.'}</p>`;
 
-      return `<div style="display:grid;gap:8px;">${rows}</div>${inventoryHint}`;
+      return `<div style="display:grid;gap:8px;">${rows}</div>${tapHint}${inventoryHint}`;
     }
 
     // Maps mount-point keys to the custom element tag they wait for, so the
