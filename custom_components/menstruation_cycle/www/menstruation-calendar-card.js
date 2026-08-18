@@ -812,9 +812,15 @@ class MenstruationCalendarCard extends HTMLElement {
 
   async _refreshSymptomOverrideForDay(iso) {
     this._symptomOverrides = this._symptomOverrides || {};
-    if (!this._hass?.callService) return;
+    if (!this._hass?.callService) {
+      console.warn('[menstruation-calendar-card] hass.callService unavailable — cannot fetch fresh day data.');
+      return;
+    }
+    const entityId = this._resolveEntityId();
+    if (!entityId) {
+      console.warn('[menstruation-calendar-card] Could not resolve an entity_id for this card — get_symptom call skipped, modal will use the (possibly capped) symptom_history attribute for', iso);
+    }
     try {
-      const entityId = this._resolveEntityId();
       const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
       // Modern HA frontend signature: callService(domain, service, data, target,
       // notifyOnError, returnResponse). Older frontends without response support
@@ -825,9 +831,12 @@ class MenstruationCalendarCard extends HTMLElement {
       const response = result?.response;
       if (response && response.found !== false) {
         this._symptomOverrides[iso] = response;
+        console.debug('[menstruation-calendar-card] get_symptom fetched fresh data for', iso, response);
+      } else {
+        console.debug('[menstruation-calendar-card] get_symptom returned no data for', iso, '— raw result:', result);
       }
-    } catch (_err) {
-      // Non-fatal — see comment above.
+    } catch (err) {
+      console.warn('[menstruation-calendar-card] get_symptom call failed for', iso, '— falling back to the (possibly capped) symptom_history attribute.', err);
     }
   }
 
