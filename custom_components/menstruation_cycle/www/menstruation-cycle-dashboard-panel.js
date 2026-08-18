@@ -1258,24 +1258,38 @@
             (entry) =>
               entry.config_entry_id &&
               integrationEntryIds.has(entry.config_entry_id) &&
-              entry.entity_id.startsWith('sensor.') &&
-              !entry.entity_id.includes('period_products')
+              entry.entity_id.startsWith('sensor.')
           )
           .map((entry) => entry.entity_id)
       );
 
-      // 3. Map to current states
+      // 3. Map to current states — keep only the one sensor per profile marked
+      // as the primary/selectable one (the registry entries above don't carry
+      // live state attributes, so this marker can only be checked here, not
+      // in the registry filter above).
       const states = this._hass?.states || {};
-      const entities = Array.from(registeredEntityIds)
-        .filter((entityId) => entityId in states)
-        .map((entityId) => {
-          const state = states[entityId];
-          return {
-            entityId,
-            name: state?.attributes?.friendly_name || entityId,
-            profile: state?.attributes?.profile || '',
-          };
-        });
+      const buildEntity = (entityId) => {
+        const state = states[entityId];
+        return {
+          entityId,
+          name: state?.attributes?.friendly_name || entityId,
+          profile: state?.attributes?.profile || '',
+        };
+      };
+
+      let entities = Array.from(registeredEntityIds)
+        .filter((entityId) => entityId in states && states[entityId]?.attributes?.is_primary_profile_sensor === true)
+        .map(buildEntity);
+
+      // Safety net for a backend that hasn't been updated yet (doesn't set the
+      // marker attribute): fall back to a best-effort name-pattern exclusion
+      // rather than leaving the person with zero selectable profiles.
+      if (entities.length === 0) {
+        const isKnownSecondarySensor = (id) => id.includes('period_products') || id.includes('products_today') || id.includes('basal_temp');
+        entities = Array.from(registeredEntityIds)
+          .filter((entityId) => entityId in states && !isKnownSecondarySensor(entityId))
+          .map(buildEntity);
+      }
 
       entities.sort((a, b) => a.name.localeCompare(b.name));
       this._debug('Registry-discovered entities', entities.map((e) => e.entityId));
