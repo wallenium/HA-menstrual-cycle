@@ -441,7 +441,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
                 vol.Optional(CONF_ICON, default=current_icon): str,
-                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date or None): vol.Any(None, "", selector.DateSelector()),
+                vol.Optional(CONF_BIRTH_DATE, default=current_birth_date or None): selector.DateSelector(),
                 vol.Required(
                     CONF_PERIOD_DURATION_DAYS,
                     default=current_period_duration,
@@ -453,7 +453,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_PREGNANCY_START_DATE,
                     default=pregnancy_data.get("start_date") or None,
-                ): vol.Any(None, "", selector.DateSelector()),
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_PREGNANCY_HIGH_RISK,
                     default=current_pregnancy_high_risk,
@@ -477,7 +477,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_MENOPAUSE_START_DATE,
                     default=menopause_data.get("start_date") or None,
-                ): vol.Any(None, "", selector.DateSelector()),
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_POSTPARTUM_ENABLED,
                     default=current_postpartum_enabled,
@@ -485,7 +485,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_POSTPARTUM_START_DATE,
                     default=current_postpartum_start_date,
-                ): vol.Any(None, "", selector.DateSelector()),
+                ): selector.DateSelector(),
                 vol.Optional(
                     CONF_POSTPARTUM_DURATION_DAYS,
                     default=current_postpartum_duration_days,
