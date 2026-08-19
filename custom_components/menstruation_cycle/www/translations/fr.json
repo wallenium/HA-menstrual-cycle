@@ -790,5 +790,6 @@
   "dashboard_save": "Enregistrer",
   "dashboard_close": "Fermer",
   "dashboard_quick_log_saved": "Enregistré.",
-  "dashboard_quick_log_failed": "Échec de l'enregistrement."
+  "dashboard_quick_log_failed": "Échec de l'enregistrement.",
+  "dashboard_quick_log_loading": "Chargement en cours, veuillez réessayer dans un instant…"
 }

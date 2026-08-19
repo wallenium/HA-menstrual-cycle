@@ -823,5 +823,6 @@
   "dashboard_save": "Save",
   "dashboard_close": "Close",
   "dashboard_quick_log_saved": "Saved.",
-  "dashboard_quick_log_failed": "Could not save."
+  "dashboard_quick_log_failed": "Could not save.",
+  "dashboard_quick_log_loading": "Loading, please try again in a moment…"
 }

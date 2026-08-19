@@ -112,6 +112,7 @@
     dashboard_close: 'Close',
     dashboard_quick_log_saved: 'Saved.',
     dashboard_quick_log_failed: 'Could not save.',
+    dashboard_quick_log_loading: 'Loading, please try again in a moment…',
     dashboard_bbt_last_days_prefix: 'Last',
     dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
     dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
@@ -1647,16 +1648,20 @@
             </div>`;
         }).join('');
 
+      const rowsOrFallback = window.MenstruationFunctions
+        ? rows
+        : `<p class="helper">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`;
+
       return `
-        <div class="mc-modal-backdrop" data-action="quick-log-close" role="presentation">
-          <div class="mc-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}" onclick="event.stopPropagation()">
+        <div class="mc-modal-backdrop" role="presentation">
+          <div class="mc-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
               <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
             </div>
             <p class="helper" style="margin:0 0 14px;">${escapeHtml(this._formatDate(this._todayIso()))}</p>
             <div style="max-height:60vh;overflow-y:auto;padding-right:4px;">
-              ${rows}
+              ${rowsOrFallback}
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
               <button type="button" data-action="quick-log-close">${this._t('dashboard_cancel') || 'Abbrechen'}</button>
@@ -1722,6 +1727,18 @@
     _handleClick(event) {
       const rawTarget = event.target;
       if (!(rawTarget instanceof HTMLElement)) return;
+
+      // Exact-target check (not closest()) so a click anywhere inside the modal
+      // — including inert areas with no data-action of their own, like the
+      // title or padding — doesn't bubble-match a stale ancestor action. Only
+      // clicking the backdrop itself (outside the modal box) closes it.
+      if (rawTarget.classList.contains('mc-modal-backdrop')) {
+        this._quickLogOpen = false;
+        this._quickLogSelections = {};
+        this.render();
+        return;
+      }
+
       const target = rawTarget.closest('[data-action]');
       if (!target) return;
       const action = target.dataset.action;

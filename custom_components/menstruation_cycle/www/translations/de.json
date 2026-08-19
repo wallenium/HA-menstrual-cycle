@@ -823,5 +823,6 @@
   "dashboard_save": "Speichern",
   "dashboard_close": "Schließen",
   "dashboard_quick_log_saved": "Gespeichert.",
-  "dashboard_quick_log_failed": "Speichern fehlgeschlagen."
+  "dashboard_quick_log_failed": "Speichern fehlgeschlagen.",
+  "dashboard_quick_log_loading": "Wird geladen, bitte kurz erneut versuchen …"
 }

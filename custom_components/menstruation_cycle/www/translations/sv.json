@@ -790,5 +790,6 @@
   "dashboard_save": "Spara",
   "dashboard_close": "Stäng",
   "dashboard_quick_log_saved": "Sparat.",
-  "dashboard_quick_log_failed": "Kunde inte spara."
+  "dashboard_quick_log_failed": "Kunde inte spara.",
+  "dashboard_quick_log_loading": "Laddar, försök igen om en stund…"
 }

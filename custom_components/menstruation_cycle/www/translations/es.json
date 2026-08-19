@@ -790,5 +790,6 @@
   "dashboard_save": "Guardar",
   "dashboard_close": "Cerrar",
   "dashboard_quick_log_saved": "Guardado.",
-  "dashboard_quick_log_failed": "No se pudo guardar."
+  "dashboard_quick_log_failed": "No se pudo guardar.",
+  "dashboard_quick_log_loading": "Cargando, inténtalo de nuevo en un momento…"
 }
