@@ -38,6 +38,9 @@ CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
 
 # New canonical dashboard option keys (preferred; old keys kept for backward compat)
 CONF_DASHBOARD_ENABLED = "dashboard_enabled"
+CONF_NOTIFICATIONS_ENABLED = "notifications_enabled"
+CONF_NOTIFY_SERVICE = "notify_service"
+DEFAULT_NOTIFICATIONS_ENABLED = False
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 
 # Default widget visibility keys and their defaults (all enabled by default)

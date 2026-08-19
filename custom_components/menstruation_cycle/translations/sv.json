@@ -34,7 +34,9 @@
           "pregnancy_enabled": "Aktivera graviditetsläge",
           "pre_menarche_enabled": "Aktivera spårning innan menarche",
           "menopause_enabled": "Aktivera klimakterieläge",
-          "postpartum_enabled": "Aktivera läge efter förlossning"
+          "postpartum_enabled": "Aktivera läge efter förlossning",
+          "notifications_enabled": "Aktivera aviseringar",
+          "notify_service": "Aviseringstjänst (valfritt, t.ex. mobile_app_pixel)"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -46,7 +48,9 @@
           "pregnancy_enabled": "Aktiverar graviditetsspårningsläge och visar en detaljskärm härnäst.",
           "pre_menarche_enabled": "Spårar pubertetstecken innan den första mensen (menarche) och visar en detaljskärm härnäst.",
           "menopause_enabled": "Aktiverar klimakteriespårningsläge och visar en detaljskärm härnäst.",
-          "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst."
+          "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst.",
+          "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
+          "notify_service": "Home Assistant-aviseringstjänst att använda, t.ex. 'mobile_app_pixel' (för notify.mobile_app_pixel) eller 'persistent_notification'. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet)."
         }
       },
       "pregnancy": {

@@ -35,9 +35,12 @@ from .const import (
     CONF_CYCLE_LENGTH_OVERRIDE,
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_DASHBOARD_ENABLED,
+    CONF_NOTIFICATIONS_ENABLED,
+    CONF_NOTIFY_SERVICE,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_DASHBOARD_ENABLED,
+    DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
     DEFAULT_MENARCHE_AGE_MAX,
@@ -276,6 +279,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED),
                 )
             ),
+            "notifications_enabled": bool(
+                self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
+            ),
+            "notify_service": str(self._entry.options.get(CONF_NOTIFY_SERVICE, "") or ""),
         }
 
     async def _async_advance(self) -> FlowResult:
@@ -328,6 +335,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, self._current["onboarding_stage"])).strip().lower()
                 self._data[CONF_ONBOARDING_STAGE] = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
+                self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
+                self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
 
                 self._data["_pregnancy_enabled"] = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
                 self._data["_pre_menarche_enabled"] = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
@@ -376,6 +385,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
+                vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_SERVICE, default=c["notify_service"]): str,
                 vol.Optional(
                     CONF_PREGNANCY_ENABLED, default=bool(c["pregnancy_data"].get("is_pregnant", False))
                 ): bool,
@@ -644,5 +655,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NFP_ANALYSIS_MODE: d[CONF_NFP_ANALYSIS_MODE],
                 CONF_ONBOARDING_STAGE: new_onboarding_stage,
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
+                CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
+                CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
             },
         )

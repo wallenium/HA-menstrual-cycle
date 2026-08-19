@@ -34,7 +34,9 @@
           "pregnancy_enabled": "Activer le mode grossesse",
           "pre_menarche_enabled": "Activer le suivi pré-ménarche",
           "menopause_enabled": "Activer le mode ménopause",
-          "postpartum_enabled": "Activer le mode post-partum"
+          "postpartum_enabled": "Activer le mode post-partum",
+          "notifications_enabled": "Activer les notifications",
+          "notify_service": "Service de notification (optionnel, ex. mobile_app_pixel)"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours pendant lesquels les règles durent généralement (1 à 14).",
@@ -46,7 +48,9 @@
           "pregnancy_enabled": "Active le mode de suivi de grossesse et affiche un écran de détails ensuite.",
           "pre_menarche_enabled": "Suit les signes de puberté avant les premières règles (ménarche) et affiche un écran de détails ensuite.",
           "menopause_enabled": "Active le mode de suivi de la ménopause et affiche un écran de détails ensuite.",
-          "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite."
+          "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite.",
+          "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
+          "notify_service": "Service de notification Home Assistant à utiliser, ex. 'mobile_app_pixel' (pour notify.mobile_app_pixel) ou 'persistent_notification'. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut."
         }
       },
       "pregnancy": {

@@ -41,6 +41,11 @@ from .const import (
     CONF_ONBOARDING_STAGE,
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_DASHBOARD_ENABLED,
+    CONF_NOTIFICATIONS_ENABLED,
+    CONF_NOTIFY_SERVICE,
+    CONF_NFP_ANALYSIS_MODE,
+    DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_NAME,
@@ -618,6 +623,139 @@ async def _async_check_underwear_washing_todo(hass: HomeAssistant, household_dat
     if _underwear_available(household_data) > settings["washing_threshold"]:
         return
     await _async_add_todo_item_if_missing(hass, _UNDERWEAR_WASH_TODO_ITEM)
+
+
+# Small, self-contained translation table for the two notification types,
+# matching the pattern used in ical.py for the same reason: these are sent to
+# the person directly (unlike todo-list items, which follow this integration's
+# existing English-only convention), so they're worth localizing properly.
+_NOTIFY_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "period_title": "Period expected tomorrow",
+        "period_message": "{name}: period is predicted to start tomorrow ({date}).",
+        "fertile_title": "Fertile window starting",
+        "fertile_message": "{name}: the fertile window starts today ({date}).",
+    },
+    "de": {
+        "period_title": "Periode morgen erwartet",
+        "period_message": "{name}: Die Periode wird voraussichtlich morgen beginnen ({date}).",
+        "fertile_title": "Fruchtbares Fenster beginnt",
+        "fertile_message": "{name}: Das fruchtbare Fenster beginnt heute ({date}).",
+    },
+    "fr": {
+        "period_title": "Règles prévues demain",
+        "period_message": "{name} : les règles devraient commencer demain ({date}).",
+        "fertile_title": "Début de la fenêtre de fertilité",
+        "fertile_message": "{name} : la fenêtre de fertilité commence aujourd'hui ({date}).",
+    },
+    "es": {
+        "period_title": "Menstruación prevista para mañana",
+        "period_message": "{name}: se prevé que la menstruación comience mañana ({date}).",
+        "fertile_title": "Comienza la ventana fértil",
+        "fertile_message": "{name}: la ventana fértil comienza hoy ({date}).",
+    },
+    "sv": {
+        "period_title": "Mens väntas imorgon",
+        "period_message": "{name}: mensen väntas börja imorgon ({date}).",
+        "fertile_title": "Fertilt fönster börjar",
+        "fertile_message": "{name}: det fertila fönstret börjar idag ({date}).",
+    },
+}
+
+
+def _notify_strings(lang: str | None) -> dict[str, str]:
+    key = str(lang or "en").strip().lower()[:2]
+    return _NOTIFY_STRINGS.get(key, _NOTIFY_STRINGS["en"])
+
+
+async def _async_check_and_send_notifications(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Send proactive notifications for an upcoming period or the start of the
+    fertile window, if enabled for this profile.
+
+    Everything else in this integration is pull-only (the person has to open
+    the dashboard or a card to see anything) — this is the one place that
+    actively reaches out. Opt-in per profile (CONF_NOTIFICATIONS_ENABLED),
+    targeting whatever notify service the person configures (CONF_NOTIFY_SERVICE,
+    e.g. "mobile_app_pixel" or "notify.mobile_app_pixel" — both accepted).
+    Falls back to persistent_notification if no service is configured, so
+    turning this on always does *something* visible even without a mobile app
+    set up.
+
+    De-duplicated by remembering the last date notified for each event type in
+    noncycle_data — only re-notifies if the predicted date actually changes
+    (e.g. the forecast shifts), not every single day the flag would otherwise
+    still be true.
+    """
+    if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+        return
+
+    from .model import build_cycle_model
+
+    today = dt_util.now().date()
+    model = build_cycle_model(
+        history=runtime.history,
+        period_duration_days=runtime.period_duration_days,
+        symptom_history=runtime.symptom_history,
+        pregnancy_data=runtime.pregnancy_data,
+        menarche_data=runtime.menarche_data,
+        pre_menarche_data=runtime.pre_menarche_data,
+        menopause_data=runtime.menopause_data,
+        noncycle_data=runtime.noncycle_data,
+        today=today,
+        cycle_length_override=runtime.cycle_length_override,
+        nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+        onboarding_stage=getattr(runtime, "onboarding_stage", None),
+    )
+
+    strings = _notify_strings(hass.config.language)
+    raw_service = str(entry.options.get(CONF_NOTIFY_SERVICE, "") or "").strip()
+    if raw_service:
+        if "." in raw_service:
+            notify_domain, notify_service = raw_service.split(".", 1)
+        else:
+            notify_domain, notify_service = "notify", raw_service
+    else:
+        notify_domain, notify_service = "persistent_notification", "create"
+
+    async def _send(title: str, message: str) -> None:
+        try:
+            if notify_domain == "persistent_notification":
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {"title": title, "message": message, "notification_id": f"menstruation_cycle_{entry.entry_id}_{title}"},
+                )
+            else:
+                await hass.services.async_call(notify_domain, notify_service, {"title": title, "message": message})
+        except Exception as ex:  # noqa: BLE001 — a bad/misconfigured notify target
+            # shouldn't ever crash the midnight refresh cycle for everyone else.
+            _LOGGER.warning("Could not send notification via %s.%s: %s", notify_domain, notify_service, ex)
+
+    period_start = (model.period_forecast or {}).get("predicted_start")
+    fertile_start = (model.fertility_forecast or {}).get("fertile_window_start")
+    notified_something = False
+
+    if period_start:
+        tomorrow_iso = (today + timedelta(days=1)).isoformat()
+        if period_start == tomorrow_iso and runtime.noncycle_data.get("notified_period_start") != period_start:
+            await _send(
+                strings["period_title"],
+                strings["period_message"].format(name=runtime.friendly_name, date=period_start),
+            )
+            runtime.noncycle_data["notified_period_start"] = period_start
+            notified_something = True
+
+    if fertile_start:
+        if fertile_start == today.isoformat() and runtime.noncycle_data.get("notified_fertile_start") != fertile_start:
+            await _send(
+                strings["fertile_title"],
+                strings["fertile_message"].format(name=runtime.friendly_name, date=fertile_start),
+            )
+            runtime.noncycle_data["notified_fertile_start"] = fertile_start
+            notified_something = True
+
+    if notified_something:
+        await _async_save_and_notify(hass, runtime)
 
 
 async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
@@ -1279,6 +1417,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _async_handle_midnight_refresh(_now: datetime) -> None:
         await _async_refresh_cycle_model(hass, {entry.entry_id})
         await _async_check_contraception_renewal_todo(hass, runtime)
+        await _async_check_and_send_notifications(hass, entry, runtime)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,

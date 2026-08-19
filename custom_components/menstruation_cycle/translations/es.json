@@ -34,7 +34,9 @@
           "pregnancy_enabled": "Activar modo embarazo",
           "pre_menarche_enabled": "Activar seguimiento pre-menarquia",
           "menopause_enabled": "Activar modo menopausia",
-          "postpartum_enabled": "Activar modo posparto"
+          "postpartum_enabled": "Activar modo posparto",
+          "notifications_enabled": "Activar notificaciones",
+          "notify_service": "Servicio de notificación (opcional, ej. mobile_app_pixel)"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar la menstruación (1 a 14).",
@@ -46,7 +48,9 @@
           "pregnancy_enabled": "Activa el modo de seguimiento del embarazo y muestra a continuación una pantalla de detalles.",
           "pre_menarche_enabled": "Realiza un seguimiento de los signos de la pubertad antes de la primera menstruación (menarquia) y muestra a continuación una pantalla de detalles.",
           "menopause_enabled": "Activa el modo de seguimiento de la menopausia y muestra a continuación una pantalla de detalles.",
-          "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles."
+          "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles.",
+          "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
+          "notify_service": "Servicio de notificación de Home Assistant a usar, p. ej. 'mobile_app_pixel' (para notify.mobile_app_pixel) o 'persistent_notification'. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto."
         }
       },
       "pregnancy": {

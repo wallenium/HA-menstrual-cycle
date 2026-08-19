@@ -34,7 +34,9 @@
           "pregnancy_enabled": "Enable pregnancy mode",
           "pre_menarche_enabled": "Enable pre-menarche tracking",
           "menopause_enabled": "Enable menopause mode",
-          "postpartum_enabled": "Enable postpartum mode"
+          "postpartum_enabled": "Enable postpartum mode",
+          "notifications_enabled": "Enable notifications",
+          "notify_service": "Notification service (optional, e.g. mobile_app_pixel)"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -46,7 +48,9 @@
           "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
           "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
           "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
-          "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next."
+          "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next.",
+          "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
+          "notify_service": "Home Assistant notify service to use, e.g. 'mobile_app_pixel' (for notify.mobile_app_pixel) or 'persistent_notification'. Leave empty to use a persistent notification (shown in the HA UI) by default."
         }
       },
       "pregnancy": {
