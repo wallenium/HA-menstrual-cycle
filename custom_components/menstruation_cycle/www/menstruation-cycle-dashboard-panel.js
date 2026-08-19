@@ -138,6 +138,19 @@
     dashboard_chat_fertility_outside_window: 'That day fell outside your estimated fertile window.',
     dashboard_chat_stock_enough: 'Should be enough — current stock: {stock}, typical usage per cycle: about {avg}.',
     dashboard_chat_stock_low: 'Might be tight — stock: {stock}, typical usage per cycle: about {avg}. Might be worth buying more {product}.',
+    dashboard_chat_cycle_day: 'Today is cycle day {day}.',
+    dashboard_chat_regularity: 'Your cycles are about {pct}% regular.',
+    dashboard_chat_period_duration: 'Usually about {days} days.',
+    dashboard_chat_last_period: 'Your last period started on {date}.',
+    dashboard_chat_nfp_confirmed: 'Yes, confirmed on {date}.',
+    dashboard_chat_nfp_not_confirmed: "Not yet — there's no confirmed temperature rise for this cycle so far.",
+    dashboard_chat_badges: 'Your recent badges: {list}.',
+    dashboard_chat_menopause_confirmed: 'Yes, officially confirmed (12 months without a period).',
+    dashboard_chat_menopause_pending: 'Not officially confirmed yet — currently {months} months without a period recorded.',
+    dashboard_chat_pregnancy_week: "You're currently in week {week}.",
+    dashboard_chat_due_date: 'Due date: {date}.',
+    dashboard_chat_contraception_method: 'Currently recorded: {method}.',
+    dashboard_chat_contraception_renewal: 'Possible renewal: {date}.',
     dashboard_bbt_last_days_prefix: 'Last',
     dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
     dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
@@ -1887,6 +1900,80 @@
         const key = phaseKeyMap[phase] || phase;
         const label = this._t(key);
         return (this._t('dashboard_chat_current_phase') || 'Du bist aktuell in der Phase: {phase}.').replace('{phase}', label !== key ? label : phase);
+      }
+
+      if (has('welcher zyklustag', 'zyklustag heute', 'which cycle day', 'cycle day today')) {
+        const day = attrs.cycle_day;
+        if (day === null || day === undefined) return notAvailable;
+        return (this._t('dashboard_chat_cycle_day') || 'Heute ist Zyklustag {day}.').replace('{day}', day);
+      }
+
+      if (has('regelmäßig', 'regularity', 'wie regelmäßig')) {
+        const pct = attrs.cycle_statistics?.cycle_regularity_percent;
+        if (pct === null || pct === undefined) return notAvailable;
+        return (this._t('dashboard_chat_regularity') || 'Deine Zyklen sind zu etwa {pct}% regelmäßig.').replace('{pct}', Math.round(pct));
+      }
+
+      if (has('wie lange dauert meine periode', 'periodendauer', 'how long does my period', 'period length')) {
+        const start = attrs.period_forecast?.predicted_start;
+        const end = attrs.period_forecast?.predicted_end;
+        if (!start || !end) return notAvailable;
+        const days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+        return (this._t('dashboard_chat_period_duration') || 'Für gewöhnlich etwa {days} Tage.').replace('{days}', days);
+      }
+
+      if (has('letzte periode', 'letzte regel', 'wann war meine', 'last period')) {
+        const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+        if (!starts.length) return notAvailable;
+        return (this._t('dashboard_chat_last_period') || 'Deine letzte Periode begann am {date}.').replace('{date}', this._formatDate(starts[starts.length - 1]));
+      }
+
+      if (has('temperaturkurve bestätigt', 'eisprung bestätigt', 'temperature confirmed', 'ovulation confirmed')) {
+        const nfp = attrs.nfp_analysis;
+        if (!nfp) return notAvailable;
+        if (nfp.temperature_rise_detected && nfp.temperature_rise_day) {
+          return (this._t('dashboard_chat_nfp_confirmed') || 'Ja, bestätigt am {date}.').replace('{date}', this._formatDate(nfp.temperature_rise_day));
+        }
+        return this._t('dashboard_chat_nfp_not_confirmed') || 'Noch nicht — es liegt noch keine bestätigte Temperaturkurve für diesen Zyklus vor.';
+      }
+
+      if (has('abzeichen', 'welche abzeichen', 'badges', 'achievements')) {
+        const raw = Array.isArray(attrs.progress_badges) ? attrs.progress_badges : [];
+        if (!raw.length) return this._t('progress_empty_state') || 'Noch keine Abzeichen erreicht.';
+        const titles = raw.slice(-5).reverse().map((b) => String(b?.title ?? b?.id ?? '')).filter(Boolean);
+        return (this._t('dashboard_chat_badges') || 'Deine letzten Abzeichen: {list}.').replace('{list}', titles.join(', '));
+      }
+
+      if (has('wechseljahre', 'menopause', 'klimakterium')) {
+        const monthsTracked = attrs.menopause_months_tracked;
+        const daysSince = attrs.days_since_last_period;
+        if (daysSince === null || daysSince === undefined) return notAvailable;
+        const isConfirmed = daysSince >= 365;
+        if (isConfirmed) return this._t('dashboard_chat_menopause_confirmed') || 'Ja, offiziell bestätigt (12 Monate ohne Periode).';
+        const monthsLabel = monthsTracked !== null && monthsTracked !== undefined ? Math.round(monthsTracked) : Math.round(daysSince / 30);
+        return (this._t('dashboard_chat_menopause_pending') || 'Noch nicht offiziell bestätigt — aktuell {months} Monate ohne Periode erfasst.').replace('{months}', monthsLabel);
+      }
+
+      if (has('welche woche', 'welcher woche', 'schwangerschaftswoche', 'entbindungstermin', 'pregnancy week', 'due date')) {
+        const weeks = Math.floor(Number(attrs.weeks_pregnant ?? 0) || 0);
+        const dueDate = attrs.due_date ?? attrs.pregnancy_data?.due_date;
+        if (!weeks && !dueDate) return notAvailable;
+        const parts = [];
+        if (weeks) parts.push((this._t('dashboard_chat_pregnancy_week') || 'Du bist aktuell in SSW {week}.').replace('{week}', weeks));
+        if (dueDate) parts.push((this._t('dashboard_chat_due_date') || 'Entbindungstermin: {date}.').replace('{date}', this._formatDate(dueDate)));
+        return parts.join(' ');
+      }
+
+      if (has('welche methode', 'welche verhütung', 'verhütungsmethode', 'contraception method') || (has('wechseln') && has('verhütung', 'spirale', 'implantat'))) {
+        const status = attrs.contraception_status;
+        if (!status?.current_method) return notAvailable;
+        const key = `opt_${status.current_method}`;
+        const methodLabel = this._t(key) !== key ? this._t(key) : status.current_method;
+        let answer = (this._t('dashboard_chat_contraception_method') || 'Aktuell erfasst: {method}.').replace('{method}', methodLabel);
+        if (status.renewal_due_date) {
+          answer += ` ${(this._t('dashboard_chat_contraception_renewal') || 'Möglicher Wechsel: {date}.').replace('{date}', this._formatDate(status.renewal_due_date))}`;
+        }
+        return answer;
       }
 
       return this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Ich kann z. B. etwas zur nächsten Periode, Zykluslänge, dem fruchtbaren Fenster oder der aktuellen Phase sagen.';

@@ -825,5 +825,18 @@
   "dashboard_chat_fertility_in_window": "Ce jour se situait dans votre fenêtre de fertilité estimée.",
   "dashboard_chat_fertility_outside_window": "Ce jour se situait en dehors de votre fenêtre de fertilité estimée.",
   "dashboard_chat_stock_enough": "Cela devrait suffire — stock actuel : {stock}, consommation habituelle par cycle : environ {avg}.",
-  "dashboard_chat_stock_low": "Cela pourrait être juste — stock : {stock}, consommation habituelle par cycle : environ {avg}. Envisagez de racheter des {product}."
+  "dashboard_chat_stock_low": "Cela pourrait être juste — stock : {stock}, consommation habituelle par cycle : environ {avg}. Envisagez de racheter des {product}.",
+  "dashboard_chat_cycle_day": "Aujourd'hui, c'est le jour {day} du cycle.",
+  "dashboard_chat_regularity": "Vos cycles sont réguliers à environ {pct} %.",
+  "dashboard_chat_period_duration": "Généralement environ {days} jours.",
+  "dashboard_chat_last_period": "Vos dernières règles ont commencé le {date}.",
+  "dashboard_chat_nfp_confirmed": "Oui, confirmée le {date}.",
+  "dashboard_chat_nfp_not_confirmed": "Pas encore — aucune hausse de température confirmée pour ce cycle pour l'instant.",
+  "dashboard_chat_badges": "Vos derniers badges : {list}.",
+  "dashboard_chat_menopause_confirmed": "Oui, officiellement confirmée (12 mois sans règles).",
+  "dashboard_chat_menopause_pending": "Pas encore officiellement confirmée — actuellement {months} mois sans règles enregistrés.",
+  "dashboard_chat_pregnancy_week": "Vous êtes actuellement à la semaine {week}.",
+  "dashboard_chat_due_date": "Date d'accouchement prévue : {date}.",
+  "dashboard_chat_contraception_method": "Actuellement enregistrée : {method}.",
+  "dashboard_chat_contraception_renewal": "Renouvellement possible : {date}."
 }

@@ -858,5 +858,18 @@
   "dashboard_chat_fertility_in_window": "That day fell within your estimated fertile window.",
   "dashboard_chat_fertility_outside_window": "That day fell outside your estimated fertile window.",
   "dashboard_chat_stock_enough": "Should be enough — current stock: {stock}, typical usage per cycle: about {avg}.",
-  "dashboard_chat_stock_low": "Might be tight — stock: {stock}, typical usage per cycle: about {avg}. Might be worth buying more {product}."
+  "dashboard_chat_stock_low": "Might be tight — stock: {stock}, typical usage per cycle: about {avg}. Might be worth buying more {product}.",
+  "dashboard_chat_cycle_day": "Today is cycle day {day}.",
+  "dashboard_chat_regularity": "Your cycles are about {pct}% regular.",
+  "dashboard_chat_period_duration": "Usually about {days} days.",
+  "dashboard_chat_last_period": "Your last period started on {date}.",
+  "dashboard_chat_nfp_confirmed": "Yes, confirmed on {date}.",
+  "dashboard_chat_nfp_not_confirmed": "Not yet — there's no confirmed temperature rise for this cycle so far.",
+  "dashboard_chat_badges": "Your recent badges: {list}.",
+  "dashboard_chat_menopause_confirmed": "Yes, officially confirmed (12 months without a period).",
+  "dashboard_chat_menopause_pending": "Not officially confirmed yet — currently {months} months without a period recorded.",
+  "dashboard_chat_pregnancy_week": "You're currently in week {week}.",
+  "dashboard_chat_due_date": "Due date: {date}.",
+  "dashboard_chat_contraception_method": "Currently recorded: {method}.",
+  "dashboard_chat_contraception_renewal": "Possible renewal: {date}."
 }

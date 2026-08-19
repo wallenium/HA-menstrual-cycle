@@ -825,5 +825,18 @@
   "dashboard_chat_fertility_in_window": "Den dagen låg inom ditt uppskattade fertila fönster.",
   "dashboard_chat_fertility_outside_window": "Den dagen låg utanför ditt uppskattade fertila fönster.",
   "dashboard_chat_stock_enough": "Bör räcka — nuvarande lager: {stock}, typisk förbrukning per cykel: ca {avg}.",
-  "dashboard_chat_stock_low": "Kan bli knappt — lager: {stock}, typisk förbrukning per cykel: ca {avg}. Kan vara värt att köpa mer {product}."
+  "dashboard_chat_stock_low": "Kan bli knappt — lager: {stock}, typisk förbrukning per cykel: ca {avg}. Kan vara värt att köpa mer {product}.",
+  "dashboard_chat_cycle_day": "Idag är cykeldag {day}.",
+  "dashboard_chat_regularity": "Dina cykler är ungefär {pct}% regelbundna.",
+  "dashboard_chat_period_duration": "Vanligtvis omkring {days} dagar.",
+  "dashboard_chat_last_period": "Din senaste mens började {date}.",
+  "dashboard_chat_nfp_confirmed": "Ja, bekräftad {date}.",
+  "dashboard_chat_nfp_not_confirmed": "Inte än — det finns ingen bekräftad temperaturstegring för denna cykel hittills.",
+  "dashboard_chat_badges": "Dina senaste utmärkelser: {list}.",
+  "dashboard_chat_menopause_confirmed": "Ja, officiellt bekräftat (12 månader utan mens).",
+  "dashboard_chat_menopause_pending": "Inte officiellt bekräftat än — för närvarande {months} månader utan mens registrerade.",
+  "dashboard_chat_pregnancy_week": "Du är för närvarande i vecka {week}.",
+  "dashboard_chat_due_date": "Beräknad förlossning: {date}.",
+  "dashboard_chat_contraception_method": "Aktuellt registrerat: {method}.",
+  "dashboard_chat_contraception_renewal": "Möjligt byte: {date}."
 }

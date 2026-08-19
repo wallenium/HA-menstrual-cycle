@@ -858,5 +858,18 @@
   "dashboard_chat_fertility_in_window": "Der Tag lag in deinem geschätzten fruchtbaren Fenster.",
   "dashboard_chat_fertility_outside_window": "Der Tag lag außerhalb deines geschätzten fruchtbaren Fensters.",
   "dashboard_chat_stock_enough": "Sollte reichen — aktueller Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}.",
-  "dashboard_chat_stock_low": "Könnte knapp werden — Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}. Eventuell {product} nachkaufen."
+  "dashboard_chat_stock_low": "Könnte knapp werden — Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}. Eventuell {product} nachkaufen.",
+  "dashboard_chat_cycle_day": "Heute ist Zyklustag {day}.",
+  "dashboard_chat_regularity": "Deine Zyklen sind zu etwa {pct}% regelmäßig.",
+  "dashboard_chat_period_duration": "Für gewöhnlich etwa {days} Tage.",
+  "dashboard_chat_last_period": "Deine letzte Periode begann am {date}.",
+  "dashboard_chat_nfp_confirmed": "Ja, bestätigt am {date}.",
+  "dashboard_chat_nfp_not_confirmed": "Noch nicht — es liegt noch keine bestätigte Temperaturkurve für diesen Zyklus vor.",
+  "dashboard_chat_badges": "Deine letzten Abzeichen: {list}.",
+  "dashboard_chat_menopause_confirmed": "Ja, offiziell bestätigt (12 Monate ohne Periode).",
+  "dashboard_chat_menopause_pending": "Noch nicht offiziell bestätigt — aktuell {months} Monate ohne Periode erfasst.",
+  "dashboard_chat_pregnancy_week": "Du bist aktuell in SSW {week}.",
+  "dashboard_chat_due_date": "Entbindungstermin: {date}.",
+  "dashboard_chat_contraception_method": "Aktuell erfasst: {method}.",
+  "dashboard_chat_contraception_renewal": "Möglicher Wechsel: {date}."
 }
