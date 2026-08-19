@@ -4135,7 +4135,7 @@
       const ts = stateObj.last_updated || stateObj.last_changed;
       const formatted = this._formatDateTime(ts);
       if (!formatted) return '';
-      return `<p class="helper" style="margin:2px 0 0;font-size:0.7rem;">${this._t('dashboard_last_updated') || 'Zuletzt aktualisiert'}: ${escapeHtml(formatted)}</p>`;
+      return `<p class="helper" style="margin:2px 0 -10px;font-size:0.7rem;">${this._t('dashboard_last_updated') || 'Zuletzt aktualisiert'}: ${escapeHtml(formatted)}</p>`;
     }
 
     /**
@@ -4420,21 +4420,30 @@
           .toolbar button {
             border: 1px solid var(--divider-color, #d1d5db);
             border-radius: 999px;
-            background: var(--card-background-color, #fff);
+            background: var(--mc-sand);
             color: inherit;
-            padding: 8px 14px;
+            padding: 0 16px;
+            height: 42px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 600;
             transition: background 0.15s, border-color 0.15s;
           }
           .toolbar button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
+          .toolbar button ha-icon { --mdc-icon-size: 20px; display: block; }
+          .toolbar button:has(ha-icon:only-child) { width: 42px; padding: 0; }
           .entity-picker {
             width: auto;
             border: 1px solid var(--divider-color, #d1d5db);
             border-radius: 999px;
-            padding: 7px 12px;
-            background: var(--card-background-color, #fff);
+            padding: 0 12px;
+            height: 42px;
+            box-sizing: border-box;
+            background: var(--mc-sand);
             color: inherit;
             cursor: pointer;
             font-size: 0.875rem;
@@ -4450,13 +4459,18 @@
             border: 1px solid var(--divider-color, #e5e7eb);
             border-radius: 999px;
             padding: 3px;
+            height: 42px;
+            box-sizing: border-box;
             flex-wrap: wrap;
+            align-items: center;
           }
           .mode-btn {
             border: none; background: transparent; cursor: pointer;
             font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
             color: var(--secondary-text-color, #6b7280);
             padding: 7px 14px;
+            height: 100%;
+            box-sizing: border-box;
             border-radius: 999px;
             transition: background .15s ease, color .15s ease;
             white-space: nowrap;
@@ -4495,21 +4509,31 @@
           }
           .today-pill {
             font-family: var(--mc-font-mono);
-            font-size: 0.78rem;
-            padding: 8px 14px;
+            font-size: 1rem;
+            padding: 0 16px;
+            height: 42px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
             border-radius: 999px;
             background: var(--mc-sand);
+            border: 1px solid var(--divider-color, #e5e7eb);
             color: var(--secondary-text-color, #6b7280);
             white-space: nowrap;
           }
-          /* Discreet-mode quick toggle, matching the mockup's label + pill-switch */
+          /* Discreet-mode quick toggle — now a bordered pill matching the other
+             header controls' height/color instead of floating borderless. */
           .toolbar button.discreet-toggle {
             display: flex; align-items: center; gap: 9px;
             font-size: 0.8125rem; color: var(--secondary-text-color, #6b7280);
             font-weight: 400;
-            background: transparent; border: none; padding: 4px 2px;
+            background: var(--mc-sand);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            padding: 0 14px;
+            height: 42px;
+            box-sizing: border-box;
           }
-          .toolbar button.discreet-toggle:hover { background: transparent; border-color: transparent; }
+          .toolbar button.discreet-toggle:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
           .switch {
             width: 34px; height: 20px; border-radius: 999px;
             background: var(--mc-plum-tint); position: relative;
@@ -4992,13 +5016,13 @@
                   <span>${this._t('dashboard_discreet_mode')}</span>
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
-              ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">📝 ${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
-              ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
+              ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
+              ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
           </header>
           ${this._renderLastUpdated(stateObj)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
-          <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
+          ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}</div>` : ''}
           ${this._renderEditPanel()}
           ${this._renderQuickLogModal(stateObj)}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
