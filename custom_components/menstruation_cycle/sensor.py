@@ -80,6 +80,7 @@ from .badges import evaluate_badges, new_badges_this_week
 from .model import (
     bleeding_blocks,
     build_cycle_model,
+    compute_contraception_status,
     compute_prediction_day_confidence,
     grouped_cycle_starts,
     normalize_history,
@@ -1213,6 +1214,7 @@ class MenstruationGaugeSensor(SensorEntity):
             # per-profile sensors (product usage, basal temp) also carry profile+
             # entry_id and no longer happened to be excluded by name.
             "is_primary_profile_sensor": True,
+            "contraception_status": compute_contraception_status(model.symptom_history, today=today),
             "product_usage_today": usage_stats["today"],
             "product_usage_this_cycle": usage_stats["this_cycle"],
             "product_usage_stats": usage_stats["stats"],

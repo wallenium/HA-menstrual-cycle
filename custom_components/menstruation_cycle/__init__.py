@@ -620,6 +620,36 @@ async def _async_check_underwear_washing_todo(hass: HomeAssistant, household_dat
     await _async_add_todo_item_if_missing(hass, _UNDERWEAR_WASH_TODO_ITEM)
 
 
+async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
+    """Add a todo-list reminder when the current contraception method's
+    estimated renewal/replacement date is approaching.
+
+    Only fires for methods with a known typical validity period (IUD,
+    implant, injection — see CONTRACEPTION_RENEWAL_MONTHS); other methods
+    (pill, patch, ring, condom) don't have a multi-month/year "replace this"
+    concept in the same sense, so no reminder is generated for them.
+
+    Checked once daily from the midnight refresh cycle, since the reminder is
+    purely a function of the passage of time (today vs. the estimated due
+    date), not something that changes when a symptom is logged.
+    """
+    from .model import compute_contraception_status
+
+    status = compute_contraception_status(runtime.symptom_history)
+    if not status.get("renewal_reminder_due"):
+        return
+    method = status.get("current_method")
+    due_date = status.get("renewal_due_date")
+    if not method or not due_date:
+        return
+
+    # Item text intentionally single-language (English), matching the existing
+    # convention for todo-list items in this integration (e.g. the underwear
+    # washing reminder) — todo-list items aren't currently localized.
+    item_text = f"{runtime.friendly_name}: contraception method ({method}) may need renewal soon ({due_date})"
+    await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=f"{runtime.friendly_name}: contraception method ({method})")
+
+
 def _profile_from_entry(entry: ConfigEntry) -> str:
     profile = slugify(str(entry.data.get(CONF_PROFILE, ""))).strip("_")
     if profile:
@@ -1248,6 +1278,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def _async_handle_midnight_refresh(_now: datetime) -> None:
         await _async_refresh_cycle_model(hass, {entry.entry_id})
+        await _async_check_contraception_renewal_todo(hass, runtime)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,

@@ -209,6 +209,58 @@ SYMPTOM_CERVIX_TEXTURE = "cervix_texture"
 SYMPTOM_LIBIDO = "libido"
 SYMPTOM_TRAINING_INTENSITY = "training_intensity"
 SYMPTOM_PREGNANCY = "pregnancy_symptoms"
+SYMPTOM_CONTRACEPTION_METHOD = "contraception_method"
+
+# Contraception methods and their properties. "none" means explicitly no
+# contraception logged (distinct from never having logged anything at all).
+CONTRACEPTION_METHOD_NONE = "none"
+CONTRACEPTION_METHOD_PILL = "pill"
+CONTRACEPTION_METHOD_HORMONAL_IUD = "hormonal_iud"
+CONTRACEPTION_METHOD_COPPER_IUD = "copper_iud"
+CONTRACEPTION_METHOD_IMPLANT = "implant"
+CONTRACEPTION_METHOD_PATCH = "patch"
+CONTRACEPTION_METHOD_RING = "ring"
+CONTRACEPTION_METHOD_INJECTION = "injection"
+CONTRACEPTION_METHOD_CONDOM = "condom"
+CONTRACEPTION_METHOD_OTHER = "other"
+
+CONTRACEPTION_METHODS = [
+    CONTRACEPTION_METHOD_NONE,
+    CONTRACEPTION_METHOD_PILL,
+    CONTRACEPTION_METHOD_HORMONAL_IUD,
+    CONTRACEPTION_METHOD_COPPER_IUD,
+    CONTRACEPTION_METHOD_IMPLANT,
+    CONTRACEPTION_METHOD_PATCH,
+    CONTRACEPTION_METHOD_RING,
+    CONTRACEPTION_METHOD_INJECTION,
+    CONTRACEPTION_METHOD_CONDOM,
+    CONTRACEPTION_METHOD_OTHER,
+]
+
+# Hormonal methods suppress ovulation (or can), making cycle/fertility
+# predictions built on the assumption of a natural cycle unreliable — the
+# dashboard shows an accuracy warning while one of these is the current method.
+CONTRACEPTION_HORMONAL_METHODS = frozenset({
+    CONTRACEPTION_METHOD_PILL,
+    CONTRACEPTION_METHOD_HORMONAL_IUD,
+    CONTRACEPTION_METHOD_IMPLANT,
+    CONTRACEPTION_METHOD_PATCH,
+    CONTRACEPTION_METHOD_RING,
+    CONTRACEPTION_METHOD_INJECTION,
+})
+
+# Methods with a fixed typical validity period, for the renewal reminder.
+# Approximate, product/brand-dependent midpoint values — not medical advice,
+# just a "you may want to check with your provider soon" nudge. Deliberately
+# excludes pill/patch/ring/condom, which don't have a multi-month/year
+# "replace this" concept in the same sense.
+CONTRACEPTION_RENEWAL_MONTHS: dict[str, int] = {
+    CONTRACEPTION_METHOD_HORMONAL_IUD: 60,   # ~5 years typical (varies 3-8 by product)
+    CONTRACEPTION_METHOD_COPPER_IUD: 120,     # ~10 years typical (varies 5-10 by product)
+    CONTRACEPTION_METHOD_IMPLANT: 36,         # 3 years
+    CONTRACEPTION_METHOD_INJECTION: 3,        # 3 months
+}
+CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS = 30
 
 # Symptom options for reference (used in UI)
 SYMPTOM_OPTIONS = {
@@ -229,6 +281,7 @@ SYMPTOM_OPTIONS = {
     SYMPTOM_LIBIDO: ["libido_low", "normal", "libido_high"],
     SYMPTOM_TRAINING_INTENSITY: ["training_light", "training_moderate", "training_intense"],
     SYMPTOM_PREGNANCY: ["nausea", "fatigue", "heartburn", "swelling", "headache", "back_pain"],
+    SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHODS,
 }
 
 # Pre-Menarche Body Signs - Tanner Stages
