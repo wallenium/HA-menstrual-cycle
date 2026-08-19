@@ -817,5 +817,11 @@
   "opt_patch": "Verhütungspflaster",
   "opt_ring": "Vaginalring",
   "opt_injection": "Dreimonatsspritze",
-  "opt_condom": "Kondom"
+  "opt_condom": "Kondom",
+  "dashboard_log_today": "Heute loggen",
+  "dashboard_cancel": "Abbrechen",
+  "dashboard_save": "Speichern",
+  "dashboard_close": "Schließen",
+  "dashboard_quick_log_saved": "Gespeichert.",
+  "dashboard_quick_log_failed": "Speichern fehlgeschlagen."
 }

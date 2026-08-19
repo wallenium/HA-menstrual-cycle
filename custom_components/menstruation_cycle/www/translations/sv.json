@@ -784,5 +784,11 @@
   "opt_patch": "Preventivplåster",
   "opt_ring": "Vaginalring",
   "opt_injection": "P-spruta",
-  "opt_condom": "Kondom"
+  "opt_condom": "Kondom",
+  "dashboard_log_today": "Logga idag",
+  "dashboard_cancel": "Avbryt",
+  "dashboard_save": "Spara",
+  "dashboard_close": "Stäng",
+  "dashboard_quick_log_saved": "Sparat.",
+  "dashboard_quick_log_failed": "Kunde inte spara."
 }

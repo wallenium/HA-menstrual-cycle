@@ -784,5 +784,11 @@
   "opt_patch": "Patch contraceptif",
   "opt_ring": "Anneau vaginal",
   "opt_injection": "Injection trimestrielle",
-  "opt_condom": "Préservatif"
+  "opt_condom": "Préservatif",
+  "dashboard_log_today": "Consigner aujourd'hui",
+  "dashboard_cancel": "Annuler",
+  "dashboard_save": "Enregistrer",
+  "dashboard_close": "Fermer",
+  "dashboard_quick_log_saved": "Enregistré.",
+  "dashboard_quick_log_failed": "Échec de l'enregistrement."
 }

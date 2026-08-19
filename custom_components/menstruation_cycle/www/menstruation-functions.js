@@ -1,5 +1,9 @@
 /**
- * Shared product icon definitions for all menstrual cards.
+ * Shared product icon definitions and symptom-logging utilities for all
+ * menstrual cards. Originally icon-only (hence the historical filename
+ * menstruation-icons.js); renamed to reflect that it now also holds the
+ * shared symptom-config/i18n/get_symptom-fetch logic previously duplicated
+ * across menstruation-calendar-card.js and menstruation-gauge-card.js.
  */
 
 const ASSET_BASE_URL = '/menstruation_cycle/assets';
@@ -297,6 +301,155 @@ function getProductAssetUrl(productName) {
   const filename = PRODUCT_ASSET_FILENAMES[productKey];
   if (!filename) return '';
   return `${ASSET_BASE_URL}/period/${filename}`;
+}
+
+/**
+ * Shared symptom-logging utilities, used by both menstruation-calendar-card.js
+ * and menstruation-gauge-card.js — previously each maintained its own,
+ * byte-identical copy of this logic (confirmed via diff before extracting),
+ * which meant every bugfix here had to be applied twice. Extracted so future
+ * fixes only need to happen once.
+ */
+
+/** Canonicalizes a raw option value (mostly hygiene-product synonyms) before
+ * looking up its translation. */
+function normalizeOptionKey(value) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return '';
+  const normalized = raw.replace(/-/g, '_');
+  return {
+    tampon: 'tampon',
+    tampons: 'tampon',
+    pad: 'pad',
+    pads: 'pad',
+    binde: 'pad',
+    binden: 'pad',
+    cup: 'cup',
+    cups: 'cup',
+    menstrual_cup: 'cup',
+    'menstrual cup': 'cup',
+    liner: 'liner',
+    liners: 'liner',
+    pantyliner: 'liner',
+    pantyliners: 'liner',
+    slipeinlage: 'liner',
+    slipeinlagen: 'liner',
+    underwear: 'underwear',
+    period_underwear: 'underwear',
+    'period underwear': 'underwear',
+    period_panties: 'underwear',
+    'period panties': 'underwear',
+    period_panty: 'underwear',
+    'period panty': 'underwear',
+    periodenunterwaesche: 'underwear',
+    'periodenunterwäsche': 'underwear',
+  }[normalized] || {
+    'period underwear': 'underwear',
+    'period panties': 'underwear',
+    'period panty': 'underwear',
+    'menstrual cup': 'cup',
+  }[raw] || raw;
+}
+
+/**
+ * Returns the list of loggable symptom field definitions for a given cycle
+ * state, filtered/adjusted for pre-menarche, menopause, and pregnancy
+ * contexts. Each entry: { key, icon, multi, options[], ...extras }.
+ */
+function getSymptomConfig(state, isPregnant = false) {
+  const pregnant = isPregnant || String(state || '') === 'pregnant';
+  const all = [
+    { key: 'bleeding_strength', icon: 'mdi:water-opacity', multi: false, options: ['none', 'light', 'medium', 'heavy', 'very_heavy'] },
+    { key: 'clots', icon: 'mdi:water-alert', multi: false, options: ['yes', 'no'] },
+    { key: 'clot_size', icon: 'mdi:ruler-square', multi: false, options: ['small', 'medium', 'large'], dependsOn: { key: 'clots', value: 'yes' } },
+    { key: 'bleeding_type', icon: 'mdi:waves', multi: false, options: ['continuous', 'intermittent', 'drops'] },
+    { key: 'spotting', icon: 'mdi:blood-bag', multi: false, options: ['red', 'brown'] },
+    { key: 'smell', icon: 'mdi:nose', multi: false, options: ['normal', 'inconspicuous', 'unpleasant', 'fishy'] },
+    { key: 'discharge', icon: 'mdi:water-outline', multi: false, options: ['reddish', 'brown', 'white', 'clear', 'other'] },
+    { key: 'hygiene', icon: 'mdi:medical-bag', multi: true, options: ['pad', 'liner', 'tampon', 'cup', 'period_underwear'] },
+    { key: 'cervical_mucus', icon: 'mdi:water', multi: false, options: ['keinen', 'klebrig', 'cremig', 'fadenziehend', 'untypisch'] },
+    { key: 'cervix_position', icon: 'mdi:grid', multi: false, options: ['cervix_high', 'cervix_mid', 'cervix_low'], renderAs: 'cervix-grid' },
+    { key: 'cervix_texture', icon: 'mdi:grid', multi: false, options: ['firm', 'soft', 'open'], hiddenInModal: true },
+    { key: 'intercourse', icon: 'mdi:heart', multi: false, options: ['protected', 'unprotected'] },
+    { key: 'libido', icon: 'mdi:heart-pulse', multi: false, options: ['libido_low', 'normal', 'libido_high'] },
+    { key: 'pain', icon: 'mdi:emoticon-sad-outline', multi: true, options: ['mittelschmerz', 'cramps', 'tender_breasts', 'headache', 'migraine', 'lower_back', 'vulva'] },
+    { key: 'test', icon: 'mdi:test-tube', multi: true, options: ['positive_ovulation', 'negative_ovulation', 'positive_pregnancy', 'negative_pregnancy'] },
+    { key: 'training_intensity', icon: 'mdi:run-fast', multi: false, options: ['training_light', 'training_moderate', 'training_intense'] },
+    { key: 'contraception_method', icon: 'mdi:pill', multi: false, options: ['none', 'pill', 'hormonal_iud', 'copper_iud', 'implant', 'patch', 'ring', 'injection', 'condom', 'other'] },
+  ];
+  if (String(state || '') === 'pre_menarche') {
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
+    return all.filter((cat) => allowed.has(cat.key));
+  }
+  if (String(state || '') === 'menopause') {
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method']);
+    return all.filter((cat) => allowed.has(cat.key));
+  }
+  if (pregnant) {
+    return all
+      .filter((cat) => (cat.key !== 'bleeding_strength' && cat.key !== 'clots' && cat.key !== 'clot_size' && cat.key !== 'bleeding_type' && cat.key !== 'contraception_method'))
+      .map((cat) => {
+        if (cat.key === 'hygiene') {
+          return { ...cat, options: cat.options.filter((opt) => opt !== 'tampon' && opt !== 'cup') };
+        }
+        return cat;
+      });
+  }
+  return all;
+}
+
+/**
+ * Fetches a day's full, uncompacted symptom data via the get_symptom service
+ * — reads straight from backend storage rather than the (possibly capped or
+ * entirely absent, under heavy tracking history) symptom_history sensor
+ * attribute. Uses hass.connection.sendMessagePromise directly rather than
+ * hass.callService(), since callService's return_response support doesn't
+ * reliably surface the actual response data in every HA frontend version
+ * (confirmed: it can come back as just {context, user_id} with no response
+ * key at all).
+ *
+ * Returns { data, error } — data is the response dict (or null if not found
+ * or the call failed), error is a short reason string for logging by the
+ * caller (or null on success). Never throws.
+ */
+async function fetchFreshSymptomData(hass, entityId, iso, logPrefix = '[menstruation-cycle]') {
+  if (!hass?.connection?.sendMessagePromise) {
+    return { data: null, error: 'hass.connection unavailable' };
+  }
+  try {
+    const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
+    const result = await hass.connection.sendMessagePromise({
+      type: 'call_service',
+      domain: 'menstruation_cycle',
+      service: 'get_symptom',
+      service_data: payload,
+      return_response: true,
+    });
+    const response = result?.response;
+    if (response && response.found !== false) {
+      console.debug(`${logPrefix} get_symptom fetched fresh data for`, iso, response);
+      return { data: response, error: null };
+    }
+    console.debug(`${logPrefix} get_symptom returned no data for`, iso, '— raw result:', result);
+    return { data: null, error: null };
+  } catch (err) {
+    console.warn(`${logPrefix} get_symptom call failed for`, iso, '— falling back to the (possibly capped) symptom_history attribute.', err);
+    return { data: null, error: String(err) };
+  }
+}
+
+const MenstruationFunctions = {
+  normalizeOptionKey,
+  getSymptomConfig,
+  fetchFreshSymptomData,
+};
+
+if (typeof window !== 'undefined') {
+  window.MenstruationFunctions = MenstruationFunctions;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports.MenstruationFunctions = MenstruationFunctions;
 }
 
 const ProductIcons = {

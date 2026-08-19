@@ -8,44 +8,6 @@ if (typeof _mcCalendarCardI18n.normalizeLang !== 'function') {
   _mcCalendarCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-function normalizeOptionKey(value) {
-  const raw = String(value ?? '').trim().toLowerCase();
-  if (!raw) return '';
-  const normalized = raw.replace(/-/g, '_');
-  return {
-    tampon: 'tampon',
-    tampons: 'tampon',
-    pad: 'pad',
-    pads: 'pad',
-    binde: 'pad',
-    binden: 'pad',
-    cup: 'cup',
-    cups: 'cup',
-    menstrual_cup: 'cup',
-    'menstrual cup': 'cup',
-    liner: 'liner',
-    liners: 'liner',
-    pantyliner: 'liner',
-    pantyliners: 'liner',
-    slipeinlage: 'liner',
-    slipeinlagen: 'liner',
-    underwear: 'underwear',
-    period_underwear: 'underwear',
-    'period underwear': 'underwear',
-    period_panties: 'underwear',
-    'period panties': 'underwear',
-    period_panty: 'underwear',
-    'period panty': 'underwear',
-    periodenunterwaesche: 'underwear',
-    'periodenunterwäsche': 'underwear',
-  }[normalized] || {
-    'period underwear': 'underwear',
-    'period panties': 'underwear',
-    'period panty': 'underwear',
-    'menstrual cup': 'cup',
-  }[raw] || raw;
-}
-
 
 
 
@@ -274,7 +236,7 @@ class MenstruationCalendarCard extends HTMLElement {
   }
 
   _tOption(key) {
-    const normalizedKey = normalizeOptionKey(key);
+    const normalizedKey = window.MenstruationFunctions ? window.MenstruationFunctions.normalizeOptionKey(key) : String(key ?? '').trim().toLowerCase();
     const prefixedKey = `opt_${normalizedKey}`;
     const prefixedLabel = this._t(prefixedKey);
     return prefixedLabel !== prefixedKey ? prefixedLabel : this._t(normalizedKey);
@@ -707,51 +669,11 @@ class MenstruationCalendarCard extends HTMLElement {
   }
 
   _symptomConfig(state, isPregnant = false) {
-    const pregnant = isPregnant || String(state || '') === 'pregnant';
-    const all = [
-      { key: 'bleeding_strength', icon: 'mdi:water-opacity', multi: false, options: ['none', 'light', 'medium', 'heavy', 'very_heavy'] },
-      { key: 'clots', icon: 'mdi:water-alert', multi: false, options: ['yes', 'no'] },
-      { key: 'clot_size', icon: 'mdi:ruler-square', multi: false, options: ['small', 'medium', 'large'], dependsOn: { key: 'clots', value: 'yes' } },
-      { key: 'bleeding_type', icon: 'mdi:waves', multi: false, options: ['continuous', 'intermittent', 'drops'] },
-      { key: 'spotting', icon: 'mdi:blood-bag', multi: false, options: ['red', 'brown'] },
-      { key: 'smell', icon: 'mdi:nose', multi: false, options: ['normal', 'inconspicuous', 'unpleasant', 'fishy'] },
-      { key: 'discharge', icon: 'mdi:water-outline', multi: false, options: ['reddish', 'brown', 'white', 'clear', 'other'] },
-      { key: 'hygiene', icon: 'mdi:medical-bag', multi: true, options: ['pad', 'liner', 'tampon', 'cup', 'period_underwear'] },
-      { key: 'cervical_mucus', icon: 'mdi:water', multi: false, options: ['keinen', 'klebrig', 'cremig', 'fadenziehend', 'untypisch'] },
-      { key: 'cervix_position', icon: 'mdi:grid', multi: false, options: ['cervix_high', 'cervix_mid', 'cervix_low'], renderAs: 'cervix-grid' },
-      { key: 'cervix_texture', icon: 'mdi:grid', multi: false, options: ['firm', 'soft', 'open'], hiddenInModal: true },
-      { key: 'intercourse', icon: 'mdi:heart', multi: false, options: ['protected', 'unprotected'] },
-      { key: 'libido', icon: 'mdi:heart-pulse', multi: false, options: ['libido_low', 'normal', 'libido_high'] },
-      { key: 'pain', icon: 'mdi:emoticon-sad-outline', multi: true, options: ['mittelschmerz', 'cramps', 'tender_breasts', 'headache', 'migraine', 'lower_back', 'vulva'] },
-      { key: 'test', icon: 'mdi:test-tube', multi: true, options: ['positive_ovulation', 'negative_ovulation', 'positive_pregnancy', 'negative_pregnancy'] },
-      { key: 'training_intensity', icon: 'mdi:run-fast', multi: false, options: ['training_light', 'training_moderate', 'training_intense'] },
-      { key: 'contraception_method', icon: 'mdi:pill', multi: false, options: ['none', 'pill', 'hormonal_iud', 'copper_iud', 'implant', 'patch', 'ring', 'injection', 'condom', 'other'] },
-    ];
-    if (String(state || '') === 'pre_menarche') {
-      const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
-      return all.filter((cat) => allowed.has(cat.key));
-    }
-    if (String(state || '') === 'menopause') {
-      const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method']);
-      return all.filter((cat) => allowed.has(cat.key));
-    }
-    if (pregnant) {
-      const pregnancyConfig = all
-        .filter((cat) => (cat.key !== 'bleeding_strength' && cat.key !== 'clots' && cat.key !== 'clot_size' && cat.key !== 'bleeding_type' && cat.key !== 'contraception_method'))
-        .map((cat) => {
-          if (cat.key === 'hygiene') {
-            return { ...cat, options: cat.options.filter((opt) => opt !== 'tampon' && opt !== 'cup') };
-          }
-          return cat;
-        });
-      return [{
-        key: 'pregnancy_symptoms',
-        icon: 'mdi:baby-carriage',
-        multi: true,
-        options: ['nausea', 'fatigue', 'headache', 'back_pain', 'heartburn', 'swelling'],
-      }, ...pregnancyConfig];
-    }
-    return all;
+    // Delegates to the shared implementation in menstruation-functions.js —
+    // this and menstruation-gauge-card.js previously each maintained their own
+    // byte-identical copy of this config.
+    if (window.MenstruationFunctions) return window.MenstruationFunctions.getSymptomConfig(state, isPregnant);
+    return [];
   }
 
   _periodModalContext(iso, model) {
@@ -813,38 +735,13 @@ class MenstruationCalendarCard extends HTMLElement {
 
   async _refreshSymptomOverrideForDay(iso) {
     this._symptomOverrides = this._symptomOverrides || {};
-    if (!this._hass?.connection?.sendMessagePromise) {
-      console.warn('[menstruation-calendar-card] hass.connection unavailable — cannot fetch fresh day data.');
-      return;
-    }
     const entityId = this._resolveEntityId();
     if (!entityId) {
       console.warn('[menstruation-calendar-card] Could not resolve an entity_id for this card — get_symptom call skipped, modal will use the (possibly capped) symptom_history attribute for', iso);
     }
-    try {
-      const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
-      // hass.callService()'s return_response support doesn't reliably surface the
-      // actual response data in every HA frontend version (confirmed: it can come
-      // back as just {context, user_id} with no response key at all). Calling the
-      // WebSocket API directly with return_response:true is the lower-level,
-      // documented mechanism that does work.
-      const result = await this._hass.connection.sendMessagePromise({
-        type: 'call_service',
-        domain: 'menstruation_cycle',
-        service: 'get_symptom',
-        service_data: payload,
-        return_response: true,
-      });
-      const response = result?.response;
-      if (response && response.found !== false) {
-        this._symptomOverrides[iso] = response;
-        console.debug('[menstruation-calendar-card] get_symptom fetched fresh data for', iso, response);
-      } else {
-        console.debug('[menstruation-calendar-card] get_symptom returned no data for', iso, '— raw result:', result);
-      }
-    } catch (err) {
-      console.warn('[menstruation-calendar-card] get_symptom call failed for', iso, '— falling back to the (possibly capped) symptom_history attribute.', err);
-    }
+    if (!window.MenstruationFunctions) return;
+    const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, iso, '[menstruation-calendar-card]');
+    if (data) this._symptomOverrides[iso] = data;
   }
 
   _renderSymptomModal(iso, model) {
@@ -988,18 +885,9 @@ class MenstruationCalendarCard extends HTMLElement {
     const openedSnapshot = this._symptomOverrides?.[iso] || null;
     if (openedSnapshot) {
       let freshData = null;
-      try {
-        const payload = entityId ? { entity_id: entityId, date: iso } : { date: iso };
-        const result = await this._hass.connection.sendMessagePromise({
-          type: 'call_service',
-          domain: 'menstruation_cycle',
-          service: 'get_symptom',
-          service_data: payload,
-          return_response: true,
-        });
-        freshData = result?.response;
-      } catch (_err) {
-        freshData = null; // response-calls unsupported on this HA frontend — skip check
+      if (window.MenstruationFunctions) {
+        const result = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, iso, '[menstruation-calendar-card]');
+        freshData = result.data;
       }
       if (freshData && freshData.found !== false) {
         const keys = new Set([...Object.keys(freshData), ...Object.keys(openedSnapshot)]);

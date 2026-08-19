@@ -106,6 +106,12 @@
     dashboard_temperature_rise: 'Temperature rise',
     dashboard_contraception_accuracy_warning: 'Hormonal contraception can suppress ovulation — cycle and fertility predictions are unreliable while active.',
     dashboard_contraception_renewal_due: 'Contraception method may need renewal soon',
+    dashboard_log_today: 'Log today',
+    dashboard_cancel: 'Cancel',
+    dashboard_save: 'Save',
+    dashboard_close: 'Close',
+    dashboard_quick_log_saved: 'Saved.',
+    dashboard_quick_log_failed: 'Could not save.',
     dashboard_bbt_last_days_prefix: 'Last',
     dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
     dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
@@ -676,6 +682,11 @@
       this._lang = 'en';
       this._editMode = false;
       this._editDraft = null;
+      // Quick "log today" modal state — a lighter-weight alternative to opening
+      // the full calendar, using the shared symptom config from
+      // menstruation-functions.js (the same one the calendar/gauge cards use).
+      this._quickLogOpen = false;
+      this._quickLogSelections = {};
       this._prefs = null;
       this._activeProfile = 'default';
       this._activeMode = 'general';
@@ -786,7 +797,7 @@
         });
       }
 
-      // window.ProductIcons (menstruation-icons.js) gives theme-tinted masked SVG
+      // window.ProductIcons (menstruation-functions.js) gives theme-tinted masked SVG
       // icons instead of our plain <img> fallback, but it's a plain global set by a
       // script tag — no whenDefined() equivalent — so poll briefly instead.
       if (typeof window !== 'undefined' && !window.ProductIcons) {
@@ -1594,6 +1605,106 @@
       }
     }
 
+    /**
+     * Renders the quick "log today" modal — a lighter-weight, dashboard-native
+     * alternative to opening the full calendar/gauge card just to log a
+     * symptom. Uses the shared field config from menstruation-functions.js
+     * (window.MenstruationFunctions), the same one both cards use, and the
+     * same opt_/cat_ translation keys already used throughout the app.
+     */
+    _renderQuickLogModal(stateObj) {
+      if (!this._quickLogOpen) return '';
+      const attrs = stateObj?.attributes || {};
+      const mode = this._resolveContentMode(stateObj);
+      const isPregnant = mode === 'pregnancy';
+      const fields = window.MenstruationFunctions ? window.MenstruationFunctions.getSymptomConfig(mode, isPregnant) : [];
+      const tOption = (val) => {
+        if (!window.MenstruationFunctions) return String(val);
+        const key = window.MenstruationFunctions.normalizeOptionKey(val);
+        const prefixed = this._t(`opt_${key}`);
+        return prefixed !== `opt_${key}` ? prefixed : (this._t(key) !== key ? this._t(key) : String(val));
+      };
+      const tCategory = (key) => {
+        const prefixed = this._t(`cat_${key}`);
+        return prefixed !== `cat_${key}` ? prefixed : key;
+      };
+
+      const rows = fields
+        .filter((cat) => !cat.hiddenInModal)
+        .filter((cat) => !(cat.key === 'clot_size' && this._quickLogSelections.clots !== 'yes'))
+        .map((cat) => {
+          const options = (cat.options || []).map((opt) => {
+            const isSelected = cat.multi
+              ? (Array.isArray(this._quickLogSelections[cat.key]) && this._quickLogSelections[cat.key].includes(opt))
+              : this._quickLogSelections[cat.key] === opt;
+            const action = cat.multi ? 'quick-log-toggle-multi' : 'quick-log-select';
+            return `<button type="button" class="mode-btn${isSelected ? ' active' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${escapeHtml(tOption(opt))}</button>`;
+          }).join('');
+          return `
+            <div style="margin-bottom:14px;">
+              <div class="stat-label" style="margin-bottom:6px;">${escapeHtml(tCategory(cat.key))}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">${options}</div>
+            </div>`;
+        }).join('');
+
+      return `
+        <div class="mc-modal-backdrop" data-action="quick-log-close" role="presentation">
+          <div class="mc-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
+              <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
+            </div>
+            <p class="helper" style="margin:0 0 14px;">${escapeHtml(this._formatDate(this._todayIso()))}</p>
+            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;">
+              ${rows}
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
+              <button type="button" data-action="quick-log-close">${this._t('dashboard_cancel') || 'Abbrechen'}</button>
+              <button type="button" class="mode-btn active" data-action="quick-log-save">${this._t('dashboard_save') || 'Speichern'}</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async _handleQuickLogSave() {
+      if (!this._selectedEntityId || !this._hass?.callService) {
+        this._quickLogOpen = false;
+        this.render();
+        return;
+      }
+      const symptomData = {};
+      Object.entries(this._quickLogSelections).forEach(([key, val]) => {
+        if (val === undefined || val === null) return;
+        if (Array.isArray(val)) {
+          if (val.length > 0) symptomData[key] = val;
+        } else if (val !== '') {
+          symptomData[key] = val;
+        }
+      });
+      // clot_size only makes sense when clots=yes — same dependsOn rule the
+      // full calendar/gauge modals enforce, kept consistent here.
+      if (symptomData.clots !== 'yes') delete symptomData.clot_size;
+
+      this._quickLogOpen = false;
+      this._quickLogSelections = {};
+      this.render();
+
+      if (Object.keys(symptomData).length === 0) return;
+
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          date: this._todayIso(),
+          symptom_data: symptomData,
+        });
+        this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
+      } catch (err) {
+        console.error('[menstruation-cycle] Quick-log save failed:', err);
+        this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
+      }
+      this.render();
+    }
+
     _moveWidget(id, direction) {
       const target = this._editMode ? this._editDraft : this._prefs;
       if (!target) return;
@@ -1615,6 +1726,48 @@
       if (!target) return;
       const action = target.dataset.action;
       const widget = target.dataset.widget;
+
+      if (action === 'open-quick-log') {
+        this._quickLogSelections = {};
+        this._quickLogOpen = true;
+        this.render();
+        return;
+      }
+
+      if (action === 'quick-log-close') {
+        this._quickLogOpen = false;
+        this._quickLogSelections = {};
+        this.render();
+        return;
+      }
+
+      if (action === 'quick-log-select') {
+        const key = target.dataset.key;
+        const val = target.dataset.val;
+        if (key && val !== undefined) {
+          this._quickLogSelections[key] = this._quickLogSelections[key] === val ? undefined : val;
+          this.render();
+        }
+        return;
+      }
+
+      if (action === 'quick-log-toggle-multi') {
+        const key = target.dataset.key;
+        const val = target.dataset.val;
+        if (key && val !== undefined) {
+          const current = Array.isArray(this._quickLogSelections[key]) ? this._quickLogSelections[key] : [];
+          this._quickLogSelections[key] = current.includes(val)
+            ? current.filter((v) => v !== val)
+            : [...current, val];
+          this.render();
+        }
+        return;
+      }
+
+      if (action === 'quick-log-save') {
+        this._handleQuickLogSave();
+        return;
+      }
 
       if (action === 'toggle-edit') {
         if (!this._editMode) {
@@ -1891,7 +2044,7 @@
     // Real bundled product illustrations from assets/period/, served via the same
     // existing HTTP route already used for the pregnancy silhouettes
     // (/menstruation_cycle/assets/{subfolder}/{filename}). Prefers the shared
-    // window.ProductIcons helper (menstruation-icons.js, already used by the gauge/
+    // window.ProductIcons helper (menstruation-functions.js, already used by the gauge/
     // calendar cards) since it renders the icon as a CSS mask tinted to currentColor
     // — matches the app's theme/dark-mode automatically, unlike a plain <img> which
     // shows the SVG's own fixed colors.
@@ -4291,6 +4444,33 @@
             transition: background .15s ease, color .15s ease;
             white-space: nowrap;
           }
+          .mc-modal-backdrop {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+          }
+          .mc-modal {
+            background: var(--card-background-color, #fff);
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 480px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+          }
+          .mc-modal button[data-action="quick-log-close"]:not(.mode-btn) {
+            border: 1px solid var(--divider-color, #d1d5db);
+            border-radius: 999px;
+            background: var(--card-background-color, #fff);
+            color: inherit;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+          }
           .mode-btn.active {
             background: var(--card-background-color, #fff);
             color: var(--mc-rose-deep);
@@ -4795,6 +4975,7 @@
                   <span>${this._t('dashboard_discreet_mode')}</span>
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
+              ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">📝 ${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}">${this._t('dashboard_edit_mode')}</button>` : ''}
             </div>
           </header>
@@ -4802,6 +4983,7 @@
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
           ${this._renderEditPanel()}
+          ${this._renderQuickLogModal(stateObj)}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
         </main>
       `;

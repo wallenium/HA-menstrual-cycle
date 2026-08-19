@@ -817,5 +817,11 @@
   "opt_patch": "Patch",
   "opt_ring": "Ring",
   "opt_injection": "Injection",
-  "opt_condom": "Condom"
+  "opt_condom": "Condom",
+  "dashboard_log_today": "Log today",
+  "dashboard_cancel": "Cancel",
+  "dashboard_save": "Save",
+  "dashboard_close": "Close",
+  "dashboard_quick_log_saved": "Saved.",
+  "dashboard_quick_log_failed": "Could not save."
 }

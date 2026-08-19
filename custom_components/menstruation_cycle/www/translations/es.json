@@ -784,5 +784,11 @@
   "opt_patch": "Parche anticonceptivo",
   "opt_ring": "Anillo vaginal",
   "opt_injection": "Inyección trimestral",
-  "opt_condom": "Preservativo"
+  "opt_condom": "Preservativo",
+  "dashboard_log_today": "Registrar hoy",
+  "dashboard_cancel": "Cancelar",
+  "dashboard_save": "Guardar",
+  "dashboard_close": "Cerrar",
+  "dashboard_quick_log_saved": "Guardado.",
+  "dashboard_quick_log_failed": "No se pudo guardar."
 }
