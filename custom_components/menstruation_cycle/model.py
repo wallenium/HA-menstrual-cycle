@@ -7,6 +7,9 @@ from datetime import date, timedelta
 from typing import Any
 
 from .const import (
+    CONTRACEPTION_HORMONAL_METHODS,
+    CONTRACEPTION_RENEWAL_MONTHS,
+    CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_ONBOARDING_STAGE,
@@ -18,6 +21,7 @@ from .const import (
     ONBOARDING_STAGE_PRE_MENARCHE,
     ONBOARDING_STAGES,
     STATE_FERTILE,
+    SYMPTOM_CONTRACEPTION_METHOD,
     STATE_MENARCHE,
     STATE_MENOPAUSE,
     STATE_POSTPARTUM,
@@ -753,6 +757,7 @@ def analyze_nfp_cycle(
         "fertile_window": {"start": None, "end": None},
         "temperature_rise_detected": False,
         "temperature_rise_day": None,
+        "coverline_temp": None,
         "temperature_peak_day": None,
         "cervical_mucus_peak": None,
         "cervix_peak": None,
@@ -811,6 +816,7 @@ def analyze_nfp_cycle(
 
     temp_rise_day: str | None = None
     temp_rise_confirmed = False
+    coverline_temp: float | None = None
 
     # Roetzer rule: baseline = lowest of the 6 preceding measurements;
     # rise confirmed when 3+ consecutive readings are >= baseline + 0.2 °C.
@@ -853,6 +859,7 @@ def analyze_nfp_cycle(
                 if sustained:
                     temp_rise_day = temp_data[i][0]
                     temp_rise_confirmed = True
+                    coverline_temp = round(threshold, 2)
                     break
 
     # -----------------------------------------------------------------------
@@ -922,6 +929,7 @@ def analyze_nfp_cycle(
             **empty_result,
             "temperature_rise_detected": temp_rise_confirmed,
             "temperature_rise_day": temp_rise_day,
+            "coverline_temp": coverline_temp,
             "temperature_peak_day": temperature_peak_day,
             "cervical_mucus_peak": mucus_peak,
             "cervix_peak": cervix_peak,
@@ -982,6 +990,7 @@ def analyze_nfp_cycle(
         },
         "temperature_rise_detected": temp_rise_confirmed,
         "temperature_rise_day": temp_rise_day,
+        "coverline_temp": coverline_temp,
         "temperature_peak_day": temperature_peak_day,
         "cervical_mucus_peak": mucus_peak,
         "cervix_peak": cervix_peak,
@@ -2600,3 +2609,94 @@ def build_cycle_model(
         learning_phase=learning_phase,
         prediction_gating=prediction_gating,
     )
+
+
+def compute_contraception_status(
+    symptom_history: list[dict[str, Any]],
+    *,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """Derive the current contraception method and related info from symptom
+    history, rather than a separate stored profile field — the method is
+    logged like any other symptom, and "current method" is simply whatever
+    was logged most recently.
+
+    Returns a dict with:
+        current_method: str | None — the most recently logged method
+            (None if never logged, or the string "none" if explicitly logged
+            as no contraception).
+        method_since: str | None — ISO date since which the *current exact
+            value* has been continuously logged (the most recent change).
+        is_hormonal: bool — True if the current method suppresses/can
+            suppress ovulation, meaning cycle/fertility predictions built on
+            a natural-cycle assumption are unreliable.
+        renewal_due_date: str | None — for methods with a known typical
+            validity period (IUDs, implant, injection), the estimated date
+            by which the method may need replacing. None for methods without
+            such a period, or if the method has never been logged.
+        renewal_reminder_due: bool — True if renewal_due_date is within
+            CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS of today.
+    """
+    today = today or date.today()
+    empty: dict[str, Any] = {
+        "current_method": None,
+        "method_since": None,
+        "is_hormonal": False,
+        "renewal_due_date": None,
+        "renewal_reminder_due": False,
+    }
+    if not symptom_history:
+        return empty
+
+    dated_entries = [
+        (entry.get("date"), entry.get(SYMPTOM_CONTRACEPTION_METHOD))
+        for entry in symptom_history
+        if isinstance(entry, dict) and entry.get("date") and entry.get(SYMPTOM_CONTRACEPTION_METHOD)
+    ]
+    if not dated_entries:
+        return empty
+    dated_entries.sort(key=lambda pair: pair[0])
+
+    current_method = dated_entries[-1][1]
+    # Walk backwards from the most recent entry to find when the current
+    # exact value first appeared in this unbroken run (a simple "since when
+    # has this been the logged value" scan, not a true insertion date if the
+    # method was logged sporadically rather than daily).
+    method_since = dated_entries[-1][0]
+    for entry_date, method in reversed(dated_entries[:-1]):
+        if method == current_method:
+            method_since = entry_date
+        else:
+            break
+
+    is_hormonal = current_method in CONTRACEPTION_HORMONAL_METHODS
+
+    renewal_due_date: str | None = None
+    renewal_reminder_due = False
+    renewal_months = CONTRACEPTION_RENEWAL_MONTHS.get(current_method)
+    if renewal_months and method_since:
+        since_date = date.fromisoformat(method_since)
+        # Approximate month arithmetic (avoids a dateutil dependency): add
+        # renewal_months by converting to a total-months count and back.
+        total_months = since_date.year * 12 + (since_date.month - 1) + renewal_months
+        due_year, due_month = divmod(total_months, 12)
+        due_month += 1
+        # Clamp day-of-month for shorter target months (e.g. 31st -> 28th).
+        for day_offset in range(0, 4):
+            try:
+                due_date_obj = date(due_year, due_month, since_date.day - day_offset)
+                break
+            except ValueError:
+                continue
+        else:
+            due_date_obj = date(due_year, due_month, 1)
+        renewal_due_date = due_date_obj.isoformat()
+        renewal_reminder_due = (due_date_obj - today).days <= CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS
+
+    return {
+        "current_method": current_method,
+        "method_since": method_since,
+        "is_hormonal": is_hormonal,
+        "renewal_due_date": renewal_due_date,
+        "renewal_reminder_due": renewal_reminder_due,
+    }

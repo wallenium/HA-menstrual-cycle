@@ -769,5 +769,20 @@
   "dashboard_product_tap_hint": "Toca + para registrar el consumo de hoy con una cantidad real.",
   "trimester_label": "Trimestre",
   "dashboard_weeks_remaining": "{n} semanas restantes",
-  "family_menarche_age": "Edad de menarquia en la familia"
+  "family_menarche_age": "Edad de menarquia en la familia",
+  "dashboard_temperature_rise": "Aumento de temperatura",
+  "dashboard_bbt_last_days_prefix": "Últimos",
+  "dashboard_bbt_subtitle_confirmed": "Regla 3 sobre 6 confirmada",
+  "dashboard_bbt_subtitle_pending": "aún sin confirmación 3 sobre 6",
+  "dashboard_contraception_accuracy_warning": "La anticoncepción hormonal puede suprimir la ovulación — las predicciones de ciclo y fertilidad no son fiables mientras esté activa.",
+  "dashboard_contraception_renewal_due": "El método anticonceptivo podría necesitar renovación pronto",
+  "cat_contraception_method": "Método anticonceptivo",
+  "opt_pill": "Píldora",
+  "opt_hormonal_iud": "DIU hormonal",
+  "opt_copper_iud": "DIU de cobre",
+  "opt_implant": "Implante",
+  "opt_patch": "Parche anticonceptivo",
+  "opt_ring": "Anillo vaginal",
+  "opt_injection": "Inyección trimestral",
+  "opt_condom": "Preservativo"
 }

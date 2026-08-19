@@ -802,5 +802,20 @@
   "dashboard_product_tap_hint": "Tap + to log today's usage with a real count.",
   "trimester_label": "Trimester",
   "dashboard_weeks_remaining": "{n} weeks remaining",
-  "family_menarche_age": "Family menarche age"
+  "family_menarche_age": "Family menarche age",
+  "dashboard_temperature_rise": "Temperature rise",
+  "dashboard_bbt_last_days_prefix": "Last",
+  "dashboard_bbt_subtitle_confirmed": "3-over-6 rule confirmed",
+  "dashboard_bbt_subtitle_pending": "no 3-over-6 confirmation yet",
+  "dashboard_contraception_accuracy_warning": "Hormonal contraception can suppress ovulation — cycle and fertility predictions are unreliable while active.",
+  "dashboard_contraception_renewal_due": "Contraception method may need renewal soon",
+  "cat_contraception_method": "Contraception method",
+  "opt_pill": "Pill",
+  "opt_hormonal_iud": "Hormonal IUD",
+  "opt_copper_iud": "Copper IUD",
+  "opt_implant": "Implant",
+  "opt_patch": "Patch",
+  "opt_ring": "Ring",
+  "opt_injection": "Injection",
+  "opt_condom": "Condom"
 }

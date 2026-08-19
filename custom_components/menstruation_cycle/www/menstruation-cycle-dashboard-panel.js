@@ -103,6 +103,12 @@
     dashboard_phase_donut_title: 'Typical phase distribution',
     dashboard_basal_temp_unit: '°C',
     dashboard_basal_temp_no_data: 'No temperature data recorded.',
+    dashboard_temperature_rise: 'Temperature rise',
+    dashboard_contraception_accuracy_warning: 'Hormonal contraception can suppress ovulation — cycle and fertility predictions are unreliable while active.',
+    dashboard_contraception_renewal_due: 'Contraception method may need renewal soon',
+    dashboard_bbt_last_days_prefix: 'Last',
+    dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
+    dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
     dashboard_anomaly_regular: 'Regular cycle',
     dashboard_anomaly_irregular: 'Irregular pattern detected',
     dashboard_anomaly_short_cycle: 'Short cycle',
@@ -3239,73 +3245,102 @@
 
       const recent = temps.slice(-30);
       const values = recent.map((t) => Number(t.temperature ?? t.value ?? 0));
-      const minV = Math.min(...values) - 0.05;
-      const maxV = Math.max(...values) + 0.05;
+      const minV = Math.min(...values) - 0.1;
+      const maxV = Math.max(...values) + 0.1;
       const yRange = maxV - minV || 0.5;
 
-      const ovulationDay = attrs.fertility_forecast?.ovulation_day
-        ? Number(attrs.fertility_forecast.ovulation_day)
-        : (attrs.ovulation_day ? Number(attrs.ovulation_day) : null);
-      const cycleDay = Number(attrs.cycle_day ?? 0);
+      // Real 3-over-6 (Roetzer rule) confirmation from the backend's NFP analysis,
+      // rather than a crude "average of first 6 + 0.1" approximation — the backend
+      // already implements the actual rule (baseline = lowest of preceding 6
+      // readings, confirmed when 3+ consecutive readings exceed baseline + 0.2°C,
+      // sustained for a following window). Falls back gracefully when no rise has
+      // been confirmed yet (not enough data, or genuinely no rise this cycle).
+      const nfp = attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object' ? attrs.nfp_analysis : null;
+      const riseConfirmed = !!nfp?.temperature_rise_detected;
+      const riseDayIso = nfp?.temperature_rise_day || null;
+      const coverlineTemp = Number.isFinite(Number(nfp?.coverline_temp)) ? Number(nfp.coverline_temp) : null;
+      const riseIdx = riseDayIso ? recent.findIndex((t) => t.date === riseDayIso) : -1;
 
-      const W = 400; const H = 130;
-      const padL = 32; const padR = 8; const padT = 16; const padB = 22;
+      const W = 620; const H = 220;
+      const padL = 42; const padR = 14; const padT = 16; const padB = 28;
       const chartW = W - padL - padR;
       const chartH = H - padT - padB;
 
       const toX = (i) => padL + (i / (recent.length - 1 || 1)) * chartW;
       const toY = (v) => padT + chartH - ((v - minV) / yRange) * chartH;
 
-      const ovIdx = (ovulationDay !== null && ovulationDay > 0 && ovulationDay <= recent.length)
-        ? Math.max(0, recent.length - ovulationDay)
-        : null;
-
-      // shaded post-ovulation band
-      const ovBand = ovIdx !== null
-        ? `<rect x="${Math.round(toX(ovIdx))}" y="${padT}" width="${Math.round(W - padR - toX(ovIdx))}" height="${chartH}" fill="var(--mc-sage-tint,#E6EDE7)" opacity="0.7"/>`
+      // Post-rise shaded band, anchored to the actual confirmed rise day (not a
+      // fixed/guessed day) — only drawn once the rule has genuinely confirmed a rise.
+      const postRiseBand = riseIdx >= 0
+        ? `<rect x="${Math.round(toX(riseIdx))}" y="${padT}" width="${Math.round(W - padR - toX(riseIdx))}" height="${chartH}" fill="var(--mc-sage-tint,#E6EDE7)" opacity="0.7"/>`
         : '';
 
-      // coverline: avg of first 6 readings + 0.1
-      const coverBase = values.slice(0, Math.min(6, values.length));
-      const cover = coverBase.length ? (coverBase.reduce((a, b) => a + b, 0) / coverBase.length) + 0.1 : null;
+      // Coverline: the real confirmation threshold when the rule has fired;
+      // otherwise a lighter-weight visual reference (average of the first 6
+      // readings) so the chart isn't bare while still tracking enough data.
+      const cover = coverlineTemp !== null
+        ? coverlineTemp
+        : (() => {
+            const base = values.slice(0, Math.min(6, values.length));
+            return base.length ? base.reduce((a, b) => a + b, 0) / base.length + 0.1 : null;
+          })();
       const coverLine = cover !== null && cover >= minV && cover <= maxV
-        ? `<line x1="${padL}" x2="${W - padR}" y1="${Math.round(toY(cover))}" y2="${Math.round(toY(cover))}" stroke="var(--mc-rose-deep)" stroke-width="1.3" stroke-dasharray="5 4"/>`
+        ? `<line x1="${padL}" x2="${W - padR}" y1="${Math.round(toY(cover))}" y2="${Math.round(toY(cover))}" stroke="var(--mc-rose-deep)" stroke-width="1.4" stroke-dasharray="5 4"/>`
         : '';
+
+      // Real gridlines (not just axis text) at 4 evenly-spaced temperature levels.
+      const gridSteps = 4;
+      const gridLines = Array.from({ length: gridSteps }, (_, i) => minV + (i / (gridSteps - 1)) * yRange).map((v) => {
+        const y = Math.round(toY(v));
+        return `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
+                <text x="6" y="${y + 3}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
+      }).join('');
 
       const pathD = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
 
+      // Temperature-jump visualization: the confirmed rise day gets a distinctly
+      // larger, differently-colored marker plus a small label, instead of just
+      // marking "today" like before — directly showing *where* the biphasic shift
+      // was detected, not merely the most recent reading.
       const dots = values.map((v, i) => {
         const x = Math.round(toX(i));
         const y = Math.round(toY(v));
-        const isToday = i === values.length - 1;
-        return `<circle cx="${x}" cy="${y}" r="${isToday ? 4.5 : 2.2}" fill="${isToday ? 'var(--primary-text-color,#2B1B24)' : 'var(--mc-rose-deep)'}"/>`;
+        const isRiseDay = i === riseIdx;
+        return `<circle cx="${x}" cy="${y}" r="${isRiseDay ? 5 : 2.2}" fill="${isRiseDay ? 'var(--mc-sage-deep,#3F5A47)' : 'var(--mc-rose-deep)'}" stroke="${isRiseDay ? 'var(--card-background-color,#fff)' : 'none'}" stroke-width="${isRiseDay ? 1.5 : 0}"/>`;
       }).join('');
 
-      const yLabels = [minV, (minV + maxV) / 2, maxV].map((v) => {
-        const y = Math.round(toY(v));
-        return `<text x="${padL - 3}" y="${y + 3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
-      }).join('');
-
-      const ovLine = ovIdx !== null
-        ? `<line x1="${Math.round(toX(ovIdx))}" y1="${padT}" x2="${Math.round(toX(ovIdx))}" y2="${padT + chartH}" stroke="var(--primary-text-color,#2B1B24)" stroke-width="1.2" stroke-dasharray="3 3"/>
-           <text x="${Math.round(toX(ovIdx))}" y="${padT - 4}" text-anchor="middle" font-size="8" font-family="IBM Plex Mono, monospace" fill="var(--primary-text-color,#2B1B24)">${escapeHtml(this._t('dashboard_fertility_ovulation'))}</text>`
+      const riseLabel = riseIdx >= 0
+        ? `<text x="${Math.round(toX(riseIdx))}" y="${Math.round(toY(values[riseIdx])) - 10}" text-anchor="middle" font-size="9" font-weight="600" font-family="IBM Plex Mono, monospace" fill="var(--mc-sage-deep,#3F5A47)">↑ ${escapeHtml(this._t('dashboard_temperature_rise') || 'Temperaturanstieg')}</text>`
         : '';
 
-      const firstDate = recent[0]?.date ? String(recent[0].date).slice(5) : '';
-      const lastDate = recent[recent.length - 1]?.date ? String(recent[recent.length - 1].date).slice(5) : '';
-      const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="start">${escapeHtml(firstDate)}</text>
-                       <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
+      // X-axis: 5 evenly-spaced date labels across the visible window, instead of
+      // just first/last.
+      const labelCount = Math.min(5, recent.length);
+      const labelIndices = Array.from({ length: labelCount }, (_, i) =>
+        Math.round((i / (labelCount - 1 || 1)) * (recent.length - 1))
+      );
+      const xLabels = [...new Set(labelIndices)].map((i) => {
+        const anchor = i === 0 ? 'start' : (i === recent.length - 1 ? 'end' : 'middle');
+        const label = recent[i]?.date ? this._formatDate(recent[i].date, { day: '2-digit', month: '2-digit' }) : '';
+        return `<text x="${Math.round(toX(i))}" y="${H - 8}" text-anchor="${anchor}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(label)}</text>`;
+      }).join('');
+
+      const daysPrefix = `${this._t('dashboard_bbt_last_days_prefix') || 'Letzte'} ${recent.length} ${this._t('days') || 'Tage'}`;
+      const subtitle = riseConfirmed
+        ? `${daysPrefix} · ${this._t('dashboard_bbt_subtitle_confirmed') || '3-über-6-Regel bestätigt'}`
+        : `${daysPrefix} · ${this._t('dashboard_bbt_subtitle_pending') || 'noch keine 3-über-6-Bestätigung'}`;
 
       return `
         <div class="bbt-wrap" role="img" aria-label="${escapeHtml(this._t('dashboard_widget_basal_temp'))}">
+          <p class="helper" style="margin:0 0 8px;font-size:0.72rem;">${escapeHtml(subtitle)}</p>
           <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">
             <title>${escapeHtml(this._t('dashboard_widget_basal_temp'))}</title>
-            ${ovBand}
-            ${yLabels}
+            ${postRiseBand}
+            ${gridLines}
             ${coverLine}
-            <path d="${pathD}" fill="none" stroke="var(--mc-rose-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="${pathD}" fill="none" stroke="var(--mc-rose-deep)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
             ${dots}
-            ${ovLine}
+            ${riseLabel}
             ${xLabels}
           </svg>
         </div>
@@ -3931,6 +3966,43 @@
       const formatted = this._formatDateTime(ts);
       if (!formatted) return '';
       return `<p class="helper" style="margin:2px 0 0;font-size:0.7rem;">${this._t('dashboard_last_updated') || 'Zuletzt aktualisiert'}: ${escapeHtml(formatted)}</p>`;
+    }
+
+    /**
+     * Warns when the current logged contraception method suppresses ovulation
+     * (or can) — the whole prediction system (cycle length, fertile window,
+     * ovulation, 3-over-6 rule) assumes a natural, unsuppressed cycle, so those
+     * predictions are unreliable while such a method is active. Also surfaces a
+     * renewal reminder for methods with a known typical validity period (IUD,
+     * implant, injection) as they approach their estimated due date.
+     *
+     * Hidden entirely in discreet mode — current contraception method is itself
+     * sensitive personal info, consistent with how other identifying details
+     * are suppressed there.
+     */
+    _renderContraceptionWarning(stateObj, discreetMode) {
+      if (discreetMode) return '';
+      const status = stateObj?.attributes?.contraception_status;
+      if (!status || typeof status !== 'object') return '';
+
+      const parts = [];
+      if (status.is_hormonal) {
+        parts.push(
+          `<p style="margin:0;">⚠ ${escapeHtml(this._t('dashboard_contraception_accuracy_warning') || 'Hormonelle Verhütung kann den Eisprung unterdrücken — Zyklus- und Fruchtbarkeitsvorhersagen sind währenddessen nicht zuverlässig.')}</p>`
+        );
+      }
+      if (status.renewal_reminder_due && status.renewal_due_date) {
+        const dueLabel = this._formatDate(status.renewal_due_date);
+        parts.push(
+          `<p style="margin:${status.is_hormonal ? '4px' : '0'} 0 0;">🔔 ${escapeHtml(this._t('dashboard_contraception_renewal_due') || 'Verhütungsmethode könnte bald einen Wechsel benötigen')} (${escapeHtml(dueLabel)})</p>`
+        );
+      }
+      if (!parts.length) return '';
+
+      return `
+        <div class="helper" style="margin:6px 0 0;padding:10px 12px;border-radius:10px;background:var(--mc-amber-tint,#FBEEDC);color:var(--mc-amber-deep,#8a5a12);font-size:0.78rem;">
+          ${parts.join('')}
+        </div>`;
     }
 
     _renderEntityPicker(availableEntities) {
@@ -4727,6 +4799,7 @@
             </div>
           </header>
           ${this._renderLastUpdated(stateObj)}
+          ${this._renderContraceptionWarning(stateObj, discreetMode)}
           <div class="message" aria-live="polite">${escapeHtml(this._message || '')}</div>
           ${this._renderEditPanel()}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>

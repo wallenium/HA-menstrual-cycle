@@ -802,5 +802,20 @@
   "dashboard_product_tap_hint": "+ tippen, um den heutigen Verbrauch mit echter Stückzahl zu erfassen.",
   "trimester_label": "Trimester",
   "dashboard_weeks_remaining": "noch {n} Wochen",
-  "family_menarche_age": "Menarche-Alter Familie"
+  "family_menarche_age": "Menarche-Alter Familie",
+  "dashboard_temperature_rise": "Temperaturanstieg",
+  "dashboard_bbt_last_days_prefix": "Letzte",
+  "dashboard_bbt_subtitle_confirmed": "3-über-6-Regel bestätigt",
+  "dashboard_bbt_subtitle_pending": "noch keine 3-über-6-Bestätigung",
+  "dashboard_contraception_accuracy_warning": "Hormonelle Verhütung kann den Eisprung unterdrücken — Zyklus- und Fruchtbarkeitsvorhersagen sind währenddessen nicht zuverlässig.",
+  "dashboard_contraception_renewal_due": "Verhütungsmethode könnte bald einen Wechsel benötigen",
+  "cat_contraception_method": "Verhütungsmethode",
+  "opt_pill": "Pille",
+  "opt_hormonal_iud": "Hormonspirale",
+  "opt_copper_iud": "Kupferspirale",
+  "opt_implant": "Implantat",
+  "opt_patch": "Verhütungspflaster",
+  "opt_ring": "Vaginalring",
+  "opt_injection": "Dreimonatsspritze",
+  "opt_condom": "Kondom"
 }

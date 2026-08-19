@@ -769,5 +769,20 @@
   "dashboard_product_tap_hint": "Tryck på + för att logga dagens förbrukning med ett verkligt antal.",
   "trimester_label": "Trimester",
   "dashboard_weeks_remaining": "{n} veckor kvar",
-  "family_menarche_age": "Menarche-ålder i familjen"
+  "family_menarche_age": "Menarche-ålder i familjen",
+  "dashboard_temperature_rise": "Temperaturstegring",
+  "dashboard_bbt_last_days_prefix": "Senaste",
+  "dashboard_bbt_subtitle_confirmed": "3-över-6-regeln bekräftad",
+  "dashboard_bbt_subtitle_pending": "ingen 3-över-6-bekräftelse ännu",
+  "dashboard_contraception_accuracy_warning": "Hormonella preventivmedel kan hämma ägglossningen — cykel- och fertilitetsprognoser är opålitliga så länge det används.",
+  "dashboard_contraception_renewal_due": "Preventivmedlet kan snart behöva bytas",
+  "cat_contraception_method": "Preventivmedel",
+  "opt_pill": "P-piller",
+  "opt_hormonal_iud": "Hormonspiral",
+  "opt_copper_iud": "Kopparspiral",
+  "opt_implant": "Implantat",
+  "opt_patch": "Preventivplåster",
+  "opt_ring": "Vaginalring",
+  "opt_injection": "P-spruta",
+  "opt_condom": "Kondom"
 }

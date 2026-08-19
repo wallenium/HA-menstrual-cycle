@@ -769,5 +769,20 @@
   "dashboard_product_tap_hint": "Appuyez sur + pour enregistrer la consommation du jour avec un nombre réel.",
   "trimester_label": "Trimestre",
   "dashboard_weeks_remaining": "{n} semaines restantes",
-  "family_menarche_age": "Âge de la ménarche dans la famille"
+  "family_menarche_age": "Âge de la ménarche dans la famille",
+  "dashboard_temperature_rise": "Hausse de température",
+  "dashboard_bbt_last_days_prefix": "Derniers",
+  "dashboard_bbt_subtitle_confirmed": "Règle des 3 sur 6 confirmée",
+  "dashboard_bbt_subtitle_pending": "pas encore de confirmation 3 sur 6",
+  "dashboard_contraception_accuracy_warning": "La contraception hormonale peut supprimer l'ovulation — les prévisions de cycle et de fertilité ne sont pas fiables pendant son utilisation.",
+  "dashboard_contraception_renewal_due": "La méthode contraceptive pourrait bientôt nécessiter un renouvellement",
+  "cat_contraception_method": "Méthode contraceptive",
+  "opt_pill": "Pilule",
+  "opt_hormonal_iud": "Stérilet hormonal",
+  "opt_copper_iud": "Stérilet en cuivre",
+  "opt_implant": "Implant",
+  "opt_patch": "Patch contraceptif",
+  "opt_ring": "Anneau vaginal",
+  "opt_injection": "Injection trimestrielle",
+  "opt_condom": "Préservatif"
 }
