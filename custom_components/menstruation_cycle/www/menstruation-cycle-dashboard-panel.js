@@ -4435,7 +4435,7 @@
           }
           .toolbar button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
           .toolbar button ha-icon { --mdc-icon-size: 20px; display: block; }
-          .toolbar button:has(ha-icon:only-child) { width: 42px; padding: 0; }
+          .toolbar button.icon-only { width: 42px; padding: 0; }
           .entity-picker {
             width: auto;
             border: 1px solid var(--divider-color, #d1d5db);
@@ -5017,7 +5017,7 @@
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
-              ${!this._editMode ? `<button type="button" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
+              ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
           </header>
           ${this._renderLastUpdated(stateObj)}
