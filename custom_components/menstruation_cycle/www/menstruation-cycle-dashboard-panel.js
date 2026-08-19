@@ -113,6 +113,31 @@
     dashboard_quick_log_saved: 'Saved.',
     dashboard_quick_log_failed: 'Could not save.',
     dashboard_quick_log_loading: 'Loading, please try again in a moment…',
+    dashboard_widget_chat_assistant: 'Cycle Q&A',
+    dashboard_chat_intro: 'Ask a simple question about your cycle. Runs entirely locally, no external AI.',
+    dashboard_chat_placeholder: 'Type a question…',
+    dashboard_chat_send: 'Ask',
+    dashboard_chat_q_next_period: 'When is my next period?',
+    dashboard_chat_q_cycle_length: 'How long is my cycle on average?',
+    dashboard_chat_q_fertile: 'When is my fertile window?',
+    dashboard_chat_q_phase: 'What phase am I in right now?',
+    dashboard_chat_no_data: "I don't have enough data for that right now.",
+    dashboard_chat_period_today: 'Your period is expected today.',
+    dashboard_chat_period_overdue: 'Your period was expected on {date}.',
+    dashboard_chat_period_in_days: 'Expected in {days} days, on {date}.',
+    dashboard_chat_cycle_length: '{days} days on average.',
+    dashboard_chat_fertile_window: 'Expected from {start} to {end}.',
+    dashboard_chat_ovulation: 'Expected on {date}.',
+    dashboard_chat_current_phase: "You're currently in the {phase} phase.",
+    dashboard_chat_fallback: 'I couldn\u2019t match that. I can answer things like your next period, average cycle length, fertile window, or current phase.',
+    dashboard_chat_far_future_caveat: '(The further out this is, the less certain this estimate is.)',
+    dashboard_chat_period_in_range_yes: 'Yes, your period is expected to fall in that range, starting around {date}.',
+    dashboard_chat_period_in_range_no: 'Not based on the current estimate — no period is expected in that range.',
+    dashboard_chat_fertility_disclaimer: 'This is only a rough indication based on the estimated fertile window, not a reliable statement about actual risk — and not a substitute for contraception or medical guidance.',
+    dashboard_chat_fertility_in_window: 'That day fell within your estimated fertile window.',
+    dashboard_chat_fertility_outside_window: 'That day fell outside your estimated fertile window.',
+    dashboard_chat_stock_enough: 'Should be enough — current stock: {stock}, typical usage per cycle: about {avg}.',
+    dashboard_chat_stock_low: 'Might be tight — stock: {stock}, typical usage per cycle: about {avg}. Might be worth buying more {product}.',
     dashboard_bbt_last_days_prefix: 'Last',
     dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
     dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
@@ -400,6 +425,7 @@
     { id: 'timer_card', title: 'dashboard_widget_timer_card', sensitive: false, span: 6 },
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
     { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
+    { id: 'chat_assistant', title: 'dashboard_widget_chat_assistant', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
@@ -423,6 +449,7 @@
     'timer_card',
     'statistics_card',
     'support_card',
+    'chat_assistant',
     'symptom_heatmap',
     'anomaly_insights',
     'symptom_insights',
@@ -688,6 +715,10 @@
       // menstruation-functions.js (the same one the calendar/gauge cards use).
       this._quickLogOpen = false;
       this._quickLogSelections = {};
+      // Local, offline Q&A widget — no external AI, pattern-matches against
+      // real cycle data + a small glossary. History kept in memory only (not
+      // persisted), reset on page reload.
+      this._chatHistory = [];
       this._prefs = null;
       this._activeProfile = 'default';
       this._activeMode = 'general';
@@ -731,6 +762,7 @@
       this._boundHandleClick = (event) => this._handleClick(event);
       this._boundHandleChange = (event) => this._handleChange(event);
       this._boundHandleSubmit = (event) => this._handleSubmit(event);
+      this._boundHandleChatEnter = () => this._handleChatSend();
       this._boundDragPointerDown = (event) => this._handleDragPointerDown(event);
       this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
       this._boundDragPointerUp = (event) => this._handleDragPointerUp(event);
@@ -748,6 +780,7 @@
       this.shadowRoot?.addEventListener('click', this._boundHandleClick);
       this.shadowRoot?.addEventListener('change', this._boundHandleChange);
       this.shadowRoot?.addEventListener('submit', this._boundHandleSubmit);
+      this.addEventListener('mc-chat-enter', this._boundHandleChatEnter);
 
       // Widget reordering drag-and-drop (edit mode). Uses Pointer Events rather than
       // the native HTML5 Drag-and-Drop API, since that API has poor/inconsistent
@@ -1613,6 +1646,252 @@
      * (window.MenstruationFunctions), the same one both cards use, and the
      * same opt_/cat_ translation keys already used throughout the app.
      */
+    /**
+     * Renders the local, offline Q&A widget — no external AI involved. Matches
+     * the typed question against a small set of patterns covering the cycle
+     * data already on this sensor (next period, cycle length, fertile window,
+     * current phase) plus a short glossary, entirely client-side.
+     */
+    _renderChatWidget(stateObj) {
+      const history = this._chatHistory.map((entry) => {
+        const cls = entry.role === 'user' ? 'chat-bubble chat-bubble--user' : 'chat-bubble chat-bubble--bot';
+        return `<div class="${cls}">${escapeHtml(entry.text)}</div>`;
+      }).join('');
+
+      const quickQuestions = [
+        this._t('dashboard_chat_q_next_period') || 'Wann ist meine nächste Periode?',
+        this._t('dashboard_chat_q_cycle_length') || 'Wie lang ist mein Zyklus im Schnitt?',
+        this._t('dashboard_chat_q_fertile') || 'Wann ist mein fruchtbares Fenster?',
+        this._t('dashboard_chat_q_phase') || 'In welcher Phase bin ich gerade?',
+      ];
+      const chips = quickQuestions.map((q) =>
+        `<button type="button" class="mode-btn" data-action="chat-quick" data-question="${escapeHtml(q)}">${escapeHtml(q)}</button>`
+      ).join('');
+
+      return `
+        <div class="mc-chat">
+          <p class="helper" style="margin:0 0 10px;">${escapeHtml(this._t('dashboard_chat_intro') || 'Stell eine einfache Frage zu deinem Zyklus. Läuft komplett lokal, ohne externe KI.')}</p>
+          ${history ? `<div class="mc-chat-history">${history}</div>` : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chips}</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="mc-chat-input" placeholder="${escapeHtml(this._t('dashboard_chat_placeholder') || 'Frage eingeben …')}"
+                   style="flex:1;min-width:0;padding:0 14px;height:42px;border-radius:999px;border:1px solid var(--divider-color,#e5e7eb);background:var(--mc-sand);color:inherit;font-size:0.875rem;"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();this.getRootNode().host.dispatchEvent(new CustomEvent('mc-chat-enter'));}" />
+            <button type="button" class="mode-btn active" data-action="chat-send" style="height:42px;padding:0 18px;">${escapeHtml(this._t('dashboard_chat_send') || 'Fragen')}</button>
+          </div>
+        </div>`;
+    }
+
+    _handleChatSend(presetQuestion) {
+      const inputEl = this.shadowRoot?.getElementById('mc-chat-input');
+      const question = (presetQuestion ?? inputEl?.value ?? '').trim();
+      if (!question) return;
+
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const answer = this._answerCycleQuestion(question, stateObj);
+
+      this._chatHistory.push({ role: 'user', text: question });
+      this._chatHistory.push({ role: 'bot', text: answer });
+      // Keep the history from growing unbounded across a long session.
+      if (this._chatHistory.length > 20) this._chatHistory = this._chatHistory.slice(-20);
+
+      this.render();
+      // Re-focus and clear the input after the re-render replaces the DOM node.
+      requestAnimationFrame(() => {
+        const freshInput = this.shadowRoot?.getElementById('mc-chat-input');
+        if (freshInput) { freshInput.value = ''; freshInput.focus(); }
+      });
+    }
+
+    /**
+     * Local pattern-matching answer engine — no external AI, no network calls.
+     * Matches keywords in the question against known intents, then answers
+     * using this profile's actual current sensor data. Falls back to a short
+     * "I can answer these kinds of things" hint if nothing matches.
+     */
+    _answerCycleQuestion(question, stateObj) {
+      const q = question.toLowerCase();
+      const attrs = stateObj?.attributes || {};
+      const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+
+      const has = (...words) => words.some((w) => q.includes(w));
+
+      // "What is X" / glossary lookup — checked first, since e.g. "was ist
+      // eisprung" should hit the glossary definition, not the live-data answer.
+      if (has('was ist', 'was bedeutet', 'what is', 'what does')) {
+        const glossary = {
+          cycle: ['zyklus', 'cycle'],
+          ovulation: ['eisprung', 'ovulation'],
+          spotting: ['zwischenblutung', 'spotting'],
+          luteal: ['gelbkörperphase', 'lutealphase', 'luteal'],
+          follicular: ['follikelphase', 'follicular'],
+          coverline: ['coverline', 'temperaturkurve', '3-über-6', '3 über 6'],
+        };
+        for (const [term, keywords] of Object.entries(glossary)) {
+          if (has(...keywords)) {
+            const def = this._t(`ygs_gloss_${term}_def`);
+            if (def && def !== `ygs_gloss_${term}_def`) return def;
+          }
+        }
+      }
+
+      // Date-range check ("bekomme ich am/im Urlaub vom 17.08. für 2 Wochen
+      // meine Periode/Regel/Tage/Menses?") — checked before the simple "next
+      // period" pattern below, since a date mention makes this the more
+      // specific match. Projects forward using the average cycle length, not
+      // just the single next predicted start, since the given range could be
+      // further out than the immediately-next period.
+      const dateMatch = q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+      if (dateMatch && has('regel', 'periode', 'tage', 'menses', 'menstruation', 'period')) {
+        let [, day, month, year] = dateMatch;
+        if (year.length === 2) year = `20${year}`;
+        const rangeStart = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
+        if (Number.isNaN(rangeStart.getTime())) return notAvailable;
+
+        const weekMatch = q.match(/(\d+)\s*wochen?/);
+        const dayCountMatch = q.match(/(\d+)\s*tage?/);
+        let durationDays = 0;
+        if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
+        else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
+        const rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
+
+        const predictedStart = attrs.period_forecast?.predicted_start;
+        const predictedEnd = attrs.period_forecast?.predicted_end;
+        const avgCycleLen = attrs.average_cycle_length ?? attrs.cycle_length_avg;
+        if (!predictedStart || !avgCycleLen) return notAvailable;
+
+        const periodLenDays = predictedEnd
+          ? Math.round((new Date(predictedEnd) - new Date(predictedStart)) / 86400000) + 1
+          : 5;
+
+        // Project up to 12 cycles forward (roughly a year), checking each
+        // estimated period window for overlap with the requested date range.
+        let cursor = new Date(predictedStart);
+        let overlapStart = null;
+        for (let i = 0; i < 12; i++) {
+          const periodEndEstimate = new Date(cursor.getTime() + (periodLenDays - 1) * 86400000);
+          if (cursor <= rangeEnd && periodEndEstimate >= rangeStart) {
+            overlapStart = cursor;
+            break;
+          }
+          cursor = new Date(cursor.getTime() + avgCycleLen * 86400000);
+        }
+
+        // Predictions further into the future are progressively less
+        // reliable than the immediately-next one — flagged in the answer
+        // rather than presented with the same confidence throughout.
+        const farOut = (rangeStart - new Date(this._todayIso())) / 86400000 > avgCycleLen * 2;
+        const caveat = farOut ? ` ${this._t('dashboard_chat_far_future_caveat') || '(Je weiter das in der Zukunft liegt, desto unsicherer ist diese Schätzung.)'}` : '';
+
+        if (overlapStart) {
+          const label = this._formatDate(overlapStart.toISOString().slice(0, 10));
+          return `${(this._t('dashboard_chat_period_in_range_yes') || 'Ja, vsl. ab {date} wird deine Periode in diesem Zeitraum liegen.').replace('{date}', label)}${caveat}`;
+        }
+        return `${this._t('dashboard_chat_period_in_range_no') || 'Nach aktueller Schätzung nicht — in diesem Zeitraum wird keine Periode erwartet.'}${caveat}`;
+      }
+
+      if (has('nächste periode', 'nächste regel', 'wann kommt', 'next period', 'wann ist meine periode', 'wann beginnt meine periode')) {
+        const predicted = attrs.period_forecast?.predicted_start;
+        if (!predicted) return notAvailable;
+        const days = Math.round((new Date(predicted) - new Date(this._todayIso())) / 86400000);
+        const dateLabel = this._formatDate(predicted);
+        if (days === 0) return this._t('dashboard_chat_period_today') || `Deine Periode wird für heute erwartet.`;
+        if (days < 0) return (this._t('dashboard_chat_period_overdue') || 'Deine Periode wurde für {date} erwartet.').replace('{date}', dateLabel);
+        return (this._t('dashboard_chat_period_in_days') || 'Voraussichtlich in {days} Tagen, am {date}.').replace('{days}', days).replace('{date}', dateLabel);
+      }
+
+      if (has('zykluslänge', 'wie lang ist mein zyklus', 'durchschnittliche zyklus', 'cycle length')) {
+        const avg = attrs.average_cycle_length ?? attrs.cycle_length_avg;
+        if (!avg) return notAvailable;
+        return (this._t('dashboard_chat_cycle_length') || 'Im Schnitt {days} Tage.').replace('{days}', Math.round(avg));
+      }
+
+      if (has('fruchtbar', 'fertile')) {
+        const fw = attrs.fertility_forecast;
+        if (!fw?.fertile_window_start) return notAvailable;
+        const startLabel = this._formatDate(fw.fertile_window_start);
+        const endLabel = this._formatDate(fw.fertile_window_end);
+        return (this._t('dashboard_chat_fertile_window') || 'Voraussichtlich von {start} bis {end}.').replace('{start}', startLabel).replace('{end}', endLabel);
+      }
+
+      // Pregnancy-likelihood-style question after unprotected sex — deliberately
+      // answered as an informational "was that day in the estimated fertile
+      // window?" rather than a probability/percentage, which would overstate
+      // the precision of a cycle-based estimate. Always includes a disclaimer
+      // that this isn't a reliable way to assess pregnancy risk or plan/avoid
+      // pregnancy.
+      if (has('ungeschützt', 'ungeschützten', 'unprotected') && has('schwanger', 'pregnant', 'wahrscheinlichkeit', 'likelihood', 'probability')) {
+        const fw = attrs.fertility_forecast;
+        if (!fw?.fertile_window_start) return notAvailable;
+        let offsetDays = 0;
+        if (has('vorgestern')) offsetDays = -2;
+        else if (has('gestern')) offsetDays = -1;
+        const checkDate = new Date(new Date(this._todayIso() + 'T00:00:00').getTime() + offsetDays * 86400000);
+        const checkIso = checkDate.toISOString().slice(0, 10);
+        const inWindow = checkIso >= fw.fertile_window_start && checkIso <= fw.fertile_window_end;
+        const disclaimer = this._t('dashboard_chat_fertility_disclaimer') || 'Das ist nur eine grobe Einordnung basierend auf dem geschätzten fruchtbaren Fenster, keine verlässliche Aussage zum tatsächlichen Risiko — und kein Ersatz für Verhütung oder eine medizinische Einschätzung.';
+        const verdict = inWindow
+          ? (this._t('dashboard_chat_fertility_in_window') || 'Der Tag lag in deinem geschätzten fruchtbaren Fenster.')
+          : (this._t('dashboard_chat_fertility_outside_window') || 'Der Tag lag außerhalb deines geschätzten fruchtbaren Fensters.');
+        return `${verdict} ${disclaimer}`;
+      }
+
+      // Product-stock check ("reichen mir die Tampons noch / muss ich
+      // nachkaufen?") — compares the average per-cycle usage against current
+      // household inventory stock, both already computed elsewhere.
+      if (has('reichen', 'nachkaufen', 'genug') || (has('brauche') && has('noch'))) {
+        const productMap = {
+          tampon: ['tampon', 'tampons'],
+          pad: ['binde', 'binden', 'pad', 'pads'],
+          liner: ['slipeinlage', 'slipeinlagen', 'liner'],
+          cup: ['menstruationstasse', 'cup'],
+          underwear: ['periodenunterwäsche', 'period underwear'],
+        };
+        let product = null;
+        for (const [key, keywords] of Object.entries(productMap)) {
+          if (has(...keywords)) { product = key; break; }
+        }
+        if (product) {
+          const stats = attrs.product_usage_stats?.average_per_cycle || {};
+          const avgUse = stats[product];
+          const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
+          const stock = inventoryState?.attributes?.inventory?.[product];
+          if (avgUse == null || stock == null) return notAvailable;
+          const productLabel = this._t('opt_' + product) !== ('opt_' + product) ? this._t('opt_' + product) : product;
+          if (stock >= avgUse) {
+            return (this._t('dashboard_chat_stock_enough') || 'Sollte reichen — aktueller Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}.')
+              .replace('{stock}', stock).replace('{avg}', Math.round(avgUse));
+          }
+          return (this._t('dashboard_chat_stock_low') || 'Könnte knapp werden — Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}. Eventuell {product} nachkaufen.')
+            .replace('{stock}', stock).replace('{avg}', Math.round(avgUse)).replace('{product}', productLabel);
+        }
+      }
+
+      if (has('eisprung', 'ovulation')) {
+        const ov = attrs.fertility_forecast?.ovulation_estimate;
+        if (!ov) return notAvailable;
+        return (this._t('dashboard_chat_ovulation') || 'Voraussichtlich am {date}.').replace('{date}', this._formatDate(ov));
+      }
+
+      if (has('welche phase', 'welcher phase', 'wo stehe ich', 'aktuelle phase', 'what phase')) {
+        const phase = attrs.current_phase || stateObj?.state;
+        if (!phase) return notAvailable;
+        const phaseKeyMap = {
+          period: 'phase_menstruation',
+          follicular: 'phase_follicular',
+          fertile_window: 'dashboard_fertility_window',
+          ovulation_day: 'dashboard_fertility_ovulation',
+          luteal: 'phase_luteal',
+          late_luteal: 'phase_luteal',
+        };
+        const key = phaseKeyMap[phase] || phase;
+        const label = this._t(key);
+        return (this._t('dashboard_chat_current_phase') || 'Du bist aktuell in der Phase: {phase}.').replace('{phase}', label !== key ? label : phase);
+      }
+
+      return this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Ich kann z. B. etwas zur nächsten Periode, Zykluslänge, dem fruchtbaren Fenster oder der aktuellen Phase sagen.';
+    }
+
     _renderQuickLogModal(stateObj) {
       if (!this._quickLogOpen) return '';
       const attrs = stateObj?.attributes || {};
@@ -1783,6 +2062,17 @@
 
       if (action === 'quick-log-save') {
         this._handleQuickLogSave();
+        return;
+      }
+
+      if (action === 'chat-send') {
+        this._handleChatSend();
+        return;
+      }
+
+      if (action === 'chat-quick') {
+        const question = target.dataset.question;
+        if (question) this._handleChatSend(question);
         return;
       }
 
@@ -4102,6 +4392,7 @@
       if (widgetId === 'timer_card') body = this._renderEmbeddedCardMount('timer-card');
       if (widgetId === 'statistics_card') body = this._renderEmbeddedCardMount('statistics-card');
       if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
+      if (widgetId === 'chat_assistant') body = this._renderChatWidget(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
@@ -4474,6 +4765,28 @@
             border-radius: 999px;
             transition: background .15s ease, color .15s ease;
             white-space: nowrap;
+          }
+          .mc-chat-history {
+            display: flex; flex-direction: column; gap: 8px;
+            max-height: 280px; overflow-y: auto;
+            margin-bottom: 12px; padding-right: 4px;
+          }
+          .chat-bubble {
+            padding: 9px 14px; border-radius: 14px;
+            font-size: 0.85rem; line-height: 1.4;
+            max-width: 85%;
+          }
+          .chat-bubble--user {
+            align-self: flex-end;
+            background: var(--mc-rose-tint);
+            color: var(--primary-text-color, #2B1B24);
+            border-bottom-right-radius: 4px;
+          }
+          .chat-bubble--bot {
+            align-self: flex-start;
+            background: var(--mc-sand);
+            color: var(--primary-text-color, #2B1B24);
+            border-bottom-left-radius: 4px;
           }
           .mc-modal-backdrop {
             position: fixed; inset: 0; z-index: 1000;
