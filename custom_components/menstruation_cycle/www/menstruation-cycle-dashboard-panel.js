@@ -151,6 +151,62 @@
     dashboard_chat_due_date: 'Due date: {date}.',
     dashboard_chat_contraception_method: 'Currently recorded: {method}.',
     dashboard_chat_contraception_renewal: 'Possible renewal: {date}.',
+    dashboard_chat_late_reasons: 'Possible reasons include stress, changes in sleep/weight/exercise, illness, hormonal fluctuations — or pregnancy. Predictions are estimates with a margin of error, not a diagnosis.',
+    dashboard_chat_not_actually_late: "Based on the current prediction, your period isn't overdue yet.",
+    dashboard_chat_days_overdue: "It's currently {days} days overdue.",
+    dashboard_chat_late_see_doctor: 'With a delay this long, it may be worth checking in with a doctor.',
+    dashboard_chat_ovulation_today_or_past: 'Ovulation is expected today or has already passed.',
+    dashboard_chat_ovulation_in_days: 'Expected in {days} days.',
+    dashboard_chat_shortest_cycle: 'Your shortest recorded cycle lasted {days} days.',
+    dashboard_chat_longest_cycle: 'Your longest recorded cycle lasted {days} days.',
+    dashboard_chat_cycle_about_same: 'About as usual — no notable difference from your average.',
+    dashboard_chat_cycle_longer: 'Longer than usual — about {days} days more than average.',
+    dashboard_chat_cycle_shorter: 'Shorter than usual — about {days} days less than average.',
+    dashboard_chat_postpartum_done: 'The usual postpartum period has already ended.',
+    dashboard_chat_postpartum_remaining: 'About {days} days left.',
+    dashboard_chat_pregnancy_test_guidance: "A test is usually reliable from the expected start of your period onward, some a few days earlier — check the specific test's package insert for details.",
+    dashboard_chat_pregnancy_test_now: 'Your period is already expected — a test would be meaningful now.',
+    dashboard_chat_pregnancy_test_wait: "Your period isn't expected for another {days} days — a test likely isn't reliable before then.",
+    dashboard_chat_mucus_high: 'Clear, stretchy mucus ("egg-white" type) typically indicates high fertility — it usually appears shortly before ovulation.',
+    dashboard_chat_mucus_medium: "Creamy mucus usually indicates moderate, rising fertility — ovulation is getting closer but usually isn't immediately imminent.",
+    dashboard_chat_mucus_low: 'Sticky mucus usually indicates lower fertility — typical for the time after your period, before the fertile phase begins.',
+    dashboard_chat_mucus_none: 'No noticeable mucus usually indicates low fertility — common right after your period or in the second half of the cycle.',
+    dashboard_chat_mucus_caveat: 'Cervical mucus is only one of several NFP observation signs — combined with basal temperature, the assessment is far more reliable than on its own.',
+    dashboard_chat_mucus_unclear: "I couldn't clearly match that description. Common categories: none/dry, sticky, creamy, or clear/stretchy (egg-white type).",
+    dashboard_chat_symptom_search_none: "I didn't find any entries for that in this time range.",
+    dashboard_chat_symptom_search_found: 'Yes, recorded on {count} days: {dates}.',
+    dashboard_chat_intercourse_count: '{count} times recorded in this time range.',
+    dashboard_chat_intercourse_last: 'Last recorded on {date}.',
+    dashboard_chat_menarche_estimate: 'Estimated around {date}.',
+    dashboard_chat_menarche_days: 'Expected in about {days} days.',
+    dashboard_chat_cervix_high: 'High, soft, and/or open typically indicates high fertility — usually close to ovulation.',
+    dashboard_chat_cervix_low: 'Low, firm, and/or closed typically indicates lower fertility.',
+    dashboard_chat_cervix_unclear: "I couldn't clearly match that description. Common categories: high/soft/open (more fertile) or low/firm/closed (less fertile).",
+    dashboard_chat_bleeding_about_same: 'About as usual — no clear difference from the period before.',
+    dashboard_chat_bleeding_stronger: 'Stronger than the period before.',
+    dashboard_chat_bleeding_weaker: 'Weaker than the period before.',
+    dashboard_chat_discharge_none: 'Nothing unusual recorded in this time range.',
+    dashboard_chat_discharge_found: 'Yes, recorded as unusual on {count} days: {dates}. If it persists, it may be worth seeing a doctor.',
+    dashboard_chat_anomaly_regular: 'Nothing unusual — your cycle is about {pct}% regular.',
+    dashboard_chat_anomaly_irregular: 'Your cycle currently shows lower regularity (about {pct}%) — check the Anomaly Insights card for details.',
+    dashboard_chat_ovulation_test_last: 'Last on {date}.',
+    dashboard_chat_pms_start: 'Expected around {date} — a rough estimate, not an exact prediction.',
+    dashboard_chat_tracking_consistency: 'Recorded on {count} days so far this month.',
+    dashboard_chat_correlation_none: "No clear connection has been found for that so far — either there isn't one, or there isn't enough data yet.",
+    dashboard_chat_correlation_more: 'Yes — {symptom} occurs about {ratio}x more often in this phase than usual.',
+    dashboard_chat_correlation_less: 'More rarely — {symptom} occurs about {ratio}x less often in this phase than usual.',
+    dashboard_chat_training_count: '{count} times recorded in this time range.',
+    dashboard_chat_spotting_none: "I didn't find any entries for that in this time range.",
+    dashboard_chat_spotting_found: 'Yes, recorded on {count} days: {dates}.',
+    dashboard_chat_day_lookup_none: "I didn't find an entry for that.",
+    dashboard_chat_libido_none: "I didn't find any entries for that in this time range.",
+    dashboard_chat_libido_found: 'Yes, recorded on {count} days: {dates}.',
+    dashboard_chat_normal_cycle_info: 'A cycle is usually considered typical when it falls between 21 and 35 days, with the period itself lasting 2 to 7 days. Larger swings are normal in the first years after menarche and during perimenopause. If deviations are persistent and significant, it may be worth talking to a doctor.',
+    dashboard_chat_pregnant_during_period_info: 'Unlikely, but not impossible — especially with short cycles or irregular ovulation, fertile days and the period can overlap in timing, and sperm can survive for several days.',
+    dashboard_chat_day_one_info: 'Yes — the first day of actual bleeding (not spotting) counts as cycle day 1. This app counts it the same way.',
+    dashboard_chat_prediction_accuracy_info: "Predictions are based on your past cycle history and get more reliable with more recorded cycles. They're estimates, not guarantees — they can be off, especially with irregular cycles or limited history.",
+    dashboard_chat_underwear_wash_yes: 'Looks like it — only {available} clean ones left, threshold is {threshold}.',
+    dashboard_chat_underwear_wash_no: 'Not yet needed — {available} clean ones available.',
     dashboard_bbt_last_days_prefix: 'Last',
     dashboard_bbt_subtitle_confirmed: 'Coverline per the 3-over-6 rule (confirmed)',
     dashboard_bbt_subtitle_pending: 'no 3-over-6 confirmation yet',
@@ -1722,262 +1778,965 @@
      * using this profile's actual current sensor data. Falls back to a short
      * "I can answer these kinds of things" hint if nothing matches.
      */
+    /**
+     * Checks whether EVERY group in `groups` has at least one stem present in
+     * `text` (as a substring). This is deliberately looser than exact-phrase
+     * matching: each group represents one *concept* (e.g. "the person means
+     * 'period'"), expressed as several word-stems covering different
+     * inflections/synonyms, so "warum sind meine Tage zu spät" and "warum
+     * verspäten sich meine Tage" both satisfy the same two-concept rule
+     * (period-word + lateness-word) without needing every exact phrasing
+     * enumerated up front.
+     */
+    _matchesConceptGroups(text, groups) {
+      return groups.every((stems) => stems.some((stem) => text.includes(stem)));
+    }
+
+    /**
+     * Resolves a [start, end] ISO date range for "letzte Periode" (most
+     * recent past period) or "diesen Zyklus" (current cycle, start to
+     * today) — shared by every chat intent that scopes a history search to
+     * one of these two periods, so the logic only lives in one place.
+     * Returns null if there's no known cycle start to anchor from.
+     */
+    _resolveChatDateRange(text, attrs) {
+      const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+      if (!starts.length) return null;
+      const rangeStart = starts[starts.length - 1];
+      if (text.includes('letzte periode') || text.includes('letzten periode') || text.includes('last period')) {
+        const periodEnd = attrs.period_forecast?.predicted_end;
+        const periodStart = attrs.period_forecast?.predicted_start;
+        const periodLen = (periodStart && periodEnd)
+          ? Math.round((new Date(periodEnd) - new Date(periodStart)) / 86400000) + 1
+          : 5;
+        const rangeEnd = new Date(new Date(rangeStart).getTime() + (periodLen - 1) * 86400000).toISOString().slice(0, 10);
+        return [rangeStart, rangeEnd];
+      }
+      // Default: "diesen Zyklus" — from the most recent cycle start to today.
+      return [rangeStart, this._todayIso()];
+    }
+
+    /**
+     * Chat intent registry — replaces the old "first matching if-block wins"
+     * cascade. Each intent declares HOW MANY independent conditions must all
+     * be true to trigger (its `specificity`), and the engine picks the
+     * matching intent with the HIGHEST specificity, not the first one found
+     * in list order. This means intent *order in this list no longer
+     * matters* — a new, more specific question can be added anywhere
+     * without needing to work out where in a giant if/else chain it has to
+     * go to avoid being shadowed by a broader existing pattern (a mistake
+     * made repeatedly while this was still a cascade: "Ovulationstest"
+     * being caught by the plain "ovulation" intent, "letzte Periode
+     * stärker" being caught by the plain "last period" intent, etc. — all
+     * were really just this same structural problem recurring).
+     *
+     * Each entry: { id, specificity, test(q, attrs) => bool, answer(q, attrs, stateObj) => string }
+     * `specificity` = number of independent concept-groups/keywords that
+     * must ALL match for this intent to trigger — a rough but effective
+     * proxy for "how specific is this question", since it's exactly the
+     * property that caused every collision found so far (a broader
+     * single-keyword intent beating a narrower multi-keyword one, or vice
+     * versa, purely by accident of code position).
+     */
+    _chatIntents() {
+      const PERIOD_WORDS = ['tag', 'period', 'regel', 'menstruation', 'menses'];
+      const LATE_WORDS = ['spät', 'verspät', 'verzög', 'überfällig', 'ausbleib', 'nicht gekommen', 'fehlt', 'aus'];
+      const WHEN_NEXT_WORDS = ['wann', 'nächst', 'kommt', 'beginn', 'when', 'next'];
+      const has = (q, ...words) => words.some((w) => q.includes(w));
+      const grp = (q, ...groups) => this._matchesConceptGroups(q, groups);
+
+      return [
+        {
+          id: 'glossary',
+          specificity: 1,
+          test: (q) => {
+            const isDataQuery = has(q, 'length', 'duration', 'average', 'long', 'länge', 'dauer', 'durchschnitt');
+            return !isDataQuery && has(q, 'was ist', 'was bedeutet', 'what is', 'what does');
+          },
+          answer: (q, attrs) => {
+            const glossary = {
+              cycle: ['zyklus', 'cycle'],
+              ovulation: ['eisprung', 'ovulation'],
+              spotting: ['zwischenblutung', 'spotting'],
+              luteal: ['gelbkörperphase', 'lutealphase', 'luteal'],
+              follicular: ['follikelphase', 'follicular'],
+              coverline: ['coverline', 'temperaturkurve', '3-über-6', '3 über 6'],
+              pms: ['pms', 'prämenstruell'],
+            };
+            for (const [term, keywords] of Object.entries(glossary)) {
+              if (has(q, ...keywords)) {
+                const def = this._t(`ygs_gloss_${term}_def`);
+                if (def && def !== `ygs_gloss_${term}_def`) return def;
+              }
+            }
+            return null; // no known term matched — falls through to fallback
+          },
+        },
+        {
+          id: 'period_in_range',
+          specificity: 3,
+          test: (q) => !!q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/) && has(q, 'regel', 'periode', 'tage', 'menses', 'menstruation', 'period'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const dateMatch = q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+            let [, day, month, year] = dateMatch;
+            if (year.length === 2) year = `20${year}`;
+            const rangeStart = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
+            if (Number.isNaN(rangeStart.getTime())) return notAvailable;
+
+            const weekMatch = q.match(/(\d+)\s*wochen?/);
+            const dayCountMatch = q.match(/(\d+)\s*tage?/);
+            let durationDays = 0;
+            if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
+            else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
+            const rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
+
+            const predictedStart = attrs.period_forecast?.predicted_start;
+            const predictedEnd = attrs.period_forecast?.predicted_end;
+            const avgCycleLen = attrs.average_cycle_length ?? attrs.cycle_length_avg;
+            if (!predictedStart || !avgCycleLen) return notAvailable;
+
+            const periodLenDays = predictedEnd
+              ? Math.round((new Date(predictedEnd) - new Date(predictedStart)) / 86400000) + 1
+              : 5;
+
+            let cursor = new Date(predictedStart);
+            let overlapStart = null;
+            for (let i = 0; i < 12; i++) {
+              const periodEndEstimate = new Date(cursor.getTime() + (periodLenDays - 1) * 86400000);
+              if (cursor <= rangeEnd && periodEndEstimate >= rangeStart) {
+                overlapStart = cursor;
+                break;
+              }
+              cursor = new Date(cursor.getTime() + avgCycleLen * 86400000);
+            }
+
+            const farOut = (rangeStart - new Date(this._todayIso())) / 86400000 > avgCycleLen * 2;
+            const caveat = farOut ? ` ${this._t('dashboard_chat_far_future_caveat') || '(Je weiter das in der Zukunft liegt, desto unsicherer ist diese Schätzung.)'}` : '';
+
+            if (overlapStart) {
+              const label = this._formatDate(overlapStart.toISOString().slice(0, 10));
+              return `${(this._t('dashboard_chat_period_in_range_yes') || 'Ja, vsl. ab {date} wird deine Periode in diesem Zeitraum liegen.').replace('{date}', label)}${caveat}`;
+            }
+            return `${this._t('dashboard_chat_period_in_range_no') || 'Nach aktueller Schätzung nicht — in diesem Zeitraum wird keine Periode erwartet.'}${caveat}`;
+          },
+        },
+        {
+          id: 'ovulation_test',
+          specificity: 2,
+          test: (q) => has(q, 'ovulationstest', 'lh-test', 'ovulation test') && has(q, 'wann', 'letzte', 'when', 'last'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const history = this._getFullSymptomHistory(stateObj);
+            const isNegative = has(q, 'negativ', 'negative');
+            const targetValue = isNegative ? 'negative_ovulation' : 'positive_ovulation';
+            const matches_ = history.filter((e) => Array.isArray(e.test) && e.test.includes(targetValue)).sort((a, b) => (a.date < b.date ? -1 : 1));
+            if (!matches_.length) return notAvailable;
+            return (this._t('dashboard_chat_ovulation_test_last') || 'Zuletzt am {date}.').replace('{date}', this._formatDate(matches_[matches_.length - 1].date));
+          },
+        },
+        {
+          id: 'symptom_search',
+          specificity: 2,
+          test: (q) => {
+            const symptomKeywordMap = {
+              headache: ['kopfschmerz', 'headache'], migraine: ['migräne', 'migraine'], cramps: ['krämpfe', 'krampf', 'cramps'],
+              lower_back: ['rückenschmerz', 'back pain', 'lower back'], tender_breasts: ['brüste', 'brustspannen', 'tender breasts'],
+              mittelschmerz: ['mittelschmerz'],
+            };
+            const found = Object.values(symptomKeywordMap).some((kws) => has(q, ...kws));
+            return found && has(q, 'hatte ich', 'hab ich', 'wie oft', 'did i have', 'how often');
+          },
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const symptomKeywordMap = {
+              headache: ['kopfschmerz', 'headache'], migraine: ['migräne', 'migraine'], cramps: ['krämpfe', 'krampf', 'cramps'],
+              lower_back: ['rückenschmerz', 'back pain', 'lower back'], tender_breasts: ['brüste', 'brustspannen', 'tender breasts'],
+              mittelschmerz: ['mittelschmerz'],
+            };
+            let matchedSymptom = null;
+            for (const [key, keywords] of Object.entries(symptomKeywordMap)) {
+              if (has(q, ...keywords)) { matchedSymptom = key; break; }
+            }
+            const history = this._getFullSymptomHistory(stateObj);
+            const range = this._resolveChatDateRange(q, attrs);
+            if (!range) return notAvailable;
+            const [rangeStart, rangeEnd] = range;
+            const matches_ = history.filter((entry) => {
+              if (!entry?.date || entry.date < rangeStart || entry.date > rangeEnd) return false;
+              const painList = Array.isArray(entry.pain) ? entry.pain : [];
+              return painList.includes(matchedSymptom);
+            });
+            if (!matches_.length) return this._t('dashboard_chat_symptom_search_none') || 'Dafür hab ich in diesem Zeitraum keine Einträge gefunden.';
+            const dates = matches_.map((e) => this._formatDate(e.date)).join(', ');
+            return (this._t('dashboard_chat_symptom_search_found') || 'Ja, an {count} Tagen erfasst: {dates}.').replace('{count}', matches_.length).replace('{dates}', dates);
+          },
+        },
+        {
+          id: 'intercourse',
+          specificity: 2,
+          test: (q) => has(q, 'sex', 'geschlechtsverkehr', 'verkehr') && has(q, 'wann', 'wie oft', 'when', 'how often', 'zuletzt', 'last'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const history = this._getFullSymptomHistory(stateObj);
+            const loggedDays = history.filter((entry) => entry?.date && entry.intercourse).sort((a, b) => (a.date < b.date ? -1 : 1));
+            if (!loggedDays.length) return notAvailable;
+            if (has(q, 'wie oft', 'how often')) {
+              const range = this._resolveChatDateRange(q, attrs);
+              if (!range) return notAvailable;
+              const [rangeStart, rangeEnd] = range;
+              const inRange = loggedDays.filter((e) => e.date >= rangeStart && e.date <= rangeEnd);
+              return (this._t('dashboard_chat_intercourse_count') || '{count} Mal erfasst in diesem Zeitraum.').replace('{count}', inRange.length);
+            }
+            const lastDate = loggedDays[loggedDays.length - 1].date;
+            return (this._t('dashboard_chat_intercourse_last') || 'Zuletzt am {date} erfasst.').replace('{date}', this._formatDate(lastDate));
+          },
+        },
+        {
+          id: 'menarche_estimate',
+          specificity: 2,
+          test: (q) => has(q, 'erste periode', 'erste regel', 'first period'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const estDate = attrs.estimated_menarche_date ?? attrs.menarche_data?.estimated_date ?? null;
+            const daysUntil = attrs.days_until_menarche;
+            if (!estDate && (daysUntil === null || daysUntil === undefined)) return notAvailable;
+            if (estDate) return (this._t('dashboard_chat_menarche_estimate') || 'Geschätzt um den {date}.').replace('{date}', this._formatDate(estDate));
+            return (this._t('dashboard_chat_menarche_days') || 'Voraussichtlich in etwa {days} Tagen.').replace('{days}', daysUntil);
+          },
+        },
+        {
+          id: 'bleeding_compare',
+          specificity: 2,
+          test: (q) => grp(q, PERIOD_WORDS, ['stärker', 'schwächer', 'stronger', 'weaker']),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+            if (starts.length < 2) return notAvailable;
+            const history = this._getFullSymptomHistory(stateObj);
+            const strengthMap = { none: 0, light: 1, medium: 2, heavy: 3, very_heavy: 4 };
+            const periodEnd = attrs.period_forecast?.predicted_end;
+            const periodStart = attrs.period_forecast?.predicted_start;
+            const periodLen = (periodStart && periodEnd)
+              ? Math.round((new Date(periodEnd) - new Date(periodStart)) / 86400000) + 1
+              : 5;
+            const peakStrength = (start) => {
+              const end = new Date(new Date(start).getTime() + (periodLen - 1) * 86400000).toISOString().slice(0, 10);
+              const vals = history
+                .filter((e) => e?.date >= start && e.date <= end && e.bleeding_strength in strengthMap)
+                .map((e) => strengthMap[e.bleeding_strength]);
+              return vals.length ? Math.max(...vals) : null;
+            };
+            const lastPeak = peakStrength(starts[starts.length - 1]);
+            const prevPeak = peakStrength(starts[starts.length - 2]);
+            if (lastPeak === null || prevPeak === null) return notAvailable;
+            if (lastPeak === prevPeak) return this._t('dashboard_chat_bleeding_about_same') || 'Etwa wie gewohnt — kein deutlicher Unterschied zur Periode davor.';
+            if (lastPeak > prevPeak) return this._t('dashboard_chat_bleeding_stronger') || 'Stärker als die Periode davor.';
+            return this._t('dashboard_chat_bleeding_weaker') || 'Schwächer als die Periode davor.';
+          },
+        },
+        {
+          id: 'why_late',
+          specificity: 3,
+          test: (q) => grp(q, PERIOD_WORDS, LATE_WORDS) && has(q, 'warum', 'why'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const predicted = attrs.period_forecast?.predicted_start;
+            if (!predicted) return notAvailable;
+            const daysOverdue = Math.round((new Date(this._todayIso()) - new Date(predicted)) / 86400000);
+            const reasons = this._t('dashboard_chat_late_reasons') || 'Mögliche Gründe sind z. B. Stress, Veränderungen bei Schlaf/Gewicht/Sport, eine Erkrankung, hormonelle Schwankungen — oder auch eine Schwangerschaft. Vorhersagen sind Schätzungen mit einer gewissen Schwankungsbreite, keine Diagnose.';
+            if (daysOverdue <= 0) return this._t('dashboard_chat_not_actually_late') || 'Nach aktueller Vorhersage ist deine Periode noch nicht überfällig.';
+            const overdueNote = (this._t('dashboard_chat_days_overdue') || 'Sie ist aktuell {days} Tage überfällig.').replace('{days}', daysOverdue);
+            const doctorNote = daysOverdue >= 7
+              ? ` ${this._t('dashboard_chat_late_see_doctor') || 'Bei einer so langen Verzögerung kann ein Arztbesuch sinnvoll sein.'}`
+              : '';
+            return `${overdueNote} ${reasons}${doctorNote}`;
+          },
+        },
+        {
+          id: 'last_period',
+          specificity: 2,
+          test: (q) => grp(q, PERIOD_WORDS, ['letzt', 'vorherig', 'last', 'previous']) || has(q, 'wann war meine'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+            if (!starts.length) return notAvailable;
+            return (this._t('dashboard_chat_last_period') || 'Deine letzte Periode begann am {date}.').replace('{date}', this._formatDate(starts[starts.length - 1]));
+          },
+        },
+        {
+          id: 'next_period',
+          specificity: 2,
+          test: (q) => grp(q, PERIOD_WORDS, WHEN_NEXT_WORDS) || grp(q, PERIOD_WORDS, LATE_WORDS),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const predicted = attrs.period_forecast?.predicted_start;
+            if (!predicted) return notAvailable;
+            const days = Math.round((new Date(predicted) - new Date(this._todayIso())) / 86400000);
+            const dateLabel = this._formatDate(predicted);
+            if (days === 0) return this._t('dashboard_chat_period_today') || 'Deine Periode wird für heute erwartet.';
+            if (days < 0) return (this._t('dashboard_chat_period_overdue') || 'Deine Periode wurde für {date} erwartet.').replace('{date}', dateLabel);
+            return (this._t('dashboard_chat_period_in_days') || 'Voraussichtlich in {days} Tagen, am {date}.').replace('{days}', days).replace('{date}', dateLabel);
+          },
+        },
+        {
+          id: 'shortest_longest_cycle',
+          specificity: 2,
+          test: (q) => has(q, 'kürzester zyklus', 'längster zyklus', 'shortest cycle', 'longest cycle'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const recentCycles = Array.isArray(attrs.cycle_statistics?.recent_cycles)
+              ? attrs.cycle_statistics.recent_cycles.filter((c) => c && Number.isFinite(c.length))
+              : [];
+            if (!recentCycles.length) return notAvailable;
+            const lens = recentCycles.map((c) => c.length);
+            if (has(q, 'kürzester', 'shortest')) {
+              return (this._t('dashboard_chat_shortest_cycle') || 'Dein kürzester erfasster Zyklus dauerte {days} Tage.').replace('{days}', Math.min(...lens));
+            }
+            return (this._t('dashboard_chat_longest_cycle') || 'Dein längster erfasster Zyklus dauerte {days} Tage.').replace('{days}', Math.max(...lens));
+          },
+        },
+        {
+          id: 'cycle_compare',
+          specificity: 3,
+          test: (q) => grp(q, ['zyklus', 'cycle'], ['letzt', 'last']) && has(q, 'länger', 'kürzer', 'longer', 'shorter'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const recentCycles = Array.isArray(attrs.cycle_statistics?.recent_cycles)
+              ? attrs.cycle_statistics.recent_cycles.filter((c) => c && Number.isFinite(c.length))
+              : [];
+            if (recentCycles.length < 2) return notAvailable;
+            const lens = recentCycles.map((c) => c.length);
+            const lastLen = lens[lens.length - 1];
+            const avgOthers = lens.slice(0, -1).reduce((a, b) => a + b, 0) / (lens.length - 1);
+            const diff = Math.round(lastLen - avgOthers);
+            if (Math.abs(diff) < 1) return this._t('dashboard_chat_cycle_about_same') || 'Etwa wie gewohnt — kein nennenswerter Unterschied zum Durchschnitt.';
+            if (diff > 0) return (this._t('dashboard_chat_cycle_longer') || 'Länger als sonst — etwa {days} Tage mehr als im Durchschnitt.').replace('{days}', diff);
+            return (this._t('dashboard_chat_cycle_shorter') || 'Kürzer als sonst — etwa {days} Tage weniger als im Durchschnitt.').replace('{days}', Math.abs(diff));
+          },
+        },
+        {
+          id: 'cycle_length',
+          specificity: 2,
+          test: (q) => grp(q, ['zyklus', 'cycle'], ['läng', 'lang', 'dauer', 'durchschnitt', 'average', 'length']),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const avg = attrs.average_cycle_length ?? attrs.cycle_length_avg;
+            if (!avg) return notAvailable;
+            return (this._t('dashboard_chat_cycle_length') || 'Im Schnitt {days} Tage.').replace('{days}', Math.round(avg));
+          },
+        },
+        {
+          id: 'fertile_window',
+          specificity: 1,
+          test: (q) => has(q, 'fruchtbar', 'fertile'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const fw = attrs.fertility_forecast;
+            if (!fw?.fertile_window_start) return notAvailable;
+            const startLabel = this._formatDate(fw.fertile_window_start);
+            const endLabel = this._formatDate(fw.fertile_window_end);
+            return (this._t('dashboard_chat_fertile_window') || 'Voraussichtlich von {start} bis {end}.').replace('{start}', startLabel).replace('{end}', endLabel);
+          },
+        },
+        {
+          id: 'pregnancy_likelihood',
+          specificity: 2,
+          test: (q) => has(q, 'ungeschützt', 'ungeschützten', 'unprotected') && has(q, 'schwanger', 'pregnant', 'wahrscheinlichkeit', 'likelihood', 'probability'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const fw = attrs.fertility_forecast;
+            if (!fw?.fertile_window_start) return notAvailable;
+            let offsetDays = 0;
+            if (has(q, 'vorgestern')) offsetDays = -2;
+            else if (has(q, 'gestern')) offsetDays = -1;
+            const checkDate = new Date(new Date(this._todayIso() + 'T00:00:00').getTime() + offsetDays * 86400000);
+            const checkIso = checkDate.toISOString().slice(0, 10);
+            const inWindow = checkIso >= fw.fertile_window_start && checkIso <= fw.fertile_window_end;
+            const disclaimer = this._t('dashboard_chat_fertility_disclaimer') || 'Das ist nur eine grobe Einordnung basierend auf dem geschätzten fruchtbaren Fenster, keine verlässliche Aussage zum tatsächlichen Risiko — und kein Ersatz für Verhütung oder eine medizinische Einschätzung.';
+            const verdict = inWindow
+              ? (this._t('dashboard_chat_fertility_in_window') || 'Der Tag lag in deinem geschätzten fruchtbaren Fenster.')
+              : (this._t('dashboard_chat_fertility_outside_window') || 'Der Tag lag außerhalb deines geschätzten fruchtbaren Fensters.');
+            return `${verdict} ${disclaimer}`;
+          },
+        },
+        {
+          id: 'product_stock',
+          specificity: 1,
+          test: (q) => has(q, 'reichen', 'nachkaufen', 'genug') || (has(q, 'brauche') && has(q, 'noch')),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const productMap = {
+              tampon: ['tampon', 'tampons'], pad: ['binde', 'binden', 'pad', 'pads'],
+              liner: ['slipeinlage', 'slipeinlagen', 'liner'], cup: ['menstruationstasse', 'cup'],
+              underwear: ['periodenunterwäsche', 'period underwear'],
+            };
+            let product = null;
+            for (const [key, keywords] of Object.entries(productMap)) {
+              if (has(q, ...keywords)) { product = key; break; }
+            }
+            if (!product) return null;
+            const stats = attrs.product_usage_stats?.average_per_cycle || {};
+            const avgUse = stats[product];
+            const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
+            const stock = inventoryState?.attributes?.inventory?.[product];
+            if (avgUse == null || stock == null) return notAvailable;
+            const productLabel = this._t('opt_' + product) !== ('opt_' + product) ? this._t('opt_' + product) : product;
+            if (stock >= avgUse) {
+              return (this._t('dashboard_chat_stock_enough') || 'Sollte reichen — aktueller Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}.')
+                .replace('{stock}', stock).replace('{avg}', Math.round(avgUse));
+            }
+            return (this._t('dashboard_chat_stock_low') || 'Könnte knapp werden — Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}. Eventuell {product} nachkaufen.')
+              .replace('{stock}', stock).replace('{avg}', Math.round(avgUse)).replace('{product}', productLabel);
+          },
+        },
+        {
+          id: 'ovulation_days',
+          specificity: 2,
+          test: (q) => has(q, 'eisprung', 'ovulation') && has(q, 'wie viele tage', 'in wie vielen tagen', 'how many days'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const ov = attrs.fertility_forecast?.ovulation_estimate;
+            if (!ov) return notAvailable;
+            const days = Math.round((new Date(ov) - new Date(this._todayIso())) / 86400000);
+            if (days <= 0) return this._t('dashboard_chat_ovulation_today_or_past') || 'Der Eisprung wird für heute erwartet oder liegt bereits zurück.';
+            return (this._t('dashboard_chat_ovulation_in_days') || 'Voraussichtlich in {days} Tagen.').replace('{days}', days);
+          },
+        },
+        {
+          id: 'nfp_confirmed',
+          specificity: 2,
+          test: (q) => has(q, 'temperaturkurve bestätigt', 'eisprung bestätigt', 'temperature confirmed', 'ovulation confirmed'),
+          answer: (q, attrs) => {
+            const nfp = attrs.nfp_analysis;
+            if (!nfp) return this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            if (nfp.temperature_rise_detected && nfp.temperature_rise_day) {
+              return (this._t('dashboard_chat_nfp_confirmed') || 'Ja, bestätigt am {date}.').replace('{date}', this._formatDate(nfp.temperature_rise_day));
+            }
+            return this._t('dashboard_chat_nfp_not_confirmed') || 'Noch nicht — es liegt noch keine bestätigte Temperaturkurve für diesen Zyklus vor.';
+          },
+        },
+        {
+          id: 'ovulation_date',
+          specificity: 1,
+          test: (q) => has(q, 'eisprung', 'ovulation'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const ov = attrs.fertility_forecast?.ovulation_estimate;
+            if (!ov) return notAvailable;
+            return (this._t('dashboard_chat_ovulation') || 'Voraussichtlich am {date}.').replace('{date}', this._formatDate(ov));
+          },
+        },
+        {
+          id: 'current_phase',
+          specificity: 1,
+          test: (q) => has(q, 'welche phase', 'welcher phase', 'wo stehe ich', 'aktuelle phase', 'what phase'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const phase = attrs.current_phase || stateObj?.state;
+            if (!phase) return notAvailable;
+            const phaseKeyMap = {
+              period: 'phase_menstruation', follicular: 'phase_follicular',
+              fertile_window: 'dashboard_fertility_window', ovulation_day: 'dashboard_fertility_ovulation',
+              luteal: 'phase_luteal', late_luteal: 'phase_luteal',
+            };
+            const key = phaseKeyMap[phase] || phase;
+            const label = this._t(key);
+            return (this._t('dashboard_chat_current_phase') || 'Du bist aktuell in der Phase: {phase}.').replace('{phase}', label !== key ? label : phase);
+          },
+        },
+        {
+          id: 'cycle_day',
+          specificity: 1,
+          test: (q) => has(q, 'welcher zyklustag', 'zyklustag heute', 'which cycle day', 'cycle day today'),
+          answer: (q, attrs) => {
+            const day = attrs.cycle_day;
+            if (day === null || day === undefined) return this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            return (this._t('dashboard_chat_cycle_day') || 'Heute ist Zyklustag {day}.').replace('{day}', day);
+          },
+        },
+        {
+          id: 'regularity',
+          specificity: 1,
+          test: (q) => has(q, 'regelmäßig', 'regularity', 'wie regelmäßig'),
+          answer: (q, attrs) => {
+            const pct = attrs.cycle_statistics?.cycle_regularity_percent;
+            if (pct === null || pct === undefined) return this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            return (this._t('dashboard_chat_regularity') || 'Deine Zyklen sind zu etwa {pct}% regelmäßig.').replace('{pct}', Math.round(pct));
+          },
+        },
+        {
+          id: 'period_duration',
+          specificity: 2,
+          test: (q) => grp(q, PERIOD_WORDS, ['dauer', 'lange', 'length']),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const start = attrs.period_forecast?.predicted_start;
+            const end = attrs.period_forecast?.predicted_end;
+            if (!start || !end) return notAvailable;
+            const days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+            return (this._t('dashboard_chat_period_duration') || 'Für gewöhnlich etwa {days} Tage.').replace('{days}', days);
+          },
+        },
+        {
+          id: 'badges',
+          specificity: 1,
+          test: (q) => has(q, 'abzeichen', 'welche abzeichen', 'badges', 'achievements'),
+          answer: (q, attrs) => {
+            const raw = Array.isArray(attrs.progress_badges) ? attrs.progress_badges : [];
+            if (!raw.length) return this._t('progress_empty_state') || 'Noch keine Abzeichen erreicht.';
+            const titles = raw.slice(-5).reverse().map((b) => String(b?.title ?? b?.id ?? '')).filter(Boolean);
+            return (this._t('dashboard_chat_badges') || 'Deine letzten Abzeichen: {list}.').replace('{list}', titles.join(', '));
+          },
+        },
+        {
+          id: 'menopause_status',
+          specificity: 1,
+          test: (q) => has(q, 'wechseljahre', 'menopause', 'klimakterium'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const monthsTracked = attrs.menopause_months_tracked;
+            const daysSince = attrs.days_since_last_period;
+            if (daysSince === null || daysSince === undefined) return notAvailable;
+            const isConfirmed = daysSince >= 365;
+            if (isConfirmed) return this._t('dashboard_chat_menopause_confirmed') || 'Ja, offiziell bestätigt (12 Monate ohne Periode).';
+            const monthsLabel = monthsTracked !== null && monthsTracked !== undefined ? Math.round(monthsTracked) : Math.round(daysSince / 30);
+            return (this._t('dashboard_chat_menopause_pending') || 'Noch nicht offiziell bestätigt — aktuell {months} Monate ohne Periode erfasst.').replace('{months}', monthsLabel);
+          },
+        },
+        {
+          id: 'pregnancy_week',
+          specificity: 1,
+          test: (q) => has(q, 'welche woche', 'welcher woche', 'schwangerschaftswoche', 'entbindungstermin', 'pregnancy week', 'due date'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const weeks = Math.floor(Number(attrs.weeks_pregnant ?? 0) || 0);
+            const dueDate = attrs.due_date ?? attrs.pregnancy_data?.due_date;
+            if (!weeks && !dueDate) return notAvailable;
+            const parts = [];
+            if (weeks) parts.push((this._t('dashboard_chat_pregnancy_week') || 'Du bist aktuell in SSW {week}.').replace('{week}', weeks));
+            if (dueDate) parts.push((this._t('dashboard_chat_due_date') || 'Entbindungstermin: {date}.').replace('{date}', this._formatDate(dueDate)));
+            return parts.join(' ');
+          },
+        },
+        {
+          id: 'contraception',
+          specificity: 1,
+          test: (q) => has(q, 'welche methode', 'welche verhütung', 'verhütungsmethode', 'contraception method') || (has(q, 'wechseln') && has(q, 'verhütung', 'spirale', 'implantat')),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const status = attrs.contraception_status;
+            if (!status?.current_method) return notAvailable;
+            const key = `opt_${status.current_method}`;
+            const methodLabel = this._t(key) !== key ? this._t(key) : status.current_method;
+            let answerText = (this._t('dashboard_chat_contraception_method') || 'Aktuell erfasst: {method}.').replace('{method}', methodLabel);
+            if (status.renewal_due_date) {
+              answerText += ` ${(this._t('dashboard_chat_contraception_renewal') || 'Möglicher Wechsel: {date}.').replace('{date}', this._formatDate(status.renewal_due_date))}`;
+            }
+            return answerText;
+          },
+        },
+        {
+          id: 'postpartum_remaining',
+          specificity: 1,
+          test: (q) => has(q, 'wochenbett'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const pp = attrs.postpartum_data && typeof attrs.postpartum_data === 'object' ? attrs.postpartum_data : {};
+            const daysSinceBirth = pp.days_since_birth;
+            const durationDays = pp.duration_days ?? attrs.postpartum_duration ?? 42;
+            if (daysSinceBirth === null || daysSinceBirth === undefined) return notAvailable;
+            const remaining = Math.max(0, durationDays - daysSinceBirth);
+            if (remaining === 0) return this._t('dashboard_chat_postpartum_done') || 'Der übliche Wochenbett-Zeitraum ist bereits abgeschlossen.';
+            return (this._t('dashboard_chat_postpartum_remaining') || 'Noch etwa {days} Tage.').replace('{days}', remaining);
+          },
+        },
+        {
+          id: 'pregnancy_test_timing',
+          specificity: 1,
+          test: (q) => has(q, 'schwangerschaftstest', 'pregnancy test'),
+          answer: (q, attrs) => {
+            const predicted = attrs.period_forecast?.predicted_start;
+            const guidance = this._t('dashboard_chat_pregnancy_test_guidance') || 'Ein Test ist meist ab dem erwarteten Beginn der Periode zuverlässig, manche frühestens ein paar Tage davor — genaueres steht in der Packungsbeilage des jeweiligen Tests.';
+            if (!predicted) return guidance;
+            const daysUntil = Math.round((new Date(predicted) - new Date(this._todayIso())) / 86400000);
+            if (daysUntil <= 0) return `${this._t('dashboard_chat_pregnancy_test_now') || 'Deine Periode wird bereits erwartet — ein Test wäre jetzt aussagekräftig.'} ${guidance}`;
+            return `${(this._t('dashboard_chat_pregnancy_test_wait') || 'Deine Periode wird erst in {days} Tagen erwartet — davor ist ein Test meist noch nicht zuverlässig.').replace('{days}', daysUntil)} ${guidance}`;
+          },
+        },
+        {
+          id: 'mucus_interpretation',
+          specificity: 1,
+          test: (q) => has(q, 'schleim', 'zervixschleim', 'mucus', 'cervical mucus'),
+          answer: (q) => {
+            const mucusLevels = [
+              { level: 'high', keywords: ['durchsichtig', 'klar', 'fadenziehend', 'spinnbar', 'eiweiß', 'transparent', 'clear', 'stretchy', 'egg white'] },
+              { level: 'medium', keywords: ['cremig', 'creamy', 'milchig'] },
+              { level: 'low', keywords: ['klebrig', 'sticky', 'zäh'] },
+              { level: 'none', keywords: ['nichts', 'trocken', 'keinen', 'none', 'dry'] },
+            ];
+            const matched = mucusLevels.find((entry) => has(q, ...entry.keywords));
+            if (matched) {
+              const key = `dashboard_chat_mucus_${matched.level}`;
+              const interpretation = this._t(key) !== key ? this._t(key) : null;
+              if (interpretation) {
+                const caveat = this._t('dashboard_chat_mucus_caveat') || 'Zervixschleim ist nur eines von mehreren NFP-Beobachtungszeichen — zusammen mit der Basaltemperatur ist die Einschätzung deutlich verlässlicher als für sich allein.';
+                return `${interpretation} ${caveat}`;
+              }
+            }
+            return this._t('dashboard_chat_mucus_unclear') || 'Ich konnte die Beschreibung nicht eindeutig zuordnen. Übliche Kategorien: nichts/trocken, klebrig, cremig, oder durchsichtig/fadenziehend (Eiweißschleim).';
+          },
+        },
+        {
+          id: 'cervix_interpretation',
+          specificity: 1,
+          test: (q) => has(q, 'muttermund', 'cervix'),
+          answer: (q) => {
+            const isHighOrOpen = has(q, 'hoch', 'weich', 'offen', 'high', 'soft', 'open');
+            const isLowOrFirm = has(q, 'niedrig', 'tief', 'fest', 'geschlossen', 'low', 'firm', 'closed');
+            const caveat = this._t('dashboard_chat_mucus_caveat') || 'Das ist nur eines von mehreren NFP-Beobachtungszeichen — zusammen mit der Basaltemperatur ist die Einschätzung deutlich verlässlicher als für sich allein.';
+            if (isHighOrOpen && !isLowOrFirm) {
+              return `${this._t('dashboard_chat_cervix_high') || 'Hoch, weich und/oder offen deutet typischerweise auf eine hohe Fruchtbarkeit hin — meist nahe am Eisprung.'} ${caveat}`;
+            }
+            if (isLowOrFirm && !isHighOrOpen) {
+              return `${this._t('dashboard_chat_cervix_low') || 'Niedrig, fest und/oder geschlossen deutet typischerweise auf eine niedrigere Fruchtbarkeit hin.'} ${caveat}`;
+            }
+            return this._t('dashboard_chat_cervix_unclear') || 'Ich konnte die Beschreibung nicht eindeutig zuordnen. Übliche Kategorien: hoch/weich/offen (fruchtbarer) oder niedrig/fest/geschlossen (weniger fruchtbar).';
+          },
+        },
+        {
+          id: 'summary',
+          specificity: 1,
+          test: (q) => has(q, 'wie sieht mein zyklus', 'zyklus-überblick', 'zyklusüberblick', 'zusammenfassung', 'cycle overview', 'cycle summary'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const day = attrs.cycle_day;
+            const phase = attrs.current_phase || stateObj?.state;
+            const predicted = attrs.period_forecast?.predicted_start;
+            const parts = [];
+            if (day !== null && day !== undefined) {
+              parts.push((this._t('dashboard_chat_cycle_day') || 'Heute ist Zyklustag {day}.').replace('{day}', day));
+            }
+            if (phase) {
+              const phaseKeyMap = {
+                period: 'phase_menstruation', follicular: 'phase_follicular',
+                fertile_window: 'dashboard_fertility_window', ovulation_day: 'dashboard_fertility_ovulation',
+                luteal: 'phase_luteal', late_luteal: 'phase_luteal',
+              };
+              const key = phaseKeyMap[phase] || phase;
+              const label = this._t(key);
+              parts.push((this._t('dashboard_chat_current_phase') || 'Du bist aktuell in der Phase: {phase}.').replace('{phase}', label !== key ? label : phase));
+            }
+            if (predicted) {
+              const days = Math.round((new Date(predicted) - new Date(this._todayIso())) / 86400000);
+              if (days >= 0) {
+                parts.push((this._t('dashboard_chat_period_in_days') || 'Voraussichtlich in {days} Tagen, am {date}.').replace('{days}', days).replace('{date}', this._formatDate(predicted)));
+              }
+            }
+            if (!parts.length) return notAvailable;
+            return parts.join(' ');
+          },
+        },
+        {
+          id: 'discharge_search',
+          specificity: 2,
+          test: (q) => has(q, 'ausfluss', 'discharge') && has(q, 'ungewöhnlich', 'unusual', 'auffällig', 'hatte ich', 'did i have'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const range = this._resolveChatDateRange(q, attrs);
+            if (!range) return notAvailable;
+            const [rangeStart, rangeEnd] = range;
+            const history = this._getFullSymptomHistory(stateObj);
+            const matches_ = history.filter((e) => e?.date >= rangeStart && e.date <= rangeEnd && e.discharge === 'other');
+            if (!matches_.length) return this._t('dashboard_chat_discharge_none') || 'Nichts Ungewöhnliches in diesem Zeitraum erfasst.';
+            const dates = matches_.map((e) => this._formatDate(e.date)).join(', ');
+            return (this._t('dashboard_chat_discharge_found') || 'Ja, an {count} Tagen als ungewöhnlich erfasst: {dates}. Bei anhaltenden Auffälligkeiten kann ein Arztbesuch sinnvoll sein.').replace('{count}', matches_.length).replace('{dates}', dates);
+          },
+        },
+        {
+          id: 'anomaly_insights',
+          specificity: 2,
+          test: (q) => has(q, 'auffällig', 'ungewöhnlich', 'anomaly', 'anomalie', 'unusual') && has(q, 'zyklus', 'cycle'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const cycleStats = attrs.cycle_statistics && typeof attrs.cycle_statistics === 'object' ? attrs.cycle_statistics : null;
+            const regularityPercent = cycleStats?.cycle_regularity_percent;
+            if (regularityPercent === null || regularityPercent === undefined) return notAvailable;
+            if (regularityPercent >= 70) {
+              return (this._t('dashboard_chat_anomaly_regular') || 'Nichts Auffälliges — dein Zyklus ist zu etwa {pct}% regelmäßig.').replace('{pct}', Math.round(regularityPercent));
+            }
+            return (this._t('dashboard_chat_anomaly_irregular') || 'Dein Zyklus zeigt aktuell eine geringere Regelmäßigkeit (etwa {pct}%) — schau dir gerne die Anomalie-Karte für Details an.').replace('{pct}', Math.round(regularityPercent));
+          },
+        },
+        {
+          id: 'pms_start',
+          specificity: 2,
+          test: (q) => has(q, 'pms') && has(q, 'wann', 'beginn', 'when', 'start'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const predicted = attrs.period_forecast?.predicted_start;
+            if (!predicted) return notAvailable;
+            const pmsStart = new Date(new Date(predicted).getTime() - 5 * 86400000).toISOString().slice(0, 10);
+            return (this._t('dashboard_chat_pms_start') || 'Voraussichtlich ab etwa {date} — eine grobe Schätzung, keine exakte Vorhersage.').replace('{date}', this._formatDate(pmsStart));
+          },
+        },
+        {
+          id: 'tracking_consistency',
+          specificity: 2,
+          test: (q) => has(q, 'wie viele tage') && has(q, 'erfasst', 'geloggt', 'getrackt', 'logged', 'tracked'),
+          answer: (q, attrs, stateObj) => {
+            const history = this._getFullSymptomHistory(stateObj);
+            const now = new Date(this._todayIso());
+            const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const count = history.filter((e) => typeof e?.date === 'string' && e.date.startsWith(monthPrefix)).length;
+            return (this._t('dashboard_chat_tracking_consistency') || 'Diesen Monat bisher an {count} Tagen erfasst.').replace('{count}', count);
+          },
+        },
+        {
+          // "Hab ich vor meiner Periode öfter Kopfschmerzen?" — three
+          // independent conditions (symptom-word + phase-reference +
+          // frequency-word) deliberately outrank the plainer symptom_search
+          // intent (specificity 2), which would otherwise also match on the
+          // shared "hab ich"/symptom-word overlap.
+          id: 'symptom_correlation',
+          specificity: 3,
+          test: (q) => {
+            const symptomKeywordMap = {
+              headache: ['kopfschmerz', 'headache'], migraine: ['migräne', 'migraine'], cramps: ['krämpfe', 'krampf', 'cramps'],
+              lower_back: ['rückenschmerz', 'back pain', 'lower back'], tender_breasts: ['brüste', 'brustspannen', 'tender breasts'],
+              mittelschmerz: ['mittelschmerz'],
+            };
+            const hasSymptom = Object.values(symptomKeywordMap).some((kws) => has(q, ...kws));
+            const hasPhaseRef = has(q, 'vor meiner periode', 'vor der periode', 'während der periode', 'während meiner periode', 'nach der periode', 'before my period', 'during my period', 'after my period');
+            const hasFrequency = has(q, 'öfter', 'häufiger', 'seltener', 'more often', 'less often');
+            return hasSymptom && hasPhaseRef && hasFrequency;
+          },
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const symptomKeywordMap = {
+              headache: ['kopfschmerz', 'headache'], migraine: ['migräne', 'migraine'], cramps: ['krämpfe', 'krampf', 'cramps'],
+              lower_back: ['rückenschmerz', 'back pain', 'lower back'], tender_breasts: ['brüste', 'brustspannen', 'tender breasts'],
+              mittelschmerz: ['mittelschmerz'],
+            };
+            let matchedSymptom = null;
+            for (const [key, keywords] of Object.entries(symptomKeywordMap)) {
+              if (has(q, ...keywords)) { matchedSymptom = key; break; }
+            }
+            const targetPhases = has(q, 'vor meiner periode', 'vor der periode', 'before my period')
+              ? ['luteal', 'late_luteal']
+              : has(q, 'während der periode', 'während meiner periode', 'during my period')
+                ? ['period']
+                : ['follicular'];
+            const insights = Array.isArray(attrs.symptom_correlation_insights) ? attrs.symptom_correlation_insights : [];
+            const match = insights.find((ins) => ins.symptom_key === matchedSymptom && targetPhases.includes(ins.phase));
+            if (!match) return this._t('dashboard_chat_correlation_none') || 'Dafür konnte bisher kein deutlicher Zusammenhang festgestellt werden — entweder gibt es keinen, oder es liegen noch nicht genug Daten vor.';
+            const symptomLabel = this._t(matchedSymptom) !== matchedSymptom ? this._t(matchedSymptom) : (this._t('opt_' + matchedSymptom) !== ('opt_' + matchedSymptom) ? this._t('opt_' + matchedSymptom) : matchedSymptom);
+            const template = match.direction === 'more_frequent'
+              ? (this._t('dashboard_chat_correlation_more') || 'Ja — {symptom} tritt in dieser Phase etwa {ratio}x häufiger auf als sonst.')
+              : (this._t('dashboard_chat_correlation_less') || 'Eher seltener — {symptom} tritt in dieser Phase etwa {ratio}x seltener auf als sonst.');
+            return template.replace('{symptom}', symptomLabel).replace('{ratio}', String(match.ratio));
+          },
+        },
+        {
+          id: 'training_search',
+          specificity: 2,
+          test: (q) => has(q, 'trainiert', 'training', 'sport', 'workout') && has(q, 'wie oft', 'how often'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const range = this._resolveChatDateRange(q, attrs);
+            if (!range) return notAvailable;
+            const [rangeStart, rangeEnd] = range;
+            const history = this._getFullSymptomHistory(stateObj);
+            const count = history.filter((e) => e?.date >= rangeStart && e.date <= rangeEnd && e.training_intensity).length;
+            return (this._t('dashboard_chat_training_count') || '{count} Mal erfasst in diesem Zeitraum.').replace('{count}', count);
+          },
+        },
+        {
+          id: 'spotting_search',
+          specificity: 2,
+          test: (q) => has(q, 'zwischenblutung', 'spotting') && has(q, 'hatte ich', 'wie oft', 'did i have', 'how often'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const range = this._resolveChatDateRange(q, attrs);
+            if (!range) return notAvailable;
+            const [rangeStart, rangeEnd] = range;
+            const history = this._getFullSymptomHistory(stateObj);
+            const matches_ = history.filter((e) => e?.date >= rangeStart && e.date <= rangeEnd && e.spotting);
+            if (!matches_.length) return this._t('dashboard_chat_spotting_none') || 'Dafür hab ich in diesem Zeitraum keine Einträge gefunden.';
+            const dates = matches_.map((e) => this._formatDate(e.date)).join(', ');
+            return (this._t('dashboard_chat_spotting_found') || 'Ja, an {count} Tagen erfasst: {dates}.').replace('{count}', matches_.length).replace('{dates}', dates);
+          },
+        },
+        {
+          // "Was hab ich am 15. August erfasst?" — supports both numeric
+          // (17.08.2027) and German month-name dates, unlike period_in_range
+          // above which only needs the numeric form.
+          id: 'day_lookup',
+          specificity: 3,
+          test: (q) => {
+            const numericMatch = q.match(/(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?/);
+            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)/);
+            return (!!numericMatch || !!monthNameMatch) && has(q, 'erfasst', 'geloggt', 'logged', 'was hab ich', 'what did i');
+          },
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const monthNames = { januar: 1, februar: 2, märz: 3, april: 4, mai: 5, juni: 6, juli: 7, august: 8, september: 9, oktober: 10, november: 11, dezember: 12 };
+            const now = new Date(this._todayIso());
+            let targetDate = null;
+            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)/);
+            if (monthNameMatch) {
+              const day = parseInt(monthNameMatch[1], 10);
+              const month = monthNames[monthNameMatch[2]];
+              targetDate = `${now.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            } else {
+              const numericMatch = q.match(/(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?/);
+              const day = parseInt(numericMatch[1], 10);
+              const month = parseInt(numericMatch[2], 10);
+              const year = numericMatch[3] ? (numericMatch[3].length === 2 ? `20${numericMatch[3]}` : numericMatch[3]) : String(now.getFullYear());
+              targetDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            }
+            const history = this._getFullSymptomHistory(stateObj);
+            const entry = history.find((e) => e?.date === targetDate);
+            if (!entry) return this._t('dashboard_chat_day_lookup_none') || 'Dafür hab ich keinen Eintrag gefunden.';
+            const skipKeys = new Set(['date']);
+            const parts = Object.entries(entry)
+              .filter(([k, v]) => !skipKeys.has(k) && v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0))
+              .map(([k, v]) => {
+                const fieldLabel = this._t('cat_' + k) !== ('cat_' + k) ? this._t('cat_' + k) : k;
+                const valueLabel = Array.isArray(v)
+                  ? v.map((item) => (this._t('opt_' + item) !== ('opt_' + item) ? this._t('opt_' + item) : item)).join(', ')
+                  : (this._t('opt_' + v) !== ('opt_' + v) ? this._t('opt_' + v) : String(v));
+                return `${fieldLabel}: ${valueLabel}`;
+              });
+            if (!parts.length) return this._t('dashboard_chat_day_lookup_none') || 'Dafür hab ich keinen Eintrag gefunden.';
+            return `${this._formatDate(targetDate)} — ${parts.join(', ')}`;
+          },
+        },
+        {
+          id: 'libido_search',
+          specificity: 2,
+          test: (q) => has(q, 'lust', 'libido') && has(q, 'wie oft', 'hatte ich', 'how often', 'did i have'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const range = this._resolveChatDateRange(q, attrs);
+            if (!range) return notAvailable;
+            const [rangeStart, rangeEnd] = range;
+            const history = this._getFullSymptomHistory(stateObj);
+            const target = has(q, 'wenig', 'low') ? 'libido_low' : 'libido_high';
+            const matches_ = history.filter((e) => e?.date >= rangeStart && e.date <= rangeEnd && e.libido === target);
+            if (!matches_.length) return this._t('dashboard_chat_libido_none') || 'Dafür hab ich in diesem Zeitraum keine Einträge gefunden.';
+            const dates = matches_.map((e) => this._formatDate(e.date)).join(', ');
+            return (this._t('dashboard_chat_libido_found') || 'Ja, an {count} Tagen erfasst: {dates}.').replace('{count}', matches_.length).replace('{dates}', dates);
+          },
+        },
+        // --- General educational questions below: static, non-personal
+        // content (similar to the glossary) rather than a lookup against
+        // this profile's own data. Kept appropriately general/non-diagnostic
+        // — "is X normal" is answered with typical reference ranges, never
+        // "is it normal *for you*".
+        {
+          // Extra "normal"/"normale" condition (3 groups total) deliberately
+          // outranks the plain cycle_length data intent (specificity 2),
+          // which "was ist eine normale Zykluslänge" would otherwise also
+          // match (it contains the same zyklus+länge words).
+          id: 'normal_cycle_length_info',
+          specificity: 3,
+          test: (q) => has(q, 'normale zykluslänge', 'normaler zyklus', 'normal cycle length', 'ist eine normale', 'ist das normal', 'ist es normal'),
+          answer: () => this._t('dashboard_chat_normal_cycle_info') || 'Ein Zyklus gilt meist als üblich, wenn er zwischen 21 und 35 Tagen liegt, und die Periode selbst 2 bis 7 Tage dauert. In den ersten Jahren nach der Menarche und in der Perimenopause sind größere Schwankungen normal. Bei anhaltenden, deutlichen Abweichungen kann ein Arztgespräch sinnvoll sein.',
+        },
+        {
+          id: 'pregnant_during_period_info',
+          specificity: 2,
+          test: (q) => has(q, 'schwanger', 'pregnant') && has(q, 'während der periode', 'während meiner periode', 'during my period', 'during period'),
+          answer: () => this._t('dashboard_chat_pregnant_during_period_info') || 'Unwahrscheinlich, aber nicht ausgeschlossen — vor allem bei kurzen Zyklen oder unregelmäßigem Eisprung können sich fruchtbare Tage und die Periode zeitlich überschneiden, und Spermien können mehrere Tage überleben.',
+        },
+        {
+          id: 'day_one_definition_info',
+          specificity: 2,
+          test: (q) => has(q, 'erster tag', 'tag 1', 'day one', 'first day') && has(q, 'zählt', 'count', 'periode', 'period', 'zyklus', 'cycle'),
+          answer: () => this._t('dashboard_chat_day_one_info') || 'Ja — der erste Tag mit richtiger Blutung (nicht Schmierblutung) gilt als Tag 1 des Zyklus. So wird es auch in dieser App gezählt.',
+        },
+        {
+          id: 'prediction_accuracy_info',
+          specificity: 2,
+          test: (q) => has(q, 'wie genau', 'how accurate') && has(q, 'vorhersage', 'prediction'),
+          answer: () => this._t('dashboard_chat_prediction_accuracy_info') || 'Die Vorhersagen basieren auf deiner bisherigen Zyklushistorie und werden mit mehr erfassten Zyklen zuverlässiger. Es sind Schätzungen, keine Garantie — besonders bei unregelmäßigen Zyklen oder wenig Historie können sie abweichen.',
+        },
+        {
+          // Data already exposed on sensor.household_product_stock (the same
+          // entity product_stock reads from above) — no backend change
+          // needed, just wiring it into the chat.
+          id: 'underwear_washing',
+          specificity: 2,
+          test: (q) => has(q, 'unterwäsche', 'underwear') && has(q, 'waschen', 'wash'),
+          answer: () => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
+            const available = inventoryState?.attributes?.underwear_available;
+            const threshold = inventoryState?.attributes?.underwear_washing_threshold;
+            if (available == null || threshold == null) return notAvailable;
+            if (available <= threshold) {
+              return (this._t('dashboard_chat_underwear_wash_yes') || 'Sieht so aus — nur noch {available} saubere übrig, Schwelle liegt bei {threshold}.').replace('{available}', available).replace('{threshold}', threshold);
+            }
+            return (this._t('dashboard_chat_underwear_wash_no') || 'Noch nicht nötig — {available} saubere verfügbar.').replace('{available}', available);
+          },
+        },
+        {
+          // Parallel to ovulation_test above — same "test" field, just
+          // filtered for the pregnancy-test values instead.
+          id: 'pregnancy_test_search',
+          specificity: 2,
+          test: (q) => has(q, 'schwangerschaftstest', 'pregnancy test') && has(q, 'letzte', 'zuletzt', 'last'),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const history = this._getFullSymptomHistory(stateObj);
+            const isNegative = has(q, 'negativ', 'negative');
+            const targetValue = isNegative ? 'negative_pregnancy' : 'positive_pregnancy';
+            const matches_ = history.filter((e) => Array.isArray(e.test) && e.test.includes(targetValue)).sort((a, b) => (a.date < b.date ? -1 : 1));
+            if (!matches_.length) return notAvailable;
+            return (this._t('dashboard_chat_ovulation_test_last') || 'Zuletzt am {date}.').replace('{date}', this._formatDate(matches_[matches_.length - 1].date));
+          },
+        },
+      ];
+    }
+
+    /**
+     * Picks the best-matching chat intent (highest specificity among those
+     * that match) and returns its answer, or the fallback if none match or
+     * the winning intent's answer function itself declines (returns null —
+     * used by e.g. the glossary intent when "was ist X" matched but X isn't
+     * a known term).
+     */
     _answerCycleQuestion(question, stateObj) {
       const q = question.toLowerCase();
       const attrs = stateObj?.attributes || {};
-      const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+      const fallback = this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Ich kann z. B. etwas zur nächsten Periode, Zykluslänge, dem fruchtbaren Fenster oder der aktuellen Phase sagen.';
 
-      const has = (...words) => words.some((w) => q.includes(w));
-
-      // "What is X" / glossary lookup — checked first, since e.g. "was ist
-      // eisprung" should hit the glossary definition, not the live-data answer.
-      if (has('was ist', 'was bedeutet', 'what is', 'what does')) {
-        const glossary = {
-          cycle: ['zyklus', 'cycle'],
-          ovulation: ['eisprung', 'ovulation'],
-          spotting: ['zwischenblutung', 'spotting'],
-          luteal: ['gelbkörperphase', 'lutealphase', 'luteal'],
-          follicular: ['follikelphase', 'follicular'],
-          coverline: ['coverline', 'temperaturkurve', '3-über-6', '3 über 6'],
-        };
-        for (const [term, keywords] of Object.entries(glossary)) {
-          if (has(...keywords)) {
-            const def = this._t(`ygs_gloss_${term}_def`);
-            if (def && def !== `ygs_gloss_${term}_def`) return def;
+      const candidates = this._chatIntents()
+        .filter((intent) => {
+          try {
+            return !!intent.test(q, attrs);
+          } catch (err) {
+            console.error('[menstruation-cycle] Chat intent test failed:', intent.id, err);
+            return false;
           }
+        })
+        .sort((a, b) => b.specificity - a.specificity);
+
+      for (const intent of candidates) {
+        try {
+          const result = intent.answer(q, attrs, stateObj);
+          if (result) return result;
+          // null/empty return means "matched the trigger but couldn't
+          // actually answer" (e.g. glossary term not recognized) — try the
+          // next-best candidate instead of giving up immediately.
+        } catch (err) {
+          console.error('[menstruation-cycle] Chat intent answer failed:', intent.id, err);
         }
       }
-
-      // Date-range check ("bekomme ich am/im Urlaub vom 17.08. für 2 Wochen
-      // meine Periode/Regel/Tage/Menses?") — checked before the simple "next
-      // period" pattern below, since a date mention makes this the more
-      // specific match. Projects forward using the average cycle length, not
-      // just the single next predicted start, since the given range could be
-      // further out than the immediately-next period.
-      const dateMatch = q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
-      if (dateMatch && has('regel', 'periode', 'tage', 'menses', 'menstruation', 'period')) {
-        let [, day, month, year] = dateMatch;
-        if (year.length === 2) year = `20${year}`;
-        const rangeStart = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
-        if (Number.isNaN(rangeStart.getTime())) return notAvailable;
-
-        const weekMatch = q.match(/(\d+)\s*wochen?/);
-        const dayCountMatch = q.match(/(\d+)\s*tage?/);
-        let durationDays = 0;
-        if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
-        else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
-        const rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
-
-        const predictedStart = attrs.period_forecast?.predicted_start;
-        const predictedEnd = attrs.period_forecast?.predicted_end;
-        const avgCycleLen = attrs.average_cycle_length ?? attrs.cycle_length_avg;
-        if (!predictedStart || !avgCycleLen) return notAvailable;
-
-        const periodLenDays = predictedEnd
-          ? Math.round((new Date(predictedEnd) - new Date(predictedStart)) / 86400000) + 1
-          : 5;
-
-        // Project up to 12 cycles forward (roughly a year), checking each
-        // estimated period window for overlap with the requested date range.
-        let cursor = new Date(predictedStart);
-        let overlapStart = null;
-        for (let i = 0; i < 12; i++) {
-          const periodEndEstimate = new Date(cursor.getTime() + (periodLenDays - 1) * 86400000);
-          if (cursor <= rangeEnd && periodEndEstimate >= rangeStart) {
-            overlapStart = cursor;
-            break;
-          }
-          cursor = new Date(cursor.getTime() + avgCycleLen * 86400000);
-        }
-
-        // Predictions further into the future are progressively less
-        // reliable than the immediately-next one — flagged in the answer
-        // rather than presented with the same confidence throughout.
-        const farOut = (rangeStart - new Date(this._todayIso())) / 86400000 > avgCycleLen * 2;
-        const caveat = farOut ? ` ${this._t('dashboard_chat_far_future_caveat') || '(Je weiter das in der Zukunft liegt, desto unsicherer ist diese Schätzung.)'}` : '';
-
-        if (overlapStart) {
-          const label = this._formatDate(overlapStart.toISOString().slice(0, 10));
-          return `${(this._t('dashboard_chat_period_in_range_yes') || 'Ja, vsl. ab {date} wird deine Periode in diesem Zeitraum liegen.').replace('{date}', label)}${caveat}`;
-        }
-        return `${this._t('dashboard_chat_period_in_range_no') || 'Nach aktueller Schätzung nicht — in diesem Zeitraum wird keine Periode erwartet.'}${caveat}`;
-      }
-
-      if (has('nächste periode', 'nächste regel', 'wann kommt', 'next period', 'wann ist meine periode', 'wann beginnt meine periode')) {
-        const predicted = attrs.period_forecast?.predicted_start;
-        if (!predicted) return notAvailable;
-        const days = Math.round((new Date(predicted) - new Date(this._todayIso())) / 86400000);
-        const dateLabel = this._formatDate(predicted);
-        if (days === 0) return this._t('dashboard_chat_period_today') || `Deine Periode wird für heute erwartet.`;
-        if (days < 0) return (this._t('dashboard_chat_period_overdue') || 'Deine Periode wurde für {date} erwartet.').replace('{date}', dateLabel);
-        return (this._t('dashboard_chat_period_in_days') || 'Voraussichtlich in {days} Tagen, am {date}.').replace('{days}', days).replace('{date}', dateLabel);
-      }
-
-      if (has('zykluslänge', 'wie lang ist mein zyklus', 'durchschnittliche zyklus', 'cycle length')) {
-        const avg = attrs.average_cycle_length ?? attrs.cycle_length_avg;
-        if (!avg) return notAvailable;
-        return (this._t('dashboard_chat_cycle_length') || 'Im Schnitt {days} Tage.').replace('{days}', Math.round(avg));
-      }
-
-      if (has('fruchtbar', 'fertile')) {
-        const fw = attrs.fertility_forecast;
-        if (!fw?.fertile_window_start) return notAvailable;
-        const startLabel = this._formatDate(fw.fertile_window_start);
-        const endLabel = this._formatDate(fw.fertile_window_end);
-        return (this._t('dashboard_chat_fertile_window') || 'Voraussichtlich von {start} bis {end}.').replace('{start}', startLabel).replace('{end}', endLabel);
-      }
-
-      // Pregnancy-likelihood-style question after unprotected sex — deliberately
-      // answered as an informational "was that day in the estimated fertile
-      // window?" rather than a probability/percentage, which would overstate
-      // the precision of a cycle-based estimate. Always includes a disclaimer
-      // that this isn't a reliable way to assess pregnancy risk or plan/avoid
-      // pregnancy.
-      if (has('ungeschützt', 'ungeschützten', 'unprotected') && has('schwanger', 'pregnant', 'wahrscheinlichkeit', 'likelihood', 'probability')) {
-        const fw = attrs.fertility_forecast;
-        if (!fw?.fertile_window_start) return notAvailable;
-        let offsetDays = 0;
-        if (has('vorgestern')) offsetDays = -2;
-        else if (has('gestern')) offsetDays = -1;
-        const checkDate = new Date(new Date(this._todayIso() + 'T00:00:00').getTime() + offsetDays * 86400000);
-        const checkIso = checkDate.toISOString().slice(0, 10);
-        const inWindow = checkIso >= fw.fertile_window_start && checkIso <= fw.fertile_window_end;
-        const disclaimer = this._t('dashboard_chat_fertility_disclaimer') || 'Das ist nur eine grobe Einordnung basierend auf dem geschätzten fruchtbaren Fenster, keine verlässliche Aussage zum tatsächlichen Risiko — und kein Ersatz für Verhütung oder eine medizinische Einschätzung.';
-        const verdict = inWindow
-          ? (this._t('dashboard_chat_fertility_in_window') || 'Der Tag lag in deinem geschätzten fruchtbaren Fenster.')
-          : (this._t('dashboard_chat_fertility_outside_window') || 'Der Tag lag außerhalb deines geschätzten fruchtbaren Fensters.');
-        return `${verdict} ${disclaimer}`;
-      }
-
-      // Product-stock check ("reichen mir die Tampons noch / muss ich
-      // nachkaufen?") — compares the average per-cycle usage against current
-      // household inventory stock, both already computed elsewhere.
-      if (has('reichen', 'nachkaufen', 'genug') || (has('brauche') && has('noch'))) {
-        const productMap = {
-          tampon: ['tampon', 'tampons'],
-          pad: ['binde', 'binden', 'pad', 'pads'],
-          liner: ['slipeinlage', 'slipeinlagen', 'liner'],
-          cup: ['menstruationstasse', 'cup'],
-          underwear: ['periodenunterwäsche', 'period underwear'],
-        };
-        let product = null;
-        for (const [key, keywords] of Object.entries(productMap)) {
-          if (has(...keywords)) { product = key; break; }
-        }
-        if (product) {
-          const stats = attrs.product_usage_stats?.average_per_cycle || {};
-          const avgUse = stats[product];
-          const inventoryState = this._hass?.states?.['sensor.household_product_stock'];
-          const stock = inventoryState?.attributes?.inventory?.[product];
-          if (avgUse == null || stock == null) return notAvailable;
-          const productLabel = this._t('opt_' + product) !== ('opt_' + product) ? this._t('opt_' + product) : product;
-          if (stock >= avgUse) {
-            return (this._t('dashboard_chat_stock_enough') || 'Sollte reichen — aktueller Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}.')
-              .replace('{stock}', stock).replace('{avg}', Math.round(avgUse));
-          }
-          return (this._t('dashboard_chat_stock_low') || 'Könnte knapp werden — Bestand: {stock}, üblicher Verbrauch pro Zyklus: ca. {avg}. Eventuell {product} nachkaufen.')
-            .replace('{stock}', stock).replace('{avg}', Math.round(avgUse)).replace('{product}', productLabel);
-        }
-      }
-
-      if (has('eisprung', 'ovulation')) {
-        const ov = attrs.fertility_forecast?.ovulation_estimate;
-        if (!ov) return notAvailable;
-        return (this._t('dashboard_chat_ovulation') || 'Voraussichtlich am {date}.').replace('{date}', this._formatDate(ov));
-      }
-
-      if (has('welche phase', 'welcher phase', 'wo stehe ich', 'aktuelle phase', 'what phase')) {
-        const phase = attrs.current_phase || stateObj?.state;
-        if (!phase) return notAvailable;
-        const phaseKeyMap = {
-          period: 'phase_menstruation',
-          follicular: 'phase_follicular',
-          fertile_window: 'dashboard_fertility_window',
-          ovulation_day: 'dashboard_fertility_ovulation',
-          luteal: 'phase_luteal',
-          late_luteal: 'phase_luteal',
-        };
-        const key = phaseKeyMap[phase] || phase;
-        const label = this._t(key);
-        return (this._t('dashboard_chat_current_phase') || 'Du bist aktuell in der Phase: {phase}.').replace('{phase}', label !== key ? label : phase);
-      }
-
-      if (has('welcher zyklustag', 'zyklustag heute', 'which cycle day', 'cycle day today')) {
-        const day = attrs.cycle_day;
-        if (day === null || day === undefined) return notAvailable;
-        return (this._t('dashboard_chat_cycle_day') || 'Heute ist Zyklustag {day}.').replace('{day}', day);
-      }
-
-      if (has('regelmäßig', 'regularity', 'wie regelmäßig')) {
-        const pct = attrs.cycle_statistics?.cycle_regularity_percent;
-        if (pct === null || pct === undefined) return notAvailable;
-        return (this._t('dashboard_chat_regularity') || 'Deine Zyklen sind zu etwa {pct}% regelmäßig.').replace('{pct}', Math.round(pct));
-      }
-
-      if (has('wie lange dauert meine periode', 'periodendauer', 'how long does my period', 'period length')) {
-        const start = attrs.period_forecast?.predicted_start;
-        const end = attrs.period_forecast?.predicted_end;
-        if (!start || !end) return notAvailable;
-        const days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
-        return (this._t('dashboard_chat_period_duration') || 'Für gewöhnlich etwa {days} Tage.').replace('{days}', days);
-      }
-
-      if (has('letzte periode', 'letzte regel', 'wann war meine', 'last period')) {
-        const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
-        if (!starts.length) return notAvailable;
-        return (this._t('dashboard_chat_last_period') || 'Deine letzte Periode begann am {date}.').replace('{date}', this._formatDate(starts[starts.length - 1]));
-      }
-
-      if (has('temperaturkurve bestätigt', 'eisprung bestätigt', 'temperature confirmed', 'ovulation confirmed')) {
-        const nfp = attrs.nfp_analysis;
-        if (!nfp) return notAvailable;
-        if (nfp.temperature_rise_detected && nfp.temperature_rise_day) {
-          return (this._t('dashboard_chat_nfp_confirmed') || 'Ja, bestätigt am {date}.').replace('{date}', this._formatDate(nfp.temperature_rise_day));
-        }
-        return this._t('dashboard_chat_nfp_not_confirmed') || 'Noch nicht — es liegt noch keine bestätigte Temperaturkurve für diesen Zyklus vor.';
-      }
-
-      if (has('abzeichen', 'welche abzeichen', 'badges', 'achievements')) {
-        const raw = Array.isArray(attrs.progress_badges) ? attrs.progress_badges : [];
-        if (!raw.length) return this._t('progress_empty_state') || 'Noch keine Abzeichen erreicht.';
-        const titles = raw.slice(-5).reverse().map((b) => String(b?.title ?? b?.id ?? '')).filter(Boolean);
-        return (this._t('dashboard_chat_badges') || 'Deine letzten Abzeichen: {list}.').replace('{list}', titles.join(', '));
-      }
-
-      if (has('wechseljahre', 'menopause', 'klimakterium')) {
-        const monthsTracked = attrs.menopause_months_tracked;
-        const daysSince = attrs.days_since_last_period;
-        if (daysSince === null || daysSince === undefined) return notAvailable;
-        const isConfirmed = daysSince >= 365;
-        if (isConfirmed) return this._t('dashboard_chat_menopause_confirmed') || 'Ja, offiziell bestätigt (12 Monate ohne Periode).';
-        const monthsLabel = monthsTracked !== null && monthsTracked !== undefined ? Math.round(monthsTracked) : Math.round(daysSince / 30);
-        return (this._t('dashboard_chat_menopause_pending') || 'Noch nicht offiziell bestätigt — aktuell {months} Monate ohne Periode erfasst.').replace('{months}', monthsLabel);
-      }
-
-      if (has('welche woche', 'welcher woche', 'schwangerschaftswoche', 'entbindungstermin', 'pregnancy week', 'due date')) {
-        const weeks = Math.floor(Number(attrs.weeks_pregnant ?? 0) || 0);
-        const dueDate = attrs.due_date ?? attrs.pregnancy_data?.due_date;
-        if (!weeks && !dueDate) return notAvailable;
-        const parts = [];
-        if (weeks) parts.push((this._t('dashboard_chat_pregnancy_week') || 'Du bist aktuell in SSW {week}.').replace('{week}', weeks));
-        if (dueDate) parts.push((this._t('dashboard_chat_due_date') || 'Entbindungstermin: {date}.').replace('{date}', this._formatDate(dueDate)));
-        return parts.join(' ');
-      }
-
-      if (has('welche methode', 'welche verhütung', 'verhütungsmethode', 'contraception method') || (has('wechseln') && has('verhütung', 'spirale', 'implantat'))) {
-        const status = attrs.contraception_status;
-        if (!status?.current_method) return notAvailable;
-        const key = `opt_${status.current_method}`;
-        const methodLabel = this._t(key) !== key ? this._t(key) : status.current_method;
-        let answer = (this._t('dashboard_chat_contraception_method') || 'Aktuell erfasst: {method}.').replace('{method}', methodLabel);
-        if (status.renewal_due_date) {
-          answer += ` ${(this._t('dashboard_chat_contraception_renewal') || 'Möglicher Wechsel: {date}.').replace('{date}', this._formatDate(status.renewal_due_date))}`;
-        }
-        return answer;
-      }
-
-      return this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Ich kann z. B. etwas zur nächsten Periode, Zykluslänge, dem fruchtbaren Fenster oder der aktuellen Phase sagen.';
+      return fallback;
     }
+
 
     _renderQuickLogModal(stateObj) {
       if (!this._quickLogOpen) return '';

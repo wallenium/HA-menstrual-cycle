@@ -329,7 +329,7 @@ class YoungGirlsSupportCard extends HTMLElement {
   // ---- Glossary section --------------------------------------------------
 
   _renderGlossary() {
-    const terms = ['cycle', 'ovulation', 'spotting'];
+    const terms = ['cycle', 'ovulation', 'spotting', 'follicular', 'luteal', 'coverline', 'pms'];
     const rows = terms.map((term) => {
       const expanded = !!(this._glossaryExpanded && this._glossaryExpanded[term]);
       return `
