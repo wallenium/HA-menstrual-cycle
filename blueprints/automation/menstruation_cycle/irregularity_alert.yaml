@@ -1,0 +1,69 @@
+blueprint:
+  name: Menstruation Cycle - Notify on detected irregularity
+  description: >
+    Sends a notification when the cycle regularity percentage (already
+    computed by the integration and shown in the Anomaly Insights dashboard
+    card) drops below a chosen threshold — proactively, instead of only
+    noticing it if you happen to check the dashboard. Checked once daily.
+
+    NOTE: this repeats every day the regularity stays below the threshold,
+    not just once — there's no clean way to notify only on the first day
+    without an extra helper entity to track "already notified" state, which
+    would add setup steps beyond just picking the inputs below. If daily
+    repeats aren't what you want, either change the time trigger below to a
+    weekly schedule after importing, or add your own condition (e.g. day of
+    week) before using this as-is.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/irregularity_alert.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    notify_target:
+      name: Notification target
+      description: Which device to send the push notification to.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+    regularity_threshold:
+      name: Regularity threshold (%)
+      description: Notify when regularity drops below this percentage.
+      default: 70
+      selector:
+        number:
+          min: 10
+          max: 95
+          mode: box
+          unit_of_measurement: "%"
+
+trigger:
+  - platform: time
+    at: "09:00:00"
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+  regularity_threshold: !input regularity_threshold
+
+condition:
+  - condition: template
+    value_template: >
+      {% set stats = state_attr(cycle_sensor, 'cycle_statistics') %}
+      {% set pct = stats.cycle_regularity_percent if stats else none %}
+      {{ pct is not none and pct < (regularity_threshold | int) }}
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+  current_pct: "{{ state_attr(cycle_sensor, 'cycle_statistics').cycle_regularity_percent | round(0) }}"
+  notify_target: !input notify_target
+
+action:
+  - service: "notify.mobile_app_{{ device_attr(notify_target, 'name') | slugify }}"
+    data:
+      title: "Menstruation Cycle"
+      message: "{{ profile }}: cycle regularity has dropped to {{ current_pct }}%."

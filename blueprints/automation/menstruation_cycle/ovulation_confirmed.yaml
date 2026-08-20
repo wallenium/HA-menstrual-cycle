@@ -1,0 +1,46 @@
+blueprint:
+  name: Menstruation Cycle - Notify on ovulation confirmation
+  description: >
+    Sends a notification the moment the NFP analysis (3-over-6 / Roetzer
+    rule) confirms a temperature rise for the current cycle — this happens
+    retrospectively, a few days after the actual rise, once enough
+    consecutive readings confirm the pattern. Unlike a same-day period-start
+    notification, this fires whenever the confirmation lands, which could be
+    any day depending on when the temperature data settles.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/ovulation_confirmed.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    notify_target:
+      name: Notification target
+      description: Which device to send the push notification to.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+
+trigger:
+  - platform: template
+    value_template: >
+      {% set nfp = state_attr(cycle_sensor, 'nfp_analysis') %}
+      {{ nfp.temperature_rise_detected if nfp else false }}
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+  notify_target: !input notify_target
+
+action:
+  - service: "notify.mobile_app_{{ device_attr(notify_target, 'name') | slugify }}"
+    data:
+      title: "Menstruation Cycle"
+      message: "{{ profile }}: ovulation has been confirmed via temperature rise for this cycle."

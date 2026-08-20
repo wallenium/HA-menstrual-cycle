@@ -1,0 +1,48 @@
+blueprint:
+  name: Menstruation Cycle - Activate scene on heavy bleeding days
+  description: >
+    Activates a chosen scene (e.g. dimmed lights, a "do not disturb"-style
+    ambiance, or anything else the scene is set up to do) whenever heavy or
+    very heavy bleeding is logged for today. Checked once when a symptom is
+    logged and once each morning, so it catches both a same-day log and a
+    day that was already logged before this automation runs.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/heavy_bleeding_scene.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    target_scene:
+      name: Scene
+      description: The scene to activate on a heavy-bleeding day.
+      selector:
+        entity:
+          filter:
+            domain: scene
+
+trigger:
+  - platform: state
+    entity_id: !input cycle_sensor
+    id: symptom_updated
+  - platform: time
+    at: "08:00:00"
+    id: morning_check
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+
+condition:
+  - condition: template
+    value_template: >
+      {% set today_symptoms = state_attr(cycle_sensor, 'symptom_data_today') %}
+      {{ today_symptoms is not none and today_symptoms.get('bleeding_strength') in ['heavy', 'very_heavy'] }}
+
+action:
+  - service: scene.turn_on
+    target:
+      entity_id: !input target_scene

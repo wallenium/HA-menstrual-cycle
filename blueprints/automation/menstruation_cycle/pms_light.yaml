@@ -1,0 +1,77 @@
+blueprint:
+  name: Menstruation Cycle - Light color during PMS phase
+  description: >
+    Sets one or more lights to a chosen color while the profile's PMS phase
+    is active, and restores them (or turns them off) once it ends. Same
+    idea as the fertile-window light blueprint, applied to the PMS phase
+    instead.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/pms_light.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    target_lights:
+      name: Lights
+      description: Light(s) to change color on.
+      selector:
+        target:
+          entity:
+            domain: light
+    pms_color:
+      name: PMS phase color
+      description: Color to set while the PMS phase is active.
+      default: [147, 112, 219]
+      selector:
+        color_rgb: {}
+    restore_action:
+      name: When PMS phase ends
+      description: >
+        What to do to the lights once the PMS phase is over. "Turn off" is
+        the simplest option; "Do nothing" leaves them as-is (e.g. if
+        another automation already manages their normal state).
+      default: turn_off
+      selector:
+        select:
+          options:
+            - label: Turn off
+              value: turn_off
+            - label: Do nothing
+              value: nothing
+
+trigger:
+  - platform: state
+    entity_id: !input cycle_sensor
+    to: "pms"
+    id: pms_start
+  - platform: state
+    entity_id: !input cycle_sensor
+    from: "pms"
+    id: pms_end
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: pms_start
+        sequence:
+          - service: light.turn_on
+            target: !input target_lights
+            data:
+              rgb_color: !input pms_color
+      - conditions:
+          - condition: trigger
+            id: pms_end
+        sequence:
+          - variables:
+              restore_action: !input restore_action
+          - if:
+              - "{{ restore_action == 'turn_off' }}"
+            then:
+              - service: light.turn_off
+                target: !input target_lights

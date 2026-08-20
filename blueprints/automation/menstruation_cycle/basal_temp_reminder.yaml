@@ -1,0 +1,41 @@
+blueprint:
+  name: Menstruation Cycle - Daily basal temperature reminder
+  description: >
+    A simple daily reminder at a chosen time to log basal body temperature.
+    Not tied to any cycle event — NFP accuracy depends heavily on
+    consistent, same-time-every-morning measurements, so this is just a
+    plain recurring alarm.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/basal_temp_reminder.yaml
+  input:
+    reminder_time:
+      name: Reminder time
+      description: What time each morning to send the reminder.
+      default: "06:30:00"
+      selector:
+        time: {}
+    notify_target:
+      name: Notification target
+      description: Which device to send the push notification to.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+    message:
+      name: Message
+      default: "Time to take your basal temperature."
+      selector:
+        text: {}
+
+trigger:
+  - platform: time
+    at: !input reminder_time
+
+variables:
+  notify_target: !input notify_target
+
+action:
+  - service: "notify.mobile_app_{{ device_attr(notify_target, 'name') | slugify }}"
+    data:
+      title: "Menstruation Cycle"
+      message: !input message

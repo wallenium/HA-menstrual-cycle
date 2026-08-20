@@ -1,0 +1,63 @@
+blueprint:
+  name: Menstruation Cycle - Period as multi-day calendar block
+  description: >
+    Creates a multi-day calendar event spanning the confirmed period, from
+    its actual start to the predicted end — instead of the period-start
+    notification blueprint's single same-day alert. Useful for a shared or
+    family calendar where a visual block is more useful than a
+    notification, e.g. for planning around it.
+
+    NOTE: the end date is a *prediction* at the time the period starts, not
+    a confirmed value — the actual period could run shorter or longer. The
+    event is created once, at the start, and isn't automatically adjusted
+    afterward.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/period_calendar_block.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    target_calendar:
+      name: Calendar
+      description: The calendar to add the block to.
+      selector:
+        entity:
+          filter:
+            domain: calendar
+    event_title:
+      name: Event title
+      description: Use {{ profile }} to insert the profile's display name.
+      default: "{{ profile }}'s period"
+      selector:
+        text: {}
+
+trigger:
+  - platform: state
+    entity_id: !input cycle_sensor
+    to: "period"
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+  title_template: !input event_title
+  forecast_end: "{{ state_attr(cycle_sensor, 'period_forecast').predicted_end if state_attr(cycle_sensor, 'period_forecast') else none }}"
+  # A calendar event's end_date is exclusive (the day AFTER the last day
+  # shown), so the predicted end date needs a +1 day adjustment to actually
+  # cover it, not stop one day short.
+  event_end: "{{ (as_datetime(forecast_end).date() + timedelta(days=1)).isoformat() if forecast_end else (now().date() + timedelta(days=6)).isoformat() }}"
+
+action:
+  - service: calendar.create_event
+    target:
+      entity_id: !input target_calendar
+    data:
+      summary: "{{ title_template | replace('{{ profile }}', profile) }}"
+      start_date: "{{ now().date().isoformat() }}"
+      end_date: "{{ event_end }}"

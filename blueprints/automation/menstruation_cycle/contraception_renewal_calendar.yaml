@@ -1,0 +1,67 @@
+blueprint:
+  name: Menstruation Cycle - Contraception renewal calendar event
+  description: >
+    Creates a calendar event a chosen number of days before a hormonal IUD,
+    implant, or injection is due for renewal. The integration's own
+    built-in reminder only adds a to-do item — this is for anyone who
+    checks their calendar more reliably than their to-do list, or wants
+    both.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/contraception_renewal_calendar.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    target_calendar:
+      name: Calendar
+      description: The calendar to add the reminder event to.
+      selector:
+        entity:
+          filter:
+            domain: calendar
+    lead_days:
+      name: Lead time (days)
+      description: How many days before the renewal date to create the event.
+      default: 14
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+
+trigger:
+  - platform: time
+    at: "08:00:00"
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+  lead_days: !input lead_days
+
+condition:
+  - condition: template
+    value_template: >
+      {% set status = state_attr(cycle_sensor, 'contraception_status') %}
+      {% if status and status.renewal_due_date %}
+        {{ (as_datetime(status.renewal_due_date).date() - now().date()).days == (lead_days | int) }}
+      {% else %}
+        false
+      {% endif %}
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+  renewal_date: "{{ state_attr(cycle_sensor, 'contraception_status').renewal_due_date }}"
+
+action:
+  - service: calendar.create_event
+    target:
+      entity_id: !input target_calendar
+    data:
+      summary: "{{ profile }}: contraception renewal due"
+      description: "Renewal due on {{ renewal_date }}."
+      start_date: "{{ renewal_date }}"
+      end_date: "{{ renewal_date }}"
