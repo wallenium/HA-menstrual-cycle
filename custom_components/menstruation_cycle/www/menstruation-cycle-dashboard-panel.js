@@ -114,6 +114,10 @@
     dashboard_quick_log_failed: 'Could not save.',
     dashboard_quick_log_loading: 'Loading, please try again in a moment…',
     dashboard_widget_chat_assistant: 'Cycle Q&A',
+    dashboard_widget_long_term_trend: 'Long-Term Trend',
+    dashboard_trend_stable: 'Stable over the tracked period.',
+    dashboard_trend_lengthening: 'Trending longer over the tracked period.',
+    dashboard_trend_shortening: 'Trending shorter over the tracked period.',
     dashboard_chat_intro: 'Ask a simple question about your cycle. Runs entirely locally, no external AI.',
     dashboard_chat_placeholder: 'Type a question…',
     dashboard_chat_send: 'Ask',
@@ -129,7 +133,10 @@
     dashboard_chat_fertile_window: 'Expected from {start} to {end}.',
     dashboard_chat_ovulation: 'Expected on {date}.',
     dashboard_chat_current_phase: "You're currently in the {phase} phase.",
-    dashboard_chat_fallback: 'I couldn\u2019t match that. I can answer things like your next period, average cycle length, fertile window, or current phase.',
+    dashboard_chat_fallback: 'I couldn\u2019t match that. Try asking "What can you answer?" for an overview.',
+    dashboard_chat_error: 'Something went wrong there. Feel free to try again.',
+    dashboard_chat_q_help: 'What else can you answer?',
+    dashboard_chat_help: "Here are some things I can help with:\n\n📅 Period: next/last, why late, duration, comparison to last one\n🔄 Cycle: length, cycle day, regularity, shortest/longest\n🌸 Fertility: window, ovulation, temperature curve, mucus/cervix interpretation\n📋 Symptoms: search for headaches, cramps, discharge, spotting, and more\n🤰 Life stages: pregnancy, menopause, postpartum, pre-menarche, contraception\n📖 General: term explanations, informational questions\n\nJust ask away — if something's unclear, I'll say so rather than guess.",
     dashboard_chat_far_future_caveat: '(The further out this is, the less certain this estimate is.)',
     dashboard_chat_period_in_range_yes: 'Yes, your period is expected to fall in that range, starting around {date}.',
     dashboard_chat_period_in_range_no: 'Not based on the current estimate — no period is expected in that range.',
@@ -495,6 +502,7 @@
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
     { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
     { id: 'chat_assistant', title: 'dashboard_widget_chat_assistant', sensitive: false, span: 12 },
+    { id: 'long_term_trend', title: 'dashboard_widget_long_term_trend', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
@@ -519,6 +527,7 @@
     'statistics_card',
     'support_card',
     'chat_assistant',
+    'long_term_trend',
     'symptom_heatmap',
     'anomaly_insights',
     'symptom_insights',
@@ -1721,6 +1730,91 @@
      * data already on this sensor (next period, cycle length, fertile window,
      * current phase) plus a short glossary, entirely client-side.
      */
+    /**
+     * Long-term cycle-length trend — distinct from the existing "Cycle
+     * History" bar chart (which only shows the last ~12 cycles as bars).
+     * This uses the *complete* tracked history (grouped_starts, not the
+     * "recent_cycles" subset) as a line chart, with a linear-regression
+     * trend line overlaid so a genuine multi-year drift is visible at a
+     * glance, not just cycle-to-cycle variation.
+     */
+    _renderLongTermTrendChart(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
+      const points = [];
+      for (let i = 1; i < starts.length; i++) {
+        const len = Math.round((new Date(starts[i]) - new Date(starts[i - 1])) / 86400000);
+        if (len > 10 && len < 80) points.push({ date: starts[i], length: len }); // same outlier filter as anomaly_insights
+      }
+      // Cap to a sane rendering window (~5 years) even if more history exists.
+      const recent = points.slice(-60);
+
+      if (recent.length < 4) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data') || 'Noch nicht genug Daten.'}</div>`;
+      }
+
+      const W = 620; const H = 240;
+      const padL = 42; const padR = 14; const padT = 16; const padB = 34;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+
+      const lens = recent.map((p) => p.length);
+      const minV = Math.min(...lens) - 1;
+      const maxV = Math.max(...lens) + 1;
+      const yRange = maxV - minV || 1;
+
+      const toX = (i) => padL + (i / (recent.length - 1 || 1)) * chartW;
+      const toY = (v) => padT + chartH - ((v - minV) / yRange) * chartH;
+
+      // Simple least-squares linear regression for the trend line — clearer
+      // directional signal at a glance than a rolling average would be.
+      const n = recent.length;
+      const sumX = recent.reduce((a, _, i) => a + i, 0);
+      const sumY = lens.reduce((a, v) => a + v, 0);
+      const sumXY = recent.reduce((a, _, i) => a + i * lens[i], 0);
+      const sumX2 = recent.reduce((a, _, i) => a + i * i, 0);
+      const denom = n * sumX2 - sumX * sumX;
+      const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
+      const intercept = (sumY - slope * sumX) / n;
+      const trendStart = intercept;
+      const trendEnd = intercept + slope * (n - 1);
+
+      const gridSteps = 4;
+      const gridLines = Array.from({ length: gridSteps }, (_, i) => minV + (i / (gridSteps - 1)) * yRange).map((v) => {
+        const y = Math.round(toY(v));
+        return `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
+                <text x="6" y="${y + 3}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${Math.round(v)}</text>`;
+      }).join('');
+
+      const lineD = lens.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
+      const dots = lens.map((v, i) => `<circle cx="${Math.round(toX(i))}" cy="${Math.round(toY(v))}" r="2.2" fill="var(--mc-rose-deep)"/>`).join('');
+      const trendD = `M${Math.round(toX(0))},${Math.round(toY(trendStart))} L${Math.round(toX(n - 1))},${Math.round(toY(trendEnd))}`;
+
+      const xLabelCount = Math.min(5, recent.length);
+      const xLabelIndices = [...new Set(Array.from({ length: xLabelCount }, (_, i) => Math.round((i / (xLabelCount - 1 || 1)) * (recent.length - 1))))];
+      const xLabels = xLabelIndices.map((i) => {
+        const anchor = i === 0 ? 'start' : (i === recent.length - 1 ? 'end' : 'middle');
+        return `<text x="${Math.round(toX(i))}" y="${H - 10}" text-anchor="${anchor}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(this._formatDate(recent[i].date, { month: '2-digit', year: '2-digit' }))}</text>`;
+      }).join('');
+
+      const trendDiff = Math.round((trendEnd - trendStart) * 10) / 10;
+      const trendLabelKey = Math.abs(trendDiff) < 0.5 ? 'dashboard_trend_stable' : (trendDiff > 0 ? 'dashboard_trend_lengthening' : 'dashboard_trend_shortening');
+      const trendLabel = this._t(trendLabelKey) || (Math.abs(trendDiff) < 0.5 ? 'Stabil über den erfassten Zeitraum.' : (trendDiff > 0 ? 'Tendenziell länger werdend über den erfassten Zeitraum.' : 'Tendenziell kürzer werdend über den erfassten Zeitraum.'));
+
+      return `
+        <div>
+          <p class="helper" style="margin:0 0 8px;font-size:0.72rem;">${escapeHtml(trendLabel)}</p>
+          <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${this._t('dashboard_widget_long_term_trend') || 'Langzeit-Trend'}" style="display:block;overflow:visible;">
+            ${gridLines}
+            <path d="${trendD}" fill="none" stroke="var(--mc-plum)" stroke-width="1.6" stroke-dasharray="6 4"/>
+            <path d="${lineD}" fill="none" stroke="var(--mc-rose-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            ${dots}
+            ${xLabels}
+          </svg>
+          <p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer') || ''}</p>
+        </div>`;
+    }
+
     _renderChatWidget(stateObj) {
       const history = this._chatHistory.map((entry) => {
         const cls = entry.role === 'user' ? 'chat-bubble chat-bubble--user' : 'chat-bubble chat-bubble--bot';
@@ -1732,6 +1826,7 @@
         this._t('dashboard_chat_q_cycle_length') || 'Wie lang ist mein Zyklus im Schnitt?',
         this._t('dashboard_chat_q_fertile') || 'Wann ist mein fruchtbares Fenster?',
         this._t('dashboard_chat_q_phase') || 'In welcher Phase bin ich gerade?',
+        this._t('dashboard_chat_q_help') || 'Was kannst du noch beantworten?',
       ];
       const chips = quickQuestions.map((q) =>
         `<button type="button" class="mode-btn" data-action="chat-quick" data-question="${escapeHtml(q)}">${escapeHtml(q)}</button>`
@@ -1756,19 +1851,35 @@
       const question = (presetQuestion ?? inputEl?.value ?? '').trim();
       if (!question) return;
 
-      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
-      const answer = this._answerCycleQuestion(question, stateObj);
+      try {
+        const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+        const answer = this._answerCycleQuestion(question, stateObj);
 
-      this._chatHistory.push({ role: 'user', text: question });
-      this._chatHistory.push({ role: 'bot', text: answer });
+        this._chatHistory.push({ role: 'user', text: question });
+        this._chatHistory.push({ role: 'bot', text: answer });
+      } catch (err) {
+        // Defensive: an unexpected error anywhere in the above (not just
+        // inside an individual intent's test/answer, which are already
+        // caught separately) must never permanently freeze the chat — the
+        // person should always be able to ask their next question, even if
+        // this one hit a bug. Logged so it's still diagnosable.
+        console.error('[menstruation-cycle] Chat send failed:', err);
+        this._chatHistory.push({ role: 'user', text: question });
+        this._chatHistory.push({ role: 'bot', text: this._t('dashboard_chat_error') || 'Da ist etwas schiefgelaufen. Versuch es gerne nochmal.' });
+      }
+
       // Keep the history from growing unbounded across a long session.
       if (this._chatHistory.length > 20) this._chatHistory = this._chatHistory.slice(-20);
 
       this.render();
-      // Re-focus and clear the input after the re-render replaces the DOM node.
       requestAnimationFrame(() => {
+        // Re-focus and clear the input, and scroll the history to the
+        // newest message — without this, new answers can render below the
+        // visible area and look like nothing happened.
         const freshInput = this.shadowRoot?.getElementById('mc-chat-input');
         if (freshInput) { freshInput.value = ''; freshInput.focus(); }
+        const historyEl = this.shadowRoot?.querySelector('.mc-chat-history');
+        if (historyEl) historyEl.scrollTop = historyEl.scrollHeight;
       });
     }
 
@@ -1839,9 +1950,32 @@
      * versa, purely by accident of code position).
      */
     _chatIntents() {
-      const PERIOD_WORDS = ['tag', 'period', 'regel', 'menstruation', 'menses'];
-      const LATE_WORDS = ['spät', 'verspät', 'verzög', 'überfällig', 'ausbleib', 'nicht gekommen', 'fehlt', 'aus'];
-      const WHEN_NEXT_WORDS = ['wann', 'nächst', 'kommt', 'beginn', 'when', 'next'];
+      // Colloquial/slang synonyms for "period" across all 5 supported
+      // languages, not just formal terms — matching works on whatever the
+      // person actually types, independent of their configured UI language.
+      // Deliberately excludes vulgar/crude euphemisms.
+      const PERIOD_WORDS = [
+        'tag', 'period', 'regel', 'menstruation', 'menses', // existing
+        'erdbeerwoche', 'tante rosa', 'rote welle', // German colloquial
+        'aunt flo', 'time of the month', 'shark week', 'monthly visitor', 'code red', 'crimson wave', // English colloquial
+        'règles', 'ragnagnas', 'lunes', // French
+        'regla', // Spanish
+        'mens', // Swedish
+      ];
+      const LATE_WORDS = [
+        'spät', 'verspät', 'verzög', 'überfällig', 'ausbleib', 'nicht gekommen', 'fehlt', 'aus', // German
+        'late', 'delay', 'overdue', 'missed', // English
+        'retard', 'en retard', // French
+        'retraso', 'atrasada', // Spanish
+        'försenad', // Swedish
+      ];
+      const WHEN_NEXT_WORDS = [
+        'wann', 'nächst', 'kommt', 'beginn', // German
+        'when', 'next', 'coming', // English
+        'quand', 'prochain', 'arrive', 'vient', // French
+        'cuándo', 'próxim', 'viene', // Spanish
+        'när', 'nästa', 'kommer', // Swedish
+      ];
       const has = (q, ...words) => words.some((w) => q.includes(w));
       const grp = (q, ...groups) => this._matchesConceptGroups(q, groups);
 
@@ -1878,18 +2012,30 @@
           test: (q) => !!q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/) && has(q, 'regel', 'periode', 'tage', 'menses', 'menstruation', 'period'),
           answer: (q, attrs) => {
             const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
-            const dateMatch = q.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+            const allDateMatches = [...q.matchAll(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/g)];
+            const dateMatch = allDateMatches[0];
             let [, day, month, year] = dateMatch;
             if (year.length === 2) year = `20${year}`;
             const rangeStart = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
             if (Number.isNaN(rangeStart.getTime())) return notAvailable;
 
-            const weekMatch = q.match(/(\d+)\s*wochen?/);
-            const dayCountMatch = q.match(/(\d+)\s*tage?/);
-            let durationDays = 0;
-            if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
-            else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
-            const rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
+            let rangeEnd;
+            if (allDateMatches.length >= 2) {
+              // Explicit end date given ("...bis 22.12.2026") — use it
+              // directly instead of a duration count, which would otherwise
+              // silently ignore it and only check the single start date.
+              let [, day2, month2, year2] = allDateMatches[1];
+              if (year2.length === 2) year2 = `20${year2}`;
+              rangeEnd = new Date(`${year2}-${month2.padStart(2, '0')}-${day2.padStart(2, '0')}T00:00:00`);
+              if (Number.isNaN(rangeEnd.getTime()) || rangeEnd < rangeStart) rangeEnd = rangeStart;
+            } else {
+              const weekMatch = q.match(/(\d+)\s*wochen?/);
+              const dayCountMatch = q.match(/(\d+)\s*tage?/);
+              let durationDays = 0;
+              if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
+              else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
+              rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
+            }
 
             const predictedStart = attrs.period_forecast?.predicted_start;
             const predictedEnd = attrs.period_forecast?.predicted_end;
@@ -2150,7 +2296,7 @@
             let offsetDays = 0;
             if (has(q, 'vorgestern')) offsetDays = -2;
             else if (has(q, 'gestern')) offsetDays = -1;
-            const checkDate = new Date(new Date(this._todayIso() + 'T00:00:00').getTime() + offsetDays * 86400000);
+            const checkDate = new Date(new Date(this._todayIso()).getTime() + offsetDays * 86400000);
             const checkIso = checkDate.toISOString().slice(0, 10);
             const inWindow = checkIso >= fw.fertile_window_start && checkIso <= fw.fertile_window_end;
             const disclaimer = this._t('dashboard_chat_fertility_disclaimer') || 'Das ist nur eine grobe Einordnung basierend auf dem geschätzten fruchtbaren Fenster, keine verlässliche Aussage zum tatsächlichen Risiko — und kein Ersatz für Verhütung oder eine medizinische Einschätzung.';
@@ -2575,7 +2721,7 @@
           specificity: 3,
           test: (q) => {
             const numericMatch = q.match(/(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?/);
-            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)/);
+            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)\s*(\d{4})?/);
             return (!!numericMatch || !!monthNameMatch) && has(q, 'erfasst', 'geloggt', 'logged', 'was hab ich', 'what did i');
           },
           answer: (q, attrs, stateObj) => {
@@ -2583,11 +2729,12 @@
             const monthNames = { januar: 1, februar: 2, märz: 3, april: 4, mai: 5, juni: 6, juli: 7, august: 8, september: 9, oktober: 10, november: 11, dezember: 12 };
             const now = new Date(this._todayIso());
             let targetDate = null;
-            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)/);
+            const monthNameMatch = q.match(/(\d{1,2})\.?\s*(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)\s*(\d{4})?/);
             if (monthNameMatch) {
               const day = parseInt(monthNameMatch[1], 10);
               const month = monthNames[monthNameMatch[2]];
-              targetDate = `${now.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const year = monthNameMatch[3] || String(now.getFullYear());
+              targetDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             } else {
               const numericMatch = q.match(/(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?/);
               const day = parseInt(numericMatch[1], 10);
@@ -2697,6 +2844,16 @@
             return (this._t('dashboard_chat_ovulation_test_last') || 'Zuletzt am {date}.').replace('{date}', this._formatDate(matches_[matches_.length - 1].date));
           },
         },
+        {
+          // Meta-question about the chatbot's own capabilities, not about
+          // the cycle itself — high specificity so it reliably wins even
+          // though its trigger words are short, since none of the other 48
+          // intents use "hilfe"/"was kannst du" as a trigger.
+          id: 'help',
+          specificity: 3,
+          test: (q) => has(q, 'was kannst du', 'welche fragen', 'hilfe', 'help', 'what can you', 'what questions'),
+          answer: () => this._t('dashboard_chat_help') || 'Ich kann z. B. zu diesen Themen etwas sagen:\n\n📅 Periode: nächste/letzte, warum spät, Dauer, Vergleich zur letzten\n🔄 Zyklus: Länge, Zyklustag, Regelmäßigkeit, kürzester/längster\n🌸 Fruchtbarkeit: Fenster, Eisprung, Temperaturkurve, Schleim/Muttermund-Deutung\n📋 Symptome: Suche nach Kopfschmerzen, Krämpfen, Ausfluss, Zwischenblutungen u.a.\n🤰 Lebensphasen: Schwangerschaft, Wechseljahre, Wochenbett, Vor-der-Menarche, Verhütung\n📖 Allgemeines: Begriffs-Erklärungen, Aufklärungsfragen\n\nEinfach drauflos fragen — bei unklaren Formulierungen frag ich lieber nochmal nach, statt zu raten.',
+        },
       ];
     }
 
@@ -2710,7 +2867,7 @@
     _answerCycleQuestion(question, stateObj) {
       const q = question.toLowerCase();
       const attrs = stateObj?.attributes || {};
-      const fallback = this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Ich kann z. B. etwas zur nächsten Periode, Zykluslänge, dem fruchtbaren Fenster oder der aktuellen Phase sagen.';
+      const fallback = this._t('dashboard_chat_fallback') || 'Das konnte ich nicht zuordnen. Frag mich z. B. "Was kannst du beantworten?" für eine Übersicht.';
 
       const candidates = this._chatIntents()
         .filter((intent) => {
@@ -5239,6 +5396,7 @@
       if (widgetId === 'statistics_card') body = this._renderEmbeddedCardMount('statistics-card');
       if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
       if (widgetId === 'chat_assistant') body = this._renderChatWidget(stateObj);
+      if (widgetId === 'long_term_trend') body = this._renderLongTermTrendChart(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
@@ -5460,7 +5618,7 @@
       const mode = this._resolveContentMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
       if (mode === 'pregnancy') {
-        order = order.filter((id) => !['phase_donut', 'cycle_history', 'pregnancy_prediction', 'calendar_card', 'statistics_card'].includes(id));
+        order = order.filter((id) => !['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card'].includes(id));
         if (!order.includes('fetal_development')) {
           const idx = order.indexOf('phase_timeline');
           order = idx >= 0
@@ -5471,7 +5629,7 @@
         // Before the first period there's no cycle to analyze — hide everything
         // that depends on cycle history, phases, fertility, or temperature data.
         const menarcheHidden = [
-          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
           'fetal_development',
         ];
@@ -5482,7 +5640,7 @@
         // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
         // bleeding and symptoms are still worth logging during perimenopause.
         const menopauseHidden = [
-          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'anomaly_insights', 'fetal_development',
         ];
         order = order.filter((id) => !menopauseHidden.includes(id));
@@ -5491,7 +5649,7 @@
         // cycle/fertility-dependent widgets as pregnancy, but keep symptom/product
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         const postpartumHidden = [
-          'phase_donut', 'cycle_history', 'pregnancy_prediction', 'basal_temp',
+          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card',
         ];
         order = order.filter((id) => !postpartumHidden.includes(id));

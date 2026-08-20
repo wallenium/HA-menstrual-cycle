@@ -930,5 +930,12 @@
   "dashboard_chat_underwear_wash_no": "Noch nicht nötig — {available} saubere verfügbar.",
   "ygs_gloss_pms": "PMS (Prämenstruelles Syndrom)",
   "ygs_gloss_pms_def": "PMS bezeichnet körperliche und emotionale Beschwerden, die typischerweise in den letzten Tagen vor der Periode auftreten und mit deren Beginn meist nachlassen.",
-  "ygs_gloss_pms_more": "Häufige Anzeichen sind u. a. Stimmungsschwankungen, Brustspannen, Blähungen oder Kopfschmerzen — Ausprägung und Dauer sind individuell sehr unterschiedlich."
+  "ygs_gloss_pms_more": "Häufige Anzeichen sind u. a. Stimmungsschwankungen, Brustspannen, Blähungen oder Kopfschmerzen — Ausprägung und Dauer sind individuell sehr unterschiedlich.",
+  "dashboard_chat_q_help": "Was kannst du noch beantworten?",
+  "dashboard_chat_help": "Ich kann z. B. zu diesen Themen etwas sagen:\n\n📅 Periode: nächste/letzte, warum spät, Dauer, Vergleich zur letzten\n🔄 Zyklus: Länge, Zyklustag, Regelmäßigkeit, kürzester/längster\n🌸 Fruchtbarkeit: Fenster, Eisprung, Temperaturkurve, Schleim/Muttermund-Deutung\n📋 Symptome: Suche nach Kopfschmerzen, Krämpfen, Ausfluss, Zwischenblutungen u.a.\n🤰 Lebensphasen: Schwangerschaft, Wechseljahre, Wochenbett, Vor-der-Menarche, Verhütung\n📖 Allgemeines: Begriffs-Erklärungen, Aufklärungsfragen\n\nEinfach drauflos fragen — bei unklaren Formulierungen frag ich lieber nochmal nach, statt zu raten.",
+  "dashboard_widget_long_term_trend": "Langzeit-Trend",
+  "dashboard_trend_stable": "Stabil über den erfassten Zeitraum.",
+  "dashboard_trend_lengthening": "Tendenziell länger werdend über den erfassten Zeitraum.",
+  "dashboard_trend_shortening": "Tendenziell kürzer werdend über den erfassten Zeitraum.",
+  "dashboard_chat_error": "Da ist etwas schiefgelaufen. Versuch es gerne nochmal."
 }

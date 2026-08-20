@@ -897,5 +897,12 @@
   "dashboard_chat_underwear_wash_no": "Pas encore nécessaire — {available} propres disponibles.",
   "ygs_gloss_pms": "SPM (Syndrome prémenstruel)",
   "ygs_gloss_pms_def": "Le SPM désigne des symptômes physiques et émotionnels qui apparaissent généralement dans les jours précédant les règles et s'atténuent généralement dès leur début.",
-  "ygs_gloss_pms_more": "Les signes courants incluent des sautes d'humeur, une sensibilité des seins, des ballonnements ou des maux de tête — l'intensité et la durée varient beaucoup d'une personne à l'autre."
+  "ygs_gloss_pms_more": "Les signes courants incluent des sautes d'humeur, une sensibilité des seins, des ballonnements ou des maux de tête — l'intensité et la durée varient beaucoup d'une personne à l'autre.",
+  "dashboard_chat_q_help": "Que peux-tu encore répondre ?",
+  "dashboard_chat_help": "Voici ce à quoi je peux répondre :\n\n📅 Règles : prochaines/dernières, pourquoi en retard, durée, comparaison avec les précédentes\n🔄 Cycle : durée, jour du cycle, régularité, le plus court/long\n🌸 Fertilité : fenêtre, ovulation, courbe de température, interprétation de la glaire/du col\n📋 Symptômes : recherche de maux de tête, crampes, pertes, saignements et plus\n🤰 Étapes de vie : grossesse, ménopause, post-partum, pré-ménarche, contraception\n📖 Général : explications de termes, questions informatives\n\nPosez simplement vos questions — en cas d'ambiguïté, je le dirai plutôt que de deviner.",
+  "dashboard_widget_long_term_trend": "Tendance à long terme",
+  "dashboard_trend_stable": "Stable sur la période suivie.",
+  "dashboard_trend_lengthening": "Tendance à l'allongement sur la période suivie.",
+  "dashboard_trend_shortening": "Tendance au raccourcissement sur la période suivie.",
+  "dashboard_chat_error": "Une erreur s'est produite. N'hésitez pas à réessayer."
 }

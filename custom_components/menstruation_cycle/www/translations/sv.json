@@ -897,5 +897,12 @@
   "dashboard_chat_underwear_wash_no": "Inte nödvändigt än — {available} rena tillgängliga.",
   "ygs_gloss_pms": "PMS (Premenstruellt syndrom)",
   "ygs_gloss_pms_def": "PMS syftar på fysiska och känslomässiga symtom som vanligtvis uppstår dagarna innan mensen och oftast avtar när den börjar.",
-  "ygs_gloss_pms_more": "Vanliga tecken inkluderar humörsvängningar, ömma bröst, uppblåsthet eller huvudvärk — intensitet och varaktighet varierar mycket mellan olika personer."
+  "ygs_gloss_pms_more": "Vanliga tecken inkluderar humörsvängningar, ömma bröst, uppblåsthet eller huvudvärk — intensitet och varaktighet varierar mycket mellan olika personer.",
+  "dashboard_chat_q_help": "Vad mer kan du svara på?",
+  "dashboard_chat_help": "Här är sådant jag kan hjälpa till med:\n\n📅 Mens: nästa/senaste, varför försenad, varaktighet, jämförelse med föregående\n🔄 Cykel: längd, cykeldag, regelbundenhet, kortaste/längsta\n🌸 Fertilitet: fönster, ägglossning, temperaturkurva, slem-/livmoderhalstolkning\n📋 Symtom: sök efter huvudvärk, kramper, flytningar, spotting med mera\n🤰 Livsfaser: graviditet, klimakteriet, tiden efter förlossning, förmenarche, preventivmedel\n📖 Allmänt: termförklaringar, informationsfrågor\n\nFråga bara på — om något är otydligt säger jag det istället för att gissa.",
+  "dashboard_widget_long_term_trend": "Långsiktig trend",
+  "dashboard_trend_stable": "Stabil under den registrerade perioden.",
+  "dashboard_trend_lengthening": "Tenderar att bli längre under den registrerade perioden.",
+  "dashboard_trend_shortening": "Tenderar att bli kortare under den registrerade perioden.",
+  "dashboard_chat_error": "Något gick fel där. Prova gärna igen."
 }

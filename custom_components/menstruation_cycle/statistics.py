@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from statistics import mean, stdev
 from typing import Any
 
-from .model import bleeding_blocks, grouped_cycle_starts, normalize_history
+from .model import analyze_nfp_cycle, bleeding_blocks, grouped_cycle_starts, normalize_history
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ def _compute_symptom_stats(
             if isinstance(bleeding, str) and bleeding:
                 bleeding_strength_counter[bleeding] += 1
 
-            for key in ("spotting", "discharge", "intercourse", "cervical_mucus"):
+            for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "clots", "clot_size", "cervix_position", "cervix_texture", "libido", "smell"):
                 val = entry.get(key)
                 if isinstance(val, str) and val:
                     symptom_counter[f"{key}:{val}"] += 1
@@ -188,7 +188,7 @@ def _compute_symptom_stats(
     total_cycles = len(periods)
     top_symptoms = [
         {"key": key, "count": count, "pct": round(count / total_cycles * 100)}
-        for key, count in symptom_counter.most_common(5)
+        for key, count in symptom_counter.most_common(15)
     ] if total_cycles else []
 
     bleeding_total = sum(bleeding_strength_counter.values())
@@ -219,13 +219,88 @@ def _compute_pain_trend(
     return trend
 
 
+def _compute_nfp_confirmation_stats(
+    symptom_history: list[dict[str, Any]],
+    periods: list[tuple[date, date, str]],
+    period_duration_days: int,
+) -> dict[str, Any]:
+    """How many of the analyzed cycles had ovulation confirmed via the
+    3-over-6 (Roetzer) temperature-rise rule, and the average cycle-day
+    offset when it was. Raw basal temperature numbers alone don't tell a
+    doctor much without this interpretation layer."""
+    confirmed_count = 0
+    day_offsets: list[int] = []
+    for start_d, _end_d, start_iso in periods:
+        try:
+            result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
+        except Exception:  # noqa: BLE001 — one malformed cycle's analysis
+            # failing shouldn't break the whole report.
+            continue
+        if result.get("temperature_rise_detected"):
+            confirmed_count += 1
+            rise_day = _parse_iso(result.get("temperature_rise_day"))
+            if rise_day is not None:
+                day_offsets.append((rise_day - start_d).days + 1)
+
+    return {
+        "nfp_cycles_analyzed": len(periods),
+        "nfp_confirmed_count": confirmed_count,
+        "nfp_avg_confirmation_day": round(mean(day_offsets)) if day_offsets else None,
+    }
+
+
+def _compute_basal_temp_stats(
+    symptom_history: list[dict[str, Any]],
+    cutoff: date,
+    today: date,
+) -> dict[str, Any]:
+    """Basal temperature summary for the analyzed period — average/min/max
+    plus how many days have a reading, so a doctor can see both the general
+    range and how consistently it was tracked (a handful of readings scattered
+    across months reads very differently than daily tracking)."""
+    readings: list[float] = []
+    for entry in symptom_history:
+        entry_date = _parse_iso(entry.get("date"))
+        if entry_date is None or not (cutoff <= entry_date <= today):
+            continue
+        raw = entry.get("basal_temp")
+        if raw is None:
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        # Same plausibility bounds as the add_symptom service validation —
+        # a stray out-of-range value already couldn't have been logged
+        # through the service, but defends against direct storage edits too.
+        if 30.0 <= value <= 45.0:
+            readings.append(value)
+
+    if not readings:
+        return {
+            "basal_temp_avg": None,
+            "basal_temp_min": None,
+            "basal_temp_max": None,
+            "basal_temp_reading_count": 0,
+        }
+
+    return {
+        "basal_temp_avg": round(mean(readings), 2),
+        "basal_temp_min": round(min(readings), 2),
+        "basal_temp_max": round(max(readings), 2),
+        "basal_temp_reading_count": len(readings),
+    }
+
+
 def compute_statistics(
     history: list[str],
     symptom_history: list[dict[str, Any]],
     days_back: int = 180,
+    today: date | None = None,
+    period_duration_days: int = 5,
 ) -> dict[str, Any]:
     """Compute comprehensive cycle statistics for the given look-back period."""
-    today = date.today()
+    today = today or date.today()
     cutoff = today - timedelta(days=max(1, days_back))
 
     normalized = normalize_history(history)
@@ -238,11 +313,15 @@ def compute_statistics(
     periods = _build_cycle_periods(starts, cutoff, today)
     symptom_stats = _compute_symptom_stats(symptom_history, periods)
     pain_trend = _compute_pain_trend(symptom_history, periods)
+    basal_temp_stats = _compute_basal_temp_stats(symptom_history, cutoff, today)
+    nfp_stats = _compute_nfp_confirmation_stats(symptom_history, periods, period_duration_days)
 
     return {
         **cycle_stats,
         **bleeding_stats,
         **symptom_stats,
+        **basal_temp_stats,
+        **nfp_stats,
         "pain_trend": pain_trend,
         "days_back": days_back,
         "report_date": today.isoformat(),
@@ -278,6 +357,16 @@ _SYMPTOM_KEY_LABELS: dict[str, dict[str, str]] = {
     "pain:vulva": {"de": "Vulvaschmerzen", "en": "Vulva pain"},
     "spotting:red": {"de": "Schmierblutung (rot)", "en": "Spotting (red)"},
     "spotting:brown": {"de": "Schmierblutung (braun)", "en": "Spotting (brown)"},
+    "discharge:reddish": {"de": "Ausfluss rötlich", "en": "Discharge reddish"},
+    "discharge:brown": {"de": "Ausfluss braun", "en": "Discharge brown"},
+    "discharge:white": {"de": "Ausfluss weiß", "en": "Discharge white"},
+    "discharge:clear": {"de": "Ausfluss klar", "en": "Discharge clear"},
+    "discharge:other": {"de": "Ausfluss ungewöhnlich", "en": "Discharge unusual"},
+    "cervical_mucus:keinen": {"de": "Zervixschleim: keiner", "en": "Cervical mucus: none"},
+    "cervical_mucus:klebrig": {"de": "Zervixschleim: klebrig", "en": "Cervical mucus: sticky"},
+    "cervical_mucus:cremig": {"de": "Zervixschleim: cremig", "en": "Cervical mucus: creamy"},
+    "cervical_mucus:fadenziehend": {"de": "Zervixschleim: fadenziehend", "en": "Cervical mucus: stretchy"},
+    "cervical_mucus:untypisch": {"de": "Zervixschleim: untypisch", "en": "Cervical mucus: atypical"},
     "hygiene:tampon": {"de": "Tampon", "en": "Tampon"},
     "hygiene:pad": {"de": "Binde", "en": "Pad"},
     "hygiene:cup": {"de": "Menstruationstasse", "en": "Cup"},
@@ -285,6 +374,27 @@ _SYMPTOM_KEY_LABELS: dict[str, dict[str, str]] = {
     "hygiene:period_underwear": {"de": "Periodenunterwäsche", "en": "Period underwear"},
     "intercourse:protected": {"de": "Geschützter GV", "en": "Protected intercourse"},
     "intercourse:unprotected": {"de": "Ungeschützter GV", "en": "Unprotected intercourse"},
+    "clots:yes": {"de": "Blutgerinnsel", "en": "Blood clots"},
+    "clot_size:small": {"de": "Gerinnsel klein", "en": "Clots small"},
+    "clot_size:medium": {"de": "Gerinnsel mittel", "en": "Clots medium"},
+    "clot_size:large": {"de": "Gerinnsel groß", "en": "Clots large"},
+    "cervix_position:cervix_high": {"de": "Muttermund hoch", "en": "Cervix high"},
+    "cervix_position:cervix_mid": {"de": "Muttermund mittel", "en": "Cervix mid"},
+    "cervix_position:cervix_low": {"de": "Muttermund niedrig", "en": "Cervix low"},
+    "cervix_texture:firm": {"de": "Muttermund fest", "en": "Cervix firm"},
+    "cervix_texture:soft": {"de": "Muttermund weich", "en": "Cervix soft"},
+    "cervix_texture:open": {"de": "Muttermund offen", "en": "Cervix open"},
+    "libido:libido_low": {"de": "Libido niedrig", "en": "Libido low"},
+    "libido:normal": {"de": "Libido normal", "en": "Libido normal"},
+    "libido:libido_high": {"de": "Libido hoch", "en": "Libido high"},
+    "smell:normal": {"de": "Geruch normal", "en": "Smell normal"},
+    "smell:inconspicuous": {"de": "Geruch unauffällig", "en": "Smell inconspicuous"},
+    "smell:unpleasant": {"de": "Geruch unangenehm", "en": "Smell unpleasant"},
+    "smell:fishy": {"de": "Geruch fischig", "en": "Smell fishy"},
+    "test:positive_ovulation": {"de": "Ovulationstest positiv", "en": "Ovulation test positive"},
+    "test:negative_ovulation": {"de": "Ovulationstest negativ", "en": "Ovulation test negative"},
+    "test:positive_pregnancy": {"de": "Schwangerschaftstest positiv", "en": "Pregnancy test positive"},
+    "test:negative_pregnancy": {"de": "Schwangerschaftstest negativ", "en": "Pregnancy test negative"},
 }
 
 
@@ -308,10 +418,17 @@ def generate_doctor_report_html(
     patient_birthdate: str | None,
     language: str = "de",
     report_date: str | None = None,
+    current_contraception_method: str | None = None,
 ) -> str:
     """Generate a professional HTML doctor report from computed statistics."""
     lang = "de" if language.lower().startswith("de") else "en"
-    today_str = report_date or date.today().isoformat()
+    # Prefer the already-resolved, timezone-correct date computed by
+    # compute_statistics over date.today() (system timezone, which can
+    # differ from HA's configured timezone) — this function's own
+    # date.today() is now only a last-resort fallback if stats somehow
+    # doesn't carry a report_date at all.
+    today_str = report_date or stats.get("report_date") or date.today().isoformat()
+    today = _parse_iso(today_str) or date.today()
     days_back = stats.get("days_back", 180)
     cycles_analyzed = stats.get("cycles_analyzed", 0)
 
@@ -338,6 +455,15 @@ def generate_doctor_report_html(
             "bleeding_duration": "Blutungsdauer",
             "bleeding_strength": "Blutungsstärke-Verteilung",
             "top_symptoms": "Häufigste Symptome (Häufigkeit)",
+            "basal_temp": "Basaltemperatur",
+            "basal_temp_avg": "Durchschnitt",
+            "basal_temp_range": "Bereich",
+            "basal_temp_readings": "Messungen erfasst",
+            "nfp_confirmation": "Eisprung bestätigt (3-über-6-Regel)",
+            "nfp_confirmation_summary": "In {confirmed} von {total} analysierten Zyklen bestätigt.",
+            "nfp_confirmation_day": "Durchschnittlich bestätigt an Zyklustag",
+            "current_status": "Aktueller Status",
+            "current_contraception": "Aktuelle Verhütungsmethode",
             "pain_trend": "Schmerztage pro Zyklus (Trend)",
             "cycle_start": "Zyklusbeginn",
             "pain_days": "Schmerztage",
@@ -368,6 +494,15 @@ def generate_doctor_report_html(
             "bleeding_duration": "Bleeding Duration",
             "bleeding_strength": "Bleeding Strength Distribution",
             "top_symptoms": "Top Symptoms (frequency)",
+            "basal_temp": "Basal Body Temperature",
+            "basal_temp_avg": "Average",
+            "basal_temp_range": "Range",
+            "basal_temp_readings": "Readings logged",
+            "nfp_confirmation": "Ovulation Confirmed (3-over-6 Rule)",
+            "nfp_confirmation_summary": "Confirmed in {confirmed} of {total} analyzed cycles.",
+            "nfp_confirmation_day": "Average confirmation on cycle day",
+            "current_status": "Current Status",
+            "current_contraception": "Current Contraception Method",
             "pain_trend": "Pain Days per Cycle (Trend)",
             "cycle_start": "Cycle Start",
             "pain_days": "Pain Days",
@@ -437,6 +572,60 @@ def generate_doctor_report_html(
         bs_rows += f"<tr><td>{_h(label)}</td><td>{pct}%</td><td><div class='bar' style='width:{min(pct,100)}%'></div></td></tr>"
     bleeding_strength_html = f"<table class='dist-table'>{bs_rows}</table>" if bs_rows else T["no_data"]
 
+    # Current status (contraception method) — shown separately from the
+    # frequency-based symptom tables below, since it's a current state, not
+    # something to count occurrences of.
+    _CONTRACEPTION_METHOD_LABELS: dict[str, dict[str, str]] = {
+        "none": {"de": "Keine", "en": "None"},
+        "pill": {"de": "Pille", "en": "Pill"},
+        "hormonal_iud": {"de": "Hormonspirale", "en": "Hormonal IUD"},
+        "copper_iud": {"de": "Kupferspirale", "en": "Copper IUD"},
+        "implant": {"de": "Implantat", "en": "Implant"},
+        "patch": {"de": "Verhütungspflaster", "en": "Patch"},
+        "ring": {"de": "Vaginalring", "en": "Ring"},
+        "injection": {"de": "Hormonspritze", "en": "Injection"},
+        "condom": {"de": "Kondom", "en": "Condom"},
+        "other": {"de": "Andere", "en": "Other"},
+    }
+    current_status_html = ""
+    if current_contraception_method:
+        method_label = _label(current_contraception_method, _CONTRACEPTION_METHOD_LABELS, lang, current_contraception_method)
+        current_status_html = f"""
+    <table class="stats-table">
+      <tr><th>{_h(T['current_contraception'])}</th></tr>
+      <tr><td>{_h(method_label)}</td></tr>
+    </table>"""
+
+    # Basal body temperature — was entirely absent from earlier versions of
+    # this report despite being tracked by the app; a doctor discussing NFP,
+    # ovulation, or cycle irregularities would reasonably expect to see it.
+    basal_temp_html = T["no_data"]
+    if stats.get("basal_temp_reading_count"):
+        avg_t = stats.get("basal_temp_avg")
+        min_t = stats.get("basal_temp_min")
+        max_t = stats.get("basal_temp_max")
+        count_t = stats.get("basal_temp_reading_count")
+        basal_temp_html = f"""
+        <table class="stats-table">
+          <tr><th>{_h(T['basal_temp_avg'])}</th><th>{_h(T['basal_temp_range'])}</th><th>{_h(T['basal_temp_readings'])}</th></tr>
+          <tr>
+            <td>{avg_t} °C</td>
+            <td>{min_t}–{max_t} °C</td>
+            <td>{count_t}</td>
+          </tr>
+        </table>"""
+
+    nfp_total = stats.get("nfp_cycles_analyzed", 0)
+    if nfp_total:
+        nfp_confirmed = stats.get("nfp_confirmed_count", 0)
+        nfp_summary = T["nfp_confirmation_summary"].replace("{confirmed}", str(nfp_confirmed)).replace("{total}", str(nfp_total))
+        nfp_day = stats.get("nfp_avg_confirmation_day")
+        nfp_day_line = f"<p>{_h(T['nfp_confirmation_day'])}: <strong>{nfp_day}</strong></p>" if nfp_day is not None else ""
+        basal_temp_html += f"""
+        <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['nfp_confirmation'])}</h3>
+        <p>{_h(nfp_summary)}</p>
+        {nfp_day_line}"""
+
     # Top symptoms
     top_syms = stats.get("top_symptoms", [])
     sym_rows = ""
@@ -464,8 +653,8 @@ def generate_doctor_report_html(
 
     # Raw cycle data table
     normalized = normalize_history(history)
-    today_iso = date.today().isoformat()
-    cutoff_iso = (date.today() - timedelta(days=days_back)).isoformat()
+    today_iso = today.isoformat()
+    cutoff_iso = (today - timedelta(days=days_back)).isoformat()
     recent_history = sorted(
         (d for d in normalized if cutoff_iso <= d <= today_iso),
         reverse=True,
@@ -519,9 +708,19 @@ def generate_doctor_report_html(
 
   {patient_section}
 
+  {f'''<section class="section">
+    <h2>{_h(T['current_status'])}</h2>
+    {current_status_html}
+  </section>''' if current_status_html else ''}
+
   <section class="section">
     <h2>{_h(T['cycle_length'])}</h2>
     {cycle_length_html}
+  </section>
+
+  <section class="section">
+    <h2>{_h(T['basal_temp'])}</h2>
+    {basal_temp_html}
   </section>
 
   <section class="section">

@@ -773,7 +773,7 @@ async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: 
     """
     from .model import compute_contraception_status
 
-    status = compute_contraception_status(runtime.symptom_history)
+    status = compute_contraception_status(runtime.symptom_history, today=dt_util.now().date())
     if not status.get("renewal_reminder_due"):
         return
     method = status.get("current_method")
@@ -1415,9 +1415,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     async def _async_handle_midnight_refresh(_now: datetime) -> None:
-        await _async_refresh_cycle_model(hass, {entry.entry_id})
-        await _async_check_contraception_renewal_todo(hass, runtime)
-        await _async_check_and_send_notifications(hass, entry, runtime)
+        # Each step is independent — a failure in one (e.g. cycle model
+        # refresh hitting unexpected data) shouldn't silently skip the
+        # others for this profile on this day. Cross-profile isolation is
+        # already safe (each profile registers its own callback), this adds
+        # per-step isolation within a single profile's routine too.
+        try:
+            await _async_refresh_cycle_model(hass, {entry.entry_id})
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight cycle model refresh failed for %s", entry.entry_id)
+        try:
+            await _async_check_contraception_renewal_todo(hass, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight contraception renewal check failed for %s", entry.entry_id)
+        try:
+            await _async_check_and_send_notifications(hass, entry, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight notification check failed for %s", entry.entry_id)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1597,7 +1611,11 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
     if patient_birthdate is not None:
         patient_birthdate = _normalize_date_or_raise(str(patient_birthdate).strip())
 
-    stats = compute_statistics(runtime.history, runtime.symptom_history, days_back=days_back)
+    from .model import compute_contraception_status
+
+    today = dt_util.now().date()
+    stats = compute_statistics(runtime.history, runtime.symptom_history, days_back=days_back, today=today, period_duration_days=runtime.period_duration_days)
+    contraception_status = compute_contraception_status(runtime.symptom_history, today=today)
     html_content = generate_doctor_report_html(
         stats=stats,
         history=runtime.history,
@@ -1606,6 +1624,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
         patient_name=patient_name,
         patient_birthdate=patient_birthdate,
         language=language,
+        current_contraception_method=contraception_status.get("current_method"),
     )
 
     stem = _sanitize_export_filename(f"doctor_report_{runtime.profile}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
@@ -1957,9 +1976,20 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
             )
         if key == SYMPTOM_BASAL_TEMP:
             try:
-                float(value)
+                temp_value = float(value)
             except (TypeError, ValueError):
                 raise HomeAssistantError(f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be a number, got '{value}'.")
+            # Plausibility check, not just a type check — catches typos (e.g.
+            # 365 instead of 36.5) and Celsius/Fahrenheit unit confusion
+            # (e.g. entering 98.6°F into this Celsius-only field), which
+            # would otherwise silently pass as "a valid number" and corrupt
+            # NFP coverline detection without any error. Range is generous
+            # (30-45°C) to never reject a genuine reading, including fever.
+            if not 30.0 <= temp_value <= 45.0:
+                raise HomeAssistantError(
+                    f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be between 30 and 45 (°C), got {temp_value}. "
+                    "If you're entering a Fahrenheit reading, convert it to Celsius first."
+                )
         else:
             allowed = SYMPTOM_OPTIONS[key]
             values_to_check = value if isinstance(value, list) else [value]
