@@ -1,0 +1,52 @@
+blueprint:
+  name: Menstruation Cycle - Notify on period start
+  description: >
+    Sends a notification the moment a profile's sensor state changes to
+    "period" — i.e. the day a period is confirmed to have started. This is
+    separate from the integration's own built-in notification setting (which
+    warns the day *before* the predicted start): this blueprint fires on the
+    actual, confirmed start, and can target a *different* device or person
+    — e.g. a partner's phone, a shared household notifier, or a second
+    device alongside the person's own.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/notify_period_start.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    notify_target:
+      name: Notification target
+      description: Which device to send the push notification to.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+    message:
+      name: Message
+      description: >
+        Notification text. Use {{ profile }} anywhere in the message to
+        insert the profile's display name.
+      default: "{{ profile }}'s period has started."
+      selector:
+        text: {}
+
+trigger:
+  - platform: state
+    entity_id: !input cycle_sensor
+    to: "period"
+
+variables:
+  profile: "{{ state_attr(trigger.entity_id, 'friendly_name') or trigger.entity_id }}"
+  notify_target: !input notify_target
+  message_template: !input message
+
+action:
+  - service: "notify.mobile_app_{{ device_attr(notify_target, 'name') | slugify }}"
+    data:
+      title: "Menstruation Cycle"
+      message: "{{ message_template | replace('{{ profile }}', profile) }}"

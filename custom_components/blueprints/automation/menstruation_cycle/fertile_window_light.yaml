@@ -1,0 +1,77 @@
+blueprint:
+  name: Menstruation Cycle - Light color during fertile window
+  description: >
+    Sets one or more lights to a chosen color while the profile's fertile
+    window is active, and restores them (or turns them off) once it ends.
+    Useful as a subtle, at-a-glance household indicator without needing to
+    check the dashboard.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/fertile_window_light.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    target_lights:
+      name: Lights
+      description: Light(s) to change color on.
+      selector:
+        target:
+          entity:
+            domain: light
+    fertile_color:
+      name: Fertile window color
+      description: Color to set while the fertile window is active.
+      default: [255, 105, 180]
+      selector:
+        color_rgb: {}
+    restore_action:
+      name: When fertile window ends
+      description: >
+        What to do to the lights once the fertile window is over. "Turn off"
+        is the simplest option; "Do nothing" leaves them as-is (e.g. if
+        another automation already manages their normal state).
+      default: turn_off
+      selector:
+        select:
+          options:
+            - label: Turn off
+              value: turn_off
+            - label: Do nothing
+              value: nothing
+
+trigger:
+  - platform: state
+    entity_id: !input cycle_sensor
+    to: "fertile"
+    id: fertile_start
+  - platform: state
+    entity_id: !input cycle_sensor
+    from: "fertile"
+    id: fertile_end
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: fertile_start
+        sequence:
+          - service: light.turn_on
+            target: !input target_lights
+            data:
+              rgb_color: !input fertile_color
+      - conditions:
+          - condition: trigger
+            id: fertile_end
+        sequence:
+          - variables:
+              restore_action: !input restore_action
+          - if:
+              - "{{ restore_action == 'turn_off' }}"
+            then:
+              - service: light.turn_off
+                target: !input target_lights
