@@ -94,6 +94,7 @@ const CHAT_INTENT_TESTS = [
   ["Wie oft hab ich diesen Zyklus trainiert?", "training_search"],
   ["Hatte ich diesen Zyklus Zwischenblutungen?", "spotting_search"],
   ["Was hab ich am 15. August erfasst?", "day_lookup"],
+  ["Was hab ich am 15. August 2025 erfasst?", "day_lookup"], // explicit year must be honored, not silently dropped
 
   // Libido search + general educational questions
   ["Hatte ich diesen Zyklus oft Lust?", "libido_search"],
@@ -107,6 +108,32 @@ const CHAT_INTENT_TESTS = [
   ["Wann war mein letzter positiver Schwangerschaftstest?", "pregnancy_test_search"],
   ["Wann sollte ich einen Schwangerschaftstest machen?", "pregnancy_test_timing"], // must NOT be caught by pregnancy_test_search
   ["Was ist PMS?", "glossary"],
+
+  // Help/discoverability
+  ["Was kannst du beantworten?", "help"],
+  ["Welche Fragen kann ich stellen?", "help"],
+
+  // Multilingual colloquial terms for "period" + "when/next" — must work
+  // together as a combined trigger, not just each word list in isolation
+  // (an earlier version of this fix updated PERIOD_WORDS but forgot
+  // WHEN_NEXT_WORDS/LATE_WORDS, so the combined condition still failed for
+  // non-German/English phrasings even though the period-word itself matched).
+  ["Wann kommt meine Erdbeerwoche?", "next_period"],
+  ["When is aunt flo coming?", "next_period"],
+  ["When is my time of the month?", "next_period"],
+  ["Is shark week coming soon?", "next_period"],
+  ["Quand sont mes règles?", "next_period"],
+  ["¿Cuándo viene mi regla?", "next_period"],
+  ["När kommer mina mens?", "next_period"],
+
+  // Additional colloquial terms
+  ["Wann kommt Tante Rosa?", "next_period"],
+  ["Wann kommt die rote Welle?", "next_period"],
+  ["When is my monthly visitor coming?", "next_period"],
+  ["Is code red coming next week?", "next_period"],
+  ["When does the crimson wave arrive?", "next_period"],
+  ["Quand est-ce que j'aurai mes lunes?", "next_period"],
+  ["J'ai eu mes lunes hier.", null],
 ];
 
 if (typeof module !== 'undefined' && module.exports) {
