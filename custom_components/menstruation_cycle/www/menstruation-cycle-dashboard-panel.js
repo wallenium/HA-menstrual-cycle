@@ -918,6 +918,15 @@
       // window.ProductIcons (menstruation-functions.js) gives theme-tinted masked SVG
       // icons instead of our plain <img> fallback, but it's a plain global set by a
       // script tag — no whenDefined() equivalent — so poll briefly instead.
+      // window.ProductIcons / window.MenstruationFunctions (both from
+      // menstruation-functions.js) are plain globals set by a script tag, not
+      // a custom element, so there's no whenDefined() to hook into — but
+      // unlike the polling below (which only waits and hopes), actively
+      // request the script ourselves first, for the same reason explained
+      // above for the embedded cards: a standalone sidebar panel doesn't
+      // reliably get Lovelace resources auto-loaded, so nothing else may
+      // ever trigger this file to load at all.
+      this._ensureCardScriptLoaded('menstruation-functions.js');
       if (typeof window !== 'undefined' && !window.ProductIcons) {
         let attempts = 0;
         const poll = () => {
@@ -2986,6 +2995,9 @@
       const mode = this._resolveContentMode(stateObj);
       const isPregnant = mode === 'pregnancy';
       const fields = window.MenstruationFunctions ? window.MenstruationFunctions.getSymptomConfig(mode, isPregnant) : [];
+      if (!window.MenstruationFunctions) {
+        console.warn('[menstruation-cycle-dashboard-panel] window.MenstruationFunctions is not available — the quick-log modal will show no symptom fields. This usually means menstruation-functions.js failed to load or hasn\'t finished loading yet. Check the Network tab for a failed/slow request to that file.');
+      }
       const tOption = (val) => {
         if (!window.MenstruationFunctions) return String(val);
         const key = window.MenstruationFunctions.normalizeOptionKey(val);
