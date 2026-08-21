@@ -904,5 +904,7 @@
   "dashboard_trend_stable": "Stable sur la période suivie.",
   "dashboard_trend_lengthening": "Tendance à l'allongement sur la période suivie.",
   "dashboard_trend_shortening": "Tendance au raccourcissement sur la période suivie.",
-  "dashboard_chat_error": "Une erreur s'est produite. N'hésitez pas à réessayer."
+  "dashboard_chat_error": "Une erreur s'est produite. N'hésitez pas à réessayer.",
+  "dashboard_chat_fab_label": "Questions sur le cycle",
+  "dashboard_chat_medical_disclaimer": "Ceci ne constitue pas un avis médical. Pour toute question de santé, consultez un médecin."
 }

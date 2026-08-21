@@ -673,6 +673,7 @@ class MenstruationCalendarCard extends HTMLElement {
     // this and menstruation-gauge-card.js previously each maintained their own
     // byte-identical copy of this config.
     if (window.MenstruationFunctions) return window.MenstruationFunctions.getSymptomConfig(state, isPregnant);
+    console.warn('[menstruation-calendar-card] window.MenstruationFunctions is not available — symptom fields will be empty except basal_temp. This usually means menstruation-functions.js failed to load or hasn\'t finished loading yet. Check the Network tab for a failed/slow request to that file.');
     return [];
   }
 
@@ -775,7 +776,7 @@ class MenstruationCalendarCard extends HTMLElement {
         }).join('');
         return `
           <div class="sym-row">
-            <div class="sym-cat-head"><ha-icon icon="${cat.icon}"></ha-icon><span>${catLabel}</span></div>
+            <div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div>
             <div class="sym-cervix-grid">
               <div class="sym-cervix-col">
                 <div class="sym-cervix-title">${this._t('cat_cervix_position')}</div>
@@ -794,7 +795,7 @@ class MenstruationCalendarCard extends HTMLElement {
           const checked = currentValues.includes(opt) ? 'checked' : '';
           return `<label class="sym-opt-label"><input type="checkbox" class="sym-multi" name="${cat.key}" value="${opt}" ${checked}><span>${this._tOption(opt)}</span></label>`;
         }).join('');
-        return `<div class="sym-row"><div class="sym-cat-head"><ha-icon icon="${cat.icon}"></ha-icon><span>${catLabel}</span></div><div class="sym-options sym-multi-opts">${checkboxes}</div></div>`;
+        return `<div class="sym-row"><div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div><div class="sym-options sym-multi-opts">${checkboxes}</div></div>`;
       }
       const currentValue = existing[cat.key] || '';
       const buttons = cat.options.map((opt) => {
@@ -802,7 +803,7 @@ class MenstruationCalendarCard extends HTMLElement {
         return `<button type="button" class="sym-opt-btn${sel}" data-cat="${cat.key}" data-val="${opt}">${this._tOption(opt)}</button>`;
       }).join('');
       const hiddenClass = cat.dependsOn && existing[cat.dependsOn.key] !== cat.dependsOn.value ? ' sym-hidden' : '';
-      return `<div class="sym-row${hiddenClass}" data-sym-row="${cat.key}"><div class="sym-cat-head"><ha-icon icon="${cat.icon}"></ha-icon><span>${catLabel}</span></div><div class="sym-options sym-single-opts">${buttons}</div></div>`;
+      return `<div class="sym-row${hiddenClass}" data-sym-row="${cat.key}"><div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div><div class="sym-options sym-single-opts">${buttons}</div></div>`;
     }).join('');
 
     const basalTemp = existing.basal_temp != null ? existing.basal_temp : '';

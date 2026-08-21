@@ -114,6 +114,8 @@
     dashboard_quick_log_failed: 'Could not save.',
     dashboard_quick_log_loading: 'Loading, please try again in a moment…',
     dashboard_widget_chat_assistant: 'Cycle Q&A',
+    dashboard_chat_fab_label: 'Cycle Q&A',
+    dashboard_chat_medical_disclaimer: 'Not medical advice. For health concerns, please consult a doctor.',
     dashboard_widget_long_term_trend: 'Long-Term Trend',
     dashboard_trend_stable: 'Stable over the tracked period.',
     dashboard_trend_lengthening: 'Trending longer over the tracked period.',
@@ -501,7 +503,6 @@
     { id: 'timer_card', title: 'dashboard_widget_timer_card', sensitive: false, span: 6 },
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
     { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
-    { id: 'chat_assistant', title: 'dashboard_widget_chat_assistant', sensitive: false, span: 12 },
     { id: 'long_term_trend', title: 'dashboard_widget_long_term_trend', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
@@ -526,7 +527,6 @@
     'timer_card',
     'statistics_card',
     'support_card',
-    'chat_assistant',
     'long_term_trend',
     'symptom_heatmap',
     'anomaly_insights',
@@ -797,6 +797,10 @@
       // real cycle data + a small glossary. History kept in memory only (not
       // persisted), reset on page reload.
       this._chatHistory = [];
+      // Persistent floating chat button (bottom-right), replacing the old
+      // scroll-to-find grid widget — always one tap away instead of buried
+      // in the dashboard.
+      this._chatFabOpen = false;
       this._prefs = null;
       this._activeProfile = 'default';
       this._activeMode = 'general';
@@ -1378,8 +1382,19 @@
       if (!this._hass?.connection) throw new Error('No hass connection');
       const conn = this._hass.connection;
 
+      // Defensive timeout — these WebSocket calls previously had no time
+      // limit at all. If either one hangs (no error, just never resolving —
+      // e.g. an unresponsive connection), the entire dashboard would be
+      // stuck on the loading screen forever with nothing in the console to
+      // diagnose, since a hang isn't a rejection. 8s is generous for a
+      // normal HA instance while still bounding the worst case.
+      const withTimeout = (promise, label) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), 8000)),
+      ]);
+
       // 1. Get all config entries for this integration
-      const configEntries = await conn.sendMessagePromise({ type: 'config_entries/get' });
+      const configEntries = await withTimeout(conn.sendMessagePromise({ type: 'config_entries/get' }), 'config_entries/get');
       const integrationEntryIds = new Set(
         (Array.isArray(configEntries) ? configEntries : [])
           .filter((entry) => entry.domain === 'menstruation_cycle')
@@ -1392,7 +1407,7 @@
       }
 
       // 2. Get entity registry and filter to our integration's sensors
-      const entityRegistry = await conn.sendMessagePromise({ type: 'config/entity_registry/list' });
+      const entityRegistry = await withTimeout(conn.sendMessagePromise({ type: 'config/entity_registry/list' }), 'config/entity_registry/list');
       const registeredEntityIds = new Set(
         (Array.isArray(entityRegistry) ? entityRegistry : [])
           .filter(
@@ -1813,6 +1828,42 @@
           </svg>
           <p class="helper" style="margin-top:6px;font-size:0.68rem;">${this._t('dashboard_prediction_disclaimer') || ''}</p>
         </div>`;
+    }
+
+    /**
+     * Persistent floating chat button (bottom-right) + popup panel — replaces
+     * the old scroll-to-find grid widget. The button is always rendered;
+     * the panel only when open. Reuses _renderChatWidget() for the actual
+     * chat content, so the underlying Q&A logic is untouched — this is
+     * purely a presentation change.
+     */
+    _renderChatFab(stateObj) {
+      const isOpen = this._chatFabOpen;
+      const fabIcon = isOpen ? 'mdi:close' : 'mdi:chat-question';
+      const fabLabel = this._t('dashboard_chat_fab_label') || 'Zyklus-Fragen';
+
+      const panel = isOpen ? `
+        <div class="mc-chat-fab-panel" role="dialog" aria-modal="false" aria-label="${escapeHtml(fabLabel)}">
+          <div class="mc-chat-fab-header">
+            <span>${escapeHtml(fabLabel)}</span>
+            <button type="button" data-action="toggle-chat-fab" aria-label="${escapeHtml(this._t('dashboard_close') || 'Schließen')}" class="mc-chat-fab-close">
+              <ha-icon icon="mdi:close"></ha-icon>
+            </button>
+          </div>
+          <div class="mc-chat-fab-disclaimer">
+            <ha-icon icon="mdi:information-outline"></ha-icon>
+            <span>${escapeHtml(this._t('dashboard_chat_medical_disclaimer') || 'Keine medizinische Beratung. Bei gesundheitlichen Fragen wende dich an eine Ärztin oder einen Arzt.')}</span>
+          </div>
+          <div class="mc-chat-fab-body">
+            ${this._renderChatWidget(stateObj)}
+          </div>
+        </div>` : '';
+
+      return `
+        <button type="button" class="mc-chat-fab-button" data-action="toggle-chat-fab" aria-label="${escapeHtml(fabLabel)}" aria-expanded="${isOpen}">
+          <ha-icon icon="${fabIcon}"></ha-icon>
+        </button>
+        ${panel}`;
     }
 
     _renderChatWidget(stateObj) {
@@ -2924,15 +2975,15 @@
             return `<button type="button" class="mode-btn${isSelected ? ' active' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${escapeHtml(tOption(opt))}</button>`;
           }).join('');
           return `
-            <div style="margin-bottom:14px;">
-              <div class="stat-label" style="margin-bottom:6px;">${escapeHtml(tCategory(cat.key))}</div>
+            <div>
+              <div class="stat-label sym-cat-head" style="margin-bottom:6px;">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : ''}<span>${escapeHtml(tCategory(cat.key))}</span></div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">${options}</div>
             </div>`;
         }).join('');
 
       const rowsOrFallback = window.MenstruationFunctions
         ? rows
-        : `<p class="helper">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`;
+        : `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`;
 
       return `
         <div class="mc-modal-backdrop" role="presentation">
@@ -2942,7 +2993,7 @@
               <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
             </div>
             <p class="helper" style="margin:0 0 14px;">${escapeHtml(this._formatDate(this._todayIso()))}</p>
-            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;">
+            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
@@ -3025,6 +3076,17 @@
       if (!target) return;
       const action = target.dataset.action;
       const widget = target.dataset.widget;
+
+      if (action === 'toggle-chat-fab') {
+        this._chatFabOpen = !this._chatFabOpen;
+        this.render();
+        if (this._chatFabOpen) {
+          requestAnimationFrame(() => {
+            this.shadowRoot?.getElementById('mc-chat-input')?.focus();
+          });
+        }
+        return;
+      }
 
       if (action === 'open-quick-log') {
         this._quickLogSelections = {};
@@ -5395,7 +5457,6 @@
       if (widgetId === 'timer_card') body = this._renderEmbeddedCardMount('timer-card');
       if (widgetId === 'statistics_card') body = this._renderEmbeddedCardMount('statistics-card');
       if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
-      if (widgetId === 'chat_assistant') body = this._renderChatWidget(stateObj);
       if (widgetId === 'long_term_trend') body = this._renderLongTermTrendChart(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
@@ -5770,6 +5831,76 @@
             transition: background .15s ease, color .15s ease;
             white-space: nowrap;
           }
+          .mc-chat-fab-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 950;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: var(--mc-rose-deep, #C43F5E);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            cursor: pointer;
+            transition: transform .15s ease;
+          }
+          .mc-chat-fab-button:hover { transform: scale(1.05); }
+          .mc-chat-fab-button ha-icon { --mdc-icon-size: 26px; }
+          .mc-chat-fab-panel {
+            position: fixed;
+            bottom: 88px;
+            right: 20px;
+            z-index: 950;
+            width: min(400px, calc(100vw - 32px));
+            max-height: min(640px, calc(100vh - 120px));
+            background: var(--card-background-color, #fff);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+          .mc-chat-fab-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--mc-rose-deep, #C43F5E);
+            color: #fff;
+            font-family: var(--mc-font-display);
+            font-weight: 500;
+            flex: none;
+          }
+          .mc-chat-fab-close {
+            border: none; background: none; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; padding: 4px; border-radius: 50%;
+          }
+          .mc-chat-fab-close:hover { background: rgba(255,255,255,0.15); }
+          .mc-chat-fab-disclaimer {
+            display: flex; align-items: flex-start; gap: 8px;
+            padding: 10px 16px;
+            background: var(--mc-sand);
+            border-bottom: 1px solid var(--divider-color, #e5e7eb);
+            font-size: 0.72rem;
+            color: var(--secondary-text-color, #6b7280);
+            flex: none;
+          }
+          .mc-chat-fab-disclaimer ha-icon { --mdc-icon-size: 16px; flex: none; margin-top: 1px; }
+          .mc-chat-fab-body {
+            padding: 14px 16px;
+            overflow-y: auto;
+            flex: 1;
+          }
+          .mc-chat-fab-body .mc-chat-history { max-height: none; }
+          .sym-cat-head { display: flex; align-items: center; gap: 6px; }
+          .sym-cat-head ha-icon { --mdc-icon-size: 18px; color: var(--mc-rose-deep, #C43F5E); flex: none; }
+          .sym-cat-head img { flex: none; }
           .mc-chat-history {
             display: flex; flex-direction: column; gap: 8px;
             max-height: 280px; overflow-y: auto;
@@ -5802,7 +5933,7 @@
             background: var(--card-background-color, #fff);
             border-radius: 16px;
             padding: 20px;
-            max-width: 480px;
+            max-width: 720px;
             width: 100%;
             max-height: 85vh;
             display: flex;
@@ -6342,6 +6473,7 @@
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}</div>` : ''}
           ${this._renderEditPanel()}
           ${this._renderQuickLogModal(stateObj)}
+          ${this._renderChatFab(stateObj)}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
         </main>
       `;

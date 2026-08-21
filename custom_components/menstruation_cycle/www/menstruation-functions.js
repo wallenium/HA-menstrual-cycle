@@ -363,10 +363,10 @@ function getSymptomConfig(state, isPregnant = false) {
     { key: 'clots', icon: 'mdi:water-alert', multi: false, options: ['yes', 'no'] },
     { key: 'clot_size', icon: 'mdi:ruler-square', multi: false, options: ['small', 'medium', 'large'], dependsOn: { key: 'clots', value: 'yes' } },
     { key: 'bleeding_type', icon: 'mdi:waves', multi: false, options: ['continuous', 'intermittent', 'drops'] },
-    { key: 'spotting', icon: 'mdi:blood-bag', multi: false, options: ['red', 'brown'] },
+    { key: 'spotting', icon: 'mdi:liquid-spot', multi: false, options: ['red', 'brown'] },
     { key: 'smell', icon: 'mdi:nose', multi: false, options: ['normal', 'inconspicuous', 'unpleasant', 'fishy'] },
     { key: 'discharge', icon: 'mdi:water-outline', multi: false, options: ['reddish', 'brown', 'white', 'clear', 'other'] },
-    { key: 'hygiene', icon: 'mdi:medical-bag', multi: true, options: ['pad', 'liner', 'tampon', 'cup', 'period_underwear'] },
+    { key: 'hygiene', icon: 'asset:period/pad.svg', multi: true, options: ['pad', 'liner', 'tampon', 'cup', 'period_underwear'] },
     { key: 'cervical_mucus', icon: 'mdi:water', multi: false, options: ['keinen', 'klebrig', 'cremig', 'fadenziehend', 'untypisch'] },
     { key: 'cervix_position', icon: 'mdi:grid', multi: false, options: ['cervix_high', 'cervix_mid', 'cervix_low'], renderAs: 'cervix-grid' },
     { key: 'cervix_texture', icon: 'mdi:grid', multi: false, options: ['firm', 'soft', 'open'], hiddenInModal: true },
@@ -438,10 +438,27 @@ async function fetchFreshSymptomData(hass, entityId, iso, logPrefix = '[menstrua
   }
 }
 
+/**
+ * Renders the correct icon markup for a category's `icon` value, which can
+ * be either a standard mdi: name (rendered via <ha-icon>) or a reference to
+ * one of the project's own bundled SVG assets, prefixed with "asset:" (e.g.
+ * "asset:period/pad.svg" — served via the integration's own HTTP route,
+ * since ha-icon only understands mdi: names, not arbitrary SVG files).
+ */
+function renderCategoryIcon(icon) {
+  if (!icon) return '';
+  if (icon.startsWith('asset:')) {
+    const assetPath = icon.slice('asset:'.length);
+    return `<img src="/menstruation_cycle/assets/${assetPath}" alt="" style="width:18px;height:18px;object-fit:contain;" />`;
+  }
+  return `<ha-icon icon="${icon}"></ha-icon>`;
+}
+
 const MenstruationFunctions = {
   normalizeOptionKey,
   getSymptomConfig,
   fetchFreshSymptomData,
+  renderCategoryIcon,
 };
 
 if (typeof window !== 'undefined') {

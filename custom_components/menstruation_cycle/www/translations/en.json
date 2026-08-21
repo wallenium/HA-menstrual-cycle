@@ -937,5 +937,7 @@
   "dashboard_trend_stable": "Stable over the tracked period.",
   "dashboard_trend_lengthening": "Trending longer over the tracked period.",
   "dashboard_trend_shortening": "Trending shorter over the tracked period.",
-  "dashboard_chat_error": "Something went wrong there. Feel free to try again."
+  "dashboard_chat_error": "Something went wrong there. Feel free to try again.",
+  "dashboard_chat_fab_label": "Cycle Q&A",
+  "dashboard_chat_medical_disclaimer": "Not medical advice. For health concerns, please consult a doctor."
 }

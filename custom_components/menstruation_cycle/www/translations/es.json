@@ -904,5 +904,7 @@
   "dashboard_trend_stable": "Estable durante el período registrado.",
   "dashboard_trend_lengthening": "Tendencia a alargarse durante el período registrado.",
   "dashboard_trend_shortening": "Tendencia a acortarse durante el período registrado.",
-  "dashboard_chat_error": "Algo salió mal. Puedes intentarlo de nuevo."
+  "dashboard_chat_error": "Algo salió mal. Puedes intentarlo de nuevo.",
+  "dashboard_chat_fab_label": "Preguntas sobre el ciclo",
+  "dashboard_chat_medical_disclaimer": "Esto no es consejo médico. Para dudas de salud, consulta a un médico."
 }
