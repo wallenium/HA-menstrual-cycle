@@ -906,5 +906,7 @@
   "dashboard_trend_shortening": "Tenderar att bli kortare under den registrerade perioden.",
   "dashboard_chat_error": "Något gick fel där. Prova gärna igen.",
   "dashboard_chat_fab_label": "Cykelfrågor",
-  "dashboard_chat_medical_disclaimer": "Inte medicinsk rådgivning. Vid hälsofrågor, kontakta läkare."
+  "dashboard_chat_medical_disclaimer": "Inte medicinsk rådgivning. Vid hälsofrågor, kontakta läkare.",
+  "dashboard_chat_pregnant_today_yes": "Idag ligger troligen inom ditt uppskattade fertila fönster.",
+  "dashboard_chat_pregnant_today_no": "Idag ligger troligen utanför ditt uppskattade fertila fönster."
 }

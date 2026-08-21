@@ -939,5 +939,7 @@
   "dashboard_trend_shortening": "Trending shorter over the tracked period.",
   "dashboard_chat_error": "Something went wrong there. Feel free to try again.",
   "dashboard_chat_fab_label": "Cycle Q&A",
-  "dashboard_chat_medical_disclaimer": "Not medical advice. For health concerns, please consult a doctor."
+  "dashboard_chat_medical_disclaimer": "Not medical advice. For health concerns, please consult a doctor.",
+  "dashboard_chat_pregnant_today_yes": "Today likely falls within your estimated fertile window.",
+  "dashboard_chat_pregnant_today_no": "Today likely falls outside your estimated fertile window."
 }

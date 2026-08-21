@@ -939,5 +939,7 @@
   "dashboard_trend_shortening": "Tendenziell kürzer werdend über den erfassten Zeitraum.",
   "dashboard_chat_error": "Da ist etwas schiefgelaufen. Versuch es gerne nochmal.",
   "dashboard_chat_fab_label": "Zyklus-Fragen",
-  "dashboard_chat_medical_disclaimer": "Keine medizinische Beratung. Bei gesundheitlichen Fragen wende dich an eine Ärztin oder einen Arzt."
+  "dashboard_chat_medical_disclaimer": "Keine medizinische Beratung. Bei gesundheitlichen Fragen wende dich an eine Ärztin oder einen Arzt.",
+  "dashboard_chat_pregnant_today_yes": "Heute liegt voraussichtlich in deinem geschätzten fruchtbaren Fenster.",
+  "dashboard_chat_pregnant_today_no": "Heute liegt voraussichtlich außerhalb deines geschätzten fruchtbaren Fensters."
 }

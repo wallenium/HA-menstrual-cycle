@@ -28,6 +28,7 @@ const CHAT_INTENT_TESTS = [
   ["Warum sind meine Tage zu spät?", "why_late"],
   ["Warum verspäten sich meine Tage?", "why_late"],
   ["ich fahre am 17.08.2027 für 2 wochen in urlaub. bekomme ich in dieser zeit meine periode?", "period_in_range"],
+  ["Ich fahre am 22.11.2026 für eine Woche in Urlaub. Habe ich dort meine Periode?", "period_in_range"], // German word-numbers ("eine"), not just digits
 
   // Cycle stats
   ["Wie lang ist mein Zyklus im Schnitt?", "cycle_length"],
@@ -95,6 +96,12 @@ const CHAT_INTENT_TESTS = [
   ["Hatte ich diesen Zyklus Zwischenblutungen?", "spotting_search"],
   ["Was hab ich am 15. August erfasst?", "day_lookup"],
   ["Was hab ich am 15. August 2025 erfasst?", "day_lookup"], // explicit year must be honored, not silently dropped
+
+  // Direct "can I get pregnant" phrasing, distinct from the two related
+  // existing intents
+  ["Kann ich heute schwanger werden?", "pregnant_today"],
+  ["ich hatte gestern ungeschützten verkehr. wie hoch ist die wahrscheinlichkeit einer schwangerschaft", "pregnancy_likelihood"],
+  ["Kann ich während der Periode schwanger werden?", "pregnant_during_period_info"],
 
   // Libido search + general educational questions
   ["Hatte ich diesen Zyklus oft Lust?", "libido_search"],

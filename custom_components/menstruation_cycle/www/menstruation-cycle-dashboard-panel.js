@@ -116,6 +116,8 @@
     dashboard_widget_chat_assistant: 'Cycle Q&A',
     dashboard_chat_fab_label: 'Cycle Q&A',
     dashboard_chat_medical_disclaimer: 'Not medical advice. For health concerns, please consult a doctor.',
+    dashboard_chat_pregnant_today_yes: 'Today likely falls within your estimated fertile window.',
+    dashboard_chat_pregnant_today_no: 'Today likely falls outside your estimated fertile window.',
     dashboard_widget_long_term_trend: 'Long-Term Trend',
     dashboard_trend_stable: 'Stable over the tracked period.',
     dashboard_trend_lengthening: 'Trending longer over the tracked period.',
@@ -2080,11 +2082,22 @@
               rangeEnd = new Date(`${year2}-${month2.padStart(2, '0')}-${day2.padStart(2, '0')}T00:00:00`);
               if (Number.isNaN(rangeEnd.getTime()) || rangeEnd < rangeStart) rangeEnd = rangeStart;
             } else {
-              const weekMatch = q.match(/(\d+)\s*wochen?/);
-              const dayCountMatch = q.match(/(\d+)\s*tage?/);
+              // German word-numbers ("eine Woche", "zwei Tage") are at least
+              // as common in conversational phrasing as digits — checked
+              // first since a digit-only regex would otherwise silently
+              // treat these as "no duration given" (0 days), matching only
+              // the single start date instead of the full requested range.
+              const germanNumberWords = {
+                'ein': 1, 'eine': 1, 'einen': 1, 'zwei': 2, 'drei': 3, 'vier': 4, 'fünf': 5,
+                'sechs': 6, 'sieben': 7, 'acht': 8, 'neun': 9, 'zehn': 10,
+              };
+              const numberPattern = Object.keys(germanNumberWords).join('|');
+              const weekWordMatch = q.match(new RegExp(`(${numberPattern}|\\d+)\\s*wochen?`));
+              const dayWordMatch = q.match(new RegExp(`(${numberPattern}|\\d+)\\s*tage?`));
+              const toNumber = (raw) => (raw in germanNumberWords ? germanNumberWords[raw] : parseInt(raw, 10));
               let durationDays = 0;
-              if (weekMatch) durationDays = parseInt(weekMatch[1], 10) * 7;
-              else if (dayCountMatch) durationDays = parseInt(dayCountMatch[1], 10);
+              if (weekWordMatch) durationDays = toNumber(weekWordMatch[1]) * 7;
+              else if (dayWordMatch) durationDays = toNumber(dayWordMatch[1]);
               rangeEnd = new Date(rangeStart.getTime() + Math.max(0, durationDays - 1) * 86400000);
             }
 
@@ -2354,6 +2367,27 @@
             const verdict = inWindow
               ? (this._t('dashboard_chat_fertility_in_window') || 'Der Tag lag in deinem geschätzten fruchtbaren Fenster.')
               : (this._t('dashboard_chat_fertility_outside_window') || 'Der Tag lag außerhalb deines geschätzten fruchtbaren Fensters.');
+            return `${verdict} ${disclaimer}`;
+          },
+        },
+        {
+          // "Kann ich heute schwanger werden?" — direct present-tense
+          // phrasing, distinct from pregnancy_likelihood (needs
+          // "ungeschützt" too) and pregnant_during_period_info (needs
+          // "während der periode" too), so no collision with either.
+          id: 'pregnant_today',
+          specificity: 2,
+          test: (q) => has(q, 'schwanger', 'pregnant') && has(q, 'heute', 'jetzt', 'today', 'now'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const fw = attrs.fertility_forecast;
+            if (!fw?.fertile_window_start) return notAvailable;
+            const todayIso = this._todayIso();
+            const inWindow = todayIso >= fw.fertile_window_start && todayIso <= fw.fertile_window_end;
+            const disclaimer = this._t('dashboard_chat_fertility_disclaimer') || 'Das ist nur eine grobe Einordnung basierend auf dem geschätzten fruchtbaren Fenster, keine verlässliche Aussage zum tatsächlichen Risiko — und kein Ersatz für Verhütung oder eine medizinische Einschätzung.';
+            const verdict = inWindow
+              ? (this._t('dashboard_chat_pregnant_today_yes') || 'Heute liegt voraussichtlich in deinem geschätzten fruchtbaren Fenster.')
+              : (this._t('dashboard_chat_pregnant_today_no') || 'Heute liegt voraussichtlich außerhalb deines geschätzten fruchtbaren Fensters.');
             return `${verdict} ${disclaimer}`;
           },
         },
@@ -5825,11 +5859,28 @@
             font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
             color: var(--secondary-text-color, #6b7280);
             padding: 7px 14px;
-            height: 100%;
-            box-sizing: border-box;
             border-radius: 999px;
             transition: background .15s ease, color .15s ease;
             white-space: nowrap;
+          }
+          /* Scoped to .mode-switch specifically — this is the one context
+             where .mode-btn sits inside a fixed-height (42px) container and
+             needs to fill it exactly. Padding-based sizing here could
+             overflow the container depending on font line-height rendering,
+             so it's centered via flex instead, which isn't sensitive to
+             that. The other four .mode-btn usages (chat suggestions,
+             quick-log options, save button) are NOT inside a fixed-height
+             parent and rely on the base class's natural padding-based
+             sizing above — this override must stay scoped, not applied to
+             .mode-btn globally, or those would collapse to near-zero height. */
+          .mode-switch .mode-btn {
+            line-height: 1;
+            padding: 0 14px;
+            height: 100%;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
           }
           .mc-chat-fab-button {
             position: fixed;

@@ -906,5 +906,7 @@
   "dashboard_trend_shortening": "Tendance au raccourcissement sur la période suivie.",
   "dashboard_chat_error": "Une erreur s'est produite. N'hésitez pas à réessayer.",
   "dashboard_chat_fab_label": "Questions sur le cycle",
-  "dashboard_chat_medical_disclaimer": "Ceci ne constitue pas un avis médical. Pour toute question de santé, consultez un médecin."
+  "dashboard_chat_medical_disclaimer": "Ceci ne constitue pas un avis médical. Pour toute question de santé, consultez un médecin.",
+  "dashboard_chat_pregnant_today_yes": "Aujourd'hui se situe probablement dans votre fenêtre de fertilité estimée.",
+  "dashboard_chat_pregnant_today_no": "Aujourd'hui se situe probablement en dehors de votre fenêtre de fertilité estimée."
 }
