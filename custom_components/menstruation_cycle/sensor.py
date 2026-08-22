@@ -82,6 +82,7 @@ from .model import (
     build_cycle_model,
     compute_contraception_status,
     compute_prediction_day_confidence,
+    estimate_menarche_from_signs,
     grouped_cycle_starts,
     normalize_history,
     predict_future_starts,
@@ -1152,6 +1153,9 @@ class MenstruationGaugeSensor(SensorEntity):
 
         self._state = model.state
         has_history = bool(model.history)
+        resolved_menarche_date = self._resolve_estimated_menarche_date(
+            model.pre_menarche_data, model.menarche_data, self._entry.data.get(CONF_BIRTH_DATE)
+        )
 
         raw_attrs = {
             ATTR_HISTORY: sensor_history,
@@ -1184,11 +1188,8 @@ class MenstruationGaugeSensor(SensorEntity):
             },
             ATTR_BIRTH_DATE: self._entry.data.get(CONF_BIRTH_DATE),
             ATTR_AGE_AT_TRACKING: self._calculate_age(self._entry.data.get(CONF_BIRTH_DATE)),
-            ATTR_ESTIMATED_MENARCHE_DATE: self._calculate_estimated_menarche_date(
-                self._entry.data.get(CONF_BIRTH_DATE),
-                model.menarche_data.get("family_menarche_age"),
-            ) or model.menarche_data.get("estimated_date"),
-            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(model.menarche_data, self._entry.data.get(CONF_BIRTH_DATE)),
+            ATTR_ESTIMATED_MENARCHE_DATE: resolved_menarche_date,
+            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(resolved_menarche_date),
             "menarche_data": model.menarche_data,
             ATTR_PRE_MENARCHE_DATA: model.pre_menarche_data,
             ATTR_MENOPAUSE_DATA: model.menopause_data,
@@ -1245,11 +1246,42 @@ class MenstruationGaugeSensor(SensorEntity):
         }
         self._attrs = _build_compact_sensor_attributes(raw_attrs)
 
-    def _calculate_days_until_menarche(self, menarche_data: dict[str, Any], birth_date: str | None) -> int | None:
-        """Calculate days until estimated menarche."""
-        estimated_date = self._calculate_estimated_menarche_date(
+    def _resolve_estimated_menarche_date(
+        self,
+        pre_menarche_data: dict[str, Any],
+        menarche_data: dict[str, Any],
+        birth_date: str | None,
+    ) -> str | None:
+        """Resolve the best available menarche date estimate, in priority
+        order: (1) sign-based estimate from logged, dated pubertal signs —
+        the most reliable predictor once real physical signs are observed;
+        (2) birth_date + family_menarche_age demographic correlation; (3) a
+        previously/manually stored estimated_date as a last resort.
+
+        This is the server-side counterpart to the dashboard's own
+        three-tier priority (dynamic signs > sensor attribute > age-only
+        fallback) — previously the sensor only ever computed tier 2 and 3,
+        meaning the signs-based estimate the dashboard already showed was
+        never reflected in the sensor's own attributes, so anything reading
+        the raw sensor (e.g. an external app via the API) got a
+        substantially less accurate number than what the dashboard displayed.
+        """
+        sign_estimate = estimate_menarche_from_signs(pre_menarche_data.get("signs") if isinstance(pre_menarche_data, dict) else None)
+        if sign_estimate:
+            return sign_estimate["estimated_date"]
+        demographic_estimate = self._calculate_estimated_menarche_date(
             birth_date, menarche_data.get("family_menarche_age")
-        ) or menarche_data.get("estimated_date")
+        )
+        return demographic_estimate or menarche_data.get("estimated_date")
+
+    def _calculate_days_until_menarche(self, estimated_date: str | None) -> int | None:
+        """Calculate days until an already-resolved estimated menarche date
+        (see _resolve_estimated_menarche_date) — kept as a separate method
+        since "days until" and "the date itself" are both exposed as
+        distinct sensor attributes, but must always agree with each other,
+        which is why the resolution itself now happens exactly once, not
+        independently in both places.
+        """
         if not estimated_date:
             return None
         try:

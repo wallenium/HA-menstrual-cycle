@@ -2116,6 +2116,83 @@ def estimate_fertile_window_for_cycle(
     }
 
 
+# Typical (widely-known, general) lead time from a sign's onset to menarche,
+# used only when there's a real logged_at date for that sign. Values and
+# priority order mirror dashboard-panel.js's MENARCHE_OFFSET_DAYS /
+# MENARCHE_SIGN_PRIORITY exactly — ⚠️ this is a THIRD duplicated copy of an
+# estimation approach in this codebase (alongside the fertile-window formula
+# duplication noted elsewhere), and this one is especially important to keep
+# in sync, since it's not just a rounding-level difference but an entirely
+# different estimation *method* (sign-based vs. pure demographic) — if this
+# drifts from the JS version, the dashboard and the sensor/API will disagree
+# not just slightly but substantially, exactly the kind of mismatch that
+# prompted porting this in the first place.
+MENARCHE_OFFSET_DAYS: dict[str, int] = {
+    "vaginal_discharge_corroborated": 365,  # ~12 months (lower end of 12-18mo range)
+    "vaginal_discharge": 456,               # ~15 months (midpoint of 12-18mo range)
+    "height_spurt": 365,                    # ~12 months (growth spurt peak typically precedes menarche by ~1 year)
+    "breast_development": 640,              # ~21 months (thelarche typically precedes menarche by ~2 years)
+    "pubic_hair_growth": 610,               # ~20 months
+}
+MENARCHE_SIGN_PRIORITY: list[str] = ["vaginal_discharge", "height_spurt", "breast_development", "pubic_hair_growth"]
+
+
+def _normalize_sign_entry(raw: Any) -> dict[str, str | None] | None:
+    """Mirrors the JS _normalizeSignEntry() exactly — same null/empty/'none'
+    handling, same dict-vs-legacy-plain-string handling."""
+    if raw is None or raw == "" or raw == "none":
+        return None
+    if isinstance(raw, dict):
+        stage = raw.get("stage")
+        if stage is None or stage == "" or stage == "none":
+            return None
+        return {"stage": str(stage), "logged_at": raw.get("logged_at") or raw.get("updated_at")}
+    # Legacy: plain string stage, no date available.
+    return {"stage": str(raw), "logged_at": None}
+
+
+def estimate_menarche_from_signs(signs: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Builds a dynamic menarche estimate from whichever logged, dated sign
+    is most proximate/reliable — the server-side port of the dashboard's
+    _estimateMenarcheFromSigns(). Returns None if no dated signs are
+    available yet, matching the JS function's contract exactly.
+    """
+    if not isinstance(signs, dict) or not signs:
+        return None
+
+    for key in MENARCHE_SIGN_PRIORITY:
+        entry = _normalize_sign_entry(signs.get(key))
+        if not entry or not entry.get("logged_at"):
+            continue
+        if key == "height_spurt" and entry.get("stage") not in ("moderate", "significant"):
+            continue
+        try:
+            anchor = date.fromisoformat(str(entry["logged_at"]))
+        except (TypeError, ValueError):
+            continue
+
+        offset_days = MENARCHE_OFFSET_DAYS[key]
+        corroborated = False
+        if key == "vaginal_discharge":
+            # A concurrently-logged moderate/severe acne sign is treated as
+            # reinforcing the discharge signal — two late-stage signs
+            # together point to being further along, so lean toward the
+            # nearer end of the 12-18 month range.
+            acne_entry = _normalize_sign_entry(signs.get("acne"))
+            if acne_entry and acne_entry.get("stage") in ("moderate", "severe"):
+                offset_days = MENARCHE_OFFSET_DAYS["vaginal_discharge_corroborated"]
+                corroborated = True
+
+        estimated = anchor + timedelta(days=offset_days)
+        return {
+            "anchor_date": entry["logged_at"],
+            "estimated_date": estimated.isoformat(),
+            "source_sign": key,
+            "corroborated": corroborated,
+        }
+    return None
+
+
 def build_cycle_predictions(
     history: list[str],
     avg_cycle_length: float | None,
