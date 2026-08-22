@@ -31,6 +31,10 @@ from .const import (
     ATTR_BIRTH_DATE,
     ATTR_BLEEDING_BLOCKS,
     ATTR_DAYS_UNTIL_MENARCHE,
+    ATTR_MENARCHE_ESTIMATE_SOURCE,
+    ATTR_MENARCHE_ESTIMATE_SIGN,
+    ATTR_MENARCHE_ESTIMATE_CORROBORATED,
+    ATTR_MENARCHE_ESTIMATE_ANCHOR_DATE,
     ATTR_DAYS_UNTIL_NEXT_START,
     ATTR_DUE_DATE,
     ATTR_ESTIMATED_MENARCHE_DATE,
@@ -1188,8 +1192,12 @@ class MenstruationGaugeSensor(SensorEntity):
             },
             ATTR_BIRTH_DATE: self._entry.data.get(CONF_BIRTH_DATE),
             ATTR_AGE_AT_TRACKING: self._calculate_age(self._entry.data.get(CONF_BIRTH_DATE)),
-            ATTR_ESTIMATED_MENARCHE_DATE: resolved_menarche_date,
-            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(resolved_menarche_date),
+            ATTR_ESTIMATED_MENARCHE_DATE: resolved_menarche_date["estimated_date"],
+            ATTR_DAYS_UNTIL_MENARCHE: self._calculate_days_until_menarche(resolved_menarche_date["estimated_date"]),
+            ATTR_MENARCHE_ESTIMATE_SOURCE: resolved_menarche_date["source"],
+            ATTR_MENARCHE_ESTIMATE_SIGN: resolved_menarche_date["sign"],
+            ATTR_MENARCHE_ESTIMATE_CORROBORATED: resolved_menarche_date["corroborated"],
+            ATTR_MENARCHE_ESTIMATE_ANCHOR_DATE: resolved_menarche_date["anchor_date"],
             "menarche_data": model.menarche_data,
             ATTR_PRE_MENARCHE_DATA: model.pre_menarche_data,
             ATTR_MENOPAUSE_DATA: model.menopause_data,
@@ -1251,7 +1259,7 @@ class MenstruationGaugeSensor(SensorEntity):
         pre_menarche_data: dict[str, Any],
         menarche_data: dict[str, Any],
         birth_date: str | None,
-    ) -> str | None:
+    ) -> dict[str, Any]:
         """Resolve the best available menarche date estimate, in priority
         order: (1) sign-based estimate from logged, dated pubertal signs —
         the most reliable predictor once real physical signs are observed;
@@ -1265,14 +1273,29 @@ class MenstruationGaugeSensor(SensorEntity):
         never reflected in the sensor's own attributes, so anything reading
         the raw sensor (e.g. an external app via the API) got a
         substantially less accurate number than what the dashboard displayed.
+
+        Returns the full source metadata (not just the date), so the
+        dashboard's "estimate based on X" note can be built purely from
+        sensor attributes too — this is what let the dashboard's own
+        duplicate sign-estimation logic be removed entirely, rather than
+        just being hidden behind the sensor's plainer date/days attributes.
         """
         sign_estimate = estimate_menarche_from_signs(pre_menarche_data.get("signs") if isinstance(pre_menarche_data, dict) else None)
         if sign_estimate:
-            return sign_estimate["estimated_date"]
+            return {
+                "estimated_date": sign_estimate["estimated_date"],
+                "source": "signs",
+                "sign": sign_estimate["source_sign"],
+                "corroborated": sign_estimate["corroborated"],
+                "anchor_date": sign_estimate["anchor_date"],
+            }
         demographic_estimate = self._calculate_estimated_menarche_date(
             birth_date, menarche_data.get("family_menarche_age")
         )
-        return demographic_estimate or menarche_data.get("estimated_date")
+        if demographic_estimate:
+            return {"estimated_date": demographic_estimate, "source": "demographic", "sign": None, "corroborated": False, "anchor_date": None}
+        stored = menarche_data.get("estimated_date")
+        return {"estimated_date": stored, "source": "stored" if stored else None, "sign": None, "corroborated": False, "anchor_date": None}
 
     def _calculate_days_until_menarche(self, estimated_date: str | None) -> int | None:
         """Calculate days until an already-resolved estimated menarche date

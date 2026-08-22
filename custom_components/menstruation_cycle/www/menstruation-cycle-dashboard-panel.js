@@ -675,58 +675,6 @@
   };
   const PRE_MENARCHE_SIGN_KEYS = Object.keys(PRE_MENARCHE_SIGNS);
 
-  // Typical (widely-known, general) lead time from a sign's onset to menarche, used only
-  // when we have a real logged_at date for that sign. Ordered by how proximate/reliable
-  // the signal is — discharge is the closest predictor, breast/pubic hair the least.
-  // These are illustrative averages with wide individual variation, not a diagnosis.
-  //
-  // vaginal_discharge uses the commonly-cited ~12-18 month window from onset of
-  // physiologic discharge (leukorrhea) to menarche, rather than a single point value:
-  // - 365 days (12 months, the near end of the range) when corroborated by a second
-  //   concurrent late-stage sign (moderate/severe acne logged around the same time) —
-  //   multiple concurrent late signs together suggest being further along, not just
-  //   discharge in isolation.
-  // - 456 days (~15 months, the range's midpoint) otherwise.
-  const MENARCHE_OFFSET_DAYS = {
-    vaginal_discharge_corroborated: 365,  // ~12 months (lower end of 12-18mo range)
-    vaginal_discharge: 456,               // ~15 months (midpoint of 12-18mo range)
-    height_spurt: 365,           // ~12 months (growth spurt peak typically precedes menarche by ~1 year)
-    breast_development: 640,     // ~21 months (thelarche typically precedes menarche by ~2 years)
-    pubic_hair_growth: 610,      // ~20 months
-  };
-  const MENARCHE_SIGN_PRIORITY = ['vaginal_discharge', 'height_spurt', 'breast_development', 'pubic_hair_growth'];
-
-  /**
-   * Builds a dynamic menarche estimate from whichever logged, dated sign is most
-   * proximate/reliable. Returns null if no dated signs are available yet.
-   */
-  const _estimateMenarcheFromSigns = (signs) => {
-    for (const key of MENARCHE_SIGN_PRIORITY) {
-      const entry = _normalizeSignEntry(signs[key]);
-      if (!entry || !entry.loggedAt) continue;
-      if (key === 'height_spurt' && !['moderate', 'significant'].includes(entry.stage)) continue;
-      const anchor = new Date(entry.loggedAt);
-      if (Number.isNaN(anchor.getTime())) continue;
-
-      let offsetDays = MENARCHE_OFFSET_DAYS[key];
-      let corroborated = false;
-      if (key === 'vaginal_discharge') {
-        // A concurrently-logged moderate/severe acne sign is treated as reinforcing
-        // the discharge signal — two late-stage signs together point to being
-        // further along, so lean toward the nearer end of the 12-18 month range.
-        const acneEntry = _normalizeSignEntry(signs.acne);
-        if (acneEntry && ['moderate', 'severe'].includes(acneEntry.stage)) {
-          offsetDays = MENARCHE_OFFSET_DAYS.vaginal_discharge_corroborated;
-          corroborated = true;
-        }
-      }
-
-      const estimated = new Date(anchor.getTime() + offsetDays * 86400000);
-      return { anchorDate: entry.loggedAt, estimatedDate: estimated, sourceSign: key, corroborated };
-    }
-    return null;
-  };
-
   const _fetalStageForWeek = (week) => {
     const w = Math.max(4, Math.min(40, Math.round(week)));
     return FETAL_DEVELOPMENT_STAGES.find((s) => w <= s.maxWeek) || FETAL_DEVELOPMENT_STAGES[FETAL_DEVELOPMENT_STAGES.length - 1];
@@ -4162,50 +4110,41 @@
       const signKeys = PRE_MENARCHE_SIGN_KEYS;
       const observedCount = signKeys.filter((k) => _normalizeSignEntry(signs[k]) !== null).length;
 
-      const dynamic = _estimateMenarcheFromSigns(signs);
-      const fallbackEstDate = attrs.estimated_menarche_date ?? (attrs.menarche_data || {}).estimated_date ?? null;
-      const fallbackDaysUntil = attrs.days_until_menarche ?? null;
-      // Weakest fallback: birth_date + population-typical menarche age (~12), only used
-      // when nothing more specific (dated signs, family history) is available.
-      let ageBasedEstimate = null;
-      if (!dynamic && !fallbackEstDate && attrs.birth_date) {
-        const born = new Date(attrs.birth_date);
-        if (!Number.isNaN(born.getTime())) {
-          const est = new Date(born);
-          est.setFullYear(est.getFullYear() + 12);
-          ageBasedEstimate = est;
-        }
-      }
+      // Estimate/days/source now come entirely from the sensor's own
+      // attributes — model.estimate_menarche_from_signs() in Python computes
+      // the same sign-based estimate this dashboard used to duplicate
+      // client-side, so there's no need to recompute it here anymore. This
+      // also means the sensor (and thus the API/external apps) always
+      // agrees with what the dashboard shows, instead of the two being able
+      // to independently drift apart.
+      const estDateStr = attrs.estimated_menarche_date ?? null;
+      const daysUntil = attrs.days_until_menarche ?? null;
+      const estimateSource = attrs.menarche_estimate_source ?? null;
 
       const today = new Date(this._todayIso());
-      let estDateStr; let daysUntil; let pct; let sourceNote;
+      let pct; let sourceNote;
 
-      if (dynamic) {
-        estDateStr = dynamic.estimatedDate.toISOString().slice(0, 10);
-        daysUntil = Math.round((dynamic.estimatedDate - today) / 86400000);
-        const anchor = new Date(dynamic.anchorDate);
-        const totalSpan = dynamic.estimatedDate - anchor;
+      if (estimateSource === 'signs' && attrs.menarche_estimate_anchor_date && estDateStr) {
+        const anchor = new Date(attrs.menarche_estimate_anchor_date);
+        const estimatedDate = new Date(estDateStr);
+        const totalSpan = estimatedDate - anchor;
         const elapsed = today - anchor;
         pct = totalSpan > 0 ? Math.round(Math.min(100, Math.max(0, (elapsed / totalSpan) * 100))) : 100;
-        sourceNote = `${this._t('dashboard_menarche_estimate_from') || 'Schätzung basiert auf'}: ${this._t(dynamic.sourceSign) || dynamic.sourceSign}${dynamic.corroborated ? ` + ${this._t('acne') || 'Hautveränderungen'}` : ''}`;
-      } else if (fallbackEstDate) {
-        estDateStr = fallbackEstDate;
-        daysUntil = fallbackDaysUntil;
+        const signLabel = this._t(attrs.menarche_estimate_sign) || attrs.menarche_estimate_sign;
+        sourceNote = `${this._t('dashboard_menarche_estimate_from') || 'Schätzung basiert auf'}: ${signLabel}${attrs.menarche_estimate_corroborated ? ` + ${this._t('acne') || 'Hautveränderungen'}` : ''}`;
+      } else if (estimateSource === 'demographic') {
+        pct = Math.round((observedCount / signKeys.length) * 100);
+        sourceNote = this._t('dashboard_menarche_estimate_age') || 'Sehr grobe Schätzung anhand des Alters — wird genauer, sobald Anzeichen erfasst werden.';
+      } else if (estDateStr) {
         pct = Math.round((observedCount / signKeys.length) * 100);
         sourceNote = observedCount > 0
           ? (this._t('dashboard_menarche_estimate_generic') || 'Grobschätzung — Datum wird genauer, sobald Anzeichen mit Datum erfasst sind')
           : '';
-      } else if (ageBasedEstimate) {
-        estDateStr = ageBasedEstimate.toISOString().slice(0, 10);
-        daysUntil = Math.round((ageBasedEstimate - today) / 86400000);
-        pct = Math.round((observedCount / signKeys.length) * 100);
-        sourceNote = this._t('dashboard_menarche_estimate_age') || 'Sehr grobe Schätzung anhand des Alters — wird genauer, sobald Anzeichen erfasst werden.';
       } else {
-        estDateStr = null;
-        daysUntil = null;
         pct = Math.round((observedCount / signKeys.length) * 100);
         sourceNote = '';
       }
+
 
       const statusIcon = !discreetMode ? this._statusIconHtml('pre_menarche', 32) : '';
 
