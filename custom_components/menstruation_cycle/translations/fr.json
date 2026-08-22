@@ -177,6 +177,32 @@
           "description": "Nombre de jours récents à inclure (1-730). Par défaut : 180."
         }
       }
+    },
+    "get_cycle_predictions": {
+      "name": "Obtenir les prévisions de cycle",
+      "description": "Récupère les estimations de fenêtre de fertilité et du jour d'ovulation pour les cycles passés et futurs, pas seulement le cycle actuel — la même estimation par cycle déjà affichée par la carte calendrier pour chaque cycle.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Capteur cible de la jauge de menstruation."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Identifiant du profil configuré."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "days_back": {
+          "name": "Jours en arrière",
+          "description": "Nombre de jours de cycles passés à inclure (1-1825). Par défaut : 365."
+        },
+        "future_cycles": {
+          "name": "Cycles futurs",
+          "description": "Nombre de cycles futurs à projeter (0-24). Par défaut : 3."
+        }
+      }
     }
   },
   "issues": {

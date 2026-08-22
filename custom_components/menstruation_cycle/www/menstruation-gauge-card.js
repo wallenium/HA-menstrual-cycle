@@ -305,6 +305,13 @@ class MenstruationGaugeCard extends HTMLElement {
   // Returns the current date. Extracted so tests can override it with a fixed date.
   _todayDate() { return new Date(); }
 
+  // ⚠️ Kept intentionally duplicated, not shared: this same formula also
+  // exists in Python as model.estimate_fertile_window_for_cycle(), exposed
+  // via the get_cycle_predictions service for external clients, and in
+  // menstruation-calendar-card.js's _windowForCycleStart(). All three must
+  // stay in sync — if you change the offset/clamping logic here, make the
+  // same change everywhere else too, or the different views/APIs will start
+  // disagreeing with each other.
   _fertileWindowForCycle(cycleStart, nextCycleStart, avgCycleLength) {
     if (!cycleStart) return null;
     let cycleLen;

@@ -177,6 +177,32 @@
           "description": "Hur många senaste dagar som ska inkluderas (1-730). Standard är 180."
         }
       }
+    },
+    "get_cycle_predictions": {
+      "name": "Hämta cykelprognoser",
+      "description": "Hämtar uppskattningar av fertilt fönster och ägglossningsdag för tidigare och framtida cykler, inte bara den aktuella — samma uppskattning per cykel som kalenderkortet redan visar för varje cykel.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Målsensor för menstruationsmätaren."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "days_back": {
+          "name": "Dagar bakåt",
+          "description": "Hur många dagar av tidigare cykler som ska inkluderas (1-1825). Standard: 365."
+        },
+        "future_cycles": {
+          "name": "Framtida cykler",
+          "description": "Hur många framtida cykler som ska projiceras (0-24). Standard: 3."
+        }
+      }
     }
   },
   "issues": {

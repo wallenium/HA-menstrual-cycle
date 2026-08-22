@@ -177,6 +177,32 @@
           "description": "How many recent days to include (1-730). Defaults to 180."
         }
       }
+    },
+    "get_cycle_predictions": {
+      "name": "Get cycle predictions",
+      "description": "Retrieve fertile window and ovulation day estimates for past and future cycles, not just the current one — the same per-cycle estimate the calendar card already shows for every cycle displayed.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "days_back": {
+          "name": "Days back",
+          "description": "How many days of past cycles to include (1-1825). Defaults to 365."
+        },
+        "future_cycles": {
+          "name": "Future cycles",
+          "description": "How many future cycles to project forward (0-24). Defaults to 3."
+        }
+      }
     }
   },
   "issues": {

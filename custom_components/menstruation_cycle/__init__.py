@@ -89,6 +89,7 @@ from .const import (
     SERVICE_GET_MENARCHE_INFO,
     SERVICE_GET_SYMPTOM,
     SERVICE_GET_FULL_HISTORY,
+    SERVICE_GET_CYCLE_PREDICTIONS,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
     SERVICE_REIMPORT_BASAL_TEMP_STATS,
@@ -108,6 +109,7 @@ from .const import (
     SERVICE_SAVE_TIMER_STATE,
     SERVICE_EXPORT_DOCTOR_REPORT,
     SERVICE_FIELD_DAYS_BACK,
+    SERVICE_FIELD_FUTURE_CYCLES,
     SERVICE_FIELD_PATIENT_NAME,
     SERVICE_FIELD_PATIENT_BIRTHDATE,
     SERVICE_FIELD_LANGUAGE,
@@ -131,7 +133,7 @@ from .const import (
     ICS_TOKEN_KEY,
 )
 from .ical import generate_ics
-from .model import build_cycle_model, normalize_history
+from .model import build_cycle_model, build_cycle_predictions, normalize_history
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
@@ -971,6 +973,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_get_full_history(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_get_full_history(hass, call)
 
+    async def async_get_cycle_predictions(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_get_cycle_predictions(hass, call)
+
     async def async_set_pregnancy_mode(call: ServiceCall) -> None:
         await _async_handle_set_pregnancy_mode(hass, call)
 
@@ -1142,6 +1147,17 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     if SupportsResponse is not None:
         _full_history_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(DOMAIN, SERVICE_GET_FULL_HISTORY, async_get_full_history, **_full_history_register_kwargs)
+
+    _cycle_predictions_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({
+            **common_profile_field,
+            vol.Optional(SERVICE_FIELD_DAYS_BACK, default=365): vol.All(vol.Coerce(int), vol.Range(min=1, max=1825)),
+            vol.Optional(SERVICE_FIELD_FUTURE_CYCLES, default=3): vol.All(vol.Coerce(int), vol.Range(min=0, max=24)),
+        }),
+    }
+    if SupportsResponse is not None:
+        _cycle_predictions_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(DOMAIN, SERVICE_GET_CYCLE_PREDICTIONS, async_get_cycle_predictions, **_cycle_predictions_register_kwargs)
 
     hass.services.async_register(
         DOMAIN,
@@ -2105,6 +2121,57 @@ async def _async_handle_get_full_history(hass: HomeAssistant, call: ServiceCall)
         "product_usage": product_usage,
         "days": days,
     }
+
+
+async def _async_handle_get_cycle_predictions(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Per-cycle fertile window / ovulation estimates for past AND future
+    cycles — not just the current one.
+
+    The main sensor's fertile_window_start/end and ovulation_day attributes
+    only ever describe the *current* cycle. The calendar card already
+    computes this same estimate for every cycle it displays (past and
+    projected future ones), using a client-side JS formula — but that
+    calculation was never exposed anywhere an external client could query it
+    directly. This service ports that same formula server-side
+    (model.build_cycle_predictions) so an external app doesn't have to
+    reimplement it just to get the same predictions the calendar already
+    shows.
+    """
+    runtime = _runtime_for_call(hass, call)
+    raw_days_back = call.data.get(SERVICE_FIELD_DAYS_BACK, 365)
+    raw_future_cycles = call.data.get(SERVICE_FIELD_FUTURE_CYCLES, 3)
+    try:
+        days_back = max(1, min(1825, int(raw_days_back)))
+    except (TypeError, ValueError):
+        days_back = 365
+    try:
+        future_cycles = max(0, min(24, int(raw_future_cycles)))
+    except (TypeError, ValueError):
+        future_cycles = 3
+
+    today = dt_util.now().date()
+    model = build_cycle_model(
+        history=runtime.history,
+        period_duration_days=runtime.period_duration_days,
+        symptom_history=runtime.symptom_history,
+        pregnancy_data=runtime.pregnancy_data,
+        menarche_data=runtime.menarche_data,
+        pre_menarche_data=runtime.pre_menarche_data,
+        menopause_data=runtime.menopause_data,
+        noncycle_data=runtime.noncycle_data,
+        today=today,
+        cycle_length_override=runtime.cycle_length_override,
+        nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+        onboarding_stage=getattr(runtime, "onboarding_stage", None),
+    )
+
+    cycles = build_cycle_predictions(
+        history=runtime.history,
+        avg_cycle_length=model.avg_cycle_length,
+        future_cycles=future_cycles,
+        days_back=days_back,
+    )
+    return {"cycles": cycles, "days_back": days_back, "future_cycles": future_cycles}
 
 
 async def _async_handle_set_pregnancy_mode(hass: HomeAssistant, call: ServiceCall) -> None:

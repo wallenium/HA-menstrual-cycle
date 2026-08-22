@@ -2070,6 +2070,114 @@ def _window_bounds(center_iso: str, half_span_days: int) -> tuple[str, str] | No
     )
 
 
+def _js_round(value: float) -> int:
+    """Rounds like JavaScript's Math.round() (always rounds .5 up), unlike
+    Python's built-in round() (banker's rounding — rounds .5 to the nearest
+    even number, which can differ from JS for exact .5 values). Used here so
+    this server-side calculation always matches the calendar card's
+    client-side JS calculation exactly, not just for most inputs.
+    """
+    import math
+    return math.floor(value + 0.5)
+
+
+def estimate_fertile_window_for_cycle(
+    cycle_start: date,
+    next_cycle_start: date | None,
+    avg_cycle_length: float | None,
+) -> dict[str, str]:
+    """Estimate the fertile window and ovulation day for a single cycle,
+    given its start date and (if known) the following cycle's start date.
+
+    This mirrors the same formula that exists client-side in BOTH
+    menstruation-calendar-card.js (_windowForCycleStart) and
+    menstruation-gauge-card.js (_fertileWindowForCycle) exactly (same
+    clamping, same offset) — those two cards intentionally keep their own
+    copies rather than calling this service, since they need the result
+    synchronously while rendering, not via an async service round-trip.
+
+    ⚠️ All three implementations must stay in sync. If you change the
+    offset/clamping logic here, make the same change in both JS files too
+    (and vice versa), or the calendar's/gauge's visual display and this
+    service's output will start disagreeing with each other.
+    """
+    cycle_len = avg_cycle_length
+    if next_cycle_start is not None:
+        length = (next_cycle_start - cycle_start).days
+        if 20 <= length <= 60:
+            cycle_len = length
+    cl = max(20, min(60, _js_round(cycle_len) if cycle_len else 28))
+    ovulation_offset = (cl // 2) - 1
+    ovulation_day = cycle_start + timedelta(days=ovulation_offset)
+    return {
+        "fertile_window_start": (ovulation_day - timedelta(days=5)).isoformat(),
+        "fertile_window_end": (ovulation_day + timedelta(days=1)).isoformat(),
+        "ovulation_day": ovulation_day.isoformat(),
+    }
+
+
+def build_cycle_predictions(
+    history: list[str],
+    avg_cycle_length: float | None,
+    future_cycles: int = 3,
+    days_back: int = 365,
+) -> list[dict[str, Any]]:
+    """Per-cycle fertile window / ovulation estimates for both past and
+    future cycles — the "all cycles, not just the current one" data the
+    calendar already shows visually but wasn't previously queryable.
+
+    Past cycles use their actual observed length (from consecutive start
+    dates); the most recent past cycle and all future cycles fall back to
+    avg_cycle_length, same as the calendar's own logic. `history` is raw,
+    unprocessed cycle-start data — normalized and grouped here, matching how
+    build_cycle_model/compute_statistics handle their own history input.
+    """
+    grouped_starts = grouped_cycle_starts(normalize_history(history))
+
+    def _try_parse(iso: str) -> date | None:
+        try:
+            return date.fromisoformat(str(iso))
+        except (TypeError, ValueError):
+            return None
+
+    valid_starts = sorted(d for s in grouped_starts if (d := _try_parse(s)) is not None)
+    if not valid_starts:
+        return []
+
+    cutoff = date.today() - timedelta(days=max(1, days_back))
+    results: list[dict[str, Any]] = []
+
+    for i, start in enumerate(valid_starts):
+        if start < cutoff:
+            continue
+        next_start = valid_starts[i + 1] if i + 1 < len(valid_starts) else None
+        estimate = estimate_fertile_window_for_cycle(start, next_start, avg_cycle_length)
+        results.append({
+            "cycle_start": start.isoformat(),
+            "cycle_end": (next_start - timedelta(days=1)).isoformat() if next_start else None,
+            "is_projected": False,
+            **estimate,
+        })
+
+    # Project future cycles forward from the last known start, using the
+    # average length — same approach as the chat's "period in range" answer.
+    if valid_starts and avg_cycle_length and future_cycles > 0:
+        cursor = valid_starts[-1]
+        step = max(20, min(60, _js_round(avg_cycle_length)))
+        for _ in range(future_cycles):
+            projected_start = cursor + timedelta(days=step)
+            estimate = estimate_fertile_window_for_cycle(projected_start, None, avg_cycle_length)
+            results.append({
+                "cycle_start": projected_start.isoformat(),
+                "cycle_end": (projected_start + timedelta(days=step - 1)).isoformat(),
+                "is_projected": True,
+                **estimate,
+            })
+            cursor = projected_start
+
+    return results
+
+
 def build_cycle_model(
     history: list[str],
     period_duration_days: int,

@@ -177,6 +177,32 @@
           "description": "Wie viele zurückliegende Tage einbezogen werden (1-730). Standard ist 180."
         }
       }
+    },
+    "get_cycle_predictions": {
+      "name": "Zyklus-Vorhersagen abrufen",
+      "description": "Ruft Schätzungen für fruchtbares Fenster und Eisprung für vergangene und zukünftige Zyklen ab, nicht nur den aktuellen — dieselbe Pro-Zyklus-Schätzung, die die Kalender-Karte bereits für jeden angezeigten Zyklus zeigt.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Ziel-Sensor der Menstruations-Anzeige."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Kennung des Konfigurationseintrags."
+        },
+        "days_back": {
+          "name": "Tage zurück",
+          "description": "Wie viele Tage vergangener Zyklen einbezogen werden (1-1825). Standard: 365."
+        },
+        "future_cycles": {
+          "name": "Zukünftige Zyklen",
+          "description": "Wie viele zukünftige Zyklen vorausberechnet werden (0-24). Standard: 3."
+        }
+      }
     }
   },
   "issues": {

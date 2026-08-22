@@ -413,6 +413,13 @@ class MenstruationCalendarCard extends HTMLElement {
     return 28;
   }
 
+  // ⚠️ Kept intentionally duplicated, not shared: this same formula also
+  // exists in Python as model.estimate_fertile_window_for_cycle(), exposed
+  // via the get_cycle_predictions service for external clients, and in
+  // menstruation-gauge-card.js's _fertileWindowForCycle(). All three must
+  // stay in sync — if you change the offset/clamping logic here, make the
+  // same change everywhere else too, or the different views/APIs will start
+  // disagreeing with each other.
   _windowForCycleStart(cycleStartIso, nextCycleStartIso, avgCycleLength) {
     if (!cycleStartIso) return null;
     let cycleLen = avgCycleLength;

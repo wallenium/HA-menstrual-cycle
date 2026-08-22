@@ -177,6 +177,32 @@
           "description": "Cuántos días recientes incluir (1-730). El valor predeterminado es 180."
         }
       }
+    },
+    "get_cycle_predictions": {
+      "name": "Obtener predicciones del ciclo",
+      "description": "Obtiene estimaciones de la ventana fértil y el día de ovulación para ciclos pasados y futuros, no solo el actual — la misma estimación por ciclo que la tarjeta de calendario ya muestra para cada ciclo.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Sensor objetivo del indicador de menstruación."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Identificador del perfil configurado."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "days_back": {
+          "name": "Días atrás",
+          "description": "Cuántos días de ciclos pasados incluir (1-1825). Por defecto: 365."
+        },
+        "future_cycles": {
+          "name": "Ciclos futuros",
+          "description": "Cuántos ciclos futuros proyectar (0-24). Por defecto: 3."
+        }
+      }
     }
   },
   "issues": {

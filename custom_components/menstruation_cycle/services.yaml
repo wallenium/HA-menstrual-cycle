@@ -463,6 +463,52 @@ get_full_history:
           max: 730
           mode: box
 
+get_cycle_predictions:
+  name: Get cycle predictions
+  description: >-
+    Retrieve fertile window and ovulation day estimates for past and future
+    cycles, not just the current one. The sensor's own
+    fertile_window_start/end and ovulation_day attributes only ever describe
+    the current cycle — this service returns the same per-cycle estimate the
+    calendar card already computes and displays for every cycle shown,
+    including past cycles (using their actual observed length) and projected
+    future ones (using the average cycle length).
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    days_back:
+      required: false
+      example: 365
+      description: How many days of past cycles to include (1–1825). Defaults to 365.
+      selector:
+        number:
+          min: 1
+          max: 1825
+          mode: box
+    future_cycles:
+      required: false
+      example: 3
+      description: How many future cycles to project forward (0–24). Defaults to 3.
+      selector:
+        number:
+          min: 0
+          max: 24
+          mode: box
+
 set_pregnancy_mode:
   name: Set pregnancy mode
   description: Enable or disable pregnancy mode. When enabled, the sensor reports pregnancy state with weeks pregnant and due date.
