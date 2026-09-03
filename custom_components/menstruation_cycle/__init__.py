@@ -38,7 +38,9 @@ from .const import (
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
+    ATTR_VISIBILITY_LEVEL,
     CONF_ONBOARDING_STAGE,
+    CONF_VISIBILITY_LEVEL,
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_DASHBOARD_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
@@ -53,11 +55,13 @@ from .const import (
     DEFAULT_DASHBOARD_ENABLED,
     DEFAULT_NAME,
     DEFAULT_ONBOARDING_STAGE,
+    DEFAULT_VISIBILITY_LEVEL,
     DEFAULT_PERIOD_DURATION_DAYS,
     DEFAULT_MENARCHE_AGE_MAX,
     DEFAULT_MENARCHE_AGE_MIN,
     DOMAIN,
     ONBOARDING_STAGES,
+    VISIBILITY_LEVELS,
     PRE_MENARCHE_SIGN_OPTIONS,
     SERVICE_ADD_CYCLE_START,
     SERVICE_ADD_PRE_MENARCHE_SIGN,
@@ -106,6 +110,8 @@ from .const import (
     SERVICE_SET_MENOPAUSE_MODE,
     SERVICE_SET_PERIOD_DURATION,
     SERVICE_SET_PREGNANCY_MODE,
+    SERVICE_SET_PROFILE_VISIBILITY,
+    SERVICE_FIELD_VISIBILITY_LEVEL,
     SERVICE_SAVE_TIMER_STATE,
     SERVICE_EXPORT_DOCTOR_REPORT,
     SERVICE_FIELD_DAYS_BACK,
@@ -255,6 +261,10 @@ class MenstruationRuntime:
         "basal_temp_stats_backfilled": False,
     })
     onboarding_stage: str = DEFAULT_ONBOARDING_STAGE
+    # Sichtbarkeitsstufe fuer sensible Attribute (Feature-Wunsch 02.09.2026,
+    # "abgestufte Eltern-Sichtbarkeit"), siehe Kommentar an
+    # const.py::CONF_VISIBILITY_LEVEL.
+    visibility_level: str = DEFAULT_VISIBILITY_LEVEL
     unregister_midnight_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
@@ -875,6 +885,7 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
         runtime.noncycle_data,
         cycle_length_override=runtime.cycle_length_override,
         onboarding_stage=runtime.onboarding_stage,
+        visibility_level=runtime.visibility_level,
     )
     await _async_refresh_cycle_model(hass, {_entry_id_for_runtime(hass, runtime)})
 
@@ -1011,6 +1022,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
 
     async def async_export_doctor_report(call: ServiceCall) -> None:
         await _async_handle_export_doctor_report(hass, call)
+
+    async def async_set_profile_visibility(call: ServiceCall) -> None:
+        await _async_handle_set_profile_visibility(hass, call)
 
     hass.services.async_register(
         DOMAIN,
@@ -1268,6 +1282,16 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         }),
     )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PROFILE_VISIBILITY,
+        async_set_profile_visibility,
+        schema=vol.Schema({
+            **common_profile_field,
+            vol.Required(SERVICE_FIELD_VISIBILITY_LEVEL): vol.In(VISIBILITY_LEVELS),
+        }),
+    )
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up integration from YAML (not used, config-entry only)."""
@@ -1406,6 +1430,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if onboarding_stage not in ONBOARDING_STAGES:
         onboarding_stage = DEFAULT_ONBOARDING_STAGE
 
+    # Sichtbarkeitsstufe (Feature-Wunsch 02.09.2026) wird bewusst NUR ueber
+    # den neuen Service set_profile_visibility gesetzt, nicht ueber den
+    # Options-Flow (anders als onboarding_stage oben) - die Person, die das
+    # Profil betrifft, soll das direkt aus der Companion-App heraus steuern
+    # koennen, ohne dass eine zweite Konfigurationsoberflaeche denselben Wert
+    # ueberschreiben kann. Deshalb nur aus dem persistenten Storage gelesen.
+    visibility_level = str(stored.get(CONF_VISIBILITY_LEVEL) or "").strip().lower()
+    if visibility_level not in VISIBILITY_LEVELS:
+        visibility_level = DEFAULT_VISIBILITY_LEVEL
+
     ics_token: str = stored.get(ICS_TOKEN_KEY) or ""
     if not ics_token:
         ics_token = secrets.token_urlsafe(32)
@@ -1427,6 +1461,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         menopause_data=stored.get("menopause_data", {"is_menopause": False, "start_date": None}),
         noncycle_data=stored.get("noncycle_data", {"has_noncycle": False}),
         onboarding_stage=onboarding_stage,
+        visibility_level=visibility_level,
         cycle_length_override=stored.get("cycle_length_override"),
     )
 
@@ -1737,6 +1772,28 @@ async def _async_handle_set_history(hass: HomeAssistant, call: ServiceCall) -> N
 async def _async_handle_set_period_duration(hass: HomeAssistant, call: ServiceCall) -> None:
     runtime = _runtime_for_call(hass, call)
     runtime.period_duration_days = int(call.data[SERVICE_FIELD_DAYS])
+    await _async_save_and_notify(hass, runtime)
+
+
+async def _async_handle_set_profile_visibility(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Set how much of this profile's sensitive data appears in its sensor
+    attributes (Feature-Wunsch 02.09.2026, "abgestufte Eltern-Sichtbarkeit").
+
+    Bewusst wie set_period_duration ein einfacher, direkter Setter ohne
+    weitere Bedingungen - jede Person, die den Service aufrufen kann, darf
+    das fuer jedes konfigurierte Profil aendern (siehe const.py-Kommentar an
+    CONF_VISIBILITY_LEVEL: diese Integration unterscheidet nicht zwischen
+    aufrufenden Geraeten/Personen). Die Absicht ist, dass die App dies nur
+    auf dem eigenen Geraet der jeweiligen Person fuer ihr eigenes Profil
+    aufruft, technisch durchsetzbar ist das serverseitig aber nicht.
+    """
+    runtime = _runtime_for_call(hass, call)
+    level = str(call.data[SERVICE_FIELD_VISIBILITY_LEVEL]).strip().lower()
+    if level not in VISIBILITY_LEVELS:
+        raise HomeAssistantError(
+            f"Unknown visibility level '{level}'. Expected one of: {', '.join(VISIBILITY_LEVELS)}"
+        )
+    runtime.visibility_level = level
     await _async_save_and_notify(hass, runtime)
 
 

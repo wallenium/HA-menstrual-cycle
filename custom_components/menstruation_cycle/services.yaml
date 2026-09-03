@@ -939,3 +939,43 @@ export_doctor_report:
           options:
             - "de"
             - "en"
+
+set_profile_visibility:
+  name: Set profile visibility
+  description: >-
+    Set how much of this profile's cycle/symptom data appears in its sensor
+    attributes (dashboard cards, and the "at a glance" overview in companion
+    apps). "full" shows everything as before. "status_only" reduces it to
+    forecast-only values (next predicted start, average cycle length,
+    period duration) - no symptom, mood, contraception, pregnancy or
+    menarche details. "private" hides everything except that the profile
+    exists. Note: this only affects the sensor's passive/at-a-glance
+    attributes, not services like get_full_history/get_cycle_predictions
+    that are called deliberately by whoever has access to this integration.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    level:
+      required: true
+      example: "status_only"
+      description: One of "full", "status_only", "private".
+      selector:
+        select:
+          options:
+            - "full"
+            - "status_only"
+            - "private"

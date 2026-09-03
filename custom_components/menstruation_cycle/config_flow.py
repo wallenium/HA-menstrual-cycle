@@ -611,6 +611,16 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 runtime.noncycle_data,
                 cycle_length_override=new_cycle_length_override,
                 onboarding_stage=new_onboarding_stage,
+                # visibility_level wird bewusst NICHT vom Options-Flow
+                # gesetzt (nur ueber den Service set_profile_visibility,
+                # siehe Kommentar an CONF_VISIBILITY_LEVEL in const.py) -
+                # hier trotzdem explizit den aktuellen Runtime-Wert
+                # mitschicken, sonst wuerde jedes Speichern dieses Formulars
+                # die Sichtbarkeitsstufe unbeabsichtigt auf den Default
+                # zurücksetzen (storage.async_save faellt sonst auf
+                # DEFAULT_VISIBILITY_LEVEL zurueck, wenn nichts uebergeben
+                # wird).
+                visibility_level=runtime.visibility_level,
             )
             async_dispatcher_send(self.hass, SIGNAL_HISTORY_UPDATED)
         else:
@@ -633,6 +643,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 new_noncycle_data,
                 cycle_length_override=new_cycle_length_override,
                 onboarding_stage=new_onboarding_stage,
+                # Gleicher Grund wie im runtime-Zweig oben: den bereits
+                # gespeicherten Wert unveraendert mitschicken, statt ihn
+                # durch Weglassen auf den Default zurueckfallen zu lassen.
+                visibility_level=stored_full.get("visibility_level"),
             )
 
         self.hass.config_entries.async_update_entry(

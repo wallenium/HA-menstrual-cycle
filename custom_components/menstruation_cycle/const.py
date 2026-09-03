@@ -31,6 +31,18 @@ CONF_CYCLE_LENGTH_OVERRIDE = "cycle_length_override"
 CONF_NUM_PREDICTIONS = "num_predictions"
 CONF_NFP_ANALYSIS_MODE = "nfp_analysis_mode"
 CONF_ONBOARDING_STAGE = "onboarding_stage"
+# Sichtbarkeitsstufe fuer sensible Profildaten in den Sensor-Attributen
+# (Feature-Wunsch 02.09.2026, "abgestufte Eltern-Sichtbarkeit" /
+# M-Cycle-App-Nachtrag Abschnitt 4.35): steuert, welche Attribute
+# MenstruationGaugeSensor.async_update ueberhaupt in extra_state_attributes
+# schreibt, siehe sensor.py::_filter_attributes_for_visibility. Betrifft
+# NUR die Sensor-Attribute (Dashboard/Lovelace, sowie die Uebersichts-
+# Ansichten der Companion-App) - Services wie get_full_history/
+# get_cycle_predictions, die bewusst und gezielt aufgerufen werden, bleiben
+# unveraendert, da die Integration keine Moeglichkeit hat, zwischen
+# verschiedenen aufrufenden Geraeten/Personen zu unterscheiden (kein
+# ServiceCall.context.user_id-Handling in dieser Integration).
+CONF_VISIBILITY_LEVEL = "visibility_level"
 CONF_SHOW_CYCLE_DASHBOARD = "show_cycle_dashboard"
 CONF_CYCLE_DASHBOARD_DEFAULT_PAGE = "cycle_dashboard_default_page"
 CONF_DASHBOARD_DISCREET_MODE = "dashboard_discreet_mode"
@@ -66,6 +78,21 @@ ONBOARDING_STAGES = [
     ONBOARDING_STAGE_ESTABLISHED_CYCLE,
 ]
 DEFAULT_ONBOARDING_STAGE = ONBOARDING_STAGE_ESTABLISHED_CYCLE
+
+# Sichtbarkeitsstufen fuer CONF_VISIBILITY_LEVEL/ATTR_VISIBILITY_LEVEL, siehe
+# Kommentar dort. "full" (Standard, unveraendertes bisheriges Verhalten) -
+# alle Attribute wie gehabt. "status_only" - nur grobe Vorhersage-nahe Werte
+# (naechste Periode/aktuelle Phase), keine Symptom-/Gesundheitsdetails.
+# "private" - praktisch nichts ausser der Tatsache, dass das Profil existiert.
+VISIBILITY_LEVEL_FULL = "full"
+VISIBILITY_LEVEL_STATUS_ONLY = "status_only"
+VISIBILITY_LEVEL_PRIVATE = "private"
+VISIBILITY_LEVELS = [
+    VISIBILITY_LEVEL_FULL,
+    VISIBILITY_LEVEL_STATUS_ONLY,
+    VISIBILITY_LEVEL_PRIVATE,
+]
+DEFAULT_VISIBILITY_LEVEL = VISIBILITY_LEVEL_FULL
 
 DEFAULT_NAME = "Menstruation"
 DEFAULT_PERIOD_DURATION_DAYS = 5
@@ -120,6 +147,7 @@ ATTR_ONBOARDING_STAGE = "onboarding_stage"
 ATTR_ONBOARDING_STAGE_EFFECTIVE = "onboarding_stage_effective"
 ATTR_LEARNING_PHASE = "learning_phase"
 ATTR_PREDICTION_GATING = "prediction_gating"
+ATTR_VISIBILITY_LEVEL = "visibility_level"
 
 SERVICE_ADD_CYCLE_START = "add_cycle_start"
 SERVICE_REMOVE_CYCLE_START = "remove_cycle_start"
@@ -148,6 +176,7 @@ SERVICE_SET_MENOPAUSE_MODE = "set_menopause_mode"
 SERVICE_UPDATE_MENOPAUSE_DATE = "update_menopause_date"
 SERVICE_SAVE_TIMER_STATE = "save_timer_state"
 SERVICE_EXPORT_DOCTOR_REPORT = "export_doctor_report"
+SERVICE_SET_PROFILE_VISIBILITY = "set_profile_visibility"
 
 SERVICE_FIELD_DATE = "date"
 SERVICE_FIELD_DATES = "dates"
@@ -180,6 +209,7 @@ SERVICE_FIELD_PATIENT_NAME = "patient_name"
 SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
 SERVICE_FIELD_INCLUDE_CHARTS = "include_charts"
+SERVICE_FIELD_VISIBILITY_LEVEL = "level"
 
 SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
@@ -198,6 +228,12 @@ STATE_PRE_MENARCHE = "pre_menarche"
 STATE_MENARCHE = "menarche"
 STATE_MENOPAUSE = "menopause"
 STATE_POSTPARTUM = "postpartum"
+# Ueberschreibt den sonst berechneten Zustand (period/fertile/pms/...),
+# solange CONF_VISIBILITY_LEVEL/ATTR_VISIBILITY_LEVEL == VISIBILITY_LEVEL_PRIVATE
+# ist - sonst wuerde selbst der reine Entity-State (z. B. "period") schon
+# verraten, was eigentlich verborgen bleiben soll. Siehe sensor.py::
+# _filter_attributes_for_visibility.
+STATE_PRIVATE = "private"
 
 # Symptom field definitions
 SYMPTOM_BLEEDING_STRENGTH = "bleeding_strength"

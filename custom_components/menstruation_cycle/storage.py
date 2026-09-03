@@ -11,7 +11,14 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import DEFAULT_ONBOARDING_STAGE, ONBOARDING_STAGES, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    DEFAULT_ONBOARDING_STAGE,
+    DEFAULT_VISIBILITY_LEVEL,
+    ONBOARDING_STAGES,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+    VISIBILITY_LEVELS,
+)
 
 
 _PRODUCT_USAGE_PRODUCT_ALIASES: dict[str, str] = {
@@ -71,6 +78,7 @@ class MenstruationStorage:
                 "noncycle_data": {"has_noncycle": False},
                 "cycle_length_override": None,
                 "onboarding_stage": DEFAULT_ONBOARDING_STAGE,
+                "visibility_level": DEFAULT_VISIBILITY_LEVEL,
             }
 
         history = data.get("history", [])
@@ -139,6 +147,9 @@ class MenstruationStorage:
         raw_stage = str(data.get("onboarding_stage") or "").strip().lower()
         onboarding_stage = raw_stage if raw_stage in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
 
+        raw_visibility = str(data.get("visibility_level") or "").strip().lower()
+        visibility_level = raw_visibility if raw_visibility in VISIBILITY_LEVELS else DEFAULT_VISIBILITY_LEVEL
+
         ics_token = data.get("ics_token")
         if not isinstance(ics_token, str) or not ics_token:
             ics_token = None
@@ -155,6 +166,7 @@ class MenstruationStorage:
             "noncycle_data": noncycle_data,
             "cycle_length_override": cycle_length_override,
             "onboarding_stage": onboarding_stage,
+            "visibility_level": visibility_level,
             "ics_token": ics_token,
         }
 
@@ -171,6 +183,7 @@ class MenstruationStorage:
         noncycle_data: dict[str, Any] | None = None,
         cycle_length_override: int | None = None,
         onboarding_stage: str | None = None,
+        visibility_level: str | None = None,
         ics_token: str | None = None,
     ) -> None:
         """Save data to storage."""
@@ -196,6 +209,10 @@ class MenstruationStorage:
         if normalized_stage not in ONBOARDING_STAGES:
             normalized_stage = DEFAULT_ONBOARDING_STAGE
 
+        normalized_visibility = str(visibility_level or "").strip().lower()
+        if normalized_visibility not in VISIBILITY_LEVELS:
+            normalized_visibility = DEFAULT_VISIBILITY_LEVEL
+
         await self._store.async_save(
             {
                 "history": normalized,
@@ -209,6 +226,7 @@ class MenstruationStorage:
                 "noncycle_data": nc_data,
                 "cycle_length_override": validated_override,
                 "onboarding_stage": normalized_stage,
+                "visibility_level": normalized_visibility,
                 "ics_token": ics_token if isinstance(ics_token, str) and ics_token else await self._load_existing_ics_token(),
             }
         )

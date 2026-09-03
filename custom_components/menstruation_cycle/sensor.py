@@ -68,6 +68,12 @@ from .const import (
     ATTR_PREDICTION_GATING,
     ATTR_FERTILITY_FORECAST,
     ATTR_LEARNING_PHASE,
+    ATTR_VISIBILITY_LEVEL,
+    DEFAULT_VISIBILITY_LEVEL,
+    STATE_PRIVATE,
+    VISIBILITY_LEVEL_FULL,
+    VISIBILITY_LEVEL_PRIVATE,
+    VISIBILITY_LEVEL_STATUS_ONLY,
     CONF_BIRTH_DATE,
     DEFAULT_MENARCHE_AGE_MAX,
     DEFAULT_MENARCHE_AGE_MIN,
@@ -331,6 +337,60 @@ def _compact_symptom_history_entries(entries: Any) -> Any:
             continue
         compact.append({key: entry.get(key) for key in keep_keys if key in entry})
     return compact
+
+
+# Immer vorhanden, unabhaengig von der Sichtbarkeitsstufe - strukturelle
+# Metadaten fuers Routing/Identifizieren des Profils in der Companion-App,
+# keine Zyklus-/Gesundheitsinhalte im eigentlichen Sinn (Feature-Wunsch
+# 02.09.2026, "abgestufte Eltern-Sichtbarkeit").
+_VISIBILITY_ALWAYS_KEPT_KEYS = {
+    "profile",
+    "entry_id",
+    "friendly_name",
+    "is_primary_profile_sensor",
+    ATTR_ONBOARDING_STAGE,
+    ATTR_ONBOARDING_STAGE_EFFECTIVE,
+    ATTR_LEARNING_PHASE,
+    ATTR_PREDICTION_GATING,
+    ATTR_VISIBILITY_LEVEL,
+}
+
+# Zusaetzlich bei VISIBILITY_LEVEL_STATUS_ONLY sichtbar: rein vorhersagenahe
+# Werte ("wann kommt die naechste Periode voraussichtlich"), bewusst OHNE
+# Symptom-/Stimmungs-/Verhuetungs-/Schwangerschafts-/Fruchtbarkeitsdetails,
+# Notizen, Geburtsdatum oder rohe Historie.
+_VISIBILITY_STATUS_ONLY_KEYS = _VISIBILITY_ALWAYS_KEPT_KEYS | {
+    ATTR_NEXT_PREDICTED_START,
+    ATTR_DAYS_UNTIL_NEXT_START,
+    ATTR_PREDICTED_CYCLE_STARTS,
+    ATTR_AVG_CYCLE_LENGTH,
+    ATTR_PERIOD_DURATION_DAYS,
+    "period_duration_default_days",
+    "period_duration_learned_avg_days",
+    ATTR_PERIOD_FORECAST,
+}
+
+
+def _filter_attributes_for_visibility(raw_attrs: dict[str, Any], level: str) -> dict[str, Any]:
+    """Redact sensible Attribute je nach CONF_VISIBILITY_LEVEL (Feature-Wunsch
+    02.09.2026, "abgestufte Eltern-Sichtbarkeit", M-Cycle-App-Nachtrag
+    Abschnitt 4.35).
+
+    WICHTIG: Das filtert nur, was in extra_state_attributes dieses Sensors
+    landet (Home-Assistant-Dashboard/Lovelace-Karten sowie die "auf einen
+    Blick"-Uebersicht der Companion-App) - NICHT, was gezielte Service-
+    Aufrufe wie get_full_history/get_cycle_predictions zurueckliefern. Diese
+    Integration unterscheidet nicht zwischen aufrufenden Geraeten/Personen
+    (kein ServiceCall.context.user_id-Handling), eine harte, echte
+    Zugriffskontrolle pro Person ist serverseitig also nicht moeglich - siehe
+    Kommentar an const.py::CONF_VISIBILITY_LEVEL. Wer das betroffene Profil
+    bewusst in der App oeffnet, sieht dort weiterhin die volle Detailansicht;
+    diese Filterung schuetzt die passive/beilaeufige Sichtbarkeit.
+    """
+    if level == VISIBILITY_LEVEL_FULL:
+        return raw_attrs
+    allowed = _VISIBILITY_STATUS_ONLY_KEYS if level == VISIBILITY_LEVEL_STATUS_ONLY else _VISIBILITY_ALWAYS_KEPT_KEYS
+    return {key: value for key, value in raw_attrs.items() if key in allowed}
 
 
 def _build_compact_sensor_attributes(raw_attrs: dict[str, Any]) -> dict[str, StateType]:
@@ -1215,6 +1275,7 @@ class MenstruationGaugeSensor(SensorEntity):
             "profile": runtime.profile,
             "entry_id": self._entry.entry_id,
             "friendly_name": runtime.friendly_name,
+            ATTR_VISIBILITY_LEVEL: getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL),
             # Explicit marker so consumers (e.g. the dashboard panel's entity/profile
             # picker) can reliably identify "this is the one sensor per profile that
             # represents a selectable person", instead of guessing from entity_id
@@ -1252,7 +1313,14 @@ class MenstruationGaugeSensor(SensorEntity):
             "progress_badges": progress_badges,
             "progress_badges_new_this_week": progress_badges_new_this_week,
         }
+        visibility_level = getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL)
+        raw_attrs = _filter_attributes_for_visibility(raw_attrs, visibility_level)
         self._attrs = _build_compact_sensor_attributes(raw_attrs)
+        if visibility_level == VISIBILITY_LEVEL_PRIVATE:
+            # Sonst wuerde selbst der reine Entity-State (z. B. "period")
+            # schon verraten, was eigentlich verborgen bleiben soll - siehe
+            # STATE_PRIVATE-Kommentar in const.py.
+            self._state = STATE_PRIVATE
 
     def _resolve_estimated_menarche_date(
         self,
@@ -1592,6 +1660,11 @@ async def _async_save_backfill_flag(runtime: Any) -> None:
         runtime.noncycle_data,
         cycle_length_override=runtime.cycle_length_override,
         onboarding_stage=runtime.onboarding_stage,
+        # Siehe Kommentar an den analogen Stellen in config_flow.py: ohne
+        # dies explizit mitzugeben, würde async_save auf den Default
+        # ("full") zurückfallen und eine gesetzte Sichtbarkeitsstufe
+        # unbeabsichtigt zurücksetzen.
+        visibility_level=runtime.visibility_level,
     )
 
 
