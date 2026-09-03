@@ -129,6 +129,10 @@ from .const import (
     SYMPTOM_BASAL_TEMP,
     SYMPTOM_CLOTS,
     SYMPTOM_CLOT_SIZE,
+    SYMPTOM_MOOD,
+    SYMPTOM_MOOD_MAX_LENGTH,
+    SYMPTOM_NOTE,
+    SYMPTOM_NOTE_MAX_LENGTH,
     SYMPTOM_OPTIONS,
     TANNER_STAGE_1,
     TANNER_STAGE_2,
@@ -2041,7 +2045,14 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
             existing = entry
             break
 
-    valid_fields = set(SYMPTOM_OPTIONS.keys()) | {SYMPTOM_BASAL_TEMP}
+    # Free-text fields (SYMPTOM_MOOD/SYMPTOM_NOTE, 03.09.2026) added to the
+    # valid-fields set alongside SYMPTOM_BASAL_TEMP - both are, like
+    # basal_temp, exceptions to the "value must be one of SYMPTOM_OPTIONS"
+    # rule below, just for a different reason (open text instead of a
+    # number). See const.py for why these two were missing entirely before.
+    free_text_fields = {SYMPTOM_MOOD, SYMPTOM_NOTE}
+    free_text_max_lengths = {SYMPTOM_MOOD: SYMPTOM_MOOD_MAX_LENGTH, SYMPTOM_NOTE: SYMPTOM_NOTE_MAX_LENGTH}
+    valid_fields = set(SYMPTOM_OPTIONS.keys()) | {SYMPTOM_BASAL_TEMP} | free_text_fields
     for key, value in symptom_data.items():
         if key not in valid_fields:
             raise HomeAssistantError(
@@ -2062,6 +2073,14 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
                 raise HomeAssistantError(
                     f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be between 30 and 45 (°C), got {temp_value}. "
                     "If you're entering a Fahrenheit reading, convert it to Celsius first."
+                )
+        elif key in free_text_fields:
+            if not isinstance(value, str):
+                raise HomeAssistantError(f"Symptom field '{key}' must be text, got '{value}'.")
+            max_length = free_text_max_lengths[key]
+            if len(value) > max_length:
+                raise HomeAssistantError(
+                    f"Symptom field '{key}' is too long ({len(value)} characters, max {max_length})."
                 )
         else:
             allowed = SYMPTOM_OPTIONS[key]

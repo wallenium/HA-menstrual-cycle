@@ -1542,6 +1542,17 @@
         const existingPain = Array.isArray(todayHistory?.pain) ? todayHistory.pain : [];
         symptomData.pain = Array.from(new Set([...existingPain, pain]));
       }
+      // `mood`/`note` were previously captured here into `_quickLogScratch`
+      // (just to keep the typed text visible across re-renders) but never
+      // actually sent to the backend - the fields looked functional but
+      // silently did nothing when saved (fixed 03.09.2026, alongside the
+      // matching backend fix in const.py/__init__.py that had rejected both
+      // keys outright anyway). Unlike `pain` above, a single overwrite is
+      // the CORRECT behavior here, not a bug to guard against: mood/note are
+      // single free-text values for the day, not a multi-select list where
+      // dropping other selections would lose data.
+      if (mood) symptomData.mood = mood;
+      if (note) symptomData.note = note;
 
       this._quickLogScratch = { mood, note };
       if (!Object.keys(symptomData).length) {
@@ -3258,10 +3269,10 @@
             </select>
           </label>
           <label>${this._t('mood')}
-            <input name="mood" type="text" value="${escapeHtml(this._quickLogScratch.mood)}" />
+            <input name="mood" type="text" maxlength="100" value="${escapeHtml(this._quickLogScratch.mood)}" />
           </label>
           <label>${this._t('notes')}
-            <textarea name="note" rows="2">${escapeHtml(this._quickLogScratch.note)}</textarea>
+            <textarea name="note" rows="2" maxlength="2000">${escapeHtml(this._quickLogScratch.note)}</textarea>
           </label>
           <button type="submit" ${this._pending ? 'disabled' : ''}>${this._pending ? this._t('saving') : this._t('save')}</button>
           <div class="helper">${discreetMode ? this._t('dashboard_discreet_note') : this._t('dashboard_quick_log_note')}</div>

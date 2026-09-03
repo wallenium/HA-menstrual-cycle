@@ -746,7 +746,10 @@ def _summarize_symptoms_for_period(
         )
         summary["bleeding_strength"] = strongest_bleeding
 
-    for key in ("spotting", "discharge", "intercourse", "cervical_mucus"):
+    # "mood" added 03.09.2026 alongside the SYMPTOM_MOOD backend fix (see
+    # const.py) - deliberately NOT "note" here: a free-text note has no
+    # meaningful "most common value" the way a short mood tag does.
+    for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "mood"):
         values = [str(entry[key]) for entry in period_entries if entry.get(key) not in (None, "")]
         if values:
             summary[key] = Counter(values).most_common(1)[0][0]

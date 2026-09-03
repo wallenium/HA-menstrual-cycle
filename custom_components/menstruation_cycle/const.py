@@ -256,6 +256,27 @@ SYMPTOM_TRAINING_INTENSITY = "training_intensity"
 SYMPTOM_PREGNANCY = "pregnancy_symptoms"
 SYMPTOM_CONTRACEPTION_METHOD = "contraception_method"
 
+# Free-text symptom fields (03.09.2026, "Stimmungs-Schnellerfassung" /
+# M-Cycle-App-Nachtrag Abschnitt 4.47): unlike every other SYMPTOM_* field
+# above, these are NOT validated against a fixed SYMPTOM_OPTIONS list - a
+# mood/note is inherently open text, not a picker choice. Discovered while
+# implementing this: the dashboard frontend (menstruation-cycle-dashboard-
+# panel.js, "Quick Log" card) already had text inputs for BOTH of these and
+# even a "Pain & Mood Trend" chart widget referencing "mood", but the value
+# was only ever kept in local scratch state and never actually included in
+# the add_symptom service call - and even if it had been, the backend
+# rejected the key outright with "Unknown symptom field '<key>'" (see
+# _async_handle_add_symptom below), since neither key was ever added here.
+# Both fixed together as one bug: dead-end UI plus a missing backend field.
+SYMPTOM_MOOD = "mood"
+SYMPTOM_NOTE = "note"
+# Deliberately short for mood (a quick one-line tag, not a paragraph) and
+# generous for note (a real free-text journal entry). Rejected outright
+# rather than silently truncated in _async_handle_add_symptom below - a
+# silent truncation would surprise whoever wrote the longer text.
+SYMPTOM_MOOD_MAX_LENGTH = 100
+SYMPTOM_NOTE_MAX_LENGTH = 2000
+
 # Contraception methods and their properties. "none" means explicitly no
 # contraception logged (distinct from never having logged anything at all).
 CONTRACEPTION_METHOD_NONE = "none"
