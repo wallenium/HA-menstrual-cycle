@@ -122,7 +122,16 @@ PRODUCT_USAGE_CYCLES_CONSIDERED = 3
 PRODUCT_USAGE_TIMELINE_DAYS = 30
 SYMPTOM_SENSOR_HISTORY_LIMIT = 60
 SYMPTOM_STATS_MAX_CYCLES = 6
-SYMPTOM_MULTI_VALUE_KEYS = ("pain", "hygiene", "test")
+SYMPTOM_MULTI_VALUE_KEYS = (
+    "pain", "hygiene", "test",
+    # Added 03.09.2026 (M-Cycle-App-Nachtrag 4.54/4.56-4.58, plus a
+    # follow-up request for nausea/digestion tracking) - same reasoning as
+    # pain/hygiene: multiple simultaneous values per day are plausible for
+    # each of these. hot_flashes deliberately stays OUT of this list (single
+    # intensity level per day, handled in the single-value loop below
+    # alongside bleeding_strength/mood/etc.).
+    "vulva_vagina", "urinary", "breast", "appointments", "digestion",
+)
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12
 CYCLE_RECENT_LIMIT = 12
@@ -749,7 +758,10 @@ def _summarize_symptoms_for_period(
     # "mood" added 03.09.2026 alongside the SYMPTOM_MOOD backend fix (see
     # const.py) - deliberately NOT "note" here: a free-text note has no
     # meaningful "most common value" the way a short mood tag does.
-    for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "mood"):
+    # "hot_flashes" added 03.09.2026 alongside the new symptom categories
+    # (M-Cycle-App-Nachtrag 4.55) - single intensity level per day, same
+    # "most common value in period" treatment as bleeding_strength/mood.
+    for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "mood", "hot_flashes"):
         values = [str(entry[key]) for entry in period_entries if entry.get(key) not in (None, "")]
         if values:
             summary[key] = Counter(values).most_common(1)[0][0]

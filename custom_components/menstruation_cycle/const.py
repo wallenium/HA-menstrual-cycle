@@ -256,6 +256,33 @@ SYMPTOM_TRAINING_INTENSITY = "training_intensity"
 SYMPTOM_PREGNANCY = "pregnancy_symptoms"
 SYMPTOM_CONTRACEPTION_METHOD = "contraception_method"
 
+# New symptom categories (03.09.2026, M-Cycle-App-Nachtrag Abschnitte
+# 4.54-4.58, feature request inspired by the "Clue" app plus a follow-up
+# request to also track nausea/digestion). All five are logged the same way
+# as the existing fields above - one more key/value pair in the
+# add_symptom `symptom_data` payload for a given date, validated generically
+# against SYMPTOM_OPTIONS below (see _async_handle_add_symptom - no special
+# per-field code needed there, list-vs-single is already handled generically).
+SYMPTOM_VULVA_VAGINA = "vulva_vagina"
+SYMPTOM_HOT_FLASHES = "hot_flashes"
+SYMPTOM_URINARY = "urinary"
+SYMPTOM_BREAST = "breast"
+SYMPTOM_APPOINTMENTS = "appointments"
+# Deliberately a NEW, general-purpose field, NOT reusing the existing
+# SYMPTOM_PREGNANCY ("pregnancy_symptoms") "nausea" option even though the
+# option name overlaps: pregnancy_symptoms is scoped to (suspected/confirmed)
+# pregnancy tracking in the app's Pregnancy mode. This field is meant for
+# everyday cycle tracking - noticing nausea (among other digestive symptoms)
+# as a possible EARLY signal worth paying attention to (e.g. after
+# unprotected sex, before any pregnancy is confirmed or even suspected), not
+# as a pregnancy-mode-only symptom. Both fields can coexist independently.
+SYMPTOM_DIGESTION = "digestion"
+# vulva_vagina/urinary/breast/appointments/digestion are list fields
+# (multiple simultaneous values per day possible, e.g. dryness AND soreness
+# the same day) - see sensor.py's SYMPTOM_MULTI_VALUE_KEYS, extended to
+# include these five. hot_flashes is a single intensity level per day, like
+# bleeding_strength, so it is NOT in that list.
+
 # Free-text symptom fields (03.09.2026, "Stimmungs-Schnellerfassung" /
 # M-Cycle-App-Nachtrag Abschnitt 4.47): unlike every other SYMPTOM_* field
 # above, these are NOT validated against a fixed SYMPTOM_OPTIONS list - a
@@ -348,6 +375,12 @@ SYMPTOM_OPTIONS = {
     SYMPTOM_TRAINING_INTENSITY: ["training_light", "training_moderate", "training_intense"],
     SYMPTOM_PREGNANCY: ["nausea", "fatigue", "heartburn", "swelling", "headache", "back_pain"],
     SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHODS,
+    SYMPTOM_VULVA_VAGINA: ["vaginal_dryness", "itching", "soreness"],
+    SYMPTOM_HOT_FLASHES: ["none", "light", "moderate", "strong", "very_strong"],
+    SYMPTOM_URINARY: ["frequent_urination", "burning", "leakage"],
+    SYMPTOM_BREAST: ["ok", "nipple_discharge", "full_or_heavy", "swollen"],
+    SYMPTOM_APPOINTMENTS: ["gynecologist", "pap_smear", "sti_test", "vaccination"],
+    SYMPTOM_DIGESTION: ["nausea", "bloating", "constipation", "diarrhea"],
 }
 
 # Pre-Menarche Body Signs - Tanner Stages
