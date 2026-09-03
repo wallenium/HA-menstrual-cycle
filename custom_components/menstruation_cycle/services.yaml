@@ -371,7 +371,7 @@ add_symptom:
         date: {}
     symptom_data:
       required: true
-      description: Dictionary with symptom fields. Optional fields - bleeding_strength, spotting, intercourse, pain (list), basal_temp (number), hygiene (list), test
+      description: Dictionary with symptom fields. Optional fields - bleeding_strength, spotting, intercourse, pain (list), basal_temp (number), hygiene (list), test, mood (free text, max 100 chars), note (free text, max 2000 chars)
       selector:
         object:
 
