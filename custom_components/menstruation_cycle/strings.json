@@ -36,7 +36,8 @@
           "menopause_enabled": "Enable menopause mode",
           "postpartum_enabled": "Enable postpartum mode",
           "notifications_enabled": "Enable notifications",
-          "notify_service": "Notification service (optional, e.g. mobile_app_pixel)"
+          "notify_service": "Notification service (optional, e.g. mobile_app_pixel)",
+          "linked_person_entity_id": "Linked Home Assistant person (optional)"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
           "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next.",
           "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
-          "notify_service": "Home Assistant notify service to use, e.g. 'mobile_app_pixel' (for notify.mobile_app_pixel) or 'persistent_notification'. Leave empty to use a persistent notification (shown in the HA UI) by default."
+          "notify_service": "Home Assistant notify service to use, e.g. 'mobile_app_pixel' (for notify.mobile_app_pixel) or 'persistent_notification'. Leave empty to use a persistent notification (shown in the HA UI) by default.",
+          "linked_person_entity_id": "Link this profile to an existing person (Settings → People). If that person has a picture, the companion app can show it as the profile picture."
         }
       },
       "pregnancy": {

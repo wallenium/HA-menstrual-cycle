@@ -31,6 +31,17 @@ CONF_CYCLE_LENGTH_OVERRIDE = "cycle_length_override"
 CONF_NUM_PREDICTIONS = "num_predictions"
 CONF_NFP_ANALYSIS_MODE = "nfp_analysis_mode"
 CONF_ONBOARDING_STAGE = "onboarding_stage"
+# Verknuepfung mit einer bestehenden Home-Assistant-Person (Feature-Wunsch
+# 08.09.2026, "jedem Zyklusbenutzer einen Home Assistant Benutzer waehlbar
+# machen, dass wir in der App das Profilbild aus Home Assistant anzeigen
+# koennen"). Bewusst eine person.*-Entitaet, keine rohe Auth-User-ID: nur
+# Personen tragen ein entity_picture-Attribut, das die App als Profilbild
+# lesen kann - ein reiner HA-Benutzeraccount hat kein direkt per Sensor-
+# Attribut auslesbares Bild. Rein optional, unabhaengig vom eigentlichen
+# Zyklus-Tracking, deshalb wie CONF_NOTIFY_SERVICE ueber den Options-Flow
+# gesetzt und nur in entry.options gespeichert (kein eigener Runtime-/
+# Storage-Wert noetig, siehe sensor.py).
+CONF_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
 # Sichtbarkeitsstufe fuer sensible Profildaten in den Sensor-Attributen
 # (Feature-Wunsch 02.09.2026, "abgestufte Eltern-Sichtbarkeit" /
 # M-Cycle-App-Nachtrag Abschnitt 4.35): steuert, welche Attribute
@@ -148,6 +159,10 @@ ATTR_ONBOARDING_STAGE_EFFECTIVE = "onboarding_stage_effective"
 ATTR_LEARNING_PHASE = "learning_phase"
 ATTR_PREDICTION_GATING = "prediction_gating"
 ATTR_VISIBILITY_LEVEL = "visibility_level"
+# Feature-Wunsch 08.09.2026 (verknuepfte Home-Assistant-Person/Profilbild),
+# siehe CONF_LINKED_PERSON_ENTITY_ID oben.
+ATTR_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
+ATTR_PROFILE_PICTURE = "profile_picture"
 
 SERVICE_ADD_CYCLE_START = "add_cycle_start"
 SERVICE_REMOVE_CYCLE_START = "remove_cycle_start"

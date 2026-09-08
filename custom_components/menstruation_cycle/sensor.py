@@ -69,6 +69,9 @@ from .const import (
     ATTR_FERTILITY_FORECAST,
     ATTR_LEARNING_PHASE,
     ATTR_VISIBILITY_LEVEL,
+    ATTR_LINKED_PERSON_ENTITY_ID,
+    ATTR_PROFILE_PICTURE,
+    CONF_LINKED_PERSON_ENTITY_ID,
     DEFAULT_VISIBILITY_LEVEL,
     STATE_PRIVATE,
     VISIBILITY_LEVEL_FULL,
@@ -362,6 +365,11 @@ _VISIBILITY_ALWAYS_KEPT_KEYS = {
     ATTR_LEARNING_PHASE,
     ATTR_PREDICTION_GATING,
     ATTR_VISIBILITY_LEVEL,
+    # Identifiziert nur, WESSEN Profil das ist (wie friendly_name direkt
+    # darueber) - keine Zyklus-/Gesundheitsdetails, deshalb auch bei
+    # status_only/private weiterhin sichtbar (Feature-Wunsch 08.09.2026).
+    ATTR_LINKED_PERSON_ENTITY_ID,
+    ATTR_PROFILE_PICTURE,
 }
 
 # Zusaetzlich bei VISIBILITY_LEVEL_STATUS_ONLY sichtbar: rein vorhersagenahe
@@ -1236,6 +1244,21 @@ class MenstruationGaugeSensor(SensorEntity):
             model.pre_menarche_data, model.menarche_data, self._entry.data.get(CONF_BIRTH_DATE)
         )
 
+        # Verknuepfte Home-Assistant-Person fuers Profilbild (Feature-Wunsch
+        # 08.09.2026), siehe CONF_LINKED_PERSON_ENTITY_ID in const.py. Wie
+        # nfp_mode/notify_service oben nur aus entry.options gelesen, kein
+        # eigener Runtime-/Storage-Wert. entity_picture ist bei person.*-
+        # Entitaeten meist ein relativer Pfad (z. B. "/api/image/serve/..."),
+        # die App haengt das selbst vor die HA-Basis-URL - hier bewusst
+        # unveraendert durchgereicht, keine Home-Assistant-interne URL-
+        # Aufloesung noetig.
+        linked_person_entity_id = str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID) or "") or None
+        profile_picture: str | None = None
+        if linked_person_entity_id:
+            person_state = self.hass.states.get(linked_person_entity_id)
+            if person_state is not None:
+                profile_picture = person_state.attributes.get("entity_picture") or None
+
         raw_attrs = {
             ATTR_HISTORY: sensor_history,
             ATTR_SYMPTOM_HISTORY: compact_symptom_history,
@@ -1291,6 +1314,8 @@ class MenstruationGaugeSensor(SensorEntity):
             "entry_id": self._entry.entry_id,
             "friendly_name": runtime.friendly_name,
             ATTR_VISIBILITY_LEVEL: getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL),
+            ATTR_LINKED_PERSON_ENTITY_ID: linked_person_entity_id,
+            ATTR_PROFILE_PICTURE: profile_picture,
             # Explicit marker so consumers (e.g. the dashboard panel's entity/profile
             # picker) can reliably identify "this is the one sensor per profile that
             # represents a selectable person", instead of guessing from entity_id

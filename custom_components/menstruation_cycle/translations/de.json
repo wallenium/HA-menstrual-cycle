@@ -36,7 +36,8 @@
           "menopause_enabled": "Menopause-Modus aktivieren",
           "postpartum_enabled": "Wochenbett-Modus aktivieren",
           "notifications_enabled": "Benachrichtigungen aktivieren",
-          "notify_service": "Benachrichtigungsdienst (optional, z. B. mobile_app_pixel)"
+          "notify_service": "Benachrichtigungsdienst (optional, z. B. mobile_app_pixel)",
+          "linked_person_entity_id": "Verknüpfte Home-Assistant-Person (optional)"
         },
         "data_description": {
           "period_duration_days": "Anzahl der Tage, die die Periode typischerweise dauert (1–14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
           "postpartum_enabled": "Aktiviert den Wochenbett-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
           "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
-          "notify_service": "Zu verwendender Home-Assistant-Benachrichtigungsdienst, z. B. 'mobile_app_pixel' (für notify.mobile_app_pixel) oder 'persistent_notification'. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden."
+          "notify_service": "Zu verwendender Home-Assistant-Benachrichtigungsdienst, z. B. 'mobile_app_pixel' (für notify.mobile_app_pixel) oder 'persistent_notification'. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden.",
+          "linked_person_entity_id": "Dieses Profil mit einer bestehenden Person verknüpfen (Einstellungen → Personen). Hat diese Person ein Bild hinterlegt, kann die Companion-App es als Profilbild anzeigen."
         }
       },
       "pregnancy": {

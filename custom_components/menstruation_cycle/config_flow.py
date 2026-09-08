@@ -17,6 +17,7 @@ from .const import (
     CONF_FAMILY_MENARCHE_AGE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
+    CONF_LINKED_PERSON_ENTITY_ID,
     CONF_MENOPAUSE_ENABLED,
     CONF_MENOPAUSE_START_DATE,
     CONF_NFP_ANALYSIS_MODE,
@@ -283,6 +284,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
             ),
             "notify_service": str(self._entry.options.get(CONF_NOTIFY_SERVICE, "") or ""),
+            "linked_person_entity_id": str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID, "") or ""),
         }
 
     async def _async_advance(self) -> FlowResult:
@@ -337,6 +339,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
+                self._data[CONF_LINKED_PERSON_ENTITY_ID] = str(
+                    user_input.get(CONF_LINKED_PERSON_ENTITY_ID, "")
+                ).strip()
 
                 self._data["_pregnancy_enabled"] = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
                 self._data["_pre_menarche_enabled"] = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
@@ -387,6 +392,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
                 vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
                 vol.Optional(CONF_NOTIFY_SERVICE, default=c["notify_service"]): str,
+                vol.Optional(
+                    CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
                 vol.Optional(
                     CONF_PREGNANCY_ENABLED, default=bool(c["pregnancy_data"].get("is_pregnant", False))
                 ): bool,
@@ -671,5 +679,6 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
+                CONF_LINKED_PERSON_ENTITY_ID: d[CONF_LINKED_PERSON_ENTITY_ID],
             },
         )
