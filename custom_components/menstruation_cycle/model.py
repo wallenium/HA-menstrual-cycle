@@ -2517,6 +2517,30 @@ def build_cycle_model(
             days_since_menarche = (now - menarche_date).days
             # Menarche state persists for first ~90 days (3 months) after first period
             if days_since_menarche <= 90 and len(normalized) <= 3:
+                # Bugfix (10.09.2026, gemeldet: "kein Periode aktiv nach der
+                # ersten Blutung. Das hängt im Menarche Modus fest"):
+                # `current_period` wurde in diesem Zweig bisher UNBEDINGT als
+                # `None` zurückgegeben - unabhängig davon, ob tatsächlich
+                # bereits eine Blutung geloggt war. `log_first_period`/die
+                # normale Tageserfassung tragen die Blutung zwar korrekt in
+                # `normalized`/die History ein, aber solange das Profil noch
+                # innerhalb des 90-Tage-/max.-3-Einträge-Menarche-Fensters
+                # steckt (siehe Bedingung oben), landete jede Anfrage genau
+                # hier und `current_period` blieb für immer `None` - das
+                # Menarche-Fenster ist ja gerade dafür da, die ALLERERSTEN
+                # Perioden zu begleiten, in denen fast immer weniger als 3
+                # Einträge vorliegen. `grouped_starts`/`bleeding_blocks`
+                # bleiben bewusst weiterhin leer (sie speisen die
+                # Zyklusstatistik/-vorhersage, die während der Lernphase laut
+                # `learning_phase=True`/`precision_allowed: False` absichtlich
+                # unterdrückt wird) - "ist gerade eine Periode aktiv" ist
+                # davon aber unabhängig und sollte unabhängig von der
+                # Vorhersage-Unterdrückung korrekt angezeigt werden.
+                menarche_base_history = [item for item in normalized if item <= now.isoformat()] or normalized
+                menarche_blocks = bleeding_blocks(menarche_base_history)
+                menarche_current_period = current_period_details(
+                    menarche_blocks, symptoms, period_duration_days, now
+                )
                 return CycleModel(
                     history=normalized,
                     grouped_starts=[],
@@ -2530,7 +2554,7 @@ def build_cycle_model(
                     days_until_next_start=None,
                     period_duration_days=period_duration_days,
                     learned_period_duration_days=None,
-                    current_period=None,
+                    current_period=menarche_current_period,
                     state=STATE_MENARCHE,
                     symptom_history=symptoms,
                     is_pregnant=False,
