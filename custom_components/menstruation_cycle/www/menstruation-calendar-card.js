@@ -1396,9 +1396,14 @@ class MenstruationCalendarCard extends HTMLElement {
           <div class="title">${title}</div>
           <div class="toolbar">
             <div class="nav">
-              <button type="button" class="btn" data-action="prev-month" title="${this._t('previous_month')}">◀</button>
+              <!-- Bugfix (15.09.2026): Nur 'title' reicht für Screenreader
+                   nicht zuverlässig - 'aria-label' auf beiden
+                   Monats-Navigationsknöpfen ergänzt (die Tageszellen im
+                   Raster darunter haben bereits aria-label/role=grid,
+                   diese beiden Knöpfe waren die einzige Lücke). -->
+              <button type="button" class="btn" data-action="prev-month" title="${this._t('previous_month')}" aria-label="${this._t('previous_month')}">◀</button>
               <div class="month">${this._monthLabel(locale)}</div>
-              <button type="button" class="btn" data-action="next-month" title="${this._t('next_month')}">▶</button>
+              <button type="button" class="btn" data-action="next-month" title="${this._t('next_month')}" aria-label="${this._t('next_month')}">▶</button>
             </div>
             <button type="button" class="btn" data-action="today">${this._t('today')}</button>
           </div>

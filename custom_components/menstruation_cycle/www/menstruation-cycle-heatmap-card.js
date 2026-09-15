@@ -1371,5 +1371,10 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-cycle-heatmap-card',
   name: 'Menstruation Cycle Heatmap',
-  description: 'Heatmap mit einer Spalte pro Zyklus und einem Feld pro Zyklustag (grouped_starts kompatibel).',
+  // Bugfix (15.09.2026): war bislang die einzige Karte dieser Integration
+  // mit einer deutschsprachigen `customCards`-Beschreibung im
+  // Lovelace-"Karte hinzufügen"-Auswahldialog - alle anderen 8
+  // registrierten Karten nutzen dort Englisch (der Dialog selbst ist
+  // ohnehin nicht lokalisiert). Für Konsistenz auf Englisch umgestellt.
+  description: 'Heatmap with one column per cycle and one cell per cycle day (grouped_starts compatible).',
 });

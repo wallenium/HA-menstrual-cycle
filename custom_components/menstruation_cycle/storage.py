@@ -260,6 +260,15 @@ class MenstruationStorage:
             data.get("noncycle_data"),
             data.get("cycle_length_override"),
             data.get("onboarding_stage"),
+            # Bugfix (15.09.2026, gefunden bei einer UI/Feature-Durchsicht der
+            # Component): `visibility_level` fehlte hier bislang komplett -
+            # `async_save(...)` normalisiert ein fehlendes/`None`-Argument auf
+            # `DEFAULT_VISIBILITY_LEVEL` ("full"), d. h. jeder Aufruf dieser
+            # schmalen Speicher-Methode setzte die abgestufte
+            # Eltern-Sichtbarkeit (Abschnitt "visibility_level"/
+            # `set_profile_visibility`) eines Profils still auf "voll
+            # sichtbar" zurück - unabhängig davon, was zuvor eingestellt war.
+            visibility_level=data.get("visibility_level"),
             ics_token=ics_token,
         )
 
@@ -278,6 +287,9 @@ class MenstruationStorage:
             data.get("noncycle_data"),
             data.get("cycle_length_override"),
             data.get("onboarding_stage"),
+            # Bugfix (15.09.2026): siehe Kommentar an `async_save_ics_token`
+            # oben - identisches Problem, identischer Fix.
+            visibility_level=data.get("visibility_level"),
         )
 
     async def async_load_pregnancy_data(self) -> dict[str, Any]:
@@ -300,6 +312,9 @@ class MenstruationStorage:
             data.get("noncycle_data"),
             data.get("cycle_length_override"),
             data.get("onboarding_stage"),
+            # Bugfix (15.09.2026): siehe Kommentar an `async_save_ics_token`
+            # weiter oben - identisches Problem, identischer Fix.
+            visibility_level=data.get("visibility_level"),
         )
 
     async def async_load_menarche_data(self) -> dict[str, Any]:
@@ -322,6 +337,9 @@ class MenstruationStorage:
             data.get("noncycle_data"),
             data.get("cycle_length_override"),
             data.get("onboarding_stage"),
+            # Bugfix (15.09.2026): siehe Kommentar an `async_save_ics_token`
+            # weiter oben - identisches Problem, identischer Fix.
+            visibility_level=data.get("visibility_level"),
         )
 
     @staticmethod

@@ -126,7 +126,11 @@ class MenstruationCountdownTimer extends HTMLElement {
       }
     } catch (error) {
       console.error("MenstruationCountdownTimer Error:", error);
-      this.innerHTML = `<ha-card><div style="padding: 16px; color: red;">⚠️ Fehler beim Laden</div></ha-card>`;
+      // Bugfix (15.09.2026): war hartcodiert Deutsch, unabhängig von der
+      // Sprache der/des Betrachtenden - jetzt über _t() lokalisiert wie der
+      // Rest der Karte (fällt ohne geladene Übersetzung sauber auf
+      // Englisch zurück, siehe 'load_error' oben in _t()).
+      this.innerHTML = `<ha-card><div style="padding: 16px; color: red;">⚠️ ${this._t('load_error')}</div></ha-card>`;
     }
   }
 
@@ -225,7 +229,11 @@ class MenstruationCountdownTimer extends HTMLElement {
   updateStatus() {
     try {
       if (!this.config?.entity || !this._hass) {
-        console.log("Missing config or hass", { entity: this.config?.entity, hass: !!this._hass });
+        // Bugfix (15.09.2026): reiner Debug-console.log-Rest ohne
+        // erkennbaren Zweck für Endnutzer:innen entfernt - dieser Zweig
+        // greift regulär während des normalen Lovelace-Aufbaus (hass/
+        // config werden asynchron nachgereicht), kein Fehlerfall, der
+        // geloggt werden müsste.
         return;
       }
 
@@ -1746,7 +1754,12 @@ class MenstruationCountdownTimer extends HTMLElement {
         yes: "Yes",
         no: "No",
         cancel: "Cancel",
-        continue: "Continue"
+        continue: "Continue",
+        // Bugfix (15.09.2026): 'load_error' fehlte bisher - der
+        // Init-Fehlertext in connectedCallback() war hartcodiert Deutsch
+        // ("Fehler beim Laden"), unabhängig von der Sprache des
+        // Betrachters, anders als jeder sonstige Text in dieser Karte.
+        load_error: "Error loading"
       },
     };
 

@@ -25,7 +25,13 @@ class MenstruationProductInventoryCard extends HTMLElement {
   }
 
   static getConfigElement() {
-    return document.createElement("menstrual-product-inventory-card-editor");
+    // Bugfix (15.09.2026): Tag-Name-Tippfehler ("menstrual-" statt
+    // "menstruation-") - die tatsächlich registrierte Editor-Klasse (siehe
+    // `customElements.define` weiter unten) heißt
+    // "menstruation-product-inventory-card-editor". Mit dem Tippfehler
+    // erzeugte dieser Aufruf ein nicht registriertes `HTMLUnknownElement` -
+    // der visuelle Editor blieb faktisch leer/funktionslos.
+    return document.createElement("menstruation-product-inventory-card-editor");
   }
 
   setConfig(config) {
@@ -652,7 +658,12 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   }
 
   _getOrderedProducts() {
-    const all = MenstrualProductInventoryCardEditor.ALL_PRODUCTS;
+    // Bugfix (15.09.2026): verwies auf die nicht existierende Klasse
+    // "MenstrualProductInventoryCardEditor" (fehlendes "-tion") statt auf
+    // die tatsächliche Klasse dieser Datei, `MenstruationProductInventoryCard
+    // Editor` - hätte selbst nach dem Tag-Namen-Fix oben beim Öffnen des
+    // Editors sofort einen `ReferenceError` geworfen.
+    const all = MenstruationProductInventoryCardEditor.ALL_PRODUCTS;
     if (Array.isArray(this._config.product_order) && this._config.product_order.length > 0) {
       const validOrder = this._config.product_order.filter((p) => all.includes(p));
       const missing = all.filter((p) => !validOrder.includes(p));
@@ -662,7 +673,9 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   }
 
   _getVisibleSet() {
-    const all = MenstrualProductInventoryCardEditor.ALL_PRODUCTS;
+    // Bugfix (15.09.2026): siehe Kommentar in `_getOrderedProducts()` oben -
+    // identischer Tippfehler, identischer Fix.
+    const all = MenstruationProductInventoryCardEditor.ALL_PRODUCTS;
     if (Array.isArray(this._config.visible_products) && this._config.visible_products.length > 0) {
       return new Set(this._config.visible_products.filter((p) => all.includes(p)));
     }

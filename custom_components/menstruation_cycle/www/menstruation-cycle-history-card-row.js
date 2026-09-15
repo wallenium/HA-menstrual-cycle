@@ -21,7 +21,12 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
       type: 'custom:menstruation-cycle-history-card-row',
       entity: 'sensor.menstruation',
       entry_id: '',
-      title: 'Zyklus History',
+      // Bugfix (15.09.2026): Der Default-Titel hier war Deutsch
+      // ("Zyklus History"), obwohl die Karte selbst intern konsequent
+      // Englisch als Standard nutzt (siehe `_t()`s `title: 'Cycle
+      // History'` weiter oben in dieser Datei) - für neue Nutzer:innen
+      // ohne bewusst gesetzten Titel ein inkonsistenter Default.
+      title: 'Cycle History',
       max_rows: 12,
       show_fertile_window: true,
       show_pregnancy_status: true,
@@ -103,6 +108,10 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
         predicted: 'Predicted',
         current_cycle: 'Current Cycle',
         previous_cycles: 'Previous Cycles',
+        // Bugfix (15.09.2026): `no_cycles_available` fehlte bisher - der
+        // Leerzustand unten war hartcodiert Englisch statt über `_t()`
+        // lokalisiert, anders als jeder andere Text in dieser Karte.
+        no_cycles_available: 'No cycles available',
       },
     };
     const val = i18n.en[key];
@@ -287,7 +296,7 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
             </tr>
           </thead>
           <tbody>
-            ${tableRows || '<tr><td colspan="5">No cycles available</td></tr>'}
+            ${tableRows || `<tr><td colspan="5">${this._t('no_cycles_available')}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -511,7 +520,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
           <div class="section-title">${this._t('display')}</div>
           <div class="row">
             <label for="title">${this._t('title')}</label>
-            <input id="title" type="text" value="${this._escapeHtml(this._config.title || '')}" placeholder="Zyklus History">
+            <input id="title" type="text" value="${this._escapeHtml(this._config.title || '')}" placeholder="Cycle History">
           </div>
           <div class="row" style="margin-top:8px;">
             <label>${this._t('max_rows')} (1-24)</label>

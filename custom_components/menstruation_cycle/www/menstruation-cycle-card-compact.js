@@ -308,4 +308,89 @@ class MenstruationCycleCard extends HTMLElement {
   }
 }
 
+// Bugfix (15.09.2026, gefunden bei einer UI-Durchsicht): `getConfigElement()`
+// oben verwies auf den Tag "menstruation-cycle-card-editor", der nirgends
+// registriert war - die visuelle Konfiguration öffnete sich dadurch als
+// leeres, nicht funktionsfähiges Element, Nutzer mussten die Karte per Hand
+// in YAML konfigurieren. Minimaler Editor nach demselben schlanken Muster
+// wie `MenstruationCycleCompactStatusEditor` (dieselbe Datei-Familie) - die
+// Karte hat nur ein einziges Konfigurationsfeld (`entity`), ein voller
+// Entity-Picker mit Suche wäre hier Überbau.
+class MenstruationCycleCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _t(key) {
+    const lang = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const loaded = window.menstruationCycleI18n?.cache?.[lang] || {};
+    if (loaded[key] !== undefined) return loaded[key];
+    const i18n = { en: { entity: 'Entity' } };
+    return i18n.en[key] ?? key;
+  }
+
+  _emit(nextConfig) {
+    this._config = { ...nextConfig };
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .wrap { display: grid; gap: 10px; padding: 4px 0; }
+        .row { display: grid; gap: 4px; }
+        label { font-size: 12px; font-weight: 600; color: var(--secondary-text-color); }
+        input[type='text'] {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 10px;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+        }
+      </style>
+      <div class="wrap">
+        <div class="row">
+          <label for="entity">${this._t('entity')}</label>
+          <input id="entity" type="text" value="${String(this._config.entity || '')}" placeholder="sensor.menstruation" />
+        </div>
+      </div>
+    `;
+
+    this.shadowRoot.getElementById('entity')?.addEventListener('change', (ev) => {
+      const value = String(ev.target?.value || '').trim();
+      this._emit({ ...this._config, entity: value });
+    });
+  }
+}
+
+if (!customElements.get('menstruation-cycle-card-editor')) {
+  customElements.define('menstruation-cycle-card-editor', MenstruationCycleCardEditor);
+}
+
 customElements.define("menstruation-cycle-card", MenstruationCycleCard);
+
+// Bugfix (15.09.2026): Diese Karte fehlte bislang komplett in
+// `window.customCards` - im "Karte hinzufügen"-Dialog von Lovelace war sie
+// dadurch nicht auffindbar, nur per Hand eingetipptem YAML-Typ nutzbar,
+// anders als alle anderen Karten dieser Integration.
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: 'menstruation-cycle-card',
+  name: 'Menstruation Cycle Status',
+  description: 'Compact status badge with cycle day indicator',
+});
