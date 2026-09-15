@@ -111,6 +111,49 @@ def normalize_history(history: list[str]) -> list[str]:
     return sorted(normalized)
 
 
+def find_implausible_cycle_gaps(
+    dates: list[str], min_gap_days: int = CYCLE_LENGTH_OVERRIDE_MIN
+) -> list[dict[str, Any]]:
+    """Flag consecutive cycle-start dates that are implausibly close together
+    (HA-Idee 4, "weitere Ideen" 15.09.2026, dritte Runde).
+
+    Used by import_cycle_history and import_full_backup (merge mode) to warn
+    about data that's probably wrong - e.g. two app exports using different
+    date conventions merged into one history, or a stray manual entry -
+    without blocking the import over it, since the caller can't always tell
+    which of two close dates (if either) is the actual mistake.
+
+    min_gap_days defaults to CYCLE_LENGTH_OVERRIDE_MIN, the same lower bound
+    this integration already uses as the shortest plausible cycle length for
+    cycle_length_override - reusing it here keeps "implausible" meaning one
+    consistent thing across the integration instead of a second, separately
+    tuned threshold.
+
+    Only ADJACENT pairs in the sorted, de-duplicated history are checked, not
+    every pair - a date that's fine against its next-door neighbours but
+    happens to be "close" to some distant date isn't what an implausible
+    cycle length means. Unparseable entries are silently skipped, matching
+    normalize_history's tolerance.
+
+    Returns a list of {"from": iso_date, "to": iso_date, "gap_days": int}
+    dicts, one per offending pair, in chronological order.
+    """
+    parsed: list[date] = []
+    for raw in dates:
+        try:
+            parsed.append(date.fromisoformat(str(raw)))
+        except ValueError:
+            continue
+    parsed = sorted(set(parsed))
+
+    gaps: list[dict[str, Any]] = []
+    for previous, current in zip(parsed, parsed[1:]):
+        gap_days = (current - previous).days
+        if 0 < gap_days < min_gap_days:
+            gaps.append({"from": previous.isoformat(), "to": current.isoformat(), "gap_days": gap_days})
+    return gaps
+
+
 def grouped_cycle_starts(days: list[str]) -> list[str]:
     """Group contiguous bleeding entries and return starts."""
     if not days:

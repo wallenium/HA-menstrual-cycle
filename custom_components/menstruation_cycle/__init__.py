@@ -165,9 +165,16 @@ from .const import (
     SERVICE_FIELD_DATE_FORMAT,
     IMPORT_DATE_FORMATS,
     DEFAULT_IMPORT_DATE_FORMAT,
+    CYCLE_LENGTH_OVERRIDE_MIN,
 )
 from .ical import generate_ics
-from .model import build_cycle_model, build_cycle_predictions, grouped_cycle_starts, normalize_history
+from .model import (
+    build_cycle_model,
+    build_cycle_predictions,
+    find_implausible_cycle_gaps,
+    grouped_cycle_starts,
+    normalize_history,
+)
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
@@ -2111,10 +2118,25 @@ async def _async_handle_import_cycle_history(hass: HomeAssistant, call: ServiceC
         runtime.history = normalize_history(sorted(existing))
         await _async_save_and_notify(hass, runtime)
 
+    # HA-Idee 4 (weitere Ideen, 15.09.2026, dritte Runde): flag newly
+    # imported dates that end up implausibly close to a neighbouring history
+    # entry (e.g. a date-format mixup, or a duplicate entry a few days off)
+    # - reported back as non-blocking warnings rather than rejected, since
+    # this import is explicitly additive and the caller may know something
+    # this integration doesn't (e.g. genuine spotting logged separately).
+    imported_set = set(imported)
+    warnings = [
+        f"{gap['from']} and {gap['to']} are only {gap['gap_days']} day(s) apart "
+        f"(shorter than the {CYCLE_LENGTH_OVERRIDE_MIN}-day minimum plausible cycle length)"
+        for gap in find_implausible_cycle_gaps(sorted(existing))
+        if gap["from"] in imported_set or gap["to"] in imported_set
+    ]
+
     return {
         "imported": sorted(imported),
         "already_present": sorted(already_present),
         "skipped_invalid": skipped_invalid,
+        "warnings": warnings,
         "total_history_count": len(runtime.history),
     }
 
@@ -2261,9 +2283,19 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
     return {"file": str(target_path), "profile_count": len(profiles)}
 
 
-def _apply_backup_to_runtime(runtime: "MenstruationRuntime", backup_profile: dict[str, Any], mode: str) -> None:
+def _apply_backup_to_runtime(
+    runtime: "MenstruationRuntime", backup_profile: dict[str, Any], mode: str
+) -> list[dict[str, Any]]:
     """Apply one profile's backed-up data onto its currently-loaded runtime,
     mutating runtime in place (HA-Idee 6, "weitere Ideen" 15.09.2026).
+
+    Returns the list of implausible-gap dicts (HA-Idee 4, "weitere Ideen"
+    15.09.2026, dritte Runde) found among the history dates the backup
+    actually contributed - empty in "overwrite" mode, since there the
+    backup's history fully replaces the local one wholesale (a deliberate
+    rollback to a trusted prior state, not a merge that could introduce a
+    NEW contradiction between two independent sources) rather than being
+    merged with a second, independent source that could disagree with it.
 
     mode="overwrite": every restorable field is replaced wholesale with the
     backup's value - a full rollback to the backup's state.
@@ -2299,11 +2331,17 @@ def _apply_backup_to_runtime(runtime: "MenstruationRuntime", backup_profile: dic
         runtime.period_duration_days = int(
             backup_profile.get("period_duration_days", runtime.period_duration_days)
         )
-        return
+        return []
 
     # mode == "merge"
     backup_history = backup_profile.get("history") or []
     runtime.history = sorted(set(runtime.history) | set(backup_history))
+    backup_history_set = set(backup_history)
+    implausible_gaps = [
+        gap
+        for gap in find_implausible_cycle_gaps(runtime.history)
+        if gap["from"] in backup_history_set or gap["to"] in backup_history_set
+    ]
 
     local_dates = {e.get("date") for e in runtime.symptom_history if isinstance(e, dict)}
     for entry in backup_profile.get("symptom_history") or []:
@@ -2328,6 +2366,8 @@ def _apply_backup_to_runtime(runtime: "MenstruationRuntime", backup_profile: dic
 
     if runtime.cycle_length_override is None and backup_profile.get("cycle_length_override") is not None:
         runtime.cycle_length_override = backup_profile["cycle_length_override"]
+
+    return implausible_gaps
 
 
 async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
@@ -2395,15 +2435,27 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
 
     restored: list[str] = []
     skipped_not_configured: list[str] = []
+    # HA-Idee 4 (weitere Ideen, 15.09.2026, dritte Runde): per-profile,
+    # non-blocking warnings about implausibly close cycle-start dates the
+    # merge introduced - see _apply_backup_to_runtime. Only ever populated in
+    # "merge" mode; kept out of the response entirely (not just empty) for
+    # "overwrite" mode, where the concept doesn't apply.
+    warnings: dict[str, list[str]] = {}
 
     for profile_slug, backup_profile in backup["profiles"].items():
         runtime = runtimes_by_profile.get(profile_slug)
         if runtime is None or not isinstance(backup_profile, dict):
             skipped_not_configured.append(profile_slug)
             continue
-        _apply_backup_to_runtime(runtime, backup_profile, mode)
+        implausible_gaps = _apply_backup_to_runtime(runtime, backup_profile, mode)
         await _async_save_and_notify(hass, runtime)
         restored.append(profile_slug)
+        if implausible_gaps:
+            warnings[profile_slug] = [
+                f"{gap['from']} and {gap['to']} are only {gap['gap_days']} day(s) apart "
+                f"(shorter than the {CYCLE_LENGTH_OVERRIDE_MIN}-day minimum plausible cycle length)"
+                for gap in implausible_gaps
+            ]
 
     _LOGGER.info(
         "Imported full backup '%s' (mode=%s): restored %d profile(s), skipped %d not-configured.",
@@ -2413,12 +2465,15 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
         len(skipped_not_configured),
     )
 
-    return {
+    result: dict[str, Any] = {
         "mode": mode,
         "backup_version": backup_version,
         "restored": restored,
         "skipped_not_configured": skipped_not_configured,
     }
+    if mode == "merge":
+        result["warnings"] = warnings
+    return result
 
 
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:
