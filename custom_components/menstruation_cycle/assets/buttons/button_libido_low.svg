@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 186 186" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(1,0,0,1,-1775.71132,-4644.480366)">
+        <g id="button_libido_low">
+            <g transform="matrix(0.915535,0,0,0.88142,1659.494359,2126.905347)">
+                <path d="M325,2911.25L325,3011.75C325,3039.484 303.323,3062 276.622,3062L179.867,3062C153.167,3062 131.49,3039.484 131.49,3011.75L131.49,2911.25C131.49,2883.516 153.167,2861 179.867,2861L276.622,2861C303.323,2861 325,2883.516 325,2911.25Z" style="fill:rgb(248,176,237);stroke:rgb(240,77,215);stroke-width:9.27px;"/>
+            </g>
+            <g transform="matrix(0.517108,0,0,0.643984,891.8918,1652.29919)">
+                <path d="M1888.522,4757.786C1902.947,4737.23 1931.798,4737.23 1946.224,4747.508C1960.65,4757.786 1960.65,4778.343 1946.224,4798.899C1936.126,4814.317 1910.16,4829.734 1888.522,4840.012C1866.883,4829.734 1840.917,4814.317 1830.819,4798.899C1816.394,4778.343 1816.394,4757.786 1830.819,4747.508C1845.245,4737.23 1874.096,4737.23 1888.522,4757.786Z" style="fill:rgb(240,77,215);"/>
+            </g>
+        </g>
+    </g>
+</svg>
