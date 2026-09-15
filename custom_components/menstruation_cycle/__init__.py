@@ -155,13 +155,22 @@ from .const import (
     TEMPERATURE_UNIT_FAHRENHEIT,
     DEFAULT_TEMPERATURE_UNIT,
     SERVICE_EXPORT_FULL_BACKUP,
+    SERVICE_IMPORT_FULL_BACKUP,
+    SERVICE_FIELD_MODE,
+    SERVICE_FIELD_CONFIRM,
+    IMPORT_FULL_BACKUP_MODES,
+    DEFAULT_IMPORT_FULL_BACKUP_MODE,
+    SERVICE_IMPORT_CYCLE_HISTORY,
+    SERVICE_FIELD_DATE_FORMAT,
+    IMPORT_DATE_FORMATS,
+    DEFAULT_IMPORT_DATE_FORMAT,
 )
 from .ical import generate_ics
 from .model import build_cycle_model, build_cycle_predictions, grouped_cycle_starts, normalize_history
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -1133,6 +1142,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_set_history(call: ServiceCall) -> None:
         await _async_handle_set_history(hass, call)
 
+    async def async_import_cycle_history(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_import_cycle_history(hass, call)
+
     async def async_set_period_duration(call: ServiceCall) -> None:
         await _async_handle_set_period_duration(hass, call)
 
@@ -1144,6 +1156,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
 
     async def async_export_full_backup(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_export_full_backup(hass, call)
+
+    async def async_import_full_backup(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_import_full_backup(hass, call)
 
     async def async_refresh_cycle_model(call: ServiceCall) -> None:
         await _async_handle_refresh_cycle_model(hass, call)
@@ -1232,6 +1247,23 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({**common_profile_field, vol.Required(SERVICE_FIELD_DATES): [cv.string]}),
     )
 
+    _import_history_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema(
+            {
+                **common_profile_field,
+                vol.Required(SERVICE_FIELD_DATES): [cv.string],
+                vol.Optional(SERVICE_FIELD_DATE_FORMAT, default=DEFAULT_IMPORT_DATE_FORMAT): vol.In(
+                    IMPORT_DATE_FORMATS
+                ),
+            }
+        ),
+    }
+    if SupportsResponse is not None:
+        _import_history_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_IMPORT_CYCLE_HISTORY, async_import_cycle_history, **_import_history_register_kwargs
+    )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_PERIOD_DURATION,
@@ -1279,6 +1311,25 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _full_backup_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_EXPORT_FULL_BACKUP, async_export_full_backup, **_full_backup_register_kwargs
+    )
+
+    _import_backup_register_kwargs: dict[str, Any] = {
+        # No common_profile_field here either - the backup file itself
+        # determines which profiles are touched, not a target selector.
+        "schema": vol.Schema(
+            {
+                vol.Required(SERVICE_FIELD_FILENAME): cv.string,
+                vol.Optional(SERVICE_FIELD_MODE, default=DEFAULT_IMPORT_FULL_BACKUP_MODE): vol.In(
+                    IMPORT_FULL_BACKUP_MODES
+                ),
+                vol.Required(SERVICE_FIELD_CONFIRM): vol.Equal(True),
+            }
+        ),
+    }
+    if SupportsResponse is not None:
+        _import_backup_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_IMPORT_FULL_BACKUP, async_import_full_backup, **_import_backup_register_kwargs
     )
 
     hass.services.async_register(
@@ -1768,10 +1819,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_ADD_CYCLE_START,
             SERVICE_REMOVE_CYCLE_START,
             SERVICE_SET_CYCLE_HISTORY,
+            SERVICE_IMPORT_CYCLE_HISTORY,
             SERVICE_SET_PERIOD_DURATION,
             SERVICE_ERASE_ALL_HISTORY,
             SERVICE_EXPORT_HISTORY,
             SERVICE_EXPORT_FULL_BACKUP,
+            SERVICE_IMPORT_FULL_BACKUP,
             SERVICE_REFRESH_CYCLE_MODEL,
             SERVICE_LOG_PRODUCT_USAGE,
             SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
@@ -1989,6 +2042,82 @@ async def _async_handle_set_history(hass: HomeAssistant, call: ServiceCall) -> N
     await _async_save_and_notify(hass, runtime)
 
 
+def _parse_import_date(raw: str, date_format: str) -> str | None:
+    """Best-effort parse of one date string for import_cycle_history
+    (HA-Idee 7, "weitere Ideen" 15.09.2026). Returns an ISO date string, or
+    None if it couldn't be parsed under the requested date_format.
+
+    Unlike set_cycle_history's _normalize_date_or_raise (strict, raises on
+    the first bad value, meant for machine-generated input), this is
+    intentionally lenient and never raises per-value - a CSV export from
+    another app is likely to have at least one stray blank line or header
+    row, and aborting the whole import over one bad line would defeat the
+    point. Slash-separated dates (03/04/2026) are genuinely ambiguous
+    between day-first and month-first conventions, so 'auto' deliberately
+    does NOT guess at those - only the caller explicitly choosing 'dmy' or
+    'mdy' enables them, to avoid silently swapping day/month.
+    """
+    raw = str(raw).strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw).isoformat()
+    except ValueError:
+        pass
+    try:
+        return datetime.strptime(raw, "%d.%m.%Y").date().isoformat()
+    except ValueError:
+        pass
+    if date_format == "dmy":
+        try:
+            return datetime.strptime(raw, "%d/%m/%Y").date().isoformat()
+        except ValueError:
+            return None
+    if date_format == "mdy":
+        try:
+            return datetime.strptime(raw, "%m/%d/%Y").date().isoformat()
+        except ValueError:
+            return None
+    return None
+
+
+async def _async_handle_import_cycle_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Additively import cycle-start dates from another app's export
+    (HA-Idee 7, "weitere Ideen" 15.09.2026) - existing history is kept, not
+    replaced (unlike set_cycle_history), and a handful of common date
+    formats are tolerated instead of requiring clean ISO strings."""
+    runtime = _runtime_for_call(hass, call)
+    date_format = str(call.data.get(SERVICE_FIELD_DATE_FORMAT, DEFAULT_IMPORT_DATE_FORMAT))
+    if date_format not in IMPORT_DATE_FORMATS:
+        date_format = DEFAULT_IMPORT_DATE_FORMAT
+
+    existing = set(runtime.history)
+    imported: list[str] = []
+    already_present: list[str] = []
+    skipped_invalid: list[str] = []
+
+    for raw in call.data[SERVICE_FIELD_DATES]:
+        parsed = _parse_import_date(raw, date_format)
+        if parsed is None:
+            skipped_invalid.append(str(raw))
+        elif parsed in existing:
+            already_present.append(parsed)
+        else:
+            imported.append(parsed)
+            existing.add(parsed)
+
+    if imported:
+        runtime.history = normalize_history(sorted(existing))
+        await _async_save_and_notify(hass, runtime)
+
+    return {
+        "imported": sorted(imported),
+        "already_present": sorted(already_present),
+        "skipped_invalid": skipped_invalid,
+        "total_history_count": len(runtime.history),
+    }
+
+
 async def _async_handle_set_period_duration(hass: HomeAssistant, call: ServiceCall) -> None:
     runtime = _runtime_for_call(hass, call)
     runtime.period_duration_days = int(call.data[SERVICE_FIELD_DAYS])
@@ -2125,6 +2254,146 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
     _LOGGER.info("Exported full backup of %d profile(s) to %s", len(profiles), target_path)
 
     return {"file": str(target_path), "profile_count": len(profiles)}
+
+
+def _apply_backup_to_runtime(runtime: "MenstruationRuntime", backup_profile: dict[str, Any], mode: str) -> None:
+    """Apply one profile's backed-up data onto its currently-loaded runtime,
+    mutating runtime in place (HA-Idee 6, "weitere Ideen" 15.09.2026).
+
+    mode="overwrite": every restorable field is replaced wholesale with the
+    backup's value - a full rollback to the backup's state.
+
+    mode="merge" (default): only FILLS GAPS, never clobbers anything already
+    present locally. History is unioned (adding old dates never loses data).
+    symptom_history restores entries only for dates not already logged
+    locally. Life-stage dicts (pregnancy/menarche/pre_menarche/menopause/
+    noncycle) are restored only if not currently active/tracking locally.
+    product_usage and cycle_length_override are restored only if currently
+    empty/unset. Settings that aren't "data" (onboarding_stage,
+    visibility_level, period_duration_days) are deliberately left untouched
+    in merge mode - only overwrite mode touches those, so merge mode's
+    promise stays simple: "fills in missing data, never touches your
+    current settings or overwrites anything you already have."
+
+    ics_token/ics_token_created_at are never touched either way - the backup
+    never contains them (see _async_handle_export_full_backup) and rotation
+    stays independent of any restore.
+    """
+    if mode == "overwrite":
+        runtime.history = list(backup_profile.get("history", runtime.history))
+        runtime.symptom_history = list(backup_profile.get("symptom_history", runtime.symptom_history))
+        runtime.product_usage = list(backup_profile.get("product_usage", runtime.product_usage))
+        runtime.pregnancy_data = dict(backup_profile.get("pregnancy_data", runtime.pregnancy_data))
+        runtime.menarche_data = dict(backup_profile.get("menarche_data", runtime.menarche_data))
+        runtime.pre_menarche_data = dict(backup_profile.get("pre_menarche_data", runtime.pre_menarche_data))
+        runtime.menopause_data = dict(backup_profile.get("menopause_data", runtime.menopause_data))
+        runtime.noncycle_data = dict(backup_profile.get("noncycle_data", runtime.noncycle_data))
+        runtime.cycle_length_override = backup_profile.get("cycle_length_override", runtime.cycle_length_override)
+        runtime.onboarding_stage = str(backup_profile.get("onboarding_stage") or runtime.onboarding_stage)
+        runtime.visibility_level = str(backup_profile.get("visibility_level") or runtime.visibility_level)
+        runtime.period_duration_days = int(
+            backup_profile.get("period_duration_days", runtime.period_duration_days)
+        )
+        return
+
+    # mode == "merge"
+    backup_history = backup_profile.get("history") or []
+    runtime.history = sorted(set(runtime.history) | set(backup_history))
+
+    local_dates = {e.get("date") for e in runtime.symptom_history if isinstance(e, dict)}
+    for entry in backup_profile.get("symptom_history") or []:
+        if isinstance(entry, dict) and entry.get("date") not in local_dates:
+            runtime.symptom_history.append(entry)
+
+    if not runtime.product_usage:
+        runtime.product_usage = list(backup_profile.get("product_usage") or [])
+
+    if not runtime.pregnancy_data.get("is_pregnant") and backup_profile.get("pregnancy_data"):
+        runtime.pregnancy_data = dict(backup_profile["pregnancy_data"])
+    if not runtime.menarche_data.get("tracking_active") and backup_profile.get("menarche_data"):
+        runtime.menarche_data = dict(backup_profile["menarche_data"])
+    if not runtime.menopause_data.get("is_menopause") and backup_profile.get("menopause_data"):
+        runtime.menopause_data = dict(backup_profile["menopause_data"])
+    if not runtime.noncycle_data.get("is_postpartum") and backup_profile.get("noncycle_data", {}).get(
+        "is_postpartum"
+    ):
+        runtime.noncycle_data = dict(backup_profile["noncycle_data"])
+    if backup_profile.get("pre_menarche_data") and not any((runtime.pre_menarche_data or {}).get("signs") or {}):
+        runtime.pre_menarche_data = dict(backup_profile["pre_menarche_data"])
+
+    if runtime.cycle_length_override is None and backup_profile.get("cycle_length_override") is not None:
+        runtime.cycle_length_override = backup_profile["cycle_length_override"]
+
+
+async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Restore profile data from a JSON file previously written by
+    export_full_backup (HA-Idee 6, "weitere Ideen" 15.09.2026).
+
+    Deliberately restricted in scope compared to the export: only restores
+    data into profiles that are ALREADY configured (matched by profile slug
+    among currently loaded runtimes) - this service never creates a new
+    config entry, since that can only happen through the config flow.
+    A profile present in the backup but not currently configured is skipped
+    and reported back, not silently dropped without a trace.
+    """
+    if call.data.get(SERVICE_FIELD_CONFIRM) is not True:
+        raise HomeAssistantError("Refusing to import backup. Set confirm: true to confirm this write operation.")
+
+    mode = str(call.data.get(SERVICE_FIELD_MODE, DEFAULT_IMPORT_FULL_BACKUP_MODE))
+    if mode not in IMPORT_FULL_BACKUP_MODES:
+        raise HomeAssistantError(f"Unknown mode '{mode}'. Expected one of: {', '.join(IMPORT_FULL_BACKUP_MODES)}")
+
+    filename = str(call.data[SERVICE_FIELD_FILENAME])
+    stem = _sanitize_export_filename(Path(filename).stem)
+    target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
+    target_path = (target_dir / f"{stem}.json").resolve()
+    if target_dir.resolve() not in target_path.parents:
+        raise HomeAssistantError("Invalid filename.")
+
+    def _read_file() -> str:
+        return target_path.read_text(encoding="utf-8")
+
+    try:
+        raw_content = await hass.async_add_executor_job(_read_file)
+    except OSError as err:
+        raise HomeAssistantError(f"Could not read backup file '{target_path.name}': {err}") from err
+
+    try:
+        backup = json.loads(raw_content)
+    except json.JSONDecodeError as err:
+        raise HomeAssistantError(f"Backup file '{target_path.name}' is not valid JSON: {err}") from err
+
+    if not isinstance(backup, dict) or backup.get("integration") != DOMAIN or not isinstance(
+        backup.get("profiles"), dict
+    ):
+        raise HomeAssistantError(
+            f"'{target_path.name}' doesn't look like a menstruation_cycle export_full_backup file."
+        )
+
+    domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
+    runtimes_by_profile = {rt.profile: rt for rt in domain_data.values()}
+
+    restored: list[str] = []
+    skipped_not_configured: list[str] = []
+
+    for profile_slug, backup_profile in backup["profiles"].items():
+        runtime = runtimes_by_profile.get(profile_slug)
+        if runtime is None or not isinstance(backup_profile, dict):
+            skipped_not_configured.append(profile_slug)
+            continue
+        _apply_backup_to_runtime(runtime, backup_profile, mode)
+        await _async_save_and_notify(hass, runtime)
+        restored.append(profile_slug)
+
+    _LOGGER.info(
+        "Imported full backup '%s' (mode=%s): restored %d profile(s), skipped %d not-configured.",
+        target_path.name,
+        mode,
+        len(restored),
+        len(skipped_not_configured),
+    )
+
+    return {"mode": mode, "restored": restored, "skipped_not_configured": skipped_not_configured}
 
 
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:

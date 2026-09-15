@@ -238,6 +238,38 @@
           "description": "Nombre de archivo base (sin extensión). Si se deja vacío, se genera automáticamente un nombre con marca de tiempo."
         }
       }
+    },
+    "import_cycle_history": {
+      "name": "Importar historial de ciclo (desde otra app)",
+      "description": "Importa fechas de inicio de ciclo de forma aditiva — a diferencia de set_cycle_history, el historial existente se conserva, no se reemplaza. Acepta automáticamente fechas ISO (AAAA-MM-DD) y con puntos (DD.MM.AAAA); las fechas con barras solo se analizan si date_format se establece explícitamente, ya que día-primero frente a mes-primero es ambiguo. Las fechas no interpretables se omiten y se notifican en lugar de abortar la importación.",
+      "fields": {
+        "dates": {
+          "name": "Fechas",
+          "description": "Lista de cadenas de fecha a importar, en formato ISO, con puntos, o (con date_format establecido) con barras."
+        },
+        "date_format": {
+          "name": "Formato de fecha",
+          "description": "Cómo interpretar fechas con barras: 'auto' (por defecto) solo acepta fechas ISO/con puntos, 'dmy' trata DD/MM/AAAA como día primero, 'mdy' trata MM/DD/AAAA como mes primero."
+        }
+      }
+    },
+    "import_full_backup": {
+      "name": "Importar copia de seguridad completa (todos los perfiles)",
+      "description": "Restaura datos de un archivo previamente escrito por export_full_backup. Solo restaura en perfiles ya configurados (coincidencia por slug de perfil) — nunca crea un perfil nuevo. El modo 'merge' (por defecto) solo rellena huecos y nunca sobrescribe datos existentes; el modo 'overwrite' reemplaza completamente los datos de un perfil coincidente con el contenido de la copia. Requiere confirm: true.",
+      "fields": {
+        "filename": {
+          "name": "Nombre de archivo",
+          "description": "Nombre del archivo de copia de seguridad a leer, en la carpeta menstruation_cycle_exports (sin ruta)."
+        },
+        "mode": {
+          "name": "Modo",
+          "description": "'merge' solo rellena datos faltantes sin sobrescribir nada existente. 'overwrite' reemplaza completamente los datos de un perfil coincidente con la copia."
+        },
+        "confirm": {
+          "name": "Confirmar",
+          "description": "Debe establecerse en true para confirmar esta operación de escritura."
+        }
+      }
     }
   },
   "issues": {

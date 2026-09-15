@@ -150,7 +150,13 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_PROFILE): str,
                 vol.Required(CONF_FRIENDLY_NAME, default=DEFAULT_NAME): str,
-                vol.Optional(CONF_ICON, default=""): str,
+                # HA-Idee 5 (weitere Ideen, 15.09.2026): war ein reines
+                # Freitextfeld ("mdi:calendar-heart" von Hand tippen) -
+                # IconSelector() liefert eine durchsuchbare Icon-Auswahl mit
+                # Vorschau, wie andere HA-Integrationen es laengst tun. Der
+                # zugrunde liegende Wert bleibt ein normaler String, nur das
+                # Formularfeld aendert sich.
+                vol.Optional(CONF_ICON, default=""): selector.IconSelector(),
                 vol.Optional(CONF_ONBOARDING_STAGE, default=DEFAULT_ONBOARDING_STAGE): vol.In(ONBOARDING_STAGES),
             }
         )
@@ -237,7 +243,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
-                vol.Optional(CONF_ICON, default=current_icon): str,
+                vol.Optional(CONF_ICON, default=current_icon): selector.IconSelector(),
                 vol.Optional(CONF_ONBOARDING_STAGE, default=current_stage): vol.In(ONBOARDING_STAGES),
             }
         )
@@ -580,7 +586,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=c["friendly_name"]): str,
-                vol.Optional(CONF_ICON, default=c["icon"]): str,
+                vol.Optional(CONF_ICON, default=c["icon"]): selector.IconSelector(),
                 _optional_date_key(CONF_BIRTH_DATE, c["birth_date"] or None): selector.DateSelector(),
                 vol.Required(CONF_PERIOD_DURATION_DAYS, default=c["period_duration"]): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=14)

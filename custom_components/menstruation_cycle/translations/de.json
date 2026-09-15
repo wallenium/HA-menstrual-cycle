@@ -240,6 +240,38 @@
           "description": "Basis-Dateiname (ohne Endung). Bei leerem Feld wird automatisch ein Name mit Zeitstempel erzeugt."
         }
       }
+    },
+    "import_cycle_history": {
+      "name": "Zyklushistorie importieren (aus anderer App)",
+      "description": "Importiert Zyklus-Start-Tage additiv — anders als set_cycle_history bleibt die bestehende Historie erhalten, statt ersetzt zu werden. Akzeptiert automatisch ISO- (JJJJ-MM-TT) und Punkt-Daten (TT.MM.JJJJ); Schrägstrich-Daten werden nur mit explizit gesetztem date_format interpretiert, da Tag-zuerst vs. Monat-zuerst sonst mehrdeutig ist. Nicht interpretierbare Daten werden übersprungen und zurückgemeldet statt den Import abzubrechen.",
+      "fields": {
+        "dates": {
+          "name": "Daten",
+          "description": "Liste von Datums-Strings zum Importieren, im ISO-, Punkt- oder (mit gesetztem date_format) Schrägstrich-Format."
+        },
+        "date_format": {
+          "name": "Datumsformat",
+          "description": "Wie Schrägstrich-Daten interpretiert werden: 'auto' (Standard) akzeptiert nur ISO-/Punkt-Daten, 'dmy' interpretiert TT/MM/JJJJ als Tag zuerst, 'mdy' interpretiert MM/TT/JJJJ als Monat zuerst."
+        }
+      }
+    },
+    "import_full_backup": {
+      "name": "Vollständiges Backup importieren (alle Profile)",
+      "description": "Stellt Daten aus einer zuvor von export_full_backup erzeugten Datei wieder her. Stellt nur in bereits konfigurierten Profilen wieder her (Zuordnung über den Profil-Slug) — legt nie ein neues Profil an. Modus 'merge' (Standard) füllt nur Lücken und überschreibt nie bereits vorhandene Daten; Modus 'overwrite' ersetzt die Daten eines zugeordneten Profils vollständig durch den Backup-Inhalt. Erfordert confirm: true.",
+      "fields": {
+        "filename": {
+          "name": "Dateiname",
+          "description": "Name der zu lesenden Backup-Datei im Ordner menstruation_cycle_exports (ohne Pfad)."
+        },
+        "mode": {
+          "name": "Modus",
+          "description": "'merge' füllt nur fehlende Daten auf, ohne Bestehendes zu überschreiben. 'overwrite' ersetzt die Daten eines zugeordneten Profils vollständig durch das Backup."
+        },
+        "confirm": {
+          "name": "Bestätigen",
+          "description": "Muss auf true gesetzt werden, um diesen Schreibvorgang zu bestätigen."
+        }
+      }
     }
   },
   "issues": {

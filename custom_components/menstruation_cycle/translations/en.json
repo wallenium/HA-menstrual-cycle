@@ -238,6 +238,38 @@
           "description": "Base filename (without extension) to save under. A timestamped name is generated automatically when left empty."
         }
       }
+    },
+    "import_cycle_history": {
+      "name": "Import cycle history (from another app)",
+      "description": "Additively imports cycle-start dates — unlike set_cycle_history, existing history is kept, not replaced. Tolerates ISO (YYYY-MM-DD) and dotted (DD.MM.YYYY) dates automatically; slash-separated dates are only parsed when date_format is explicitly set, since day-first vs. month-first is otherwise ambiguous. Dates that can't be parsed are skipped and reported back rather than aborting the import.",
+      "fields": {
+        "dates": {
+          "name": "Dates",
+          "description": "List of date strings to import, in ISO, dotted, or (with date_format set) slash format."
+        },
+        "date_format": {
+          "name": "Date format",
+          "description": "How to interpret slash-separated dates: 'auto' (default) only accepts ISO/dotted dates, 'dmy' treats DD/MM/YYYY as day-first, 'mdy' treats MM/DD/YYYY as month-first."
+        }
+      }
+    },
+    "import_full_backup": {
+      "name": "Import full backup (all profiles)",
+      "description": "Restores data from a file previously written by export_full_backup. Only restores into profiles that are already configured (matched by profile slug) — never creates a new profile. Mode 'merge' (default) only fills in gaps and never overwrites data you already have; mode 'overwrite' fully replaces a matched profile's data with the backup's contents. Requires confirm: true.",
+      "fields": {
+        "filename": {
+          "name": "Filename",
+          "description": "Name of the backup file to read, from the menstruation_cycle_exports folder (without path)."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "'merge' only fills in missing data without overwriting anything existing. 'overwrite' fully replaces a matched profile's data with the backup."
+        },
+        "confirm": {
+          "name": "Confirm",
+          "description": "Must be set to true to confirm this write operation."
+        }
+      }
     }
   },
   "issues": {

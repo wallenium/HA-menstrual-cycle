@@ -238,6 +238,38 @@
           "description": "Nom de fichier de base (sans extension). Un nom horodaté est généré automatiquement si laissé vide."
         }
       }
+    },
+    "import_cycle_history": {
+      "name": "Importer l'historique du cycle (depuis une autre appli)",
+      "description": "Importe les dates de début de cycle de façon additive — contrairement à set_cycle_history, l'historique existant est conservé, pas remplacé. Accepte automatiquement les dates ISO (AAAA-MM-JJ) et à points (JJ.MM.AAAA) ; les dates avec barres obliques ne sont analysées que si date_format est défini explicitement, le format jour/mois étant sinon ambigu. Les dates illisibles sont ignorées et signalées plutôt que d'interrompre l'import.",
+      "fields": {
+        "dates": {
+          "name": "Dates",
+          "description": "Liste de chaînes de dates à importer, au format ISO, à points, ou (avec date_format défini) à barres obliques."
+        },
+        "date_format": {
+          "name": "Format de date",
+          "description": "Comment interpréter les dates à barres obliques : 'auto' (défaut) n'accepte que les dates ISO/à points, 'dmy' traite JJ/MM/AAAA comme jour en premier, 'mdy' traite MM/JJ/AAAA comme mois en premier."
+        }
+      }
+    },
+    "import_full_backup": {
+      "name": "Importer une sauvegarde complète (tous les profils)",
+      "description": "Restaure les données d'un fichier précédemment écrit par export_full_backup. Ne restaure que dans les profils déjà configurés (correspondance par slug de profil) — ne crée jamais de nouveau profil. Le mode 'merge' (défaut) ne comble que les lacunes et n'écrase jamais les données existantes ; le mode 'overwrite' remplace entièrement les données d'un profil correspondant par le contenu de la sauvegarde. Nécessite confirm: true.",
+      "fields": {
+        "filename": {
+          "name": "Nom de fichier",
+          "description": "Nom du fichier de sauvegarde à lire, dans le dossier menstruation_cycle_exports (sans chemin)."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "'merge' ne comble que les données manquantes sans rien écraser. 'overwrite' remplace entièrement les données d'un profil correspondant par la sauvegarde."
+        },
+        "confirm": {
+          "name": "Confirmer",
+          "description": "Doit être défini sur true pour confirmer cette opération d'écriture."
+        }
+      }
     }
   },
   "issues": {

@@ -210,6 +210,26 @@ SERVICE_EXPORT_HISTORY = "export_history"
 # Schwangerschafts-/Menarche-/Menopause-/Sonderzyklus-Daten, ...) in einer
 # einzigen JSON-Datei - fuer ein echtes Backup, nicht nur einen Teilauszug.
 SERVICE_EXPORT_FULL_BACKUP = "export_full_backup"
+# HA-Idee 6 (weitere Ideen, 15.09.2026): das bewusst zurueckgestellte
+# Restore-Gegenstueck zu SERVICE_EXPORT_FULL_BACKUP. Nur fuer bereits
+# konfigurierte Profile (kein Anlegen neuer Config-Entries per Service),
+# "merge" fuellt nur leere Felder auf, "overwrite" ersetzt vollstaendig und
+# verlangt eine explizite Bestaetigung, siehe __init__.py::
+# _async_handle_import_full_backup.
+SERVICE_IMPORT_FULL_BACKUP = "import_full_backup"
+SERVICE_FIELD_MODE = "mode"
+SERVICE_FIELD_CONFIRM = "confirm"
+IMPORT_FULL_BACKUP_MODES = ["merge", "overwrite"]
+DEFAULT_IMPORT_FULL_BACKUP_MODE = "merge"
+# HA-Idee 7 (weitere Ideen, 15.09.2026): im Unterschied zu
+# SERVICE_SET_CYCLE_HISTORY (ersetzt die komplette Historie, verlangt saubere
+# ISO-Daten, kein Parsing) ist dieser Service additiv (bestehende Daten
+# bleiben erhalten) und toleriert ein paar gaengige Datumsformate aus
+# Fremd-App-Exporten - fuer den Umstieg von einer anderen Tracking-App.
+SERVICE_IMPORT_CYCLE_HISTORY = "import_cycle_history"
+SERVICE_FIELD_DATE_FORMAT = "date_format"
+IMPORT_DATE_FORMATS = ["auto", "dmy", "mdy"]
+DEFAULT_IMPORT_DATE_FORMAT = "auto"
 SERVICE_REFRESH_CYCLE_MODEL = "refresh_cycle_model"
 SERVICE_LOG_PRODUCT_USAGE = "log_product_usage"
 SERVICE_REIMPORT_BASAL_TEMP_STATS = "reimport_basal_temp_statistics"
@@ -496,4 +516,7 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         "_menstruation": f"menstruation_{slug}",
         "_period_products_today": f"menstruation_{slug}_products_today",
         "_basal_temp": f"menstruation_{slug}_basal_temp",
+        # HA-Idee 3 (weitere Ideen, 15.09.2026): calendar.py's native calendar
+        # entity, same naming scheme as everything else here.
+        "_cycle_calendar": f"menstruation_{slug}_cycle",
     }

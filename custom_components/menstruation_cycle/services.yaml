@@ -78,6 +78,49 @@ set_cycle_history:
       selector:
         object:
 
+import_cycle_history:
+  name: Import cycle history (from another app)
+  description: |
+    Additively imports cycle-start dates - unlike set_cycle_history, existing
+    history is kept, not replaced. Tolerates ISO (YYYY-MM-DD) and dotted
+    (DD.MM.YYYY) dates automatically; slash-separated dates (e.g. 03/04/2026)
+    are only parsed when date_format is explicitly set to dmy or mdy, since
+    day-first vs. month-first is otherwise ambiguous. Dates that can't be
+    parsed are skipped and reported back rather than aborting the import.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna_zyklus"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    dates:
+      required: true
+      example:
+        - "2026-01-14"
+        - "14.02.2026"
+      selector:
+        object:
+    date_format:
+      required: false
+      example: "auto"
+      selector:
+        select:
+          options:
+            - "auto"
+            - "dmy"
+            - "mdy"
+
 set_period_duration:
   name: Set period duration days
   description: Set forecasted period duration (used for card markers).
@@ -183,14 +226,44 @@ export_full_backup:
     configured profile — a real backup, not just one profile's cycle-start
     dates like export_history. The calendar-feed (ICS) token is intentionally
     left out for security. Files are written to
-    `<config>/menstruation_cycle_exports/`. Import/restore is not provided by
-    this integration.
+    `<config>/menstruation_cycle_exports/`. See import_full_backup to restore.
   fields:
     filename:
       required: false
       example: "my_full_backup"
       selector:
         text:
+
+import_full_backup:
+  name: Import full backup (all profiles)
+  description: |
+    Restores data from a file previously written by export_full_backup. Only
+    restores into profiles that are ALREADY configured (matched by profile
+    slug) — this never creates a new profile/config entry, and profiles in
+    the backup with no current match are skipped and reported back.
+    mode "merge" (default) only fills in gaps and never overwrites data you
+    already have; mode "overwrite" fully replaces a matched profile's data
+    with the backup's contents. Requires confirm: true. The file is read
+    from `<config>/menstruation_cycle_exports/` by filename only.
+  fields:
+    filename:
+      required: true
+      example: "my_full_backup"
+      selector:
+        text:
+    mode:
+      required: false
+      example: "merge"
+      selector:
+        select:
+          options:
+            - "merge"
+            - "overwrite"
+    confirm:
+      required: true
+      example: true
+      selector:
+        boolean:
 
 refresh_cycle_model:
   name: Refresh cycle model

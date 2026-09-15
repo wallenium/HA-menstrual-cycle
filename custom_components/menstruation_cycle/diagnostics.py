@@ -1,102 +1,125 @@
 """Diagnostics support for menstruation_cycle.
 
-Provides the data behind Home Assistant's "Download diagnostics" button
-(Settings -> Devices & Services -> Menstruation Cycle -> ... menu). This is
-meant to help with bug reports without requiring someone to manually dig
-through logs or describe their setup from memory.
+HA-Idee 1 ("weitere Ideen", 15.09.2026): until now this integration had no
+diagnostics.py at all, so Settings -> Devices & Services -> this entry's
+"Download diagnostics" button either doesn't appear or downloads nothing
+useful - anyone reporting a bug had to manually dig through HA's storage
+files instead of using HA's own built-in, redacted diagnostics export.
 
-DELIBERATELY CONSERVATIVE ABOUT WHAT'S INCLUDED: this integration handles
-sensitive personal health data (cycle history, symptoms, pregnancy/menopause/
-postpartum status, contraception method). A diagnostics dump can end up
-attached to a public GitHub issue, so nothing here is a real date, a name, a
-free-text note, or any other value that could identify someone or reveal
-specifics about their health. Only structural information is included:
-- counts (how many symptom entries, how many cycles tracked — not their
-  content or dates)
-- boolean feature flags (which life-stage mode is active — not its details)
-- non-personal settings (prediction count, NFP mode, dashboard toggle, etc.)
-
-If a future contributor is tempted to add a field here "because it's useful
-for debugging", the bar is: could this value, on its own or combined with
-others already here, identify a person or reveal something about their
-health that they didn't already choose to make public? If yes, it doesn't
-belong in a diagnostics dump — reproduce the bug with synthetic data instead,
-or ask the reporter to paste the specific (redacted) value themselves.
+Cycle-tracking data is unusually sensitive (menstrual/fertility/pregnancy
+health data), so this deliberately does NOT dump raw history, symptom
+entries, or free-text notes/mood the way a typical integration's diagnostics
+export would - only structure, counts, and non-identifying settings. A bug
+report should be useful without becoming a second, less-protected copy of
+someone's health data sitting in a GitHub issue. In particular: exact period
+dates are excluded even from the summary (only count + earliest/latest date
+of the range, not every date), since a full list of dates over time reveals
+cycle regularity - itself sensitive.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
+from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import (
-    CONF_DASHBOARD_ENABLED,
-    CONF_NFP_ANALYSIS_MODE,
-    CONF_NOTIFICATIONS_ENABLED,
-    CONF_NUM_PREDICTIONS,
-    CONF_ONBOARDING_STAGE,
-    DEFAULT_DASHBOARD_ENABLED,
-    DEFAULT_NFP_ANALYSIS_MODE,
-    DEFAULT_NOTIFICATIONS_ENABLED,
-    DEFAULT_NUM_PREDICTIONS,
-    DEFAULT_ONBOARDING_STAGE,
-    DOMAIN,
-)
+from .const import DOMAIN
 
-
-def _profile_diagnostics(runtime: Any) -> dict[str, Any]:
-    """Structural-only summary of one profile's runtime state — counts and
-    booleans, never actual dates, names, or content."""
-    return {
-        # Counts, not content.
-        "cycle_starts_tracked": len(runtime.history or []),
-        "symptom_entries_tracked": len(runtime.symptom_history or []),
-        "product_usage_entries_tracked": len(runtime.product_usage or []),
-        "period_duration_days": runtime.period_duration_days,
-        "cycle_length_override_set": runtime.cycle_length_override is not None,
-        "onboarding_stage": runtime.onboarding_stage,
-        # Feature flags only — which mode is active, not its details (no
-        # dates, no due date, no menarche estimate, etc.).
-        "pregnancy_mode_active": bool((runtime.pregnancy_data or {}).get("is_pregnant")),
-        "pregnancy_high_risk_flag_set": bool((runtime.pregnancy_data or {}).get("high_risk")),
-        "menarche_tracking_active": bool((runtime.menarche_data or {}).get("tracking_active")),
-        "menopause_mode_active": bool((runtime.menopause_data or {}).get("is_menopause")),
-        "postpartum_mode_active": bool((runtime.noncycle_data or {}).get("is_postpartum")),
-        "basal_temp_stats_backfilled": bool((runtime.noncycle_data or {}).get("basal_temp_stats_backfilled")),
-        "doctor_report_exported": bool((runtime.noncycle_data or {}).get("doctor_report_exported")),
-    }
+# Config-entry data/options keys that identify the person or device rather
+# than describing a setting - redacted rather than excluded outright so the
+# key's presence/shape is still visible (useful for debugging "is this field
+# even populated"), just not its value. Everything else in entry.data/
+# entry.options (booleans, numbers, mode selects like temperature_unit or
+# nfp_analysis_mode) stays visible - those are genuinely useful for
+# diagnosing a bug and aren't personally identifying on their own.
+_REDACT_ENTRY_KEYS = {
+    "profile",
+    "friendly_name",
+    "icon",
+    "birth_date",
+    "notify_service",
+    "linked_person_entity_id",
+    "ics_token",
+}
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
-    """Return diagnostics for a single profile's config entry."""
+    """Return diagnostics for one profile's config entry."""
     runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
 
-    options = entry.options
     diagnostics: dict[str, Any] = {
-        "config_entry": {
-            # entry_id/title/unique_id intentionally omitted — the title is
-            # typically the person's chosen display name.
-            "options": {
-                CONF_NUM_PREDICTIONS: options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS),
-                CONF_NFP_ANALYSIS_MODE: options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-                CONF_ONBOARDING_STAGE: options.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE),
-                CONF_DASHBOARD_ENABLED: options.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED),
-                # Whether notifications are turned on, not the notify target
-                # itself (which could reveal a specific phone/person).
-                CONF_NOTIFICATIONS_ENABLED: options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED),
-            },
+        "manifest_version": _load_manifest_version_safe(),
+        "entry": {
+            "data": async_redact_data(dict(entry.data), _REDACT_ENTRY_KEYS),
+            "options": async_redact_data(dict(entry.options), _REDACT_ENTRY_KEYS),
         },
         "runtime_loaded": runtime is not None,
     }
-    if runtime is not None:
-        diagnostics["profile"] = _profile_diagnostics(runtime)
 
+    if runtime is None:
+        return diagnostics
+
+    history = list(runtime.history or [])
+    symptom_history = list(runtime.symptom_history or [])
+    product_usage = list(runtime.product_usage or [])
+
+    diagnostics["profile"] = {
+        "onboarding_stage": runtime.onboarding_stage,
+        "visibility_level": runtime.visibility_level,
+        "period_duration_days": runtime.period_duration_days,
+        "cycle_length_override": runtime.cycle_length_override,
+        "history": {
+            "entry_count": len(history),
+            "earliest": min(history) if history else None,
+            "latest": max(history) if history else None,
+        },
+        "symptom_history": {
+            "entry_count": len(symptom_history),
+            # Which FIELDS were ever logged, not their values - useful to spot
+            # e.g. "a field type nobody actually uses" without exposing what
+            # anyone actually logged.
+            "fields_used": sorted({key for e in symptom_history for key in e.keys() if key != "date"}),
+        },
+        "product_usage": {"entry_count": len(product_usage)},
+        "pregnancy_tracking_active": bool(runtime.pregnancy_data.get("is_pregnant")),
+        "menarche_tracking_active": bool(runtime.menarche_data.get("tracking_active")),
+        "menopause_tracking_active": bool(runtime.menopause_data.get("is_menopause")),
+        "postpartum_tracking_active": bool(runtime.noncycle_data.get("is_postpartum")),
+        # Age, not the token or its exact timestamp - enough to tell whether
+        # repairs.py::async_check_stale_ics_token *should* have fired.
+        "ics_token_age_days": _ics_token_age_days(getattr(runtime, "ics_token_created_at", "")),
+    }
     return diagnostics
 
 
-async def async_get_device_diagnostics(hass: HomeAssistant, entry: ConfigEntry, device) -> dict[str, Any]:  # noqa: ANN001
-    """Device-level diagnostics — same content as the config entry, since
-    each profile maps to exactly one device."""
-    return await async_get_config_entry_diagnostics(hass, entry)
+def _load_manifest_version_safe() -> str:
+    """Reuse __init__.py's manifest-version loader (also used for Lovelace
+    resource cache-busting) so diagnostics always report the same version
+    string as everything else, without a second copy of the file-reading
+    logic. Defensive: diagnostics must never fail just because the manifest
+    couldn't be read for some reason."""
+    try:
+        from . import _load_manifest_version
+
+        return _load_manifest_version()
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
+def _ics_token_age_days(ics_token_created_at: str) -> int | None:
+    """Age in days of the ICS token's creation/rotation timestamp, or None
+    if missing/unparseable. Mirrors repairs.py::async_check_stale_ics_token's
+    own parsing, kept deliberately simple/duplicated rather than imported -
+    diagnostics should never break because a repairs.py internal changed."""
+    if not ics_token_created_at:
+        return None
+    try:
+        created_at = datetime.fromisoformat(ics_token_created_at)
+    except ValueError:
+        return None
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - created_at).days

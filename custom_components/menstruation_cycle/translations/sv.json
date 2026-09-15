@@ -238,6 +238,38 @@
           "description": "Basfilnamn (utan filändelse). Ett tidsstämplat namn genereras automatiskt om det lämnas tomt."
         }
       }
+    },
+    "import_cycle_history": {
+      "name": "Importera cykelhistorik (från en annan app)",
+      "description": "Importerar cykelstartdatum additivt — till skillnad från set_cycle_history behålls befintlig historik, den ersätts inte. Accepterar automatiskt ISO- (ÅÅÅÅ-MM-DD) och punktdatum (DD.MM.ÅÅÅÅ); snedstreck-datum tolkas endast om date_format uttryckligen anges, eftersom dag-först kontra månad-först annars är tvetydigt. Datum som inte kan tolkas hoppas över och rapporteras istället för att avbryta importen.",
+      "fields": {
+        "dates": {
+          "name": "Datum",
+          "description": "Lista med datumsträngar att importera, i ISO-, punkt- eller (med date_format angivet) snedstrecksformat."
+        },
+        "date_format": {
+          "name": "Datumformat",
+          "description": "Hur snedstreck-datum tolkas: 'auto' (standard) accepterar endast ISO-/punktdatum, 'dmy' tolkar DD/MM/ÅÅÅÅ som dag först, 'mdy' tolkar MM/DD/ÅÅÅÅ som månad först."
+        }
+      }
+    },
+    "import_full_backup": {
+      "name": "Importera fullständig säkerhetskopia (alla profiler)",
+      "description": "Återställer data från en fil som tidigare skapats av export_full_backup. Återställer endast i redan konfigurerade profiler (matchning via profil-slug) — skapar aldrig en ny profil. Läget 'merge' (standard) fyller bara i luckor och skriver aldrig över befintlig data; läget 'overwrite' ersätter en matchad profils data helt med säkerhetskopians innehåll. Kräver confirm: true.",
+      "fields": {
+        "filename": {
+          "name": "Filnamn",
+          "description": "Namn på säkerhetskopian som ska läsas, från mappen menstruation_cycle_exports (utan sökväg)."
+        },
+        "mode": {
+          "name": "Läge",
+          "description": "'merge' fyller bara i saknad data utan att skriva över något befintligt. 'overwrite' ersätter en matchad profils data helt med säkerhetskopian."
+        },
+        "confirm": {
+          "name": "Bekräfta",
+          "description": "Måste sättas till true för att bekräfta denna skrivoperation."
+        }
+      }
     }
   },
   "issues": {
