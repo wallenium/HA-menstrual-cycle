@@ -182,7 +182,14 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
-_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state", "brands"})
+# "buttons" added 15.09.2026: the iOS/macOS app's symptom-entry icon-button
+# SVGs (Assets.xcassets/buttons/, same imageset source files, ~70 icons for
+# flow/pain/hygiene/mucus/spotting/breast/contraception/cervix/libido/clots/
+# smell/intercourse/pregnancy symptoms/test results) - added to this repo's
+# assets/buttons/ folder directly by the user, exposed here the same way the
+# existing pregnancy/period/state/brands folders already are, for a future
+# Lovelace card that logs symptoms with the same icon-chip pickers as the app.
+_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state", "brands", "buttons"})
 _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"

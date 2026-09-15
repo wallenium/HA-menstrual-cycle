@@ -774,12 +774,14 @@ class MenstruationCalendarCard extends HTMLElement {
         const textureValue = existing.cervix_texture || '';
         const positionButtons = cat.options.map((opt) => {
           const sel = positionValue === opt ? ' sym-selected' : '';
-          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_position" data-val="${opt}">${this._tOption(opt)}</button>`;
+          const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon('cervix_position', opt) : '';
+          return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${sel}" data-cat="cervix_position" data-val="${opt}">${icon}<span class="sym-opt-text">${this._tOption(opt)}</span></button>`;
         }).join('');
         const textureConfig = symptomConfig.find((entry) => entry.key === 'cervix_texture');
         const textureButtons = (textureConfig?.options || []).map((opt) => {
           const sel = textureValue === opt ? ' sym-selected' : '';
-          return `<button type="button" class="sym-opt-btn${sel}" data-cat="cervix_texture" data-val="${opt}">${this._tOption(opt)}</button>`;
+          const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon('cervix_texture', opt) : '';
+          return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${sel}" data-cat="cervix_texture" data-val="${opt}">${icon}<span class="sym-opt-text">${this._tOption(opt)}</span></button>`;
         }).join('');
         return `
           <div class="sym-row">
@@ -800,14 +802,16 @@ class MenstruationCalendarCard extends HTMLElement {
         const currentValues = Array.isArray(existing[cat.key]) ? existing[cat.key] : [];
         const checkboxes = cat.options.map((opt) => {
           const checked = currentValues.includes(opt) ? 'checked' : '';
-          return `<label class="sym-opt-label"><input type="checkbox" class="sym-multi" name="${cat.key}" value="${opt}" ${checked}><span>${this._tOption(opt)}</span></label>`;
+          const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon(cat.key, opt) : '';
+          return `<label class="sym-opt-label${icon ? ' sym-opt-label--icon' : ''}"><input type="checkbox" class="sym-multi" name="${cat.key}" value="${opt}" ${checked}>${icon}<span>${this._tOption(opt)}</span></label>`;
         }).join('');
         return `<div class="sym-row"><div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div><div class="sym-options sym-multi-opts">${checkboxes}</div></div>`;
       }
       const currentValue = existing[cat.key] || '';
       const buttons = cat.options.map((opt) => {
         const sel = currentValue === opt ? ' sym-selected' : '';
-        return `<button type="button" class="sym-opt-btn${sel}" data-cat="${cat.key}" data-val="${opt}">${this._tOption(opt)}</button>`;
+        const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon(cat.key, opt) : '';
+        return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${sel}" data-cat="${cat.key}" data-val="${opt}">${icon}<span class="sym-opt-text">${this._tOption(opt)}</span></button>`;
       }).join('');
       const hiddenClass = cat.dependsOn && existing[cat.dependsOn.key] !== cat.dependsOn.value ? ' sym-hidden' : '';
       return `<div class="sym-row${hiddenClass}" data-sym-row="${cat.key}"><div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div><div class="sym-options sym-single-opts">${buttons}</div></div>`;
@@ -1381,8 +1385,17 @@ class MenstruationCalendarCard extends HTMLElement {
         .sym-opt-btn { border: 1px solid rgba(128,128,128,.35); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; transition: background 120ms, border-color 120ms; }
         .sym-opt-btn:hover { border-color: var(--primary-color); }
         .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
+        /* Symptom-Icon-Buttons (15.09.2026, aus der iOS/macOS-App uebernommen):
+           dieselbe Pille wie .sym-opt-btn, nur mit einem kleinen Icon vor dem
+           Text statt reinem Text - siehe menstruation-functions.js::
+           renderOptionIcon(). Icon + Selektions-Hintergrund bleiben zusammen
+           sichtbar, da die Icons selbst schon in sich geschlossene, runde
+           Badges sind (kein reines Umriss-Symbol). */
+        .sym-opt-btn--icon { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 3px; }
+        .sym-opt-icon { width: 22px; height: 22px; object-fit: contain; flex: 0 0 auto; border-radius: 4px; }
         .sym-opt-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: .82rem; }
         .sym-opt-label input[type="checkbox"] { accent-color: var(--error-color, #be123c); }
+        .sym-opt-label--icon .sym-opt-icon { width: 20px; height: 20px; }
         .sym-temp-input { padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font-size: .88rem; width: 100px; }
         @media (max-width: 480px) {
           .day { min-height: 46px; padding: 5px; border-radius: 10px; }

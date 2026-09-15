@@ -528,11 +528,108 @@ function mcStateStyles() {
   `;
 }
 
+/**
+ * Per-option icon overrides for the symptom-logging categories in
+ * getSymptomConfig() above (15.09.2026: "im Kalender/Gauge die vorhandene
+ * Logging-UI aufwerten" - icons taken over from the iOS/macOS app's own
+ * Assets.xcassets/buttons/ imagesets, same source SVGs, same button_*
+ * filenames, now served from this integration's own assets/buttons/).
+ *
+ * Deliberately NOT every option has an icon here - the app's own icon set
+ * has the exact same gaps (no template for cervical_mucus's "untypisch",
+ * the two ovulation-test results, catch-all values like "other"/
+ * "inconspicuous", or training_intensity at all). A category/option
+ * missing from this table just falls back to its existing plain-text
+ * button/checkbox label, exactly like the app falls back to a text chip
+ * when it has no matching asset for a given case.
+ */
+const SYMPTOM_OPTION_ICONS = {
+  bleeding_strength: {
+    none: 'button_flow_none',
+    light: 'button_flow_low',
+    medium: 'button_flow_medium',
+    heavy: 'button_flow_heavy',
+    very_heavy: 'button_flow_veryheavy',
+  },
+  clots: { yes: 'button_clots_yes', no: 'button_clots_no' },
+  clot_size: { small: 'button_clots_small', medium: 'button_clots_medium', large: 'button_clots_large' },
+  bleeding_type: {
+    continuous: 'button_flow_continous',
+    intermittent: 'button_flow_incontinous',
+    drops: 'button_flow_dripping',
+  },
+  spotting: { red: 'button_spotting_red', brown: 'button_spotting_brown' },
+  smell: { normal: 'button_smell_normal', unpleasant: 'button_smell_stink', fishy: 'button_smell_fishy' },
+  discharge: {
+    reddish: 'button_spotting_reddish',
+    brown: 'button_spotting_brownish',
+    white: 'button_spotting_whitish',
+    clear: 'button_spotting_transparent',
+  },
+  hygiene: {
+    pad: 'button_hygenic_pad',
+    liner: 'button_hygenic_pantyliner',
+    tampon: 'button_hygenic_tampon',
+    cup: 'button_hygenic_menstrualcup',
+    period_underwear: 'button_hygenic_periodpanty',
+  },
+  cervical_mucus: {
+    keinen: 'button_mucus_none',
+    klebrig: 'button_mucus_sticky',
+    cremig: 'button_mucus_creamy',
+    fadenziehend: 'button_mucus_fluid',
+  },
+  cervix_position: {
+    cervix_high: 'button_cervix_high',
+    cervix_mid: 'button_cervix_medium',
+    cervix_low: 'button_cervix_low',
+  },
+  cervix_texture: { firm: 'button_cervix_hard', soft: 'button_cervix_soft', open: 'button_cervix_open' },
+  intercourse: { protected: 'button_intercource_protected', unprotected: 'button_intercource_unprotected' },
+  libido: { libido_low: 'button_libido_low', normal: 'button_libido_medium', libido_high: 'button_libido_high' },
+  pain: {
+    mittelschmerz: 'button_pain_middlepain',
+    cramps: 'button_pain_cramp',
+    tender_breasts: 'button_pain_tenderbreast',
+    headache: 'button_pain_headache',
+    migraine: 'button_pain_migraine',
+    lower_back: 'button_pain_backpain',
+    vulva: 'button_pain_vulva',
+  },
+  test: { positive_pregnancy: 'button_test_preg_positive', negative_pregnancy: 'button_test_preg_negative' },
+  contraception_method: {
+    none: 'button_contraception_none',
+    pill: 'button_contraception_pill',
+    hormonal_iud: 'button_contraception_iud',
+    copper_iud: 'button_contraception_iud',
+    implant: 'button_contraception_implant',
+    patch: 'button_contraception_patch',
+    ring: 'button_contraception_ring',
+    injection: 'button_contraception_shot',
+    condom: 'button_contraception_condom',
+  },
+};
+
+/**
+ * Icon markup for one option within a symptom category, or '' if this
+ * option has no icon (the caller then falls back to its existing
+ * plain-text button/checkbox label unchanged). Same asset-serving
+ * convention as renderCategoryIcon() above, just one level more specific
+ * (a single option's value rather than the whole category) and always an
+ * SVG under assets/buttons/ rather than an mdi: icon.
+ */
+function renderOptionIcon(categoryKey, optionValue) {
+  const fileStem = SYMPTOM_OPTION_ICONS[categoryKey]?.[optionValue];
+  if (!fileStem) return '';
+  return `<img src="/menstruation_cycle/assets/buttons/${fileStem}.svg" alt="" class="sym-opt-icon" />`;
+}
+
 const MenstruationFunctions = {
   normalizeOptionKey,
   getSymptomConfig,
   fetchFreshSymptomData,
   renderCategoryIcon,
+  renderOptionIcon,
   escapeHtmlText,
   renderLoadingState,
   renderErrorState,
