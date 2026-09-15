@@ -14,6 +14,23 @@ This platform computes the exact same recurring windows (project_range_windows,
 also used by ical.py) but exposes them as a native calendar.<profile>_cycle
 entity - no token, no external URL, works the same way any other HA calendar
 integration does.
+
+HA-Idee 2 (weitere Ideen, 15.09.2026, vierte Runde): CONF_VISIBILITY_LEVEL
+("abgestufte Eltern-Sichtbarkeit", see sensor.py::_filter_attributes_for_
+visibility) is now honoured here too. This calendar entity is exactly the
+kind of "passive/incidental visibility" surface that setting protects
+against - a shared HA dashboard (e.g. a wall tablet) showing everyone's
+calendars would otherwise display "Period"/"Fertile window" event titles
+for a profile whose sensor attributes are already redacted for that same
+reason. Mirrors sensor.py's own tiering: VISIBILITY_LEVEL_FULL shows
+everything, VISIBILITY_LEVEL_STATUS_ONLY shows period events only (no
+fertile-window/ovulation - status_only's sensor attributes keep
+ATTR_PERIOD_FORECAST but deliberately drop fertility details, same idea
+here), and VISIBILITY_LEVEL_PRIVATE shows no events at all (matching the
+main sensor's own STATE_PRIVATE, which hides even the entity state).
+Deliberately NOT applied to the external ICS feed (ical.py) - that's a
+capability URL guarded by its own bearer token, not a passively-shared
+dashboard, so the same "who might glance at it" threat model doesn't apply.
 """
 
 from __future__ import annotations
@@ -29,7 +46,14 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SIGNAL_HISTORY_UPDATED, menstruation_object_ids_for_profile
+from .const import (
+    DOMAIN,
+    SIGNAL_HISTORY_UPDATED,
+    VISIBILITY_LEVEL_FULL,
+    VISIBILITY_LEVEL_PRIVATE,
+    VISIBILITY_LEVEL_STATUS_ONLY,
+    menstruation_object_ids_for_profile,
+)
 from .ical import _ics_strings
 from .model import build_cycle_model, project_range_windows
 from .sensor import _device_info_for_entry
@@ -121,7 +145,8 @@ class MenstruationCycleCalendar(CalendarEntity):
             range_end.isoformat(),
             cycle_model.avg_cycle_length,
         )
-        self._events = _build_events(windows, self.hass.config.language)
+        visibility_level = getattr(runtime, "visibility_level", VISIBILITY_LEVEL_FULL)
+        self._events = _build_events(windows, self.hass.config.language, visibility_level)
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
@@ -153,14 +178,27 @@ def _event_end_as_datetime(event: CalendarEvent) -> datetime:
     return dt_util.start_of_local_day(event.end)
 
 
-def _build_events(windows: dict[str, Any] | None, lang: str | None) -> list[CalendarEvent]:
+def _build_events(
+    windows: dict[str, Any] | None,
+    lang: str | None,
+    visibility_level: str = VISIBILITY_LEVEL_FULL,
+) -> list[CalendarEvent]:
     """Turn project_range_windows()'s output into CalendarEvent objects.
 
     Reuses ical.py's localized label table (_ics_strings) so a calendar
     entity's event titles match the ICS feed's for the same language,
     instead of maintaining a second, easily-drifting copy.
+
+    visibility_level gates which events are built at all (HA-Idee 2,
+    "weitere Ideen" 15.09.2026, vierte Runde - see module docstring):
+    VISIBILITY_LEVEL_PRIVATE returns no events whatsoever, and
+    VISIBILITY_LEVEL_STATUS_ONLY omits the fertile-window/ovulation events,
+    keeping only period predictions - mirroring exactly what sensor.py's
+    _filter_attributes_for_visibility already does for this profile's
+    sensor attributes, so the two surfaces agree on what "private"/
+    "status_only" mean instead of silently disagreeing.
     """
-    if not windows:
+    if not windows or visibility_level == VISIBILITY_LEVEL_PRIVATE:
         return []
 
     strings = _ics_strings(lang)
@@ -182,29 +220,30 @@ def _build_events(windows: dict[str, Any] | None, lang: str | None) -> list[Cale
             )
         )
 
-    for window in windows.get("fertility_windows", []):
-        try:
-            f_start = date.fromisoformat(str(window["fertile_start"]))
-            f_end = date.fromisoformat(str(window["fertile_end"]))
-            ov = date.fromisoformat(str(window["ovulation"]))
-        except (KeyError, TypeError, ValueError):
-            continue
-        events.append(
-            CalendarEvent(
-                start=f_start,
-                end=f_end + timedelta(days=1),
-                summary=strings["fertile_window"],
-                uid=f"fertile-{window['fertile_start']}",
+    if visibility_level != VISIBILITY_LEVEL_STATUS_ONLY:
+        for window in windows.get("fertility_windows", []):
+            try:
+                f_start = date.fromisoformat(str(window["fertile_start"]))
+                f_end = date.fromisoformat(str(window["fertile_end"]))
+                ov = date.fromisoformat(str(window["ovulation"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            events.append(
+                CalendarEvent(
+                    start=f_start,
+                    end=f_end + timedelta(days=1),
+                    summary=strings["fertile_window"],
+                    uid=f"fertile-{window['fertile_start']}",
+                )
             )
-        )
-        events.append(
-            CalendarEvent(
-                start=ov,
-                end=ov + timedelta(days=1),
-                summary=strings["ovulation"],
-                uid=f"ovulation-{window['ovulation']}",
+            events.append(
+                CalendarEvent(
+                    start=ov,
+                    end=ov + timedelta(days=1),
+                    summary=strings["ovulation"],
+                    uid=f"ovulation-{window['ovulation']}",
+                )
             )
-        )
 
     events.sort(key=lambda e: e.start)
     return events
