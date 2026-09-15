@@ -10,6 +10,15 @@
           "icon": "Icon (optional, e.g. mdi:calendar-heart)",
           "onboarding_stage": "Onboarding stage"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure profile",
+        "description": "Update this profile's display name, icon, or onboarding stage. For all other settings (notifications, visibility, life stages, ...), use the integration's Configure/Options dialog instead.",
+        "data": {
+          "friendly_name": "Friendly name",
+          "icon": "Icon (optional, e.g. mdi:calendar-heart)",
+          "onboarding_stage": "Onboarding stage"
+        }
       }
     },
     "error": {
@@ -42,7 +51,8 @@
           "notify_period_enabled": "Notify before period starts",
           "notify_period_lead_days": "Period notice (days ahead)",
           "notify_fertile_enabled": "Notify when fertile window starts",
-          "notify_fertile_lead_days": "Fertile window notice (days ahead)"
+          "notify_fertile_lead_days": "Fertile window notice (days ahead)",
+          "temperature_unit": "Basal temperature input unit"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -62,7 +72,8 @@
           "notify_period_enabled": "Sends a notification a configurable number of days before the period is predicted to start. Requires 'Enable notifications' above.",
           "notify_period_lead_days": "How many days ahead of the predicted period start to notify (0–7). 1 (default) means the day before, 0 means the same day.",
           "notify_fertile_enabled": "Sends a notification a configurable number of days before the fertile window is predicted to start. Requires 'Enable notifications' above.",
-          "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day."
+          "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day.",
+          "temperature_unit": "Which unit basal_temp values are interpreted in when logged via the log_symptoms/add_symptom service. Storage and the basal-temperature sensor always stay in Celsius — Home Assistant automatically displays it in the unit your HA instance is configured for."
         }
       },
       "pregnancy": {
@@ -219,6 +230,16 @@
           "description": "How many future cycles to project forward (0-24). Defaults to 3."
         }
       }
+    },
+    "export_full_backup": {
+      "name": "Export full backup (all profiles)",
+      "description": "Write a single JSON file containing the complete stored data (history, symptoms, product usage, pregnancy/menarche/menopause/postpartum data, ...) for every configured profile — for backup purposes, not just one profile's cycle-start dates like export_history. The calendar-feed token is intentionally left out of the export for security.",
+      "fields": {
+        "filename": {
+          "name": "Filename",
+          "description": "Base filename (without extension) to save under. A timestamped name is generated automatically when left empty."
+        }
+      }
     }
   },
   "issues": {
@@ -229,6 +250,10 @@
     "rename_entities": {
       "title": "Menstruation Cycle: Entity ID naming update available",
       "description": "Profile: **{entry_title}**\n\nThe following entities still use an older ID scheme from before this integration started prefixing entity IDs with `menstruation_` for easier searching:\n\n{renames_list}\n\nRenaming keeps all history and statistics intact, but **any dashboards, automations, or scripts referencing the old entity ID(s) will need to be updated manually** afterwards. Click **Fix** to rename them, or dismiss this issue to keep the current IDs."
+    },
+    "stale_ics_token": {
+      "title": "Menstruation Cycle: Calendar feed token hasn't been rotated in a while",
+      "description": "Profile: **{entry_title}**\n\nThe calendar-subscription (ICS) URL for this profile still uses a token that's about {age_days} days old. Anyone who ever had that URL (an old device, a shared calendar, a screenshot, ...) can still use it to read this profile's predictions, since the feed has no separate login. Click **Fix** to generate a fresh token — existing calendar subscriptions will stop working and need to be re-added with the new URL — or dismiss this issue to keep the current one."
     }
   },
   "selector": {
@@ -250,6 +275,12 @@
         "full": "Full (default)",
         "status_only": "Status only",
         "private": "Private"
+      }
+    },
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius (°C)",
+        "fahrenheit": "Fahrenheit (°F)"
       }
     }
   }

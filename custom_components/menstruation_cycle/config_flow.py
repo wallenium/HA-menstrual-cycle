@@ -43,6 +43,9 @@ from .const import (
     CONF_NOTIFY_FERTILE_ENABLED,
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_VISIBILITY_LEVEL,
+    CONF_TEMPERATURE_UNIT,
+    TEMPERATURE_UNITS,
+    DEFAULT_TEMPERATURE_UNIT,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_DASHBOARD_ENABLED,
@@ -187,6 +190,59 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
+    async def async_step_reconfigure(self, user_input: dict | None = None) -> FlowResult:
+        """Handle Home Assistant's native "Reconfigure" entry-point.
+
+        HA-Idee 5 (weitere Ideen, 15.09.2026): gives quick access to a
+        profile's identity (display name, icon, onboarding stage) straight
+        from the integration entry's own context menu, without opening the
+        full multi-step options wizard for what's usually a one-field edit
+        (e.g. a typo'd display name). Deliberately does NOT expose
+        CONF_PROFILE here - that slug is baked into every entity's
+        unique_id (see repairs.py::_compute_entity_renames), so changing it
+        here would silently orphan every existing entity rather than
+        renaming anything, exactly like in async_step_user above. Every
+        other cycle-tracking setting (notifications, visibility, life
+        stages, ...) stays in the options flow, which this intentionally
+        does not duplicate.
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        current_friendly_name = str(entry.data.get(CONF_FRIENDLY_NAME, DEFAULT_NAME))
+        current_icon = str(entry.data.get(CONF_ICON, ""))
+        current_stage = str(
+            entry.options.get(CONF_ONBOARDING_STAGE) or entry.data.get(CONF_ONBOARDING_STAGE) or DEFAULT_ONBOARDING_STAGE
+        ).strip().lower()
+        if current_stage not in ONBOARDING_STAGES:
+            current_stage = DEFAULT_ONBOARDING_STAGE
+
+        if user_input is not None:
+            friendly_name = str(user_input.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
+            icon = str(user_input.get(CONF_ICON, "")).strip()
+            stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, current_stage)).strip().lower()
+            onboarding_stage = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
+
+            return self.async_update_reload_and_abort(
+                entry,
+                data={
+                    **entry.data,
+                    CONF_FRIENDLY_NAME: friendly_name,
+                    CONF_ICON: icon,
+                    CONF_ONBOARDING_STAGE: onboarding_stage,
+                },
+                title=friendly_name,
+            )
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_FRIENDLY_NAME, default=current_friendly_name): str,
+                vol.Optional(CONF_ICON, default=current_icon): str,
+                vol.Optional(CONF_ONBOARDING_STAGE, default=current_stage): vol.In(ONBOARDING_STAGES),
+            }
+        )
+        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+
 
 class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
     """Handle options for menstruation gauge, as a short multi-step wizard.
@@ -317,7 +373,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_fertile_lead_days": int(
                 self._entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)
             ),
+            # HA-Idee 1 (weitere Ideen, 15.09.2026): siehe const.py::
+            # CONF_TEMPERATURE_UNIT - wie CONF_NOTIFY_SERVICE nur in
+            # entry.options gespeichert, kein Runtime-/Storage-Wert noetig.
+            "temperature_unit": str(
+                self._entry.options.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT) or DEFAULT_TEMPERATURE_UNIT
+            ),
         }
+        if self._current["temperature_unit"] not in TEMPERATURE_UNITS:
+            self._current["temperature_unit"] = DEFAULT_TEMPERATURE_UNIT
 
     async def _async_advance(self) -> FlowResult:
         """Move to the next pending conditional step, or to the final review
@@ -374,6 +438,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         lines.append(f"- NFP analysis mode: {d.get(CONF_NFP_ANALYSIS_MODE, '?')}")
         lines.append(f"- Onboarding stage: {d.get(CONF_ONBOARDING_STAGE, '?')}")
         lines.append(f"- Visibility level: {d.get(CONF_VISIBILITY_LEVEL, '?')}")
+        lines.append(f"- Basal temperature input unit: {d.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)}")
         lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
 
         if d.get(CONF_NOTIFICATIONS_ENABLED):
@@ -478,6 +543,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_FERTILE_LEAD_DAYS] = max(
                     0, min(NOTIFY_LEAD_DAYS_MAX, int(user_input.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)))
                 )
+                temperature_unit_raw = str(
+                    user_input.get(CONF_TEMPERATURE_UNIT, self._current["temperature_unit"])
+                ).strip().lower()
+                self._data[CONF_TEMPERATURE_UNIT] = (
+                    temperature_unit_raw if temperature_unit_raw in TEMPERATURE_UNITS else DEFAULT_TEMPERATURE_UNIT
+                )
 
                 self._data["_pregnancy_enabled"] = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
                 self._data["_pre_menarche_enabled"] = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
@@ -576,6 +647,18 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NOTIFY_FERTILE_LEAD_DAYS, default=c["notify_fertile_lead_days"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_LEAD_DAYS_MAX)),
+                # HA-Idee 1 (weitere Ideen, 15.09.2026): steuert nur, in
+                # welcher Einheit ein basal_temp-Wert beim Service
+                # log_symptoms/add_symptom interpretiert wird - Speicherung
+                # bleibt durchgaengig Celsius, siehe Kommentar an
+                # const.py::CONF_TEMPERATURE_UNIT.
+                vol.Optional(CONF_TEMPERATURE_UNIT, default=c["temperature_unit"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=TEMPERATURE_UNITS,
+                        translation_key="temperature_unit",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(
                     CONF_PREGNANCY_ENABLED, default=bool(c["pregnancy_data"].get("is_pregnant", False))
                 ): bool,
@@ -869,5 +952,6 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_PERIOD_LEAD_DAYS: d[CONF_NOTIFY_PERIOD_LEAD_DAYS],
                 CONF_NOTIFY_FERTILE_ENABLED: d[CONF_NOTIFY_FERTILE_ENABLED],
                 CONF_NOTIFY_FERTILE_LEAD_DAYS: d[CONF_NOTIFY_FERTILE_LEAD_DAYS],
+                CONF_TEMPERATURE_UNIT: d[CONF_TEMPERATURE_UNIT],
             },
         )

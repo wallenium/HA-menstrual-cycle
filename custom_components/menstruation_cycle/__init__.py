@@ -150,6 +150,11 @@ from .const import (
     TANNER_STAGE_5,
     ICS_HORIZON_MONTHS_DEFAULT,
     ICS_TOKEN_KEY,
+    ICS_TOKEN_CREATED_AT_KEY,
+    CONF_TEMPERATURE_UNIT,
+    TEMPERATURE_UNIT_FAHRENHEIT,
+    DEFAULT_TEMPERATURE_UNIT,
+    SERVICE_EXPORT_FULL_BACKUP,
 )
 from .ical import generate_ics
 from .model import build_cycle_model, build_cycle_predictions, grouped_cycle_starts, normalize_history
@@ -281,6 +286,9 @@ class MenstruationRuntime:
     unregister_midnight_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
+    # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
+    # erzeugt/rotiert wurde, siehe repairs.py::async_check_stale_ics_token.
+    ics_token_created_at: str = ""
 
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -1050,6 +1058,27 @@ def _entry_id_for_runtime(hass: HomeAssistant, runtime: MenstruationRuntime) -> 
     raise HomeAssistantError(f"Runtime for profile '{runtime.profile}' is not registered.")
 
 
+async def _async_rotate_ics_token(hass: HomeAssistant, entry_id: str) -> None:
+    """Generate a fresh ICS calendar-feed token for one profile and persist
+    it, invalidating any URL built from the previous token immediately.
+
+    Called from repairs.py::StaleIcsTokenRepairFlow when the user clicks
+    *Fix* on the stale-ICS-token repair issue (HA-Idee 6, "weitere Ideen"
+    15.09.2026). Mirrors the same generate-and-save pattern used for the
+    token's very first creation in async_setup_entry above.
+    """
+    runtime: MenstruationRuntime | None = hass.data.get(DOMAIN, {}).get(entry_id)
+    if runtime is None:
+        _LOGGER.warning("Cannot rotate ICS token — profile '%s' is not currently loaded.", entry_id)
+        return
+
+    new_token = secrets.token_urlsafe(32)
+    await runtime.storage.async_save_ics_token(new_token)
+    runtime.ics_token = new_token
+    runtime.ics_token_created_at = dt_util.utcnow().isoformat()
+    _LOGGER.info("Rotated ICS calendar-feed token for profile '%s'.", runtime.profile)
+
+
 def _target_entry_ids_for_call(hass: HomeAssistant, call: ServiceCall | None = None) -> set[str]:
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
@@ -1112,6 +1141,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
 
     async def async_export_history(call: ServiceCall) -> None:
         await _async_handle_export_history(hass, call)
+
+    async def async_export_full_backup(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_export_full_backup(hass, call)
 
     async def async_refresh_cycle_model(call: ServiceCall) -> None:
         await _async_handle_refresh_cycle_model(hass, call)
@@ -1236,6 +1268,17 @@ def _register_domain_services(hass: HomeAssistant) -> None:
                 vol.Optional(SERVICE_FIELD_FILENAME): cv.string,
             }
         ),
+    )
+
+    _full_backup_register_kwargs: dict[str, Any] = {
+        # No common_profile_field here on purpose - unlike export_history,
+        # this service always covers every loaded profile, not one target.
+        "schema": vol.Schema({vol.Optional(SERVICE_FIELD_FILENAME): cv.string}),
+    }
+    if SupportsResponse is not None:
+        _full_backup_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_EXPORT_FULL_BACKUP, async_export_full_backup, **_full_backup_register_kwargs
     )
 
     hass.services.async_register(
@@ -1594,9 +1637,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         visibility_level = DEFAULT_VISIBILITY_LEVEL
 
     ics_token: str = stored.get(ICS_TOKEN_KEY) or ""
+    ics_token_created_at: str = stored.get(ICS_TOKEN_CREATED_AT_KEY) or ""
     if not ics_token:
         ics_token = secrets.token_urlsafe(32)
+    if not ics_token or not ics_token_created_at:
+        # Covers two cases with one save: (a) no token existed yet - create
+        # one, or (b) a token exists but predates this feature (HA-Idee 6,
+        # "weitere Ideen" 15.09.2026) and has no creation timestamp. Either
+        # way async_save_ics_token stamps ics_token_created_at to now() -
+        # for case (b) that's a deliberate "treat unknown age as just
+        # created" backfill, so upgrading doesn't immediately flag every
+        # existing install as stale.
         await storage.async_save_ics_token(ics_token)
+        ics_token_created_at = dt_util.utcnow().isoformat()
 
     runtime = MenstruationRuntime(
         storage=storage,
@@ -1608,6 +1661,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         symptom_history=stored.get(ATTR_SYMPTOM_HISTORY, []),
         product_usage=stored.get(ATTR_PRODUCT_USAGE, []),
         ics_token=ics_token,
+        ics_token_created_at=ics_token_created_at,
         pregnancy_data=stored.get("pregnancy_data", {"is_pregnant": False, "start_date": None}),
         menarche_data=stored.get("menarche_data", {"tracking_active": False, "is_menarche": False, "menarche_date": None, "estimated_date": None, "family_menarche_age": None}),
         pre_menarche_data=stored.get("pre_menarche_data", {"signs": {}, "tanner_stage": None}),
@@ -1636,6 +1690,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await _async_check_and_send_notifications(hass, entry, runtime)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight notification check failed for %s", entry.entry_id)
+        try:
+            # HA-Idee 6 (weitere Ideen, 15.09.2026): re-check daily rather
+            # than only on integration load/restart, so the repair issue
+            # appears promptly once the token crosses the staleness
+            # threshold on a long-running HA instance that's rarely restarted.
+            from .repairs import async_check_stale_ics_token
+
+            async_check_stale_ics_token(hass, entry.entry_id, entry.title, runtime.ics_token_created_at)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight stale-ICS-token check failed for %s", entry.entry_id)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1675,9 +1739,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # prefix ID scheme (from before device grouping + searchable entity IDs were
     # added) and raise a repair issue offering to rename them if so. Cheap
     # registry scan, safe to run on every load.
-    from .repairs import async_check_entity_naming
+    from .repairs import async_check_entity_naming, async_check_stale_ics_token
 
     async_check_entity_naming(hass, entry.entry_id, entry.title, friendly_name)
+    async_check_stale_ics_token(hass, entry.entry_id, entry.title, ics_token_created_at)
 
     return True
 
@@ -1693,9 +1758,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
 
-    from .repairs import async_delete_entity_naming_issue
+    from .repairs import async_delete_entity_naming_issue, async_delete_stale_ics_token_issue
 
     async_delete_entity_naming_issue(hass, entry.entry_id)
+    async_delete_stale_ics_token_issue(hass, entry.entry_id)
 
     if not hass.data.get(DOMAIN):
         for service in (
@@ -1705,6 +1771,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_SET_PERIOD_DURATION,
             SERVICE_ERASE_ALL_HISTORY,
             SERVICE_EXPORT_HISTORY,
+            SERVICE_EXPORT_FULL_BACKUP,
             SERVICE_REFRESH_CYCLE_MODEL,
             SERVICE_LOG_PRODUCT_USAGE,
             SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
@@ -1998,6 +2065,68 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
     _LOGGER.info("Exported menstruation history for profile '%s' to %s", runtime.profile, target_path)
 
 
+async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Export the complete stored data for EVERY configured profile into one
+    JSON file (HA-Idee 4, "weitere Ideen" 15.09.2026).
+
+    Unlike export_history (one profile's cycle-start dates only, CSV/TXT),
+    this covers everything storage.py persists per profile - history,
+    symptoms, product usage, pregnancy/menarche/menopause/postpartum data,
+    onboarding stage, visibility level, cycle length override - across ALL
+    profiles at once, for an actual disaster-recovery backup. The ICS
+    calendar-feed token is deliberately left out: it's a live bearer
+    credential (see repairs.py::async_check_stale_ics_token), not tracking
+    data, and a backup file is far more likely to end up copied somewhere
+    less protected than HA's own storage.
+
+    Import/restore is intentionally NOT part of this service - safely
+    merging a backup back in (profiles that may or may not still exist as
+    config entries, conflicting history, ...) is a meaningfully bigger and
+    riskier scope than a straight export, so it's left as a documented
+    follow-up rather than being rushed alongside this.
+    """
+    domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
+    if not domain_data:
+        raise HomeAssistantError("No menstruation_cycle profiles are currently loaded.")
+
+    profiles: dict[str, Any] = {}
+    for entry_id, runtime in domain_data.items():
+        stored = await runtime.storage.async_load()
+        stored.pop(ICS_TOKEN_KEY, None)
+        stored.pop(ICS_TOKEN_CREATED_AT_KEY, None)
+        profiles[runtime.profile] = {
+            "entry_id": entry_id,
+            "friendly_name": runtime.friendly_name,
+            **stored,
+        }
+
+    backup = {
+        "exported_at": dt_util.utcnow().isoformat(),
+        "integration": DOMAIN,
+        "profiles": profiles,
+    }
+
+    stem = call.data.get(SERVICE_FIELD_FILENAME)
+    if stem:
+        stem = _sanitize_export_filename(str(stem))
+    else:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stem = f"menstruation_full_backup_{stamp}"
+
+    target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
+    target_path = target_dir / f"{stem}.json"
+    content = json.dumps(backup, indent=2, ensure_ascii=False)
+
+    def _write_file() -> None:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(content, encoding="utf-8")
+
+    await hass.async_add_executor_job(_write_file)
+    _LOGGER.info("Exported full backup of %d profile(s) to %s", len(profiles), target_path)
+
+    return {"file": str(target_path), "profile_count": len(profiles)}
+
+
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:
     await _async_refresh_cycle_model(hass, _target_entry_ids_for_call(hass, call))
 
@@ -2200,6 +2329,20 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
     free_text_fields = {SYMPTOM_MOOD, SYMPTOM_NOTE}
     free_text_max_lengths = {SYMPTOM_MOOD: SYMPTOM_MOOD_MAX_LENGTH, SYMPTOM_NOTE: SYMPTOM_NOTE_MAX_LENGTH}
     valid_fields = set(SYMPTOM_OPTIONS.keys()) | {SYMPTOM_BASAL_TEMP} | free_text_fields
+
+    # HA-Idee 1 (weitere Ideen, 15.09.2026): basal_temp used to be hard-coded
+    # Celsius-only, rejecting any Fahrenheit reading outright (see the old
+    # comment below this used to carry: "convert it to Celsius first"). This
+    # profile-level preference (options flow, see config_flow.py) lets a
+    # person log readings in whichever unit they actually think in;
+    # storage/statistics/the basal-temperature sensor stay Celsius either
+    # way, only the interpretation of THIS incoming value changes.
+    entry_for_unit = hass.config_entries.async_get_entry(_entry_id_for_runtime(hass, runtime))
+    temperature_unit = str(
+        (entry_for_unit.options.get(CONF_TEMPERATURE_UNIT) if entry_for_unit else None) or DEFAULT_TEMPERATURE_UNIT
+    )
+    basal_temp_celsius: float | None = None
+
     for key, value in symptom_data.items():
         if key not in valid_fields:
             raise HomeAssistantError(
@@ -2210,17 +2353,31 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
                 temp_value = float(value)
             except (TypeError, ValueError):
                 raise HomeAssistantError(f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be a number, got '{value}'.")
-            # Plausibility check, not just a type check — catches typos (e.g.
-            # 365 instead of 36.5) and Celsius/Fahrenheit unit confusion
-            # (e.g. entering 98.6°F into this Celsius-only field), which
-            # would otherwise silently pass as "a valid number" and corrupt
-            # NFP coverline detection without any error. Range is generous
-            # (30-45°C) to never reject a genuine reading, including fever.
-            if not 30.0 <= temp_value <= 45.0:
-                raise HomeAssistantError(
-                    f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be between 30 and 45 (°C), got {temp_value}. "
-                    "If you're entering a Fahrenheit reading, convert it to Celsius first."
-                )
+            if temperature_unit == TEMPERATURE_UNIT_FAHRENHEIT:
+                # Plausibility check in °F first (86–113°F ≈ 30–45°C), so a
+                # typo (e.g. 986 instead of 98.6) or an accidental Celsius
+                # reading is caught with a message in the unit the person
+                # actually configured, instead of a confusing Celsius range.
+                if not 86.0 <= temp_value <= 113.0:
+                    raise HomeAssistantError(
+                        f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be between 86 and 113 (°F), got {temp_value}. "
+                        "This profile is configured for Fahrenheit input (see integration options)."
+                    )
+                basal_temp_celsius = (temp_value - 32.0) * 5.0 / 9.0
+            else:
+                # Plausibility check, not just a type check — catches typos (e.g.
+                # 365 instead of 36.5) and Celsius/Fahrenheit unit confusion
+                # (e.g. entering 98.6°F into this Celsius-only field), which
+                # would otherwise silently pass as "a valid number" and corrupt
+                # NFP coverline detection without any error. Range is generous
+                # (30-45°C) to never reject a genuine reading, including fever.
+                if not 30.0 <= temp_value <= 45.0:
+                    raise HomeAssistantError(
+                        f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be between 30 and 45 (°C), got {temp_value}. "
+                        "If you're entering a Fahrenheit reading, switch this profile's temperature input unit "
+                        "to Fahrenheit in the integration options instead."
+                    )
+                basal_temp_celsius = temp_value
         elif key in free_text_fields:
             if not isinstance(value, str):
                 raise HomeAssistantError(f"Symptom field '{key}' must be text, got '{value}'.")
@@ -2239,6 +2396,11 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
                     )
 
     next_symptom_data = dict(symptom_data)
+    if basal_temp_celsius is not None:
+        # Always store the Celsius-converted value (rounded to match the
+        # precision already used elsewhere, e.g. statistics.py's summaries),
+        # regardless of which unit the incoming value was interpreted in.
+        next_symptom_data[SYMPTOM_BASAL_TEMP] = round(basal_temp_celsius, 2)
     if SYMPTOM_CLOTS in next_symptom_data and next_symptom_data.get(SYMPTOM_CLOTS) != "yes":
         next_symptom_data.pop(SYMPTOM_CLOT_SIZE, None)
 

@@ -79,6 +79,7 @@ class MenstruationStorage:
                 "cycle_length_override": None,
                 "onboarding_stage": DEFAULT_ONBOARDING_STAGE,
                 "visibility_level": DEFAULT_VISIBILITY_LEVEL,
+                "ics_token_created_at": None,
             }
 
         history = data.get("history", [])
@@ -154,6 +155,10 @@ class MenstruationStorage:
         if not isinstance(ics_token, str) or not ics_token:
             ics_token = None
 
+        ics_token_created_at = data.get("ics_token_created_at")
+        if not isinstance(ics_token_created_at, str) or not ics_token_created_at:
+            ics_token_created_at = None
+
         return {
             "history": normalized,
             "period_duration_days": days,
@@ -168,6 +173,7 @@ class MenstruationStorage:
             "onboarding_stage": onboarding_stage,
             "visibility_level": visibility_level,
             "ics_token": ics_token,
+            "ics_token_created_at": ics_token_created_at,
         }
 
     async def async_save(
@@ -185,6 +191,7 @@ class MenstruationStorage:
         onboarding_stage: str | None = None,
         visibility_level: str | None = None,
         ics_token: str | None = None,
+        ics_token_created_at: str | None = None,
     ) -> None:
         """Save data to storage."""
         from .const import CYCLE_LENGTH_OVERRIDE_MAX, CYCLE_LENGTH_OVERRIDE_MIN
@@ -228,6 +235,16 @@ class MenstruationStorage:
                 "onboarding_stage": normalized_stage,
                 "visibility_level": normalized_visibility,
                 "ics_token": ics_token if isinstance(ics_token, str) and ics_token else await self._load_existing_ics_token(),
+                # Preserve the existing creation/rotation timestamp on every
+                # narrow save that doesn't explicitly pass one (e.g.
+                # async_save_product_usage below) - only async_save_ics_token
+                # ever sets a new one, since that's the only place a token is
+                # actually (re)generated.
+                "ics_token_created_at": (
+                    ics_token_created_at
+                    if isinstance(ics_token_created_at, str) and ics_token_created_at
+                    else await self._load_existing_ics_token_created_at()
+                ),
             }
         )
 
@@ -238,6 +255,16 @@ class MenstruationStorage:
             tok = raw.get("ics_token")
             if isinstance(tok, str) and tok:
                 return tok
+        return None
+
+    async def _load_existing_ics_token_created_at(self) -> str | None:
+        """Return the ics_token's persisted creation/rotation timestamp
+        without a full reload (mirrors _load_existing_ics_token above)."""
+        raw = await self._store.async_load()
+        if isinstance(raw, dict):
+            stamp = raw.get("ics_token_created_at")
+            if isinstance(stamp, str) and stamp:
+                return stamp
         return None
 
     async def async_load_product_usage(self) -> list[dict[str, Any]]:
@@ -270,6 +297,12 @@ class MenstruationStorage:
             # sichtbar" zurück - unabhängig davon, was zuvor eingestellt war.
             visibility_level=data.get("visibility_level"),
             ics_token=ics_token,
+            # Every call to this method represents either the token's first
+            # creation or an explicit rotation (see repairs.py's stale-token
+            # fix flow / __init__.py's async_setup_entry) - both cases mean
+            # "the clock resets", so always stamp fresh rather than
+            # preserving whatever was there before.
+            ics_token_created_at=datetime.now(timezone.utc).isoformat(),
         )
 
     async def async_save_product_usage(self, product_usage: list[dict[str, Any]]) -> None:

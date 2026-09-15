@@ -10,6 +10,15 @@
           "icon": "Icon (optional, z. B. mdi:calendar-heart)",
           "onboarding_stage": "Einstiegsphase"
         }
+      },
+      "reconfigure": {
+        "title": "Profil neu konfigurieren",
+        "description": "Ändert den Anzeigenamen, das Icon oder die Einstiegsphase dieses Profils. Für alle anderen Einstellungen (Benachrichtigungen, Sichtbarkeit, Lebensphasen, ...) bitte den Dialog „Konfigurieren“/Optionen der Integration verwenden.",
+        "data": {
+          "friendly_name": "Anzeigename",
+          "icon": "Icon (optional, z. B. mdi:calendar-heart)",
+          "onboarding_stage": "Einstiegsphase"
+        }
       }
     },
     "error": {
@@ -42,7 +51,8 @@
           "notify_period_enabled": "Vor Periodenbeginn benachrichtigen",
           "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
           "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
-          "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)"
+          "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
+          "temperature_unit": "Eingabeeinheit Basaltemperatur"
         },
         "data_description": {
           "period_duration_days": "Anzahl der Tage, die die Periode typischerweise dauert (1–14).",
@@ -62,7 +72,8 @@
           "notify_period_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor die Periode voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
           "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
           "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
-          "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag."
+          "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
+          "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
         }
       },
       "pregnancy": {
@@ -219,6 +230,16 @@
           "description": "Wie viele zukünftige Zyklen vorausberechnet werden (0-24). Standard: 3."
         }
       }
+    },
+    "export_full_backup": {
+      "name": "Vollständiges Backup exportieren (alle Profile)",
+      "description": "Schreibt eine einzelne JSON-Datei mit dem vollständigen gespeicherten Stand (Verlauf, Symptome, Produktverbrauch, Schwangerschafts-/Menarche-/Menopause-/Wochenbett-Daten, ...) aller konfigurierten Profile — für ein echtes Backup, nicht nur die Zyklus-Start-Tage eines einzelnen Profils wie export_history. Das Kalender-Feed-Token wird aus Sicherheitsgründen bewusst nicht mit exportiert.",
+      "fields": {
+        "filename": {
+          "name": "Dateiname",
+          "description": "Basis-Dateiname (ohne Endung). Bei leerem Feld wird automatisch ein Name mit Zeitstempel erzeugt."
+        }
+      }
     }
   },
   "issues": {
@@ -229,6 +250,10 @@
     "rename_entities": {
       "title": "Menstruation Cycle: Aktualisierung der Entity-Namen verfügbar",
       "description": "Profil: **{entry_title}**\n\nFolgende Entities nutzen noch das ältere Namensschema von vor der Umstellung auf durchsuchbare, mit `menstruation_` beginnende Entity-IDs:\n\n{renames_list}\n\nVerlauf und Statistik bleiben beim Umbenennen erhalten, aber **Dashboards, Automationen oder Skripte, die die alte Entity-ID referenzieren, müssen danach manuell angepasst werden**. Klicke auf **Reparieren**, um umzubenennen, oder ignoriere diese Meldung, um die aktuellen IDs zu behalten."
+    },
+    "stale_ics_token": {
+      "title": "Menstruation Cycle: Kalender-Feed-Token schon lange nicht rotiert",
+      "description": "Profil: **{entry_title}**\n\nDie Kalender-Abo-URL (ICS) dieses Profils verwendet noch ein Token, das etwa {age_days} Tage alt ist. Wer diese URL jemals hatte (altes Gerät, geteilter Kalender, Screenshot, ...) kann damit weiterhin die Vorhersagen dieses Profils lesen, da der Feed keinen eigenen Login hat. Auf **Reparieren** klicken erzeugt ein neues Token — bestehende Kalender-Abos funktionieren dann nicht mehr und müssen mit der neuen URL neu eingerichtet werden — oder dieses Issue verwerfen, um das aktuelle Token zu behalten."
     }
   },
   "selector": {
@@ -250,6 +275,12 @@
         "full": "Voll (Standard)",
         "status_only": "Nur Status",
         "private": "Privat"
+      }
+    },
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius (°C)",
+        "fahrenheit": "Fahrenheit (°F)"
       }
     }
   }

@@ -84,6 +84,22 @@ DEFAULT_NOTIFY_FERTILE_LEAD_DAYS = 0
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 
+# HA-Idee 1 (weitere Ideen, 15.09.2026): Basaltemperatur-Eingabe ueber den
+# Service log_symptoms/add_symptom war bislang stur Celsius-only (Werte
+# ausserhalb 30-45 wurden hart abgelehnt, auch wenn es sich um eine gueltige
+# Fahrenheit-Ablesung handelte, z. B. 98.6). Dieses Options-Flow-Feld steuert
+# NUR die Interpretation/Validierung des eingehenden basal_temp-Werts bei
+# diesem einen Service-Call - gespeichert wird (wie bisher) durchgaengig in
+# Celsius, damit Sensor (sensor.py::MenstruationBasalTempSensor, bereits
+# device_class=temperature -> HA rechnet fuer die Anzeige ohnehin automatisch
+# in die vom HA-Server konfigurierte Einheit um), Statistiken und
+# NFP-Auswertung unveraendert weiterarbeiten koennen.
+CONF_TEMPERATURE_UNIT = "temperature_unit"
+TEMPERATURE_UNIT_CELSIUS = "celsius"
+TEMPERATURE_UNIT_FAHRENHEIT = "fahrenheit"
+TEMPERATURE_UNITS = [TEMPERATURE_UNIT_CELSIUS, TEMPERATURE_UNIT_FAHRENHEIT]
+DEFAULT_TEMPERATURE_UNIT = TEMPERATURE_UNIT_CELSIUS
+
 # Default widget visibility keys and their defaults (all enabled by default)
 DASHBOARD_WIDGET_KEYS: list[str] = [
     "quick_log",
@@ -188,6 +204,12 @@ SERVICE_SET_CYCLE_HISTORY = "set_cycle_history"
 SERVICE_SET_PERIOD_DURATION = "set_period_duration"
 SERVICE_ERASE_ALL_HISTORY = "erase_all_history"
 SERVICE_EXPORT_HISTORY = "export_history"
+# HA-Idee 4 (weitere Ideen, 15.09.2026): im Unterschied zu SERVICE_EXPORT_HISTORY
+# (nur Zyklus-Start-Tage EINES Profils, CSV/TXT) sichert dieser Service ALLE
+# Profile mit ihrem kompletten Storage-Stand (Symptome, Produktverbrauch,
+# Schwangerschafts-/Menarche-/Menopause-/Sonderzyklus-Daten, ...) in einer
+# einzigen JSON-Datei - fuer ein echtes Backup, nicht nur einen Teilauszug.
+SERVICE_EXPORT_FULL_BACKUP = "export_full_backup"
 SERVICE_REFRESH_CYCLE_MODEL = "refresh_cycle_model"
 SERVICE_LOG_PRODUCT_USAGE = "log_product_usage"
 SERVICE_REIMPORT_BASAL_TEMP_STATS = "reimport_basal_temp_statistics"
@@ -251,6 +273,15 @@ ATTR_ICS_URL = "ics_url"
 ICS_TOKEN_KEY = "ics_token"
 ICS_HORIZON_MONTHS_DEFAULT = 12
 ICS_HORIZON_MONTHS_MAX = 24
+# HA-Idee 6 (weitere Ideen, 15.09.2026): der ICS-Token ist ein dauerhaft
+# gueltiges Bearer-Token in einer unauthentifizierten URL (Kalender-Apps
+# fragen sie periodisch ab, ohne HA-Login) - je laenger es nie rotiert wurde,
+# desto groesser das Risiko, dass eine laengst geteilte/alte URL noch
+# funktioniert. ICS_TOKEN_CREATED_AT_KEY haelt fest, wann der aktuelle Token
+# erzeugt/zuletzt rotiert wurde; ICS_TOKEN_STALE_DAYS ist die Schwelle, ab der
+# repairs.py::async_check_stale_ics_token ein Repair-Issue anlegt.
+ICS_TOKEN_CREATED_AT_KEY = "ics_token_created_at"
+ICS_TOKEN_STALE_DAYS = 365
 
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"

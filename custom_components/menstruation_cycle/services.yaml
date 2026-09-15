@@ -175,6 +175,23 @@ export_history:
       selector:
         text:
 
+export_full_backup:
+  name: Export full backup (all profiles)
+  description: |
+    Writes a single JSON file with the complete stored data (history, symptoms,
+    product usage, pregnancy/menarche/menopause/postpartum data, ...) for EVERY
+    configured profile — a real backup, not just one profile's cycle-start
+    dates like export_history. The calendar-feed (ICS) token is intentionally
+    left out for security. Files are written to
+    `<config>/menstruation_cycle_exports/`. Import/restore is not provided by
+    this integration.
+  fields:
+    filename:
+      required: false
+      example: "my_full_backup"
+      selector:
+        text:
+
 refresh_cycle_model:
   name: Refresh cycle model
   description: Recalculate all date-based sensor values, including days until next predicted start.

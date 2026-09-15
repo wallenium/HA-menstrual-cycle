@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 import voluptuous as vol
@@ -16,7 +17,7 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 
-from .const import menstruation_object_ids_for_profile
+from .const import ICS_TOKEN_STALE_DAYS, menstruation_object_ids_for_profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -178,6 +179,85 @@ def async_delete_migration_issue(
     )
 
 
+def async_create_stale_ics_token_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    age_days: int,
+) -> None:
+    """Create a repair issue flagging an ICS calendar-feed token that hasn't
+    been rotated in a long time (HA-Idee 6, "weitere Ideen" 15.09.2026).
+
+    The ICS feed is fetched by external calendar apps via a plain URL
+    containing this token as a bearer credential - there is no HA login
+    involved, so the URL alone is enough to read a profile's cycle
+    predictions. That's fine while the URL only ever lived in the user's own
+    calendar app, but unlike a password there's nothing that naturally
+    expires it, so an old subscription URL (copied into a shared calendar,
+    an old device, a screenshot, ...) keeps working forever unless someone
+    explicitly rotates it. This issue is a periodic nudge to do that -
+    informational by default, but fixable: clicking *Fix* generates a new
+    token immediately (existing calendar subscriptions using the old URL
+    stop working and need to be re-added with the fresh one).
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"stale_ics_token_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=True,
+        severity=IssueSeverity.WARNING,
+        translation_key="stale_ics_token",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "age_days": str(age_days),
+        },
+        data={"entry_id": entry_id},
+    )
+
+
+def async_delete_stale_ics_token_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the stale-ICS-token repair issue (after a rotation, or if the
+    profile/entry is being removed)."""
+    async_delete_issue(hass, DOMAIN, f"stale_ics_token_{entry_id}")
+
+
+def async_check_stale_ics_token(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    ics_token_created_at: str | None,
+) -> None:
+    """Raise (or clear) the stale-ICS-token issue based on the token's age.
+
+    Safe to call repeatedly (integration load, and once a day from the
+    existing midnight refresh) - it's a cheap timestamp comparison, and
+    create/delete are both idempotent no-ops when the issue's state already
+    matches. A missing/unparseable timestamp (e.g. a token created before
+    this feature existed, or one from async_setup_entry's fallback
+    backfill-quietly-with-"now" path) is treated as "not stale yet" rather
+    than immediately flagging every existing install on upgrade.
+    """
+    if not ics_token_created_at:
+        async_delete_stale_ics_token_issue(hass, entry_id)
+        return
+
+    try:
+        created_at = datetime.fromisoformat(ics_token_created_at)
+    except ValueError:
+        async_delete_stale_ics_token_issue(hass, entry_id)
+        return
+
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+
+    age_days = (datetime.now(timezone.utc) - created_at).days
+    if age_days >= ICS_TOKEN_STALE_DAYS:
+        async_create_stale_ics_token_issue(hass, entry_id, entry_title, age_days)
+    else:
+        async_delete_stale_ics_token_issue(hass, entry_id)
+
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,
@@ -187,10 +267,12 @@ async def async_create_fix_flow(
 
     Home Assistant calls this function when the user clicks *Fix* in the
     Repairs UI. Dispatches to the right flow based on the issue_id prefix,
-    since this integration now raises two distinct kinds of fixable issues.
+    since this integration now raises three distinct kinds of fixable issues.
     """
     if issue_id.startswith("rename_entities_"):
         return EntityRenameRepairFlow(issue_id, data or {})
+    if issue_id.startswith("stale_ics_token_"):
+        return StaleIcsTokenRepairFlow(issue_id, data or {})
     return MigrationRepairFlow(issue_id)
 
 
@@ -249,6 +331,44 @@ class EntityRenameRepairFlow(RepairsFlow):
             description_placeholders={
                 "renames": "\n".join(f"{old} → {new}" for old, new in self._renames.items())
             },
+        )
+
+
+class StaleIcsTokenRepairFlow(RepairsFlow):
+    """Repair flow to rotate a profile's ICS calendar-feed token.
+
+    Steps
+    -----
+    1. ``init``    – delegates to ``confirm``.
+    2. ``confirm`` – warns that existing calendar subscriptions will stop
+       working, then rotates the token on submit.
+    """
+
+    def __init__(self, issue_id: str, data: dict[str, Any]) -> None:
+        self._issue_id = issue_id
+        self._entry_id: str = str(data.get("entry_id", ""))
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return await self.async_step_confirm()
+
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        if not self._entry_id:
+            return self.async_create_entry(title="", data={})
+
+        if user_input is not None:
+            from . import _async_rotate_ics_token
+
+            await _async_rotate_ics_token(self.hass, self._entry_id)
+            async_delete_stale_ics_token_issue(self.hass, self._entry_id)
+            return self.async_create_entry(title="", data={})
+
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema({}),
         )
 
 
