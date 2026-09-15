@@ -1376,26 +1376,39 @@ class MenstruationCalendarCard extends HTMLElement {
         .sym-row { display: grid; gap: 6px; }
         .sym-cat-head { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; opacity: .85; }
         .sym-cat-head ha-icon { --mdc-icon-size: 16px; }
-        .sym-options { display: flex; flex-wrap: wrap; gap: 5px; }
+        /* Optionsreihen (15.09.2026, elfte Runde): fest einzeilig mit
+           horizontalem Scrollen statt umbrechendem Flex-Wrap, damit
+           Kategorien mit mehr Optionen (z.B. Blutungsstaerke mit 5) nicht
+           auf eine zweite Zeile rutschen - angelehnt an die Icon-Kachel-
+           Reihen der iOS/macOS-App. */
+        .sym-options { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+        .sym-options::-webkit-scrollbar { height: 5px; }
+        .sym-options::-webkit-scrollbar-thumb { background: rgba(128,128,128,.35); border-radius: 3px; }
         .sym-hidden { display: none; }
         .sym-cervix-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
         .sym-cervix-col { display: grid; gap: 4px; }
         .sym-cervix-title { font-size: .72rem; opacity: .75; }
-        .sym-cervix-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .sym-opt-btn { border: 1px solid rgba(128,128,128,.35); border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; transition: background 120ms, border-color 120ms; }
+        .sym-cervix-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+        .sym-opt-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 0 0 64px; width: 64px; min-height: 64px; border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 6px 4px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
+        .sym-cervix-opts .sym-opt-btn { width: 100%; min-width: 0; flex: none; }
         .sym-opt-btn:hover { border-color: var(--primary-color); }
         .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
-        /* Symptom-Icon-Buttons (15.09.2026, aus der iOS/macOS-App uebernommen):
-           dieselbe Pille wie .sym-opt-btn, nur mit einem kleinen Icon vor dem
-           Text statt reinem Text - siehe menstruation-functions.js::
-           renderOptionIcon(). Icon + Selektions-Hintergrund bleiben zusammen
-           sichtbar, da die Icons selbst schon in sich geschlossene, runde
-           Badges sind (kein reines Umriss-Symbol). */
-        .sym-opt-btn--icon { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 3px; }
-        .sym-opt-icon { width: 22px; height: 22px; object-fit: contain; flex: 0 0 auto; border-radius: 4px; }
-        .sym-opt-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: .82rem; }
-        .sym-opt-label input[type="checkbox"] { accent-color: var(--error-color, #be123c); }
-        .sym-opt-label--icon .sym-opt-icon { width: 20px; height: 20px; }
+        /* Symptom-Icon-Kacheln (15.09.2026, aus der iOS/macOS-App uebernommen;
+           in der elften Runde von einer Text-Pille mit kleinem Icon links
+           auf eine quadratische Kachel mit Icon oben/Text unten umgestellt,
+           damit es wie in der App aussieht - siehe menstruation-functions.js::
+           renderOptionIcon(). Optionen ohne Icon-Zuordnung zeigen weiterhin
+           nur den zentrierten Text in derselben Kachelgroesse, kein Bruch. */
+        .sym-opt-icon { width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto; border-radius: 8px; }
+        .sym-opt-text { font-size: .68rem; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .sym-opt-label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 0 0 64px; width: 64px; min-height: 64px; border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 6px 4px; cursor: pointer; font-size: .82rem; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
+        .sym-opt-label span { font-size: .68rem; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .sym-opt-label:hover { border-color: var(--primary-color); }
+        /* :has() faellt auf aelteren WebViews (z.B. veraltete Android-System-
+           WebView in der HA-Begleit-App) weg - Checkbox bleibt dann trotzdem
+           voll funktionsfaehig, nur ohne farbige Auswahl-Hervorhebung. */
+        .sym-opt-label:has(input:checked) { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
+        .sym-opt-label input[type="checkbox"] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; accent-color: var(--error-color, #be123c); }
         .sym-temp-input { padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font-size: .88rem; width: 100px; }
         @media (max-width: 480px) {
           .day { min-height: 46px; padding: 5px; border-radius: 10px; }
