@@ -210,6 +210,12 @@ SERVICE_EXPORT_HISTORY = "export_history"
 # Schwangerschafts-/Menarche-/Menopause-/Sonderzyklus-Daten, ...) in einer
 # einzigen JSON-Datei - fuer ein echtes Backup, nicht nur einen Teilauszug.
 SERVICE_EXPORT_FULL_BACKUP = "export_full_backup"
+# HA-Idee 4 (weitere Ideen, 15.09.2026, zweite Runde): expliziter
+# Schema-Versions-Marker im Backup-JSON, damit ein spaeterer Strukturwechsel
+# von import_full_backup erkannt und bewusst behandelt werden kann - statt
+# ihn erst einzufuehren, wenn schon unversionierte Backup-Dateien im Umlauf
+# sind und mehrdeutig zu interpretieren waeren.
+BACKUP_FORMAT_VERSION = 1
 # HA-Idee 6 (weitere Ideen, 15.09.2026): das bewusst zurueckgestellte
 # Restore-Gegenstueck zu SERVICE_EXPORT_FULL_BACKUP. Nur fuer bereits
 # konfigurierte Profile (kein Anlegen neuer Config-Entries per Service),

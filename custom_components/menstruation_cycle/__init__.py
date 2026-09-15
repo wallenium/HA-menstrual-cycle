@@ -155,6 +155,7 @@ from .const import (
     TEMPERATURE_UNIT_FAHRENHEIT,
     DEFAULT_TEMPERATURE_UNIT,
     SERVICE_EXPORT_FULL_BACKUP,
+    BACKUP_FORMAT_VERSION,
     SERVICE_IMPORT_FULL_BACKUP,
     SERVICE_FIELD_MODE,
     SERVICE_FIELD_CONFIRM,
@@ -2208,11 +2209,14 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
     data, and a backup file is far more likely to end up copied somewhere
     less protected than HA's own storage.
 
-    Import/restore is intentionally NOT part of this service - safely
-    merging a backup back in (profiles that may or may not still exist as
-    config entries, conflicting history, ...) is a meaningfully bigger and
-    riskier scope than a straight export, so it's left as a documented
-    follow-up rather than being rushed alongside this.
+    See import_full_backup for the restore side (merge/overwrite modes,
+    restricted to already-configured profiles).
+
+    The output carries an explicit "backup_version" (HA-Idee 4, "weitere
+    Ideen" 15.09.2026, second round) so a future change to this JSON
+    structure can be detected and handled deliberately by import_full_backup
+    - rather than only adding a version marker once older, unversioned
+    backup files are already out there and ambiguous to interpret.
     """
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
@@ -2230,6 +2234,7 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
         }
 
     backup = {
+        "backup_version": BACKUP_FORMAT_VERSION,
         "exported_at": dt_util.utcnow().isoformat(),
         "integration": DOMAIN,
         "profiles": profiles,
@@ -2370,6 +2375,21 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
             f"'{target_path.name}' doesn't look like a menstruation_cycle export_full_backup file."
         )
 
+    # HA-Idee 4 (weitere Ideen, 15.09.2026, zweite Runde): a backup written
+    # before BACKUP_FORMAT_VERSION existed has no "backup_version" key at
+    # all - that's still today's (version 1) structure, so treat a missing
+    # key as 1 rather than rejecting every pre-existing backup file.
+    # A version newer than this integration understands is rejected
+    # outright rather than guessed at, since silently misinterpreting a
+    # later structure could corrupt data instead of just failing loudly.
+    backup_version = backup.get("backup_version", 1)
+    if not isinstance(backup_version, int) or backup_version > BACKUP_FORMAT_VERSION:
+        raise HomeAssistantError(
+            f"'{target_path.name}' has backup_version={backup_version!r}, but this integration only "
+            f"understands up to version {BACKUP_FORMAT_VERSION}. Update the integration before importing "
+            "this backup."
+        )
+
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     runtimes_by_profile = {rt.profile: rt for rt in domain_data.values()}
 
@@ -2393,7 +2413,12 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
         len(skipped_not_configured),
     )
 
-    return {"mode": mode, "restored": restored, "skipped_not_configured": skipped_not_configured}
+    return {
+        "mode": mode,
+        "backup_version": backup_version,
+        "restored": restored,
+        "skipped_not_configured": skipped_not_configured,
+    }
 
 
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:
