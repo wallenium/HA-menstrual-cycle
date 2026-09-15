@@ -454,11 +454,90 @@ function renderCategoryIcon(icon) {
   return `<ha-icon icon="${icon}"></ha-icon>`;
 }
 
+/**
+ * HA-15 (M-Cycle_HA-Component-Roadmap.md, 15.09.2026): shared loading/error/
+ * empty-state markup, so cards stop hand-rolling their own version of the
+ * same three states (inline `.empty` divs, per-section try/catch, a
+ * full-width red error box, ...). Deliberately small and unopinionated -
+ * each card still owns its own CSS variables/spacing via the returned
+ * class names (`mc-state`, `mc-state--loading`/`--error`/`--empty`), this
+ * only standardizes the *markup shape* and escaping, not a card's layout.
+ *
+ * Adoption so far: menstruation-cycle-history-card-row.js. The other 12
+ * cards each hand-roll their own version still - full adoption is a
+ * separate, larger follow-up (see HA-15 note in the roadmap doc), not
+ * something this pass rewrites blindly across files it hasn't fully read.
+ */
+function escapeHtmlText(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderLoadingState(label) {
+  const text = label || 'Loading…';
+  return `<div class="mc-state mc-state--loading"><span class="mc-state__spinner" aria-hidden="true"></span><span>${escapeHtmlText(text)}</span></div>`;
+}
+
+function renderErrorState(message) {
+  const text = message || 'Something went wrong.';
+  return `<div class="mc-state mc-state--error">⚠️ <span>${escapeHtmlText(text)}</span></div>`;
+}
+
+function renderEmptyState(message) {
+  const text = message || 'Nothing to show yet.';
+  return `<div class="mc-state mc-state--empty">${escapeHtmlText(text)}</div>`;
+}
+
+/**
+ * CSS for the three functions above, meant to be interpolated once into a
+ * card's own `<style>` block (e.g. `${mcStateStyles()}`). Uses the same HA
+ * theme custom properties every other card in this project already relies
+ * on, and respects prefers-reduced-motion for the loading spinner (HA-17
+ * territory, but trivial to also cover here since the spinner is new).
+ */
+function mcStateStyles() {
+  return `
+    .mc-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      font-size: 0.9rem;
+      color: var(--secondary-text-color);
+    }
+    .mc-state--error { color: var(--error-color, #c0392b); }
+    .mc-state--empty { color: var(--mc-text-secondary, var(--secondary-text-color)); }
+    .mc-state__spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--divider-color);
+      border-top-color: var(--primary-color);
+      animation: mc-state-spin 0.8s linear infinite;
+      flex: 0 0 auto;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mc-state__spinner { animation: none; }
+    }
+    @keyframes mc-state-spin {
+      to { transform: rotate(360deg); }
+    }
+  `;
+}
+
 const MenstruationFunctions = {
   normalizeOptionKey,
   getSymptomConfig,
   fetchFreshSymptomData,
   renderCategoryIcon,
+  escapeHtmlText,
+  renderLoadingState,
+  renderErrorState,
+  renderEmptyState,
+  mcStateStyles,
 };
 
 if (typeof window !== 'undefined') {

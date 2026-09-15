@@ -38,11 +38,20 @@ from .const import (
     CONF_DASHBOARD_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
+    CONF_NOTIFY_PERIOD_ENABLED,
+    CONF_NOTIFY_PERIOD_LEAD_DAYS,
+    CONF_NOTIFY_FERTILE_ENABLED,
+    CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_VISIBILITY_LEVEL,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_DASHBOARD_ENABLED,
     DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_NOTIFY_PERIOD_ENABLED,
+    DEFAULT_NOTIFY_PERIOD_LEAD_DAYS,
+    DEFAULT_NOTIFY_FERTILE_ENABLED,
+    DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
+    NOTIFY_LEAD_DAYS_MAX,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
     DEFAULT_MENARCHE_AGE_MAX,
@@ -295,14 +304,113 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             ),
             "notify_service": str(self._entry.options.get(CONF_NOTIFY_SERVICE, "") or ""),
             "linked_person_entity_id": str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID, "") or ""),
+            # HA-9: per-event notification granularity, see const.py.
+            "notify_period_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED)
+            ),
+            "notify_period_lead_days": int(
+                self._entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)
+            ),
+            "notify_fertile_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED)
+            ),
+            "notify_fertile_lead_days": int(
+                self._entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)
+            ),
         }
 
     async def _async_advance(self) -> FlowResult:
-        """Move to the next pending conditional step, or finish if none remain."""
+        """Move to the next pending conditional step, or to the final review
+        step (HA-1, M-Cycle_HA-Component-Roadmap.md) once none remain -
+        _async_finish now only runs once that step is explicitly confirmed."""
         if self._pending_steps:
             next_step = self._pending_steps.pop(0)
             return await getattr(self, f"async_step_{next_step}")()
-        return await self._async_finish()
+        return await self.async_step_confirm()
+
+    # ------------------------------------------------------------------
+    # Final step: review everything collected, confirm or bail out
+    # ------------------------------------------------------------------
+    async def async_step_confirm(self, user_input: dict | None = None) -> FlowResult:
+        """HA-1 (M-Cycle_HA-Component-Roadmap.md, 15.09.2026): the options
+        flow has no "back" button between its conditional steps (see the
+        module comment on _CONDITIONAL_STEP_ORDER) - a typo caught only after
+        the last step used to mean restarting the entire wizard. This final
+        step shows everything collected across every visited step and only
+        calls _async_finish once the person explicitly submits it; closing
+        the dialog here (HA's native "X") aborts without saving anything,
+        exactly like at any other step.
+        """
+        if user_input is not None:
+            return await self._async_finish()
+
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders={"summary": self._build_confirm_summary()},
+        )
+
+    def _build_confirm_summary(self) -> str:
+        """Render the values collected so far as a markdown bullet list for
+        the review step above. English-only regardless of the active HA
+        language - localizing dynamically generated content like this would
+        need its own translation table kept in sync with strings.json, which
+        felt like scope creep for what is meant to be a quick sanity check
+        before saving, not a fully localized summary. Never raises: every
+        lookup goes through .get() with a safe fallback, since a step the
+        person never visited (e.g. pregnancy details, when pregnancy mode
+        wasn't enabled) simply won't have contributed its keys to self._data.
+        """
+        d = self._data
+        lines: list[str] = [
+            f"- Name: {d.get(CONF_FRIENDLY_NAME, '')}",
+        ]
+        if d.get(CONF_BIRTH_DATE):
+            lines.append(f"- Birth date: {d.get(CONF_BIRTH_DATE)}")
+        lines.append(f"- Period duration: {d.get(CONF_PERIOD_DURATION_DAYS, '?')} day(s)")
+        override = d.get(CONF_CYCLE_LENGTH_OVERRIDE)
+        lines.append(f"- Cycle length override: {override if override else 'auto'}")
+        lines.append(f"- Future predictions: {d.get(CONF_NUM_PREDICTIONS, '?')} cycle(s)")
+        lines.append(f"- NFP analysis mode: {d.get(CONF_NFP_ANALYSIS_MODE, '?')}")
+        lines.append(f"- Onboarding stage: {d.get(CONF_ONBOARDING_STAGE, '?')}")
+        lines.append(f"- Visibility level: {d.get(CONF_VISIBILITY_LEVEL, '?')}")
+        lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
+
+        if d.get(CONF_NOTIFICATIONS_ENABLED):
+            lines.append("- Notifications: enabled")
+            period_bit = (
+                f"on, {d.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)} day(s) ahead"
+                if d.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED)
+                else "off"
+            )
+            fertile_bit = (
+                f"on, {d.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)} day(s) ahead"
+                if d.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED)
+                else "off"
+            )
+            lines.append(f"  - Period reminder: {period_bit}")
+            lines.append(f"  - Fertile window reminder: {fertile_bit}")
+            if d.get(CONF_NOTIFY_SERVICE):
+                lines.append(f"  - Target: {d.get(CONF_NOTIFY_SERVICE)}")
+        else:
+            lines.append("- Notifications: disabled")
+
+        if d.get(CONF_LINKED_PERSON_ENTITY_ID):
+            lines.append(f"- Linked person: {d.get(CONF_LINKED_PERSON_ENTITY_ID)}")
+
+        life_stages = [
+            label
+            for key, label in (
+                ("_pregnancy_enabled", "pregnancy"),
+                ("_pre_menarche_enabled", "pre-menarche"),
+                ("_menopause_enabled", "menopause"),
+                ("_postpartum_enabled", "postpartum"),
+            )
+            if d.get(key)
+        ]
+        lines.append(f"- Life stages enabled: {', '.join(life_stages) if life_stages else 'none'}")
+
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------
     # Step 1: general settings + enable-toggles
@@ -358,6 +466,18 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_LINKED_PERSON_ENTITY_ID] = str(
                     user_input.get(CONF_LINKED_PERSON_ENTITY_ID, "")
                 ).strip()
+                self._data[CONF_NOTIFY_PERIOD_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED)
+                )
+                self._data[CONF_NOTIFY_PERIOD_LEAD_DAYS] = max(
+                    0, min(NOTIFY_LEAD_DAYS_MAX, int(user_input.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)))
+                )
+                self._data[CONF_NOTIFY_FERTILE_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED)
+                )
+                self._data[CONF_NOTIFY_FERTILE_LEAD_DAYS] = max(
+                    0, min(NOTIFY_LEAD_DAYS_MAX, int(user_input.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)))
+                )
 
                 self._data["_pregnancy_enabled"] = bool(user_input.get(CONF_PREGNANCY_ENABLED, False))
                 self._data["_pre_menarche_enabled"] = bool(user_input.get(CONF_PRE_MENARCHE_ENABLED, False))
@@ -441,6 +561,21 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
                 ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
+                # HA-9 (M-Cycle_HA-Component-Roadmap.md): per-event granularity
+                # instead of one global on/off switch. CONF_NOTIFICATIONS_ENABLED
+                # above remains the master switch for both.
+                vol.Optional(
+                    CONF_NOTIFY_PERIOD_ENABLED, default=c["notify_period_enabled"]
+                ): bool,
+                vol.Optional(
+                    CONF_NOTIFY_PERIOD_LEAD_DAYS, default=c["notify_period_lead_days"]
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_LEAD_DAYS_MAX)),
+                vol.Optional(
+                    CONF_NOTIFY_FERTILE_ENABLED, default=c["notify_fertile_enabled"]
+                ): bool,
+                vol.Optional(
+                    CONF_NOTIFY_FERTILE_LEAD_DAYS, default=c["notify_fertile_lead_days"]
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_LEAD_DAYS_MAX)),
                 vol.Optional(
                     CONF_PREGNANCY_ENABLED, default=bool(c["pregnancy_data"].get("is_pregnant", False))
                 ): bool,
@@ -730,5 +865,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
                 CONF_LINKED_PERSON_ENTITY_ID: d[CONF_LINKED_PERSON_ENTITY_ID],
+                CONF_NOTIFY_PERIOD_ENABLED: d[CONF_NOTIFY_PERIOD_ENABLED],
+                CONF_NOTIFY_PERIOD_LEAD_DAYS: d[CONF_NOTIFY_PERIOD_LEAD_DAYS],
+                CONF_NOTIFY_FERTILE_ENABLED: d[CONF_NOTIFY_FERTILE_ENABLED],
+                CONF_NOTIFY_FERTILE_LEAD_DAYS: d[CONF_NOTIFY_FERTILE_LEAD_DAYS],
             },
         )

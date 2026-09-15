@@ -37,7 +37,11 @@
           "postpartum_enabled": "Activer le mode post-partum",
           "notifications_enabled": "Activer les notifications",
           "notify_service": "Service de notification (optionnel)",
-          "visibility_level": "Niveau de visibilité"
+          "visibility_level": "Niveau de visibilité",
+          "notify_period_enabled": "Notifier avant le début des règles",
+          "notify_period_lead_days": "Préavis règles (jours)",
+          "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
+          "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours pendant lesquels les règles durent généralement (1 à 14).",
@@ -52,7 +56,11 @@
           "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite.",
           "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
           "notify_service": "Cible de notification Home Assistant à utiliser. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut.",
-          "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
+          "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel.",
+          "notify_period_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu des règles. Nécessite « Activer les notifications » ci-dessus.",
+          "notify_period_lead_days": "Combien de jours avant le début prévu des règles notifier (0–7). 1 (par défaut) signifie la veille, 0 signifie le jour même.",
+          "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
+          "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même."
         }
       },
       "pregnancy": {
@@ -98,6 +106,10 @@
           "postpartum_start_date": "Date de naissance de l'enfant. Utilisée pour calculer la période de suivi post-partum.",
           "postpartum_duration_days": "Nombre de jours après la naissance pendant lesquels le mode post-partum reste actif (1 à 365). Par défaut : 42 (6 semaines)."
         }
+      },
+      "confirm": {
+        "title": "Vérifier et confirmer",
+        "description": "Veuillez vérifier les valeurs saisies sur les écrans précédents avant d'enregistrer :\n\n{summary}\n\nValidez pour enregistrer, ou fermez cette fenêtre pour tout annuler et recommencer."
       }
     },
     "error": {

@@ -222,7 +222,15 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     const stateObj = entityId ? this._hass?.states?.[entityId] : undefined;
     
     if (!stateObj) {
-      this.shadowRoot.innerHTML = '<ha-card><div class="pad">Entity not found</div></ha-card>';
+      // HA-15 (M-Cycle_HA-Component-Roadmap.md): this used to be hardcoded
+      // English markup, bypassing both localization (the entity_not_found
+      // key above already existed but was unused here) and the shared
+      // empty/error-state helper now available in menstruation-functions.js.
+      const errorMarkup = window.MenstruationFunctions
+        ? window.MenstruationFunctions.renderErrorState(this._t('entity_not_found'))
+        : `<div class="pad">${this._t('entity_not_found')}</div>`;
+      const errorStyles = window.MenstruationFunctions ? `<style>${window.MenstruationFunctions.mcStateStyles()}</style>` : '';
+      this.shadowRoot.innerHTML = `<ha-card>${errorStyles}${errorMarkup}</ha-card>`;
       return;
     }
 
@@ -281,6 +289,9 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
         .cycle-row:hover { background: color-mix(in srgb, var(--mg-text-secondary) 16%, transparent); }
       }
       @media (max-width: 600px) { table { font-size: 0.8rem; } th, td { padding: 6px 4px; } }
+      /* HA-15 (M-Cycle_HA-Component-Roadmap.md): shared empty/error-state look. */
+      ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ''}
+      .mc-state--empty { justify-content: center; padding: 8px; }
     </style>
     <ha-card>
       <div class="title">${this._config.title || this._t('title')}</div>
@@ -296,7 +307,11 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
             </tr>
           </thead>
           <tbody>
-            ${tableRows || `<tr><td colspan="5">${this._t('no_cycles_available')}</td></tr>`}
+            ${tableRows || `<tr><td colspan="5">${
+              window.MenstruationFunctions
+                ? window.MenstruationFunctions.renderEmptyState(this._t('no_cycles_available'))
+                : this._t('no_cycles_available')
+            }</td></tr>`}
           </tbody>
         </table>
       </div>

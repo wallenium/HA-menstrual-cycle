@@ -17,7 +17,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries as ce
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TYPE, Platform
+from homeassistant.const import CONF_TYPE, Platform, UnitOfTime
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
@@ -45,8 +45,17 @@ from .const import (
     CONF_DASHBOARD_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
+    CONF_NOTIFY_PERIOD_ENABLED,
+    CONF_NOTIFY_PERIOD_LEAD_DAYS,
+    CONF_NOTIFY_FERTILE_ENABLED,
+    CONF_NOTIFY_FERTILE_LEAD_DAYS,
+    NOTIFY_LEAD_DAYS_MAX,
     CONF_NFP_ANALYSIS_MODE,
     DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_NOTIFY_PERIOD_ENABLED,
+    DEFAULT_NOTIFY_PERIOD_LEAD_DAYS,
+    DEFAULT_NOTIFY_FERTILE_ENABLED,
+    DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
     DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -143,7 +152,7 @@ from .const import (
     ICS_TOKEN_KEY,
 )
 from .ical import generate_ics
-from .model import build_cycle_model, build_cycle_predictions, normalize_history
+from .model import build_cycle_model, build_cycle_predictions, grouped_cycle_starts, normalize_history
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
@@ -528,6 +537,17 @@ async def _async_register_consumption(
 
     await _async_save_household_inventory(hass)
 
+    # HA-6 (M-Cycle_HA-Component-Roadmap.md): this used to only run for the
+    # rarely-used manage_household_inventory service's "consume" action - the
+    # much more common everyday path, log_product_usage (called by the
+    # product-inventory card's timer buttons), funnels through this same
+    # function but never triggered the shopping-list sync. Moving the checks
+    # here means ANY consumption path keeps the native HA shopping list
+    # (todo.shopping_list) in sync, not just the rarely-called service.
+    await _async_check_and_update_todo_list(hass, household_data, product)
+    if product == "underwear":
+        await _async_check_underwear_washing_todo(hass, household_data)
+
 
 def _apply_optional_thresholds(
     household_data: dict,
@@ -647,34 +667,34 @@ async def _async_check_underwear_washing_todo(hass: HomeAssistant, household_dat
 # existing English-only convention), so they're worth localizing properly.
 _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
     "en": {
-        "period_title": "Period expected tomorrow",
-        "period_message": "{name}: period is predicted to start tomorrow ({date}).",
-        "fertile_title": "Fertile window starting",
-        "fertile_message": "{name}: the fertile window starts today ({date}).",
+        "period_title": "Period reminder",
+        "period_message": "{name}: period is predicted to start on {date}.",
+        "fertile_title": "Fertile window reminder",
+        "fertile_message": "{name}: the fertile window starts on {date}.",
     },
     "de": {
-        "period_title": "Periode morgen erwartet",
-        "period_message": "{name}: Die Periode wird voraussichtlich morgen beginnen ({date}).",
-        "fertile_title": "Fruchtbares Fenster beginnt",
-        "fertile_message": "{name}: Das fruchtbare Fenster beginnt heute ({date}).",
+        "period_title": "Perioden-Erinnerung",
+        "period_message": "{name}: Die Periode wird voraussichtlich am {date} beginnen.",
+        "fertile_title": "Erinnerung: fruchtbares Fenster",
+        "fertile_message": "{name}: Das fruchtbare Fenster beginnt am {date}.",
     },
     "fr": {
-        "period_title": "Règles prévues demain",
-        "period_message": "{name} : les règles devraient commencer demain ({date}).",
-        "fertile_title": "Début de la fenêtre de fertilité",
-        "fertile_message": "{name} : la fenêtre de fertilité commence aujourd'hui ({date}).",
+        "period_title": "Rappel de règles",
+        "period_message": "{name} : les règles devraient commencer le {date}.",
+        "fertile_title": "Rappel : fenêtre de fertilité",
+        "fertile_message": "{name} : la fenêtre de fertilité commence le {date}.",
     },
     "es": {
-        "period_title": "Menstruación prevista para mañana",
-        "period_message": "{name}: se prevé que la menstruación comience mañana ({date}).",
-        "fertile_title": "Comienza la ventana fértil",
-        "fertile_message": "{name}: la ventana fértil comienza hoy ({date}).",
+        "period_title": "Recordatorio de menstruación",
+        "period_message": "{name}: se prevé que la menstruación comience el {date}.",
+        "fertile_title": "Recordatorio: ventana fértil",
+        "fertile_message": "{name}: la ventana fértil comienza el {date}.",
     },
     "sv": {
-        "period_title": "Mens väntas imorgon",
-        "period_message": "{name}: mensen väntas börja imorgon ({date}).",
-        "fertile_title": "Fertilt fönster börjar",
-        "fertile_message": "{name}: det fertila fönstret börjar idag ({date}).",
+        "period_title": "Mens-påminnelse",
+        "period_message": "{name}: mensen väntas börja den {date}.",
+        "fertile_title": "Påminnelse: fertilt fönster",
+        "fertile_message": "{name}: det fertila fönstret börjar den {date}.",
     },
 }
 
@@ -690,12 +710,20 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
 
     Everything else in this integration is pull-only (the person has to open
     the dashboard or a card to see anything) — this is the one place that
-    actively reaches out. Opt-in per profile (CONF_NOTIFICATIONS_ENABLED),
-    targeting whatever notify service the person configures (CONF_NOTIFY_SERVICE,
-    e.g. "mobile_app_pixel" or "notify.mobile_app_pixel" — both accepted).
-    Falls back to persistent_notification if no service is configured, so
-    turning this on always does *something* visible even without a mobile app
-    set up.
+    actively reaches out. Opt-in per profile (CONF_NOTIFICATIONS_ENABLED, the
+    master switch for both events below), targeting whatever notify service
+    the person configures (CONF_NOTIFY_SERVICE, e.g. "mobile_app_pixel" or
+    "notify.mobile_app_pixel" — both accepted). Falls back to
+    persistent_notification if no service is configured, so turning this on
+    always does *something* visible even without a mobile app set up.
+
+    HA-9 (M-Cycle_HA-Component-Roadmap.md, 15.09.2026): each of the two event
+    types (period start / fertile window start) has its own enable-flag and
+    configurable lead time (CONF_NOTIFY_PERIOD_ENABLED/_LEAD_DAYS and
+    CONF_NOTIFY_FERTILE_ENABLED/_LEAD_DAYS) instead of one fixed, hardcoded
+    lead (previously always 1 day ahead for the period, same-day for the
+    fertile window) — the defaults still match that previous behaviour
+    exactly, so existing setups are unaffected unless the person changes them.
 
     De-duplicated by remembering the last date notified for each event type in
     noncycle_data — only re-notifies if the predicted date actually changes
@@ -704,6 +732,17 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     """
     if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
         return
+
+    period_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED))
+    fertile_notify_enabled = bool(entry.options.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED))
+    if not period_notify_enabled and not fertile_notify_enabled:
+        return
+    period_lead_days = max(
+        0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)))
+    )
+    fertile_lead_days = max(
+        0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)))
+    )
 
     from .model import build_cycle_model
 
@@ -751,9 +790,9 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     fertile_start = (model.fertility_forecast or {}).get("fertile_window_start")
     notified_something = False
 
-    if period_start:
-        tomorrow_iso = (today + timedelta(days=1)).isoformat()
-        if period_start == tomorrow_iso and runtime.noncycle_data.get("notified_period_start") != period_start:
+    if period_start and period_notify_enabled:
+        period_target_iso = (today + timedelta(days=period_lead_days)).isoformat()
+        if period_start == period_target_iso and runtime.noncycle_data.get("notified_period_start") != period_start:
             await _send(
                 strings["period_title"],
                 strings["period_message"].format(name=runtime.friendly_name, date=period_start),
@@ -761,8 +800,9 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_period_start"] = period_start
             notified_something = True
 
-    if fertile_start:
-        if fertile_start == today.isoformat() and runtime.noncycle_data.get("notified_fertile_start") != fertile_start:
+    if fertile_start and fertile_notify_enabled:
+        fertile_target_iso = (today + timedelta(days=fertile_lead_days)).isoformat()
+        if fertile_start == fertile_target_iso and runtime.noncycle_data.get("notified_fertile_start") != fertile_start:
             await _send(
                 strings["fertile_title"],
                 strings["fertile_message"].format(name=runtime.friendly_name, date=fertile_start),
@@ -892,6 +932,115 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
         visibility_level=runtime.visibility_level,
     )
     await _async_refresh_cycle_model(hass, {_entry_id_for_runtime(hass, runtime)})
+    # HA-5 (M-Cycle_HA-Component-Roadmap.md): keep HA's own long-term statistics
+    # in sync with every history/symptom change, not just on integration load.
+    # Wrapped defensively inside the helper itself, so a recorder hiccup here
+    # never blocks the actual save above.
+    await _async_sync_cycle_statistics(hass, runtime)
+
+
+async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: MenstruationRuntime) -> None:
+    """Feed average cycle length and pain-days-per-cycle into Home Assistant's
+    native long-term statistics (HA-5, M-Cycle_HA-Component-Roadmap.md).
+
+    Both are already computed per-cycle for the sensor attributes/doctor report
+    (see sensor.py::_build_cycle_statistics / _build_symptom_statistics), but
+    only shown in this integration's own cards - never fed into HA's built-in
+    history graphs. Unlike basal_temp (sensor.py::_async_backfill_basal_temp_
+    statistics), there's no single sensor entity whose own state IS the cycle
+    length or the pain-day count, so this can't use source="recorder" tied to
+    an entity_id - it uses genuinely *external* statistics instead
+    (source=DOMAIN, statistic_id="menstruation_cycle:<profile>_...").
+
+    Recomputes the full per-cycle series and re-upserts it every time this
+    runs (after every history-affecting service call, see _async_save_and_
+    notify) rather than only appending the newest point - the recorder's
+    statistics import is idempotent per (statistic_id, start), re-sending
+    already-known points is a cheap no-op, and this avoids having to reason
+    about incremental-append edge cases (edited/removed cycle starts,
+    backfilled old symptom entries, etc.) for what is always a small, single-
+    household history.
+    """
+    try:
+        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+        from homeassistant.components.recorder.statistics import async_add_external_statistics
+    except ImportError:
+        _LOGGER.debug("Recorder component unavailable — skipping cycle statistics sync.")
+        return
+
+    starts = grouped_cycle_starts(runtime.history)
+    if len(starts) < 2:
+        return  # need at least one *completed* cycle (a start plus the next one)
+
+    length_points: list[StatisticData] = []
+    pain_points: list[StatisticData] = []
+    for idx in range(1, len(starts)):
+        try:
+            start_d = date.fromisoformat(starts[idx - 1])
+            next_d = date.fromisoformat(starts[idx])
+        except (TypeError, ValueError):
+            continue
+        length = (next_d - start_d).days
+        if not (10 < length < 80):
+            continue  # same sanity bounds as sensor.py::_build_cycle_statistics
+
+        point_start = dt_util.start_of_local_day(start_d)
+        length_points.append(
+            StatisticData(start=point_start, mean=float(length), min=float(length), max=float(length))
+        )
+
+        pain_days = 0
+        for entry in runtime.symptom_history or []:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                entry_date = date.fromisoformat(str(entry.get("date")))
+            except (TypeError, ValueError):
+                continue
+            if not (start_d <= entry_date < next_d):
+                continue
+            pain_value = entry.get("pain")
+            has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
+            if has_pain:
+                pain_days += 1
+        pain_points.append(
+            StatisticData(start=point_start, mean=float(pain_days), min=float(pain_days), max=float(pain_days))
+        )
+
+    if not length_points:
+        return
+
+    length_metadata = StatisticMetaData(
+        has_mean=True,
+        has_sum=False,
+        name=f"{runtime.friendly_name}: Average cycle length",
+        source=DOMAIN,
+        statistic_id=f"{DOMAIN}:{runtime.profile}_cycle_length",
+        unit_of_measurement=UnitOfTime.DAYS,
+    )
+    pain_metadata = StatisticMetaData(
+        has_mean=True,
+        has_sum=False,
+        name=f"{runtime.friendly_name}: Pain days per cycle",
+        source=DOMAIN,
+        statistic_id=f"{DOMAIN}:{runtime.profile}_pain_days",
+        unit_of_measurement=UnitOfTime.DAYS,
+    )
+
+    try:
+        async_add_external_statistics(hass, length_metadata, length_points)
+        if pain_points:
+            async_add_external_statistics(hass, pain_metadata, pain_points)
+    except Exception:  # noqa: BLE001 — defensive: never let a recorder API
+        # mismatch across HA versions break a normal history save.
+        _LOGGER.warning(
+            "Could not sync cycle statistics for '%s' — the recorder statistics "
+            "API may differ on this Home Assistant version. Cards and the "
+            "doctor report are unaffected; only the HA-native statistics graphs "
+            "were skipped.",
+            runtime.profile,
+            exc_info=True,
+        )
 
 
 def _entry_id_for_runtime(hass: HomeAssistant, runtime: MenstruationRuntime) -> str:
@@ -1978,12 +2127,10 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         _apply_optional_thresholds(household_data, product, threshold_warning, threshold_critical)
     elif action == "consume":
         _apply_optional_thresholds(household_data, product, threshold_warning, threshold_critical)
+        # HA-6: the shopping-list/underwear-washing todo checks now happen
+        # inside _async_register_consumption itself (see comment there), so
+        # they're no longer duplicated here.
         await _async_register_consumption(hass, product, max(1, quantity), member, source="inventory_service")
-        # household_data is updated in-place by _async_register_consumption; reload ref.
-        household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY, {})
-        await _async_check_and_update_todo_list(hass, household_data, product)
-        if product == "underwear":
-            await _async_check_underwear_washing_todo(hass, household_data)
         return
     elif action == "set_thresholds":
         if product == "cup":

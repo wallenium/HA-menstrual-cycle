@@ -37,7 +37,11 @@
           "postpartum_enabled": "Activar modo posparto",
           "notifications_enabled": "Activar notificaciones",
           "notify_service": "Servicio de notificación (opcional)",
-          "visibility_level": "Nivel de visibilidad"
+          "visibility_level": "Nivel de visibilidad",
+          "notify_period_enabled": "Avisar antes de que comience la menstruación",
+          "notify_period_lead_days": "Antelación de aviso de menstruación (días)",
+          "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
+          "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar la menstruación (1 a 14).",
@@ -52,7 +56,11 @@
           "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles.",
           "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
           "notify_service": "Objetivo de notificación de Home Assistant a usar. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto.",
-          "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
+          "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada.",
+          "notify_period_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la menstruación. Requiere 'Activar notificaciones' más arriba.",
+          "notify_period_lead_days": "Con cuántos días de antelación al inicio previsto de la menstruación avisar (0–7). 1 (predeterminado) significa el día anterior, 0 significa el mismo día.",
+          "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
+          "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día."
         }
       },
       "pregnancy": {
@@ -98,6 +106,10 @@
           "postpartum_start_date": "Fecha en que nació el bebé. Se usa para calcular el período de seguimiento posparto.",
           "postpartum_duration_days": "Cuántos días después del nacimiento permanecer en modo posparto (1–365). El valor predeterminado es 42 (6 semanas)."
         }
+      },
+      "confirm": {
+        "title": "Revisar y confirmar",
+        "description": "Revisa los valores recogidos en las pantallas anteriores antes de guardar:\n\n{summary}\n\nEnvía para guardar, o cierra este diálogo para descartar todo y empezar de nuevo."
       }
     },
     "error": {

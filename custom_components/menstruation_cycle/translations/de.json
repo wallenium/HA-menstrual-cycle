@@ -38,7 +38,11 @@
           "notifications_enabled": "Benachrichtigungen aktivieren",
           "notify_service": "Benachrichtigungsziel (optional)",
           "linked_person_entity_id": "Verknüpfte Home-Assistant-Person (optional)",
-          "visibility_level": "Sichtbarkeitsstufe"
+          "visibility_level": "Sichtbarkeitsstufe",
+          "notify_period_enabled": "Vor Periodenbeginn benachrichtigen",
+          "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
+          "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
+          "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)"
         },
         "data_description": {
           "period_duration_days": "Anzahl der Tage, die die Periode typischerweise dauert (1–14).",
@@ -54,7 +58,11 @@
           "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
           "notify_service": "Zu verwendendes Home-Assistant-Benachrichtigungsziel. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden.",
           "linked_person_entity_id": "Dieses Profil mit einer bestehenden Person verknüpfen (Einstellungen → Personen). Hat diese Person ein Bild hinterlegt, kann die Companion-App es als Profilbild anzeigen.",
-          "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
+          "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft.",
+          "notify_period_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor die Periode voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
+          "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
+          "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
+          "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag."
         }
       },
       "pregnancy": {
@@ -100,6 +108,10 @@
           "postpartum_start_date": "Geburtsdatum des Kindes. Wird zur Berechnung des Wochenbett-Zeitraums verwendet.",
           "postpartum_duration_days": "Wie viele Tage nach der Geburt der Wochenbett-Modus aktiv bleibt (1–365). Standard ist 42 (6 Wochen)."
         }
+      },
+      "confirm": {
+        "title": "Überprüfen und bestätigen",
+        "description": "Bitte die auf den vorherigen Bildschirmen erfassten Werte vor dem Speichern überprüfen:\n\n{summary}\n\nAbsenden zum Speichern, oder diesen Dialog schließen, um alles zu verwerfen und neu zu beginnen."
       }
     },
     "error": {

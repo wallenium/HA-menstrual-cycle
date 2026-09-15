@@ -37,7 +37,11 @@
           "postpartum_enabled": "Aktivera läge efter förlossning",
           "notifications_enabled": "Aktivera aviseringar",
           "notify_service": "Aviseringstjänst (valfritt)",
-          "visibility_level": "Synlighetsnivå"
+          "visibility_level": "Synlighetsnivå",
+          "notify_period_enabled": "Avisera innan mensen börjar",
+          "notify_period_lead_days": "Förvarningstid mens (dagar)",
+          "notify_fertile_enabled": "Avisera när fertilt fönster börjar",
+          "notify_fertile_lead_days": "Förvarningstid fertilt fönster (dagar)"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -52,7 +56,11 @@
           "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst.",
           "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
           "notify_service": "Home Assistant-aviseringsmål att använda. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet).",
-          "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
+          "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar.",
+          "notify_period_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan mensen väntas börja. Kräver 'Aktivera aviseringar' ovan.",
+          "notify_period_lead_days": "Hur många dagar innan den förväntade mensstarten som avisering ska ske (0–7). 1 (standard) betyder dagen innan, 0 betyder samma dag.",
+          "notify_fertile_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan det fertila fönstret väntas börja. Kräver 'Aktivera aviseringar' ovan.",
+          "notify_fertile_lead_days": "Hur många dagar innan den förväntade starten av det fertila fönstret som avisering ska ske (0–7). 0 (standard) betyder samma dag."
         }
       },
       "pregnancy": {
@@ -98,6 +106,10 @@
           "postpartum_start_date": "Datum då barnet föddes. Används för att beräkna uppföljningsperioden efter förlossningen.",
           "postpartum_duration_days": "Hur många dagar efter förlossningen som läget efter förlossning förblir aktivt (1–365). Standard är 42 (6 veckor)."
         }
+      },
+      "confirm": {
+        "title": "Granska och bekräfta",
+        "description": "Granska värdena som samlats in på föregående skärmar innan du sparar:\n\n{summary}\n\nSkicka för att spara, eller stäng den här dialogrutan för att kasta allt och börja om."
       }
     },
     "error": {

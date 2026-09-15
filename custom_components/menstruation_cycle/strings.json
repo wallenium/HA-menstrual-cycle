@@ -38,7 +38,11 @@
           "notifications_enabled": "Enable notifications",
           "notify_service": "Notification service (optional)",
           "linked_person_entity_id": "Linked Home Assistant person (optional)",
-          "visibility_level": "Visibility level"
+          "visibility_level": "Visibility level",
+          "notify_period_enabled": "Notify before period starts",
+          "notify_period_lead_days": "Period notice (days ahead)",
+          "notify_fertile_enabled": "Notify when fertile window starts",
+          "notify_fertile_lead_days": "Fertile window notice (days ahead)"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -54,7 +58,11 @@
           "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
           "notify_service": "Home Assistant notify target to use. Leave empty to use a persistent notification (shown in the HA UI) by default.",
           "linked_person_entity_id": "Link this profile to an existing person (Settings → People). If that person has a picture, the companion app can show it as the profile picture.",
-          "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
+          "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling.",
+          "notify_period_enabled": "Sends a notification a configurable number of days before the period is predicted to start. Requires 'Enable notifications' above.",
+          "notify_period_lead_days": "How many days ahead of the predicted period start to notify (0–7). 1 (default) means the day before, 0 means the same day.",
+          "notify_fertile_enabled": "Sends a notification a configurable number of days before the fertile window is predicted to start. Requires 'Enable notifications' above.",
+          "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day."
         }
       },
       "pregnancy": {
@@ -100,6 +108,10 @@
           "postpartum_start_date": "Date the baby was born. Used to calculate the postpartum tracking window.",
           "postpartum_duration_days": "How many days after birth to stay in postpartum mode (1–365). Default is 42 (6 weeks)."
         }
+      },
+      "confirm": {
+        "title": "Review and confirm",
+        "description": "Please review the values collected on the previous screen(s) before saving:\n\n{summary}\n\nSubmit to save, or close this dialog to discard everything and start over."
       }
     },
     "error": {

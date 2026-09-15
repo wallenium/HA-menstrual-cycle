@@ -64,6 +64,24 @@ CONF_DASHBOARD_ENABLED = "dashboard_enabled"
 CONF_NOTIFICATIONS_ENABLED = "notifications_enabled"
 CONF_NOTIFY_SERVICE = "notify_service"
 DEFAULT_NOTIFICATIONS_ENABLED = False
+# HA-9 (M-Cycle_HA-Component-Roadmap.md, 15.09.2026): CONF_NOTIFICATIONS_ENABLED
+# used to be the only switch, always sending both events one fixed number of
+# days ahead (period: 1 day ahead/"tomorrow", fertile window: same day/
+# "today"). Now each event has its own enable-flag and lead time, while
+# CONF_NOTIFICATIONS_ENABLED remains the master switch (both events still
+# respect it - turning it off silences everything regardless of the two
+# flags below).
+CONF_NOTIFY_PERIOD_ENABLED = "notify_period_enabled"
+CONF_NOTIFY_PERIOD_LEAD_DAYS = "notify_period_lead_days"
+CONF_NOTIFY_FERTILE_ENABLED = "notify_fertile_enabled"
+CONF_NOTIFY_FERTILE_LEAD_DAYS = "notify_fertile_lead_days"
+DEFAULT_NOTIFY_PERIOD_ENABLED = True
+DEFAULT_NOTIFY_FERTILE_ENABLED = True
+# Matches the previous hardcoded behaviour exactly (period: 1 day ahead,
+# fertile window: same day) so existing setups keep working unchanged.
+DEFAULT_NOTIFY_PERIOD_LEAD_DAYS = 1
+DEFAULT_NOTIFY_FERTILE_LEAD_DAYS = 0
+NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 
 # Default widget visibility keys and their defaults (all enabled by default)

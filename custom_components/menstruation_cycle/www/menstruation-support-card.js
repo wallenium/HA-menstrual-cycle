@@ -95,6 +95,13 @@ class YoungGirlsSupportCard extends HTMLElement {
     };
   }
 
+  // HA-10 (M-Cycle_HA-Component-Roadmap.md): this was the only one of the 13
+  // cards with no getConfigElement()/visual editor at all - the five show_*
+  // toggles had to be set by hand in YAML.
+  static getConfigElement() {
+    return document.createElement('menstruation-support-card-editor');
+  }
+
   connectedCallback() {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
@@ -1116,6 +1123,128 @@ class YoungGirlsSupportCard extends HTMLElement {
 }
 
 customElements.define('menstruation-support-card', YoungGirlsSupportCard);
+
+// ---------------------------------------------------------------------------
+// Visual editor (HA-10, M-Cycle_HA-Component-Roadmap.md)
+// ---------------------------------------------------------------------------
+
+class MenstruationSupportCardEditor extends HTMLElement {
+  static _fields = [
+    ['show_reminders', 'School-day reminders'],
+    ['show_glossary', 'Glossary'],
+    ['show_phases_graphic', 'Cycle phases graphic'],
+    ['show_hygiene_cards', 'Hygiene guides'],
+    ['show_reassurance_cards', 'Reassurance cards'],
+  ];
+
+  setConfig(config) {
+    this._config = {
+      entity: 'sensor.menstruation',
+      show_reminders: true,
+      show_glossary: true,
+      show_phases_graphic: true,
+      show_hygiene_cards: true,
+      show_reassurance_cards: true,
+      ...config,
+    };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+  }
+
+  _t(key) {
+    // Small, self-contained dictionary rather than pulling in the card's own
+    // i18n loader here - the editor only ever needs these 6 short labels.
+    const lang = _ygsI18n.normalizeLang(this._hass?.locale?.language || this._hass?.language || 'en');
+    const i18n = {
+      en: {
+        entity: 'Entity',
+        show_reminders: 'School-day reminders',
+        show_glossary: 'Glossary',
+        show_phases_graphic: 'Cycle phases graphic',
+        show_hygiene_cards: 'Hygiene guides',
+        show_reassurance_cards: 'Reassurance cards',
+      },
+      de: {
+        entity: 'Entität',
+        show_reminders: 'Schultag-Erinnerungen',
+        show_glossary: 'Glossar',
+        show_phases_graphic: 'Zyklusphasen-Grafik',
+        show_hygiene_cards: 'Hygiene-Anleitungen',
+        show_reassurance_cards: 'Beruhigungs-Karten',
+      },
+    };
+    return (i18n[lang] && i18n[lang][key]) || i18n.en[key] || key;
+  }
+
+  _emit(nextConfig) {
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: nextConfig },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+
+    const checkboxRows = MenstruationSupportCardEditor._fields
+      .map(([key]) => `
+        <label class="check">
+          <input id="${key}" type="checkbox" ${this._config[key] !== false ? 'checked' : ''} />
+          <span>${_ygsEsc(this._t(key))}</span>
+        </label>
+      `)
+      .join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .wrap { display: grid; gap: 10px; }
+        .row { display: grid; gap: 4px; }
+        label.field { font-size: 12px; font-weight: 600; color: var(--secondary-text-color); }
+        input[type='text'] {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 10px;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+        }
+        .check {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          color: var(--primary-text-color);
+        }
+      </style>
+      <div class="wrap">
+        <div class="row">
+          <label class="field" for="entity">${_ygsEsc(this._t('entity'))}</label>
+          <input id="entity" type="text" value="${_ygsEsc(this._config.entity || '')}" placeholder="sensor.menstruation" />
+        </div>
+        ${checkboxRows}
+      </div>
+    `;
+
+    this.shadowRoot.getElementById('entity')?.addEventListener('change', (ev) => {
+      this._emit({ ...this._config, entity: String(ev.target?.value || '').trim() });
+    });
+
+    MenstruationSupportCardEditor._fields.forEach(([key]) => {
+      this.shadowRoot.getElementById(key)?.addEventListener('change', (ev) => {
+        this._emit({ ...this._config, [key]: Boolean(ev.target?.checked) });
+      });
+    });
+  }
+}
+
+if (!customElements.get('menstruation-support-card-editor')) {
+  customElements.define('menstruation-support-card-editor', MenstruationSupportCardEditor);
+}
 
 window.customCards = window.customCards || [];
 if (!window.customCards.find((c) => c.type === 'menstruation-support-card')) {
