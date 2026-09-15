@@ -38,6 +38,7 @@ from .const import (
     CONF_DASHBOARD_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
+    CONF_VISIBILITY_LEVEL,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_DASHBOARD_ENABLED,
@@ -49,6 +50,7 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_ONBOARDING_STAGE,
     DEFAULT_PERIOD_DURATION_DAYS,
+    DEFAULT_VISIBILITY_LEVEL,
     DOMAIN,
     NFP_ANALYSIS_MODES,
     ONBOARDING_STAGES,
@@ -56,6 +58,7 @@ from .const import (
     STORAGE_KEY,
     STORAGE_KEY_LEGACY,
     MAX_NUM_PREDICTIONS,
+    VISIBILITY_LEVELS,
 )
 
 
@@ -223,6 +226,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             noncycle_data: dict = runtime.noncycle_data
             current_cycle_length_override: int = runtime.cycle_length_override or 0
             current_onboarding_stage: str = str(getattr(runtime, "onboarding_stage", DEFAULT_ONBOARDING_STAGE))
+            current_visibility_level: str = str(
+                getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL) or DEFAULT_VISIBILITY_LEVEL
+            )
         else:
             # Fallback: load from storage when runtime is not yet available
             profile = slugify(str(self._entry.data.get(CONF_PROFILE, ""))).strip("_") or "default"
@@ -253,9 +259,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             }
             current_cycle_length_override = stored.get("cycle_length_override") or 0
             current_onboarding_stage = str(stored.get(CONF_ONBOARDING_STAGE, DEFAULT_ONBOARDING_STAGE))
+            current_visibility_level = str(stored.get(CONF_VISIBILITY_LEVEL) or DEFAULT_VISIBILITY_LEVEL)
 
         if current_onboarding_stage not in ONBOARDING_STAGES:
             current_onboarding_stage = DEFAULT_ONBOARDING_STAGE
+        if current_visibility_level not in VISIBILITY_LEVELS:
+            current_visibility_level = DEFAULT_VISIBILITY_LEVEL
 
         self._current = {
             "period_duration": current_period_duration,
@@ -267,6 +276,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "noncycle_data": noncycle_data,
             "cycle_length_override": current_cycle_length_override,
             "onboarding_stage": current_onboarding_stage,
+            "visibility_level": current_visibility_level,
             "num_predictions": self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS),
             "nfp_mode": self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
             "birth_date": str(self._entry.data.get(CONF_BIRTH_DATE, "") or ""),
@@ -336,6 +346,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
 
                 stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, self._current["onboarding_stage"])).strip().lower()
                 self._data[CONF_ONBOARDING_STAGE] = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
+                visibility_raw = str(
+                    user_input.get(CONF_VISIBILITY_LEVEL, self._current["visibility_level"])
+                ).strip().lower()
+                self._data[CONF_VISIBILITY_LEVEL] = (
+                    visibility_raw if visibility_raw in VISIBILITY_LEVELS else DEFAULT_VISIBILITY_LEVEL
+                )
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
@@ -361,6 +377,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 return await self._async_advance()
 
         c = self._current
+        # EntitySelector(domain="notify") erwartet eine volle Entity-ID
+        # ("notify.xxx") als Default - ein zuvor als reiner Servicename ohne
+        # Domain gespeicherter Wert (z. B. "mobile_app_pixel", siehe HA-2)
+        # wuerde sonst nicht vorausgewaehlt. __init__.py akzeptiert weiterhin
+        # beide Formen beim Senden, hier normalisieren wir nur fuer die
+        # Vorbelegung des Formularfelds.
+        notify_service_default = c["notify_service"]
+        if notify_service_default and "." not in notify_service_default:
+            notify_service_default = f"notify.{notify_service_default}"
         schema = vol.Schema(
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=c["friendly_name"]): str,
@@ -389,9 +414,30 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
+                # HA-1 (M-Cycle_HA-Component-Roadmap.md): war bislang nur ueber
+                # den Service set_profile_visibility aenderbar, nicht im
+                # Options-Flow selbst - inkonsistent zu jeder anderen
+                # Einstellung. _async_finish/_async_resolve_current reichen den
+                # Wert wie gehabt explizit durch, damit ein Speichern dieses
+                # Formulars die Stufe nie unbeabsichtigt zuruecksetzt.
+                vol.Optional(CONF_VISIBILITY_LEVEL, default=c["visibility_level"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=VISIBILITY_LEVELS,
+                        translation_key="visibility_level",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
                 vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
-                vol.Optional(CONF_NOTIFY_SERVICE, default=c["notify_service"]): str,
+                # HA-2 (M-Cycle_HA-Component-Roadmap.md): war ein reines
+                # Freitextfeld - ein Tippfehler im Servicenamen scheiterte damit
+                # still. EntitySelector(domain="notify") liefert eine
+                # "notify.xxx"-Entity-ID, die das bestehende Splitting in
+                # __init__.py::_async_check_and_send_notifications (Split auf
+                # den ersten ".") unveraendert weiterverarbeitet.
+                vol.Optional(
+                    CONF_NOTIFY_SERVICE, default=notify_service_default
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
                 vol.Optional(
                     CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
                 ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
@@ -594,6 +640,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         new_period_duration = d[CONF_PERIOD_DURATION_DAYS]
         new_cycle_length_override = d[CONF_CYCLE_LENGTH_OVERRIDE]
         new_onboarding_stage = d[CONF_ONBOARDING_STAGE]
+        # HA-1 (M-Cycle_HA-Component-Roadmap.md): jetzt auch aus dem
+        # Options-Flow selbst waehlbar, nicht mehr nur ueber den Service
+        # set_profile_visibility.
+        new_visibility_level = d[CONF_VISIBILITY_LEVEL]
         birth_date_parsed = d[CONF_BIRTH_DATE]
 
         if runtime is not None:
@@ -606,6 +656,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             runtime.noncycle_data = new_noncycle_data
             runtime.cycle_length_override = new_cycle_length_override
             runtime.onboarding_stage = new_onboarding_stage
+            runtime.visibility_level = new_visibility_level
 
             await runtime.storage.async_save(
                 runtime.history,
@@ -619,16 +670,16 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 runtime.noncycle_data,
                 cycle_length_override=new_cycle_length_override,
                 onboarding_stage=new_onboarding_stage,
-                # visibility_level wird bewusst NICHT vom Options-Flow
-                # gesetzt (nur ueber den Service set_profile_visibility,
-                # siehe Kommentar an CONF_VISIBILITY_LEVEL in const.py) -
-                # hier trotzdem explizit den aktuellen Runtime-Wert
-                # mitschicken, sonst wuerde jedes Speichern dieses Formulars
-                # die Sichtbarkeitsstufe unbeabsichtigt auf den Default
-                # zurücksetzen (storage.async_save faellt sonst auf
+                # HA-1: seit 15.09.2026 auch im Options-Flow selbst waehlbar
+                # (vorher nur ueber den Service set_profile_visibility, siehe
+                # Kommentar an CONF_VISIBILITY_LEVEL in const.py). runtime.
+                # visibility_level wurde oben bereits auf new_visibility_level
+                # gesetzt - explizit mitschicken, sonst wuerde jedes Speichern
+                # dieses Formulars die Stufe unbeabsichtigt auf den Default
+                # zuruecksetzen (storage.async_save faellt sonst auf
                 # DEFAULT_VISIBILITY_LEVEL zurueck, wenn nichts uebergeben
                 # wird).
-                visibility_level=runtime.visibility_level,
+                visibility_level=new_visibility_level,
             )
             async_dispatcher_send(self.hass, SIGNAL_HISTORY_UPDATED)
         else:
@@ -651,10 +702,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 new_noncycle_data,
                 cycle_length_override=new_cycle_length_override,
                 onboarding_stage=new_onboarding_stage,
-                # Gleicher Grund wie im runtime-Zweig oben: den bereits
-                # gespeicherten Wert unveraendert mitschicken, statt ihn
-                # durch Weglassen auf den Default zurueckfallen zu lassen.
-                visibility_level=stored_full.get("visibility_level"),
+                # HA-1: gleicher Grund wie im runtime-Zweig oben - der im
+                # Options-Flow gewaehlte Wert wird hier direkt mitgeschickt.
+                visibility_level=new_visibility_level,
             )
 
         self.hass.config_entries.async_update_entry(

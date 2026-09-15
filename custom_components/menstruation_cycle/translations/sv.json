@@ -36,7 +36,8 @@
           "menopause_enabled": "Aktivera klimakterieläge",
           "postpartum_enabled": "Aktivera läge efter förlossning",
           "notifications_enabled": "Aktivera aviseringar",
-          "notify_service": "Aviseringstjänst (valfritt, t.ex. mobile_app_pixel)"
+          "notify_service": "Aviseringstjänst (valfritt)",
+          "visibility_level": "Synlighetsnivå"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Aktiverar klimakteriespårningsläge och visar en detaljskärm härnäst.",
           "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst.",
           "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
-          "notify_service": "Home Assistant-aviseringstjänst att använda, t.ex. 'mobile_app_pixel' (för notify.mobile_app_pixel) eller 'persistent_notification'. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet)."
+          "notify_service": "Home Assistant-aviseringsmål att använda. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet).",
+          "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
         }
       },
       "pregnancy": {
@@ -227,6 +229,13 @@
       "options": {
         "hybrid": "Hybrid (rekommenderas)",
         "strict": "Strikt"
+      }
+    },
+    "visibility_level": {
+      "options": {
+        "full": "Fullständig (standard)",
+        "status_only": "Endast status",
+        "private": "Privat"
       }
     }
   }

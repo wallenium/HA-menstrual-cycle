@@ -36,7 +36,8 @@
           "menopause_enabled": "Activer le mode ménopause",
           "postpartum_enabled": "Activer le mode post-partum",
           "notifications_enabled": "Activer les notifications",
-          "notify_service": "Service de notification (optionnel, ex. mobile_app_pixel)"
+          "notify_service": "Service de notification (optionnel)",
+          "visibility_level": "Niveau de visibilité"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours pendant lesquels les règles durent généralement (1 à 14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Active le mode de suivi de la ménopause et affiche un écran de détails ensuite.",
           "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite.",
           "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
-          "notify_service": "Service de notification Home Assistant à utiliser, ex. 'mobile_app_pixel' (pour notify.mobile_app_pixel) ou 'persistent_notification'. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut."
+          "notify_service": "Cible de notification Home Assistant à utiliser. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut.",
+          "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
         }
       },
       "pregnancy": {
@@ -227,6 +229,13 @@
       "options": {
         "hybrid": "Hybride (recommandé)",
         "strict": "Strict"
+      }
+    },
+    "visibility_level": {
+      "options": {
+        "full": "Complet (par défaut)",
+        "status_only": "Statut uniquement",
+        "private": "Privé"
       }
     }
   }

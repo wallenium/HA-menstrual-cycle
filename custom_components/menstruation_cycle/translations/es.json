@@ -36,7 +36,8 @@
           "menopause_enabled": "Activar modo menopausia",
           "postpartum_enabled": "Activar modo posparto",
           "notifications_enabled": "Activar notificaciones",
-          "notify_service": "Servicio de notificación (opcional, ej. mobile_app_pixel)"
+          "notify_service": "Servicio de notificación (opcional)",
+          "visibility_level": "Nivel de visibilidad"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar la menstruación (1 a 14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Activa el modo de seguimiento de la menopausia y muestra a continuación una pantalla de detalles.",
           "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles.",
           "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
-          "notify_service": "Servicio de notificación de Home Assistant a usar, p. ej. 'mobile_app_pixel' (para notify.mobile_app_pixel) o 'persistent_notification'. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto."
+          "notify_service": "Objetivo de notificación de Home Assistant a usar. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto.",
+          "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
         }
       },
       "pregnancy": {
@@ -227,6 +229,13 @@
       "options": {
         "hybrid": "Híbrido (recomendado)",
         "strict": "Estricto"
+      }
+    },
+    "visibility_level": {
+      "options": {
+        "full": "Completo (predeterminado)",
+        "status_only": "Solo estado",
+        "private": "Privado"
       }
     }
   }

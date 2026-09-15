@@ -36,7 +36,8 @@
           "menopause_enabled": "Enable menopause mode",
           "postpartum_enabled": "Enable postpartum mode",
           "notifications_enabled": "Enable notifications",
-          "notify_service": "Notification service (optional, e.g. mobile_app_pixel)"
+          "notify_service": "Notification service (optional)",
+          "visibility_level": "Visibility level"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -50,7 +51,8 @@
           "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
           "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next.",
           "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
-          "notify_service": "Home Assistant notify service to use, e.g. 'mobile_app_pixel' (for notify.mobile_app_pixel) or 'persistent_notification'. Leave empty to use a persistent notification (shown in the HA UI) by default."
+          "notify_service": "Home Assistant notify target to use. Leave empty to use a persistent notification (shown in the HA UI) by default.",
+          "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
         }
       },
       "pregnancy": {
@@ -227,6 +229,13 @@
       "options": {
         "hybrid": "Hybrid (recommended)",
         "strict": "Strict"
+      }
+    },
+    "visibility_level": {
+      "options": {
+        "full": "Full (default)",
+        "status_only": "Status only",
+        "private": "Private"
       }
     }
   }
