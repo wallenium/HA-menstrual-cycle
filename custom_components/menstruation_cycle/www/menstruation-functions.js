@@ -375,17 +375,30 @@ function getSymptomConfig(state, isPregnant = false) {
     { key: 'pain', icon: 'mdi:emoticon-sad-outline', multi: true, options: ['mittelschmerz', 'cramps', 'tender_breasts', 'headache', 'migraine', 'lower_back', 'vulva'] },
     { key: 'test', icon: 'mdi:test-tube', multi: true, options: ['positive_ovulation', 'negative_ovulation', 'positive_pregnancy', 'negative_pregnancy'] },
     { key: 'training_intensity', icon: 'mdi:run-fast', multi: false, options: ['training_light', 'training_moderate', 'training_intense'] },
-    { key: 'contraception_method', icon: 'mdi:pill', multi: false, options: ['none', 'pill', 'hormonal_iud', 'copper_iud', 'implant', 'patch', 'ring', 'injection', 'condom', 'other'] },
+    { key: 'contraception_method', icon: 'mdi:pill', multi: false, options: ['none', 'pill', 'hormonal_iud', 'copper_iud', 'implant', 'patch', 'ring', 'injection', 'condom', 'diaphragm', 'other'] },
+    // Added 16.09.2026 (app icon-parity round): breast/digestion were
+    // already valid backend fields (see const.py SYMPTOM_OPTIONS,
+    // sensor.py SYMPTOM_MULTI_VALUE_KEYS) but had no frontend category
+    // here yet, so they never appeared in the logging UI at all. Both are
+    // general cycle-tracking fields (not pregnancy-specific), so they're
+    // part of the regular `all` list like every other non-pregnancy field.
+    { key: 'breast', icon: 'mdi:heart-outline', multi: true, options: ['ok', 'nipple_discharge', 'full_or_heavy', 'swollen'] },
+    { key: 'digestion', icon: 'mdi:stomach', multi: true, options: ['nausea', 'bloating', 'constipation', 'diarrhea'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (String(state || '') === 'menopause') {
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method']);
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {
+    // pregnancy_symptoms (16.09.2026) is deliberately NOT part of the `all`
+    // list above - it is scoped to pregnancy tracking only (see const.py's
+    // SYMPTOM_PREGNANCY comment), so it is appended here rather than being
+    // filtered out of the non-pregnant paths one by one.
+    const pregnancySymptoms = { key: 'pregnancy_symptoms', icon: 'mdi:human-pregnant', multi: true, options: ['nausea', 'fatigue', 'heartburn', 'swelling', 'headache', 'back_pain'] };
     return all
       .filter((cat) => (cat.key !== 'bleeding_strength' && cat.key !== 'clots' && cat.key !== 'clot_size' && cat.key !== 'bleeding_type' && cat.key !== 'contraception_method'))
       .map((cat) => {
@@ -393,7 +406,8 @@ function getSymptomConfig(state, isPregnant = false) {
           return { ...cat, options: cat.options.filter((opt) => opt !== 'tampon' && opt !== 'cup') };
         }
         return cat;
-      });
+      })
+      .concat([pregnancySymptoms]);
   }
   return all;
 }
@@ -537,11 +551,24 @@ function mcStateStyles() {
  *
  * Deliberately NOT every option has an icon here - the app's own icon set
  * has the exact same gaps (no template for cervical_mucus's "untypisch",
- * the two ovulation-test results, catch-all values like "other"/
- * "inconspicuous", or training_intensity at all). A category/option
- * missing from this table just falls back to its existing plain-text
- * button/checkbox label, exactly like the app falls back to a text chip
- * when it has no matching asset for a given case.
+ * the two ovulation-test results). A category/option missing from this
+ * table just falls back to its existing plain-text button/checkbox
+ * label, exactly like the app falls back to a text chip when it has no
+ * matching asset for a given case.
+ *
+ * 16.09.2026: contraception_method's "other" and all three
+ * training_intensity options were part of that gap list until four more
+ * icons were added to assets/buttons/ (button_contraception_others.svg,
+ * button_training_light/medium/intensive.svg) - now mapped below.
+ *
+ * 16.09.2026, same day: three whole categories - breast, digestion,
+ * pregnancy_symptoms - were valid backend fields (const.py SYMPTOM_OPTIONS)
+ * with existing app icons sitting unused in assets/buttons/, but no
+ * frontend category in getSymptomConfig() at all, so they never showed up
+ * in the logging UI. Now added there and mapped below. contraception_method
+ * also gained a new "diaphragm" option/icon, analogous to the app.
+ * digestion's bloating/constipation/diarrhea still have no icon (no source
+ * asset exists for them) - same graceful text fallback as always.
  */
 const SYMPTOM_OPTION_ICONS = {
   bleeding_strength: {
@@ -559,7 +586,7 @@ const SYMPTOM_OPTION_ICONS = {
     drops: 'button_flow_dripping',
   },
   spotting: { red: 'button_spotting_red', brown: 'button_spotting_brown' },
-  smell: { normal: 'button_smell_normal', unpleasant: 'button_smell_stink', fishy: 'button_smell_fishy' },
+  smell: { normal: 'button_smell_normal', inconspicuous: 'button_smell_normal', unpleasant: 'button_smell_stink', fishy: 'button_smell_fishy' },
   discharge: {
     reddish: 'button_spotting_reddish',
     brown: 'button_spotting_brownish',
@@ -607,6 +634,37 @@ const SYMPTOM_OPTION_ICONS = {
     ring: 'button_contraception_ring',
     injection: 'button_contraception_shot',
     condom: 'button_contraception_condom',
+    diaphragm: 'button_contraception_diaphragm',
+    other: 'button_contraception_others',
+  },
+  training_intensity: {
+    training_light: 'button_training_light',
+    training_moderate: 'button_training_medium',
+    training_intense: 'button_training_intensive',
+  },
+  // 16.09.2026: breast/digestion/pregnancy_symptoms newly exposed in the
+  // logging UI this round (see getSymptomConfig() above). "nausea" is
+  // deliberately reused from the app's own button_pain_ubelkeit.svg (the
+  // app's only nausea icon) for both digestion.nausea and
+  // pregnancy_symptoms.nausea - same icon, same concept, two categories.
+  breast: {
+    ok: 'button_breast_normal',
+    nipple_discharge: 'button_breast_leaking',
+    full_or_heavy: 'button_breast_sensitive',
+    swollen: 'button_breast_Swollen',
+  },
+  digestion: {
+    nausea: 'button_pain_ubelkeit',
+    // bloating/constipation/diarrhea: no matching icon in assets/buttons/,
+    // same as the app - falls back to plain text like any other gap.
+  },
+  pregnancy_symptoms: {
+    nausea: 'button_pain_ubelkeit',
+    fatigue: 'button_pregnancy_sleepy',
+    heartburn: 'button_pregnanc_sodbrennen',
+    swelling: 'button_pregnancy_swelling',
+    headache: 'button_pregnancy_headache',
+    back_pain: 'button_pregnancy_backpain',
   },
 };
 

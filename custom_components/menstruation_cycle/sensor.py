@@ -134,6 +134,13 @@ SYMPTOM_MULTI_VALUE_KEYS = (
     # intensity level per day, handled in the single-value loop below
     # alongside bleeding_strength/mood/etc.).
     "vulva_vagina", "urinary", "breast", "appointments", "digestion",
+    # Added 16.09.2026 (M-Cycle iOS/macOS app icon parity round, wiring up
+    # pregnancy_symptoms in the calendar/gauge logging UI): same reasoning
+    # as the five fields above - multiple simultaneous pregnancy symptoms
+    # in one day (e.g. nausea AND fatigue AND headache) are the common
+    # case, not the exception, so this is treated as multi-value like its
+    # 03.09.2026 siblings rather than as a single pick like hot_flashes.
+    "pregnancy_symptoms",
 )
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12

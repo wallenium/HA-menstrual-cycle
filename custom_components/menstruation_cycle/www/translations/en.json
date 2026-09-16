@@ -941,5 +941,18 @@
   "dashboard_chat_fab_label": "Cycle Q&A",
   "dashboard_chat_medical_disclaimer": "Not medical advice. For health concerns, please consult a doctor.",
   "dashboard_chat_pregnant_today_yes": "Today likely falls within your estimated fertile window.",
-  "dashboard_chat_pregnant_today_no": "Today likely falls outside your estimated fertile window."
+  "dashboard_chat_pregnant_today_no": "Today likely falls outside your estimated fertile window.",
+  "cat_breast": "Breast",
+  "cat_digestion": "Digestion",
+  "cat_pregnancy_symptoms": "Pregnancy Symptoms",
+  "opt_ok": "Inconspicuous",
+  "opt_nipple_discharge": "Nipple Discharge",
+  "opt_full_or_heavy": "Full or Heavy",
+  "opt_swollen": "Swollen",
+  "opt_bloating": "Bloating",
+  "opt_constipation": "Constipation",
+  "opt_diarrhea": "Diarrhea",
+  "opt_swelling": "Swelling",
+  "opt_diaphragm": "Diaphragm",
+  "opt_training_light": "Light"
 }

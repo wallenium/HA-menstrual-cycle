@@ -908,5 +908,18 @@
   "dashboard_chat_fab_label": "Cykelfrågor",
   "dashboard_chat_medical_disclaimer": "Inte medicinsk rådgivning. Vid hälsofrågor, kontakta läkare.",
   "dashboard_chat_pregnant_today_yes": "Idag ligger troligen inom ditt uppskattade fertila fönster.",
-  "dashboard_chat_pregnant_today_no": "Idag ligger troligen utanför ditt uppskattade fertila fönster."
+  "dashboard_chat_pregnant_today_no": "Idag ligger troligen utanför ditt uppskattade fertila fönster.",
+  "cat_breast": "Bröst",
+  "cat_digestion": "Matsmältning",
+  "cat_pregnancy_symptoms": "Graviditetssymtom",
+  "opt_ok": "Diskret",
+  "opt_nipple_discharge": "Bröstvårteutsöndring",
+  "opt_full_or_heavy": "Fulla eller tunga",
+  "opt_swollen": "Svullna",
+  "opt_bloating": "Uppblåsthet",
+  "opt_constipation": "Förstoppning",
+  "opt_diarrhea": "Diarré",
+  "opt_swelling": "Svullnad",
+  "opt_diaphragm": "Pessar",
+  "opt_training_light": "Lätt"
 }

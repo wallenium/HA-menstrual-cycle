@@ -908,5 +908,18 @@
   "dashboard_chat_fab_label": "Questions sur le cycle",
   "dashboard_chat_medical_disclaimer": "Ceci ne constitue pas un avis médical. Pour toute question de santé, consultez un médecin.",
   "dashboard_chat_pregnant_today_yes": "Aujourd'hui se situe probablement dans votre fenêtre de fertilité estimée.",
-  "dashboard_chat_pregnant_today_no": "Aujourd'hui se situe probablement en dehors de votre fenêtre de fertilité estimée."
+  "dashboard_chat_pregnant_today_no": "Aujourd'hui se situe probablement en dehors de votre fenêtre de fertilité estimée.",
+  "cat_breast": "Seins",
+  "cat_digestion": "Digestion",
+  "cat_pregnancy_symptoms": "Symptômes de grossesse",
+  "opt_ok": "Sans particularité",
+  "opt_nipple_discharge": "Écoulement du mamelon",
+  "opt_full_or_heavy": "Lourds ou tendus",
+  "opt_swollen": "Gonflés",
+  "opt_bloating": "Ballonnements",
+  "opt_constipation": "Constipation",
+  "opt_diarrhea": "Diarrhée",
+  "opt_swelling": "Gonflement",
+  "opt_diaphragm": "Diaphragme",
+  "opt_training_light": "Léger"
 }

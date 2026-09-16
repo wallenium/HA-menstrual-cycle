@@ -1842,15 +1842,13 @@ class MenstruationGaugeCard extends HTMLElement {
         return `
           <div class="sym-row">
             <div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div>
-            <div class="sym-cervix-grid">
-              <div class="sym-cervix-col">
-                <div class="sym-cervix-title">${this._t('cat_cervix_position')}</div>
-                <div class="sym-options sym-cervix-opts">${positionButtons}</div>
-              </div>
-              <div class="sym-cervix-col">
-                <div class="sym-cervix-title">${this._t('cat_cervix_texture')}</div>
-                <div class="sym-options sym-cervix-opts">${textureButtons}</div>
-              </div>
+            <div class="sym-cervix-sub">
+              <div class="sym-cervix-title">${this._t('cat_cervix_position')}</div>
+              <div class="sym-options">${positionButtons}</div>
+            </div>
+            <div class="sym-cervix-sub">
+              <div class="sym-cervix-title">${this._t('cat_cervix_texture')}</div>
+              <div class="sym-options">${textureButtons}</div>
             </div>
           </div>
         `;
@@ -2538,16 +2536,18 @@ class MenstruationGaugeCard extends HTMLElement {
            Kategorien mit mehr Optionen (z.B. Blutungsstaerke mit 5) nicht
            auf eine zweite Zeile rutschen - angelehnt an die Icon-Kachel-
            Reihen der iOS/macOS-App. */
-        .sym-options { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
-        .sym-options::-webkit-scrollbar { height: 5px; }
-        .sym-options::-webkit-scrollbar-thumb { background: rgba(128,128,128,.35); border-radius: 3px; }
+        .sym-options { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+        .sym-options::-webkit-scrollbar { display: none; }
         .sym-hidden { display: none; }
-        .sym-cervix-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-        .sym-cervix-col { display: grid; gap: 4px; }
+        /* Muttermund-Position/-Konsistenz (16.09.2026 korrigiert): frueher ein
+           2x3-Grid, das die Buttons auf halbe Dialogbreite/3 Spalten
+           zusammenquetschte und dadurch deutlich kleiner wirkte als die
+           82px-Kacheln der anderen Kategorien. Jetzt zwei gestapelte,
+           volle-Breite-Zeilen mit derselben .sym-options-Scroll-Kachel wie
+           ueberall sonst - garantiert gleiche Groesse. */
+        .sym-cervix-sub { display: grid; gap: 4px; }
         .sym-cervix-title { font-size: .72rem; opacity: .75; }
-        .sym-cervix-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
-        .sym-opt-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 90px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
-        .sym-cervix-opts .sym-opt-btn { width: 100%; min-width: 0; flex: none; }
+        .sym-opt-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 100px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
         .sym-opt-btn:hover { border-color: rgba(190,18,60,.45); }
         .sym-opt-btn.sym-selected { background: ${palette.confirmed}; color: #fff; border-color: ${palette.confirmed}; }
         /* Symptom-Icon-Kacheln (15.09.2026, aus der iOS/macOS-App uebernommen;
@@ -2556,9 +2556,9 @@ class MenstruationGaugeCard extends HTMLElement {
            damit es wie in der App aussieht - siehe menstruation-functions.js::
            renderOptionIcon(). Optionen ohne Icon-Zuordnung zeigen weiterhin
            nur den zentrierten Text in derselben Kachelgroesse, kein Bruch. */
-        .sym-opt-icon { width: 54px; height: 54px; object-fit: contain; flex: 0 0 auto; border-radius: 10px; }
+        .sym-opt-icon { width: 64px; height: 64px; object-fit: contain; flex: 0 0 auto; border-radius: 12px; }
         .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sym-opt-label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 90px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .82rem; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
+        .sym-opt-label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 100px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .82rem; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
         .sym-opt-label span { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sym-opt-label:hover { border-color: rgba(190,18,60,.45); }
         /* :has() faellt auf aelteren WebViews (z.B. veraltete Android-System-
