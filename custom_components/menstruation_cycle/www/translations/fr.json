@@ -921,5 +921,9 @@
   "opt_diarrhea": "Diarrhée",
   "opt_swelling": "Gonflement",
   "opt_diaphragm": "Diaphragme",
-  "opt_training_light": "Léger"
+  "opt_training_light": "Léger",
+  "cat_vulva_vagina": "Vulve/vagin",
+  "opt_vaginal_dryness": "Sécheresse",
+  "opt_itching": "Démangeaisons",
+  "opt_soreness": "Irritation"
 }

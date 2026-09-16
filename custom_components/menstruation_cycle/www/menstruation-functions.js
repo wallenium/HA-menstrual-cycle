@@ -384,13 +384,20 @@ function getSymptomConfig(state, isPregnant = false) {
     // part of the regular `all` list like every other non-pregnancy field.
     { key: 'breast', icon: 'mdi:heart-outline', multi: true, options: ['ok', 'nipple_discharge', 'full_or_heavy', 'swollen'] },
     { key: 'digestion', icon: 'mdi:stomach', multi: true, options: ['nausea', 'bloating', 'constipation', 'diarrhea'] },
+    // 16.09.2026 (second app-icon-parity round, three more icons added by
+    // user to assets/buttons/): vulva_vagina was the same kind of gap as
+    // breast/digestion above (valid backend field, no frontend category)
+    // and now also has matching icons. Included in the menopause allowed
+    // set below - vaginal dryness in particular is a very common menopause
+    // symptom - and left out of pre_menarche, same reasoning as breast.
+    { key: 'vulva_vagina', icon: 'mdi:gender-female', multi: true, options: ['vaginal_dryness', 'itching', 'soreness'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (String(state || '') === 'menopause') {
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion']);
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {
@@ -550,11 +557,10 @@ function mcStateStyles() {
  * filenames, now served from this integration's own assets/buttons/).
  *
  * Deliberately NOT every option has an icon here - the app's own icon set
- * has the exact same gaps (no template for cervical_mucus's "untypisch",
- * the two ovulation-test results). A category/option missing from this
- * table just falls back to its existing plain-text button/checkbox
- * label, exactly like the app falls back to a text chip when it has no
- * matching asset for a given case.
+ * has the exact same gaps (no template for cervical_mucus's "untypisch").
+ * A category/option missing from this table just falls back to its
+ * existing plain-text button/checkbox label, exactly like the app falls
+ * back to a text chip when it has no matching asset for a given case.
  *
  * 16.09.2026: contraception_method's "other" and all three
  * training_intensity options were part of that gap list until four more
@@ -569,6 +575,14 @@ function mcStateStyles() {
  * also gained a new "diaphragm" option/icon, analogous to the app.
  * digestion's bloating/constipation/diarrhea still have no icon (no source
  * asset exists for them) - same graceful text fallback as always.
+ *
+ * 16.09.2026, second app-icon-parity round: the two ovulation-test results
+ * (previously the only remaining gap in `test` besides cervical_mucus's
+ * "untypisch") now have icons (button_test_ovulation_positive/negative.svg)
+ * and are mapped below. A new vulva_vagina category (vaginal_dryness/
+ * itching/soreness) is added the same way breast/digestion were in the
+ * first round - valid backend field, now has icons too, just needed a
+ * frontend category entry.
  */
 const SYMPTOM_OPTION_ICONS = {
   bleeding_strength: {
@@ -623,7 +637,12 @@ const SYMPTOM_OPTION_ICONS = {
     lower_back: 'button_pain_backpain',
     vulva: 'button_pain_vulva',
   },
-  test: { positive_pregnancy: 'button_test_preg_positive', negative_pregnancy: 'button_test_preg_negative' },
+  test: {
+    positive_pregnancy: 'button_test_preg_positive',
+    negative_pregnancy: 'button_test_preg_negative',
+    positive_ovulation: 'button_test_ovulation_positive',
+    negative_ovulation: 'button_test_ovulation_negative',
+  },
   contraception_method: {
     none: 'button_contraception_none',
     pill: 'button_contraception_pill',
@@ -665,6 +684,14 @@ const SYMPTOM_OPTION_ICONS = {
     swelling: 'button_pregnancy_swelling',
     headache: 'button_pregnancy_headache',
     back_pain: 'button_pregnancy_backpain',
+  },
+  // Note: the source file is genuinely named "button_vulva_irching.svg"
+  // (typo in the app's own asset, not ours) - kept as-is rather than
+  // silently renamed, since we don't control that file's name.
+  vulva_vagina: {
+    vaginal_dryness: 'button_vulva_dry',
+    itching: 'button_vulva_irching',
+    soreness: 'button_vulva_sore',
   },
 };
 

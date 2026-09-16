@@ -954,5 +954,9 @@
   "opt_diarrhea": "Durchfall",
   "opt_swelling": "Schwellung",
   "opt_diaphragm": "Diaphragma",
-  "opt_training_light": "Leicht"
+  "opt_training_light": "Leicht",
+  "cat_vulva_vagina": "Scheide/Vulva",
+  "opt_vaginal_dryness": "Trockenheit",
+  "opt_itching": "Juckreiz",
+  "opt_soreness": "Wundgefühl"
 }

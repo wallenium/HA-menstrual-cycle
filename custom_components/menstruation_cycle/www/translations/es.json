@@ -921,5 +921,9 @@
   "opt_diarrhea": "Diarrea",
   "opt_swelling": "Hinchazón",
   "opt_diaphragm": "Diafragma",
-  "opt_training_light": "Ligero"
+  "opt_training_light": "Ligero",
+  "cat_vulva_vagina": "Vulva/vagina",
+  "opt_vaginal_dryness": "Sequedad",
+  "opt_itching": "Picazón",
+  "opt_soreness": "Dolor/irritación"
 }

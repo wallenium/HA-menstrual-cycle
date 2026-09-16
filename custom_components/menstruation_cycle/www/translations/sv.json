@@ -921,5 +921,9 @@
   "opt_diarrhea": "Diarré",
   "opt_swelling": "Svullnad",
   "opt_diaphragm": "Pessar",
-  "opt_training_light": "Lätt"
+  "opt_training_light": "Lätt",
+  "cat_vulva_vagina": "Vulva/vagina",
+  "opt_vaginal_dryness": "Torrhet",
+  "opt_itching": "Klåda",
+  "opt_soreness": "Ömhet"
 }
