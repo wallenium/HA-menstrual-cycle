@@ -1389,7 +1389,7 @@ class MenstruationCalendarCard extends HTMLElement {
         .sym-cervix-col { display: grid; gap: 4px; }
         .sym-cervix-title { font-size: .72rem; opacity: .75; }
         .sym-cervix-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
-        .sym-opt-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 0 0 64px; width: 64px; min-height: 64px; border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 6px 4px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
+        .sym-opt-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 90px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .8rem; background: transparent; color: inherit; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
         .sym-cervix-opts .sym-opt-btn { width: 100%; min-width: 0; flex: none; }
         .sym-opt-btn:hover { border-color: var(--primary-color); }
         .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
@@ -1399,10 +1399,10 @@ class MenstruationCalendarCard extends HTMLElement {
            damit es wie in der App aussieht - siehe menstruation-functions.js::
            renderOptionIcon(). Optionen ohne Icon-Zuordnung zeigen weiterhin
            nur den zentrierten Text in derselben Kachelgroesse, kein Bruch. */
-        .sym-opt-icon { width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto; border-radius: 8px; }
-        .sym-opt-text { font-size: .68rem; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
-        .sym-opt-label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 0 0 64px; width: 64px; min-height: 64px; border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 6px 4px; cursor: pointer; font-size: .82rem; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
-        .sym-opt-label span { font-size: .68rem; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .sym-opt-icon { width: 54px; height: 54px; object-fit: contain; flex: 0 0 auto; border-radius: 10px; }
+        .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sym-opt-label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; flex: 0 0 82px; width: 82px; min-height: 90px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .82rem; scroll-snap-align: start; transition: background 120ms, border-color 120ms; }
+        .sym-opt-label span { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sym-opt-label:hover { border-color: var(--primary-color); }
         /* :has() faellt auf aelteren WebViews (z.B. veraltete Android-System-
            WebView in der HA-Begleit-App) weg - Checkbox bleibt dann trotzdem
