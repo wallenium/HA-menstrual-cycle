@@ -391,13 +391,22 @@ function getSymptomConfig(state, isPregnant = false) {
     // set below - vaginal dryness in particular is a very common menopause
     // symptom - and left out of pre_menarche, same reasoning as breast.
     { key: 'vulva_vagina', icon: 'mdi:gender-female', multi: true, options: ['vaginal_dryness', 'itching', 'soreness'] },
+    // 16.09.2026 (third app-icon-parity round, four hot-flash icons added
+    // by user to assets/buttons/): hot_flashes is a pre-existing backend
+    // field (const.py SYMPTOM_HOT_FLASHES) but, like breast/digestion/
+    // vulva_vagina above, had no frontend category here yet. Unlike those
+    // three, sensor.py's SYMPTOM_MULTI_VALUE_KEYS comment explicitly
+    // documents hot_flashes as single-value (one intensity per day, not a
+    // combination), so multi: false here, matching bleeding_strength's
+    // single-select pattern.
+    { key: 'hot_flashes', icon: 'mdi:thermometer-alert', multi: false, options: ['none', 'light', 'moderate', 'strong', 'very_strong'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (String(state || '') === 'menopause') {
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina']);
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {
@@ -583,6 +592,13 @@ function mcStateStyles() {
  * itching/soreness) is added the same way breast/digestion were in the
  * first round - valid backend field, now has icons too, just needed a
  * frontend category entry.
+ *
+ * 16.09.2026, third round: hot_flashes gets the same treatment - valid
+ * backend field (const.py SYMPTOM_HOT_FLASHES), four new intensity icons
+ * (button_hotflashes_low/medium/high/extreme.svg), now has a frontend
+ * category too. Unlike breast/digestion/vulva_vagina it's single-select
+ * (see sensor.py SYMPTOM_MULTI_VALUE_KEYS), and "none" has no icon (only
+ * four icons exist for five options) - same graceful text fallback.
  */
 const SYMPTOM_OPTION_ICONS = {
   bleeding_strength: {
@@ -692,6 +708,15 @@ const SYMPTOM_OPTION_ICONS = {
     vaginal_dryness: 'button_vulva_dry',
     itching: 'button_vulva_irching',
     soreness: 'button_vulva_sore',
+  },
+  // 16.09.2026: four hot-flash intensity icons added (low/medium/high/
+  // extreme). "none" has no icon, same graceful-fallback pattern as
+  // digestion's bloating/constipation/diarrhea gap above.
+  hot_flashes: {
+    light: 'button_hotflashes_low',
+    moderate: 'button_hotflashes_medium',
+    strong: 'button_hotflashes_high',
+    very_strong: 'button_hotflashes_extreme',
   },
 };
 
