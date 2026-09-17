@@ -141,6 +141,11 @@ SYMPTOM_MULTI_VALUE_KEYS = (
     # case, not the exception, so this is treated as multi-value like its
     # 03.09.2026 siblings rather than as a single pick like hot_flashes.
     "pregnancy_symptoms",
+    # Added 17.09.2026 (Menopause-Modus "tote Checkboxen"-Fix, siehe const.py
+    # SYMPTOM_MENOPAUSE_EXTRA): mehrere gleichzeitige Menopause-Begleit-
+    # symptome an einem Tag (z.B. Nachtschweiß UND Reizbarkeit) sind der
+    # Normalfall, nicht die Ausnahme - gleiche Begründung wie oben.
+    "menopause_symptoms",
 )
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12

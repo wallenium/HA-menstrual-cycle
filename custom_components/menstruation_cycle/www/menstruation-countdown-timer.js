@@ -516,11 +516,13 @@ class MenstruationCountdownTimer extends HTMLElement {
         <div class="symptom-tracker">
           <h4>${this._t('menopause_symptoms')}</h4>
           <div class="symptom-grid" id="menopauseSymptoms"></div>
+          <div class="symptom-feedback" id="menopauseSymptomFeedback" hidden></div>
         </div>
 
         <div class="mood-tracker">
           <h4>${this._t('mood_tracker')}</h4>
           <div class="mood-grid" id="moodGrid"></div>
+          <div class="symptom-feedback" id="moodFeedback" hidden></div>
         </div>
 
         <div class="wellness-tips">
@@ -770,26 +772,193 @@ class MenstruationCountdownTimer extends HTMLElement {
     const symptomsGrid = this.querySelector("#menopauseSymptoms");
     if (!symptomsGrid) return;
 
-    const symptoms = ['Hitzewallungen', 'Nachtschweiß', 'Schlafstörungen', 'Reizbarkeit', 'Trockenheit', 'Gewichtszunahme'];
-    symptomsGrid.innerHTML = symptoms.map(s => `
+    // Nachtrag (17.09.2026, "tote Checkboxen"): diese sechs Checkboxen
+    // hatten bislang gar keinen Listener - Anklicken ging beim nächsten
+    // Re-Render spurlos verloren. Nur "Hitzewallungen" und "Trockenheit"
+    // matchen ein bereits bestehendes Feld (hot_flashes als
+    // Schnell-Umschalter none/light; vulva_vagina:vaginal_dryness als
+    // Listenwert), für die anderen vier gab es gar kein Backend-Feld - neu
+    // angelegt als gemeinsames Listenfeld `menopause_symptoms` (siehe
+    // const.py SYMPTOM_MENOPAUSE_EXTRA), analog zu urinary/appointments/
+    // digestion. `list: true` markiert Listenfelder: dort wird beim Klick
+    // erst der aktuelle Tageswert nachgeladen (window.MenstruationFunctions.
+    // fetchFreshSymptomData) und nur der EINE betroffene Wert ergänzt/
+    // entfernt, damit z.B. ein an anderer Stelle (Haupt-Symptomkarte)
+    // bereits gesetztes "itching" bei vulva_vagina nicht überschrieben wird.
+    // hot_flashes (list: false) ist dagegen ein Einzelwert-Feld und wird
+    // beim Klick komplett ersetzt (checked -> "light", unchecked -> "none").
+    const items = [
+      { label: 'Hitzewallungen',  field: 'hot_flashes',        list: false, value: 'light' },
+      { label: 'Nachtschweiß',    field: 'menopause_symptoms', list: true,  value: 'night_sweats' },
+      { label: 'Schlafstörungen', field: 'menopause_symptoms', list: true,  value: 'sleep_disturbance' },
+      { label: 'Reizbarkeit',     field: 'menopause_symptoms', list: true,  value: 'irritability' },
+      { label: 'Trockenheit',     field: 'vulva_vagina',       list: true,  value: 'vaginal_dryness' },
+      { label: 'Gewichtszunahme', field: 'menopause_symptoms', list: true,  value: 'weight_gain' },
+    ];
+
+    symptomsGrid.innerHTML = items.map((item, i) => `
       <label class="symptom-btn">
-        <input type="checkbox" />
-        <span>${s}</span>
+        <input type="checkbox" data-menopause-item="${i}" />
+        <span>${item.label}</span>
       </label>
     `).join('');
+
+    this._menopauseSymptomItems = items;
+    this._prefillMenopauseSymptoms();
+    this._attachMenopauseSymptomListeners();
+  }
+
+  // Setzt beim (Neu-)Rendern den Haken auf den heute bereits gespeicherten
+  // Stand, statt immer leer zu starten - sonst würde ein Reload den falschen
+  // Eindruck erwecken, es sei noch nichts erfasst.
+  async _prefillMenopauseSymptoms() {
+    const symptomsGrid = this.querySelector("#menopauseSymptoms");
+    const items = this._menopauseSymptomItems;
+    if (!symptomsGrid || !items || !window.MenstruationFunctions) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const entityId = this.config?.entity;
+    const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, today, '[menstruation-countdown-timer]');
+    if (!data) return;
+
+    items.forEach((item, i) => {
+      const checkbox = symptomsGrid.querySelector(`input[data-menopause-item="${i}"]`);
+      if (!checkbox) return;
+      if (item.list) {
+        const currentList = Array.isArray(data[item.field]) ? data[item.field] : [];
+        checkbox.checked = currentList.includes(item.value);
+      } else {
+        checkbox.checked = !!data[item.field] && data[item.field] !== 'none';
+      }
+    });
+  }
+
+  _attachMenopauseSymptomListeners() {
+    const symptomsGrid = this.querySelector("#menopauseSymptoms");
+    const feedback = this.querySelector("#menopauseSymptomFeedback");
+    const items = this._menopauseSymptomItems;
+    if (!symptomsGrid || !items) return;
+
+    symptomsGrid.querySelectorAll('input[type="checkbox"][data-menopause-item]').forEach(checkbox => {
+      checkbox.addEventListener('change', async () => {
+        const index = Number(checkbox.getAttribute('data-menopause-item'));
+        const item = items[index];
+        if (!item) return;
+
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const entityId = this.config?.entity;
+          const profile = this.config?.profile;
+          const entryId = this.config?.entry_id;
+          const serviceBase = {
+            ...(entityId ? { entity_id: entityId } : {}),
+            ...(profile ? { profile } : {}),
+            ...(entryId ? { entry_id: entryId } : {}),
+          };
+
+          let fieldValue;
+          if (item.list) {
+            const { data } = window.MenstruationFunctions
+              ? await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, today, '[menstruation-countdown-timer]')
+              : { data: null };
+            const currentList = Array.isArray(data?.[item.field]) ? [...data[item.field]] : [];
+            const withoutValue = currentList.filter(v => v !== item.value);
+            fieldValue = checkbox.checked ? [...withoutValue, item.value] : withoutValue;
+          } else {
+            fieldValue = checkbox.checked ? item.value : 'none';
+          }
+
+          const serviceData = {
+            ...serviceBase,
+            date: today,
+            symptom_data: { [item.field]: fieldValue },
+          };
+          await this.callService("menstruation_cycle", "add_symptom", serviceData);
+          this._showGridFeedback(feedback, this._t('symptom_saved'), 'success', 2500);
+        } catch (error) {
+          console.error("Error logging menopause symptom:", error);
+          this._showGridFeedback(feedback, this._t('symptom_save_error'), 'error', 3000);
+          // Bei Fehler Checkbox-Zustand zurücksetzen, damit die UI nicht
+          // einen nicht gespeicherten Stand vorgaukelt.
+          checkbox.checked = !checkbox.checked;
+        }
+      });
+    });
   }
 
   renderMoodTracker() {
     const moodGrid = this.querySelector("#moodGrid");
     if (!moodGrid) return;
 
-    const moods = ['😊 Glücklich', '😐 Neutral', '😔 Traurig', '😤 Reizbar', '😰 Ängstlich'];
-    moodGrid.innerHTML = moods.map(mood => `
+    // Nachtrag (17.09.2026, "tote Checkboxen"): diese Radios hatten bislang
+    // gar keinen Listener - Auswahl ging beim nächsten Re-Render spurlos
+    // verloren. `mood` ist im Backend bereits ein freies Kurztext-Feld (siehe
+    // const.py SYMPTOM_MOOD, max. 100 Zeichen, "ein schnelles Schlagwort,
+    // kein Absatz") und wurde schon einmal für das Dashboard-Quick-Log-Feld
+    // angebunden - hier reicht es, das Label (ohne Emoji, das Emoji ist rein
+    // UI-Deko) als diesen Tagestext zu speichern statt eine neue,
+    // separate Options-Liste im Backend einzuführen.
+    const moods = [
+      { emoji: '😊', label: 'Glücklich' },
+      { emoji: '😐', label: 'Neutral' },
+      { emoji: '😔', label: 'Traurig' },
+      { emoji: '😤', label: 'Reizbar' },
+      { emoji: '😰', label: 'Ängstlich' },
+    ];
+    moodGrid.innerHTML = moods.map(m => `
       <label class="mood-option">
-        <input type="radio" name="mood" />
-        <span>${mood}</span>
+        <input type="radio" name="mood" data-mood-label="${m.label}" />
+        <span>${m.emoji} ${m.label}</span>
       </label>
     `).join('');
+
+    this._attachMoodListener();
+  }
+
+  _attachMoodListener() {
+    const moodGrid = this.querySelector("#moodGrid");
+    const feedback = this.querySelector("#moodFeedback");
+    if (!moodGrid) return;
+
+    moodGrid.querySelectorAll('input[type="radio"][name="mood"]').forEach(radio => {
+      radio.addEventListener('change', async () => {
+        if (!radio.checked) return;
+        const label = radio.getAttribute('data-mood-label');
+        if (!label) return;
+
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const entityId = this.config?.entity;
+          const profile = this.config?.profile;
+          const entryId = this.config?.entry_id;
+          const serviceData = {
+            ...(entityId ? { entity_id: entityId } : {}),
+            ...(profile ? { profile } : {}),
+            ...(entryId ? { entry_id: entryId } : {}),
+            date: today,
+            symptom_data: { mood: label },
+          };
+          await this.callService("menstruation_cycle", "add_symptom", serviceData);
+          this._showGridFeedback(feedback, this._t('symptom_saved'), 'success', 2500);
+        } catch (error) {
+          console.error("Error logging mood:", error);
+          this._showGridFeedback(feedback, this._t('symptom_save_error'), 'error', 3000);
+        }
+      });
+    });
+  }
+
+  // Gemeinsamer Feedback-Helfer (17.09.2026) für die neu angebundenen
+  // Menopause-Symptom- und Mood-Grids - dieselbe kurze Erfolg/Fehler-Anzeige
+  // wie beim bereits bestehenden `symptomFeedback` der Schwangerschafts-
+  // Symptomerfassung, nur diesmal ohne Kopie-Paste je Aufrufer.
+  _showGridFeedback(feedbackEl, text, kind, timeoutMs) {
+    if (!feedbackEl) return;
+    feedbackEl.hidden = false;
+    feedbackEl.textContent = text;
+    feedbackEl.className = `symptom-feedback ${kind}`;
+    clearTimeout(feedbackEl._feedbackTimeout);
+    feedbackEl._feedbackTimeout = setTimeout(() => { feedbackEl.hidden = true; }, timeoutMs);
   }
 
   renderWellnessTips() {

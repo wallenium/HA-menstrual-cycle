@@ -155,7 +155,17 @@ def _compute_symptom_stats(
     pain_per_cycle: list[float] = []
     bleeding_strength_counter: Counter[str] = Counter()
 
-    multi_keys = ("pain", "hygiene", "test")
+    # Nachtrag (17.09.2026): dieselbe Lücke wie zuvor in DoctorReportData.swift
+    # (App-Seite) - beide Schleifen unten kannten ursprünglich nur die Felder,
+    # die beim jeweils letzten Ausbau von _compute_symptom_stats() existierten,
+    # und wurden bei jedem neuen SYMPTOM_*-Feld seither nicht mitgezogen.
+    # Einzelwert-Liste ergänzt um bleeding_type, training_intensity,
+    # contraception_method, hot_flashes; multi_keys ergänzt um die fünf
+    # Listenfelder aus SYMPTOM_MULTI_VALUE_KEYS (sensor.py) plus
+    # pregnancy_symptoms - damit bleiben top_symptoms/Auswertungen konsistent
+    # mit allen tatsächlich erfassbaren Feldern statt nur einer historischen
+    # Teilmenge.
+    multi_keys = ("pain", "hygiene", "test", "vulva_vagina", "urinary", "breast", "appointments", "digestion", "pregnancy_symptoms", "menopause_symptoms")
 
     for start_d, end_d, _ in periods:
         entries = _symptom_entries_in_range(symptom_history, start_d, end_d)
@@ -171,7 +181,7 @@ def _compute_symptom_stats(
             if isinstance(bleeding, str) and bleeding:
                 bleeding_strength_counter[bleeding] += 1
 
-            for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "clots", "clot_size", "cervix_position", "cervix_texture", "libido", "smell"):
+            for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "clots", "clot_size", "cervix_position", "cervix_texture", "libido", "smell", "bleeding_type", "training_intensity", "contraception_method", "hot_flashes"):
                 val = entry.get(key)
                 if isinstance(val, str) and val:
                     symptom_counter[f"{key}:{val}"] += 1

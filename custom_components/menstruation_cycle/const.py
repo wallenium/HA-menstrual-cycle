@@ -373,6 +373,18 @@ SYMPTOM_DIGESTION = "digestion"
 # include these five. hot_flashes is a single intensity level per day, like
 # bleeding_strength, so it is NOT in that list.
 
+# Nachtrag (17.09.2026, "tote Checkboxen" im Menopause-Modus des Countdown-
+# Timer-Cards): renderMenopauseSymptoms() dort zeigte sechs Symptom-
+# Checkboxen an, von denen vier ("Nachtschweiß", "Schlafstörungen",
+# "Reizbarkeit", "Gewichtszunahme") auf gar kein Backend-Feld abgebildet
+# waren - Anklicken tat buchstäblich nichts, jeder Reload verlor den Stand.
+# Wie schon bei urinary/appointments/digestion (03.09.2026-Nachtrag oben)
+# als ein gemeinsames Listenfeld gebündelt, statt vier separate Ein-Options-
+# Felder anzulegen. Die anderen beiden Checkboxen im selben Grid
+# ("Hitzewallungen", "Trockenheit") nutzen weiterhin die bereits
+# bestehenden Felder hot_flashes bzw. vulva_vagina:vaginal_dryness.
+SYMPTOM_MENOPAUSE_EXTRA = "menopause_symptoms"
+
 # Free-text symptom fields (03.09.2026, "Stimmungs-Schnellerfassung" /
 # M-Cycle-App-Nachtrag Abschnitt 4.47): unlike every other SYMPTOM_* field
 # above, these are NOT validated against a fixed SYMPTOM_OPTIONS list - a
@@ -476,6 +488,7 @@ SYMPTOM_OPTIONS = {
     SYMPTOM_BREAST: ["ok", "nipple_discharge", "full_or_heavy", "swollen"],
     SYMPTOM_APPOINTMENTS: ["gynecologist", "pap_smear", "sti_test", "vaccination"],
     SYMPTOM_DIGESTION: ["nausea", "bloating", "constipation", "diarrhea"],
+    SYMPTOM_MENOPAUSE_EXTRA: ["night_sweats", "sleep_disturbance", "irritability", "weight_gain"],
 }
 
 # Pre-Menarche Body Signs - Tanner Stages
