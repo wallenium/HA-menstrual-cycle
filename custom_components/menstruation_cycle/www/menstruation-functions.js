@@ -400,13 +400,22 @@ function getSymptomConfig(state, isPregnant = false) {
     // combination), so multi: false here, matching bleeding_strength's
     // single-select pattern.
     { key: 'hot_flashes', icon: 'mdi:thermometer-alert', multi: false, options: ['none', 'light', 'moderate', 'strong', 'very_strong'] },
+    // 17.09.2026 (fourth app-icon-parity round, seven new icons added by
+    // user): urinary/appointments were the last two backend fields with NO
+    // frontend category at all (same const.py/sensor.py gap pattern as
+    // breast/digestion/vulva_vagina/hot_flashes before them) - now added.
+    // Both are general fields, not pregnancy- or menopause-specific, but
+    // included in the menopause allowed set below since urinary complaints
+    // and gynecologist/screening appointments are both common topics there.
+    { key: 'urinary', icon: 'mdi:water-alert-outline', multi: true, options: ['frequent_urination', 'burning', 'leakage'] },
+    { key: 'appointments', icon: 'mdi:calendar-heart', multi: true, options: ['gynecologist', 'pap_smear', 'sti_test', 'vaccination'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (String(state || '') === 'menopause') {
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes']);
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes', 'urinary', 'appointments']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {
@@ -599,6 +608,14 @@ function mcStateStyles() {
  * category too. Unlike breast/digestion/vulva_vagina it's single-select
  * (see sensor.py SYMPTOM_MULTI_VALUE_KEYS), and "none" has no icon (only
  * four icons exist for five options) - same graceful text fallback.
+ *
+ * 17.09.2026, fourth round: urinary and appointments were the last two
+ * backend fields with NO frontend category at all - both added now
+ * (button_urine_frequent/burn/leaking.svg, button_obgyn_appointment/
+ * paptest/std/vaccinate.svg), each with full icon coverage for every
+ * option. digestion's three remaining gaps (bloating/constipation/
+ * diarrhea) are also closed in this same batch - digestion now has full
+ * icon coverage too, same as pregnancy_symptoms already had.
  */
 const SYMPTOM_OPTION_ICONS = {
   bleeding_strength: {
@@ -690,8 +707,12 @@ const SYMPTOM_OPTION_ICONS = {
   },
   digestion: {
     nausea: 'button_pain_ubelkeit',
-    // bloating/constipation/diarrhea: no matching icon in assets/buttons/,
-    // same as the app - falls back to plain text like any other gap.
+    // 17.09.2026: the three remaining gaps closed - bloating/constipation/
+    // diarrhea now have their own icons too, same batch as urinary/
+    // appointments below.
+    bloating: 'button_pain_bloatedbelly',
+    constipation: 'button_pain_constipation',
+    diarrhea: 'button_pain_diarrhea',
   },
   pregnancy_symptoms: {
     nausea: 'button_pain_ubelkeit',
@@ -717,6 +738,19 @@ const SYMPTOM_OPTION_ICONS = {
     moderate: 'button_hotflashes_medium',
     strong: 'button_hotflashes_high',
     very_strong: 'button_hotflashes_extreme',
+  },
+  // 17.09.2026: urinary/appointments were the last two backend fields with
+  // no frontend category at all - both now fully icon-covered.
+  urinary: {
+    frequent_urination: 'button_urine_frequent',
+    burning: 'button_urine_burn',
+    leakage: 'button_urine_leaking',
+  },
+  appointments: {
+    gynecologist: 'button_obgyn_appointment',
+    pap_smear: 'button_obgyn_paptest',
+    sti_test: 'button_obgyn_std',
+    vaccination: 'button_obgyn_vaccinate',
   },
 };
 

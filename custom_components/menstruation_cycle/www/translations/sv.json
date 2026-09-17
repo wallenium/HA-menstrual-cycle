@@ -927,5 +927,14 @@
   "opt_itching": "Klåda",
   "opt_soreness": "Ömhet",
   "cat_hot_flashes": "Vallningar",
-  "opt_very_strong": "Mycket stark"
+  "opt_very_strong": "Mycket stark",
+  "cat_urinary": "Urin",
+  "cat_appointments": "Besök & Förebyggande Vård",
+  "opt_frequent_urination": "Täta Urinträngningar",
+  "opt_burning": "Sveda",
+  "opt_leakage": "Urinläckage",
+  "opt_gynecologist": "Gynekolog",
+  "opt_pap_smear": "Cellprov",
+  "opt_sti_test": "STI-Test",
+  "opt_vaccination": "Vaccination"
 }

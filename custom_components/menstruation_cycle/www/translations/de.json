@@ -960,5 +960,14 @@
   "opt_itching": "Juckreiz",
   "opt_soreness": "Wundgefühl",
   "cat_hot_flashes": "Hitzewallungen",
-  "opt_very_strong": "Sehr stark"
+  "opt_very_strong": "Sehr stark",
+  "cat_urinary": "Urin",
+  "cat_appointments": "Termine & Vorsorge",
+  "opt_frequent_urination": "Häufiges Wasserlassen",
+  "opt_burning": "Brennen",
+  "opt_leakage": "Urinverlust",
+  "opt_gynecologist": "Frauenarzt",
+  "opt_pap_smear": "PAP-Abstrich",
+  "opt_sti_test": "STI-Test",
+  "opt_vaccination": "Impfung"
 }

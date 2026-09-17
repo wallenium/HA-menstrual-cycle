@@ -960,5 +960,14 @@
   "opt_itching": "Itching",
   "opt_soreness": "Soreness",
   "cat_hot_flashes": "Hot Flashes",
-  "opt_very_strong": "Very strong"
+  "opt_very_strong": "Very strong",
+  "cat_urinary": "Urinary",
+  "cat_appointments": "Appointments & Care",
+  "opt_frequent_urination": "Frequent Urination",
+  "opt_burning": "Burning",
+  "opt_leakage": "Leakage",
+  "opt_gynecologist": "Gynecologist",
+  "opt_pap_smear": "Pap Smear",
+  "opt_sti_test": "STI Test",
+  "opt_vaccination": "Vaccination"
 }

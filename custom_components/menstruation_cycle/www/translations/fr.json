@@ -927,5 +927,14 @@
   "opt_itching": "Démangeaisons",
   "opt_soreness": "Irritation",
   "cat_hot_flashes": "Bouffées de chaleur",
-  "opt_very_strong": "Très fort"
+  "opt_very_strong": "Très fort",
+  "cat_urinary": "Urinaire",
+  "cat_appointments": "Rendez-vous & Prévention",
+  "opt_frequent_urination": "Mictions Fréquentes",
+  "opt_burning": "Brûlures",
+  "opt_leakage": "Fuites Urinaires",
+  "opt_gynecologist": "Gynécologue",
+  "opt_pap_smear": "Frottis",
+  "opt_sti_test": "Test IST",
+  "opt_vaccination": "Vaccination"
 }

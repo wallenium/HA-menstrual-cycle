@@ -927,5 +927,14 @@
   "opt_itching": "Picazón",
   "opt_soreness": "Dolor/irritación",
   "cat_hot_flashes": "Sofocos",
-  "opt_very_strong": "Muy fuerte"
+  "opt_very_strong": "Muy fuerte",
+  "cat_urinary": "Urinario",
+  "cat_appointments": "Citas y Prevención",
+  "opt_frequent_urination": "Micción Frecuente",
+  "opt_burning": "Ardor",
+  "opt_leakage": "Pérdidas de Orina",
+  "opt_gynecologist": "Ginecólogo",
+  "opt_pap_smear": "Citología",
+  "opt_sti_test": "Prueba de ITS",
+  "opt_vaccination": "Vacunación"
 }
