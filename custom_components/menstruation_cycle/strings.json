@@ -61,7 +61,7 @@
           "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
           "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
           "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
-          "calendar_enabled": "Creates a native calendar.<profile>_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
+          "calendar_enabled": "Creates a native calendar.profile_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
           "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
