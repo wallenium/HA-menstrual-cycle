@@ -40,6 +40,7 @@
           "nfp_analysis_mode": "Mode d'analyse NFP",
           "onboarding_stage": "Étape d'intégration",
           "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
+          "calendar_enabled": "Afficher l'entité calendrier du cycle",
           "pregnancy_enabled": "Activer le mode grossesse",
           "pre_menarche_enabled": "Activer le suivi pré-ménarche",
           "menopause_enabled": "Activer le mode ménopause",
@@ -60,6 +61,7 @@
           "num_predictions": "Nombre de débuts de cycle futurs à générer (1 à 12). Par défaut : 6.",
           "onboarding_stage": "Choisissez pré-ménarche, phase d'apprentissage post-ménarche précoce, ou cycle établi.",
           "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant.",
+          "calendar_enabled": "Crée une entité native calendar.<profil>_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "pregnancy_enabled": "Active le mode de suivi de grossesse et affiche un écran de détails ensuite.",
           "pre_menarche_enabled": "Suit les signes de puberté avant les premières règles (ménarche) et affiche un écran de détails ensuite.",
@@ -286,6 +288,10 @@
     "stale_ics_token": {
       "title": "Menstruation Cycle : le jeton du flux calendrier n'a pas été renouvelé depuis longtemps",
       "description": "Profil : **{entry_title}**\n\nL'URL d'abonnement au calendrier (ICS) de ce profil utilise encore un jeton vieux d'environ {age_days} jours. Toute personne ayant déjà eu cette URL (ancien appareil, calendrier partagé, capture d'écran, ...) peut toujours l'utiliser pour lire les prévisions de ce profil, le flux n'ayant pas de connexion propre. Cliquez sur **Corriger** pour générer un nouveau jeton — les abonnements calendrier existants cesseront de fonctionner et devront être réajoutés avec la nouvelle URL — ou ignorez ce problème pour conserver le jeton actuel."
+    },
+    "low_prediction_confidence": {
+      "title": "Menstruation Cycle : les prédictions manquent encore de précision",
+      "description": "Profil : **{entry_title}**\n\nCe profil compte {valid_cycles} des {min_valid_cycles} cycles récents nécessaires pour des prédictions de haute précision - la fenêtre fertile et l'ovulation restent des estimations approximatives. Ce n'est pas une erreur, c'est normal au début : les prédictions deviennent automatiquement plus précises à mesure que des cycles sont enregistrés. Aucune action n'est requise ; ignorez cet avis si vous préférez ne pas le voir pendant que l'historique se constitue."
     }
   },
   "selector": {

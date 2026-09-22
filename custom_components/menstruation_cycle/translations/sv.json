@@ -40,6 +40,7 @@
           "nfp_analysis_mode": "NFP-analysläge",
           "onboarding_stage": "Introduktionsfas",
           "dashboard_enabled": "Visa cykelöversikt i sidopanelen",
+          "calendar_enabled": "Visa cykelkalenderentitet",
           "pregnancy_enabled": "Aktivera graviditetsläge",
           "pre_menarche_enabled": "Aktivera spårning innan menarche",
           "menopause_enabled": "Aktivera klimakterieläge",
@@ -60,6 +61,7 @@
           "num_predictions": "Hur många framtida cykelstarter som ska genereras (1–12). Standard är 6.",
           "onboarding_stage": "Välj förmenarche, tidig inlärningsfas efter menarche, eller etablerad cykel.",
           "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel.",
+          "calendar_enabled": "Skapar en inbyggd calendar.<profil>_cycle-entitet med förutspådda mens-, fertila fönster- och ägglossningshändelser, användbar i Home Assistants egen kalendervy och för calendar.*-automationsutlösare. Inaktivera om du inte behöver den - samma händelser finns kvar via det separata ICS-flödet.",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
           "pregnancy_enabled": "Aktiverar graviditetsspårningsläge och visar en detaljskärm härnäst.",
           "pre_menarche_enabled": "Spårar pubertetstecken innan den första mensen (menarche) och visar en detaljskärm härnäst.",
@@ -286,6 +288,10 @@
     "stale_ics_token": {
       "title": "Menstruation Cycle: kalenderflödets token har inte roterats på länge",
       "description": "Profil: **{entry_title}**\n\nKalenderprenumerations-URL:en (ICS) för denna profil använder fortfarande ett token som är cirka {age_days} dagar gammalt. Alla som någonsin haft den URL:en (en gammal enhet, en delad kalender, en skärmdump, ...) kan fortfarande använda den för att läsa profilens prognoser, eftersom flödet saknar egen inloggning. Klicka på **Åtgärda** för att skapa ett nytt token — befintliga kalenderprenumerationer slutar då fungera och måste läggas till på nytt med den nya URL:en — eller avfärda detta ärende för att behålla det nuvarande token."
+    },
+    "low_prediction_confidence": {
+      "title": "Menstruation Cycle: Förutsägelserna har fortfarande låg tillförlitlighet",
+      "description": "Profil: **{entry_title}**\n\nDen här profilen har {valid_cycles} av de {min_valid_cycles} senaste cyklerna som behövs för högprecisa förutsägelser - fertilt fönster och ägglossning är fortfarande grova uppskattningar. Det är inget fel, utan normalt i början: förutsägelserna blir automatiskt mer exakta ju fler cykler som loggas. Ingen åtgärd krävs; avfärda detta problem om du hellre slipper se det medan historiken byggs upp."
     }
   },
   "selector": {

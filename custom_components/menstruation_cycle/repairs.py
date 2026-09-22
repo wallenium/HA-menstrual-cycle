@@ -258,6 +258,83 @@ def async_check_stale_ics_token(
         async_delete_stale_ics_token_issue(hass, entry_id)
 
 
+def async_create_low_prediction_confidence_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    valid_cycles: int,
+    min_valid_cycles: int,
+) -> None:
+    """Create a repair issue flagging that this profile's predictions are
+    still in the low-confidence learning phase (HA-3, M-Cycle_HA-Component-
+    Roadmap.md, "Repair-Issue bei niedriger Vorhersage-Konfidenz").
+
+    Purely informational (not fixable) - there is no action to apply here,
+    only "log more cycles over time", the same explanation the companion
+    App's own learningPhaseBanner already gives on its side. This makes that
+    same "still learning" state - so far only visible in the App or in the
+    ATTR_PREDICTION_GATING sensor attribute - show up in HA's own Repairs UI
+    too, for anyone who only interacts with this integration through Home
+    Assistant itself.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"low_prediction_confidence_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="low_prediction_confidence",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "valid_cycles": str(valid_cycles),
+            "min_valid_cycles": str(min_valid_cycles),
+        },
+    )
+
+
+def async_delete_low_prediction_confidence_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the low-prediction-confidence repair issue (once enough cycles
+    have been logged, or if the profile/entry is being removed)."""
+    async_delete_issue(hass, DOMAIN, f"low_prediction_confidence_{entry_id}")
+
+
+def async_check_low_prediction_confidence(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    prediction_gating: dict[str, Any] | None,
+) -> None:
+    """Raise (or clear) the low-prediction-confidence issue based on a
+    freshly computed CycleModel.prediction_gating (see
+    model.py::_build_prediction_gating).
+
+    Safe to call repeatedly - create/delete are both idempotent no-ops when
+    the issue's state already matches, same as async_check_stale_ics_token
+    above.
+
+    A missing/empty "thresholds" sub-dict means this profile is currently in
+    a life-stage mode where _build_prediction_gating never even ran
+    (pregnancy/pre-menarche/postpartum/menopause - those set
+    prediction_gating={"precision_allowed": False, ...} directly, with a
+    "reason" key instead of "thresholds", see model.py). "Log more cycles"
+    would be misleading advice there, so that's treated as nothing to flag,
+    not as a stuck low-confidence state.
+    """
+    gating = prediction_gating or {}
+    thresholds = gating.get("thresholds") or {}
+    min_valid_cycles = thresholds.get("min_valid_cycles")
+
+    if gating.get("precision_allowed") or min_valid_cycles is None:
+        async_delete_low_prediction_confidence_issue(hass, entry_id)
+        return
+
+    valid_cycles = int(gating.get("valid_cycles") or 0)
+    async_create_low_prediction_confidence_issue(
+        hass, entry_id, entry_title, valid_cycles, int(min_valid_cycles)
+    )
+
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,

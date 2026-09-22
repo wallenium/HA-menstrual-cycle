@@ -35,6 +35,7 @@ from .const import (
     CONF_PROFILE,
     CONF_CYCLE_LENGTH_OVERRIDE,
     CONF_SHOW_CYCLE_DASHBOARD,
+    CONF_CALENDAR_ENABLED,
     CONF_DASHBOARD_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
@@ -48,6 +49,7 @@ from .const import (
     DEFAULT_TEMPERATURE_UNIT,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
+    DEFAULT_CALENDAR_ENABLED,
     DEFAULT_DASHBOARD_ENABLED,
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_NOTIFY_PERIOD_ENABLED,
@@ -361,6 +363,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     self._entry.options.get(CONF_SHOW_CYCLE_DASHBOARD, DEFAULT_DASHBOARD_ENABLED),
                 )
             ),
+            "calendar_enabled": bool(
+                self._entry.options.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED)
+            ),
             "notifications_enabled": bool(
                 self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
             ),
@@ -446,6 +451,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         lines.append(f"- Visibility level: {d.get(CONF_VISIBILITY_LEVEL, '?')}")
         lines.append(f"- Basal temperature input unit: {d.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)}")
         lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
+        lines.append(f"- Cycle calendar entity: {'yes' if d.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED) else 'no'}")
 
         if d.get(CONF_NOTIFICATIONS_ENABLED):
             lines.append("- Notifications: enabled")
@@ -532,6 +538,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     visibility_raw if visibility_raw in VISIBILITY_LEVELS else DEFAULT_VISIBILITY_LEVEL
                 )
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
+                self._data[CONF_CALENDAR_ENABLED] = bool(user_input.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED))
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
                 self._data[CONF_LINKED_PERSON_ENTITY_ID] = str(
@@ -625,6 +632,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
+                vol.Optional(CONF_CALENDAR_ENABLED, default=c["calendar_enabled"]): bool,
                 vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
                 # HA-2 (M-Cycle_HA-Component-Roadmap.md): war ein reines
                 # Freitextfeld - ein Tippfehler im Servicenamen scheiterte damit
@@ -951,6 +959,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NFP_ANALYSIS_MODE: d[CONF_NFP_ANALYSIS_MODE],
                 CONF_ONBOARDING_STAGE: new_onboarding_stage,
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
+                CONF_CALENDAR_ENABLED: d[CONF_CALENDAR_ENABLED],
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
                 CONF_LINKED_PERSON_ENTITY_ID: d[CONF_LINKED_PERSON_ENTITY_ID],

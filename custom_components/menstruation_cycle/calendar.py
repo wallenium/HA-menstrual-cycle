@@ -47,6 +47,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_CALENDAR_ENABLED,
+    DEFAULT_CALENDAR_ENABLED,
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
     VISIBILITY_LEVEL_FULL,
@@ -91,6 +93,13 @@ class MenstruationCycleCalendar(CalendarEntity):
         self._attr_unique_id = f"{entry.entry_id}_cycle_calendar"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_cycle_calendar"]
         self._events: list[CalendarEvent] = []
+        # HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person
+        # einschalten/ausschalten koennen. Aktuell sind sie immer aktiv"):
+        # flipped to False in _async_refresh_events when CONF_CALENDAR_ENABLED
+        # is off for this profile - shows the entity as clearly "unavailable"
+        # in HA rather than just quietly empty (which would look identical to
+        # a profile with no upcoming predictions at all).
+        self._attr_available = True
 
     @property
     def device_info(self):
@@ -114,6 +123,19 @@ class MenstruationCycleCalendar(CalendarEntity):
         self.async_write_ha_state()
 
     async def _async_refresh_events(self) -> None:
+        # HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person
+        # einschalten/ausschalten koennen"): read directly from
+        # self._entry.options, same live-without-reload pattern as
+        # CONF_DASHBOARD_ENABLED (__init__.py::_is_dashboard_enabled_for_entry)
+        # - _async_options_update_listener dispatches SIGNAL_HISTORY_UPDATED
+        # after every options save, which is what re-triggers this method via
+        # _handle_history_updated below, so a toggle takes effect immediately.
+        if not bool(self._entry.options.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED)):
+            self._events = []
+            self._attr_available = False
+            return
+
+        self._attr_available = True
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
 
         # Same call as __init__.py's _serve_ics_feed HTTP view - kept in sync

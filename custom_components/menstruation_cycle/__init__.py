@@ -1766,6 +1766,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             async_check_stale_ics_token(hass, entry.entry_id, entry.title, runtime.ics_token_created_at)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight stale-ICS-token check failed for %s", entry.entry_id)
+        try:
+            # HA-3 (M-Cycle_HA-Component-Roadmap.md, "weitere Ideen"
+            # 22.09.2026): same daily-recheck reasoning as the ICS-token
+            # check directly above - a profile can cross the "enough cycles
+            # logged" threshold on any day, not just on integration
+            # load/restart.
+            from .repairs import async_check_low_prediction_confidence
+
+            _midnight_model = build_cycle_model(
+                history=runtime.history,
+                period_duration_days=runtime.period_duration_days,
+                symptom_history=runtime.symptom_history,
+                pregnancy_data=runtime.pregnancy_data,
+                menarche_data=runtime.menarche_data,
+                pre_menarche_data=runtime.pre_menarche_data,
+                menopause_data=runtime.menopause_data,
+                noncycle_data=runtime.noncycle_data,
+                cycle_length_override=runtime.cycle_length_override,
+                nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+                onboarding_stage=getattr(runtime, "onboarding_stage", None),
+            )
+            async_check_low_prediction_confidence(
+                hass, entry.entry_id, entry.title, _midnight_model.prediction_gating
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight low-prediction-confidence check failed for %s", entry.entry_id)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1809,6 +1835,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async_check_entity_naming(hass, entry.entry_id, entry.title, friendly_name)
     async_check_stale_ics_token(hass, entry.entry_id, entry.title, ics_token_created_at)
+
+    # HA-3 (M-Cycle_HA-Component-Roadmap.md, "weitere Ideen" 22.09.2026):
+    # same "cheap, safe to run on every load" reasoning as the two checks
+    # directly above.
+    from .repairs import async_check_low_prediction_confidence
+
+    _setup_model = build_cycle_model(
+        history=runtime.history,
+        period_duration_days=runtime.period_duration_days,
+        symptom_history=runtime.symptom_history,
+        pregnancy_data=runtime.pregnancy_data,
+        menarche_data=runtime.menarche_data,
+        pre_menarche_data=runtime.pre_menarche_data,
+        menopause_data=runtime.menopause_data,
+        noncycle_data=runtime.noncycle_data,
+        cycle_length_override=runtime.cycle_length_override,
+        nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+        onboarding_stage=getattr(runtime, "onboarding_stage", None),
+    )
+    async_check_low_prediction_confidence(hass, entry.entry_id, entry.title, _setup_model.prediction_gating)
 
     return True
 
@@ -1878,6 +1924,23 @@ async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry
         await _async_sync_dashboard_sidebar_panel(hass)
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Options update: dashboard sync failed (non-fatal): %s", err)
+
+    # HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person einschalten/
+    # ausschalten koennen"): CONF_CALENDAR_ENABLED (see const.py) is read
+    # directly from entry.options at the point of use in calendar.py, same
+    # as CONF_DASHBOARD_ENABLED above - no runtime field to keep in sync.
+    # But calendar.py's MenstruationCycleCalendar only recomputes its cached
+    # events/availability when SIGNAL_HISTORY_UPDATED fires (see its
+    # _handle_history_updated) - without a nudge here, toggling the option
+    # would silently do nothing until the next unrelated history/symptom
+    # change. Deliberately just the dispatch (not the heavier
+    # _async_refresh_cycle_model, which also force-polls every sensor entity
+    # - unnecessary for a calendar-only toggle and outside this option's
+    # scope).
+    try:
+        async_dispatcher_send(hass, SIGNAL_HISTORY_UPDATED)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Options update: calendar/sensor refresh signal failed (non-fatal): %s", err)
 
 
 async def _async_load_timer_state(hass: HomeAssistant, profile: str) -> None:

@@ -61,6 +61,14 @@ CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
 
 # New canonical dashboard option keys (preferred; old keys kept for backward compat)
 CONF_DASHBOARD_ENABLED = "dashboard_enabled"
+# HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person einschalten/
+# ausschalten koennen. Aktuell sind sie immer aktiv"): die native
+# calendar.<profil>_cycle-Entity (calendar.py, HA-Idee 3 aus der
+# HA-Component-Roadmap) wurde bisher fuer jedes Profil bedingungslos
+# angelegt. Gleiches Muster wie CONF_DASHBOARD_ENABLED direkt darueber -
+# ein einfacher Optionen-Flow-Schalter, live aus entry.options gelesen,
+# kein Runtime-Feld noetig.
+CONF_CALENDAR_ENABLED = "calendar_enabled"
 CONF_NOTIFICATIONS_ENABLED = "notifications_enabled"
 CONF_NOTIFY_SERVICE = "notify_service"
 DEFAULT_NOTIFICATIONS_ENABLED = False
@@ -110,6 +118,10 @@ DASHBOARD_WIDGET_KEYS: list[str] = [
 ]
 
 DEFAULT_DASHBOARD_ENABLED: bool = False
+# Default true (anders als das Dashboard) - die Kalender-Entity existierte
+# bislang immer, dieser Schalter soll ein bewusstes Abschalten ermoeglichen,
+# nicht das bisherige Verhalten fuer alle bestehenden Installationen aendern.
+DEFAULT_CALENDAR_ENABLED: bool = True
 DEFAULT_DASHBOARD_DISCREET_MODE: bool = True
 DEFAULT_DASHBOARD_DEFAULT_LANDING: bool = False
 DEFAULT_DASHBOARD_WIDGETS: dict[str, bool] = {key: True for key in DASHBOARD_WIDGET_KEYS}

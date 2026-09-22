@@ -40,6 +40,7 @@
           "nfp_analysis_mode": "Modo de análisis NFP",
           "onboarding_stage": "Etapa de incorporación",
           "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral",
+          "calendar_enabled": "Mostrar la entidad de calendario del ciclo",
           "pregnancy_enabled": "Activar modo embarazo",
           "pre_menarche_enabled": "Activar seguimiento pre-menarquia",
           "menopause_enabled": "Activar modo menopausia",
@@ -60,6 +61,7 @@
           "num_predictions": "Cuántos inicios de ciclo futuros generar (1 a 12). El valor predeterminado es 6.",
           "onboarding_stage": "Elige pre-menarquia, fase de aprendizaje temprana tras la menarquia, o ciclo establecido.",
           "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
+          "calendar_enabled": "Crea una entidad nativa calendar.<perfil>_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "pregnancy_enabled": "Activa el modo de seguimiento del embarazo y muestra a continuación una pantalla de detalles.",
           "pre_menarche_enabled": "Realiza un seguimiento de los signos de la pubertad antes de la primera menstruación (menarquia) y muestra a continuación una pantalla de detalles.",
@@ -286,6 +288,10 @@
     "stale_ics_token": {
       "title": "Menstruation Cycle: el token del feed de calendario lleva mucho sin renovarse",
       "description": "Perfil: **{entry_title}**\n\nLa URL de suscripción al calendario (ICS) de este perfil todavía usa un token de unos {age_days} días de antigüedad. Cualquiera que haya tenido esa URL alguna vez (un dispositivo antiguo, un calendario compartido, una captura de pantalla...) puede seguir usándola para leer las predicciones de este perfil, ya que el feed no tiene un inicio de sesión propio. Pulsa **Reparar** para generar un token nuevo — las suscripciones de calendario existentes dejarán de funcionar y habrá que volver a añadirlas con la nueva URL — o descarta este aviso para conservar el token actual."
+    },
+    "low_prediction_confidence": {
+      "title": "Menstruation Cycle: Las predicciones aún tienen baja confianza",
+      "description": "Perfil: **{entry_title}**\n\nEste perfil tiene {valid_cycles} de los {min_valid_cycles} ciclos recientes necesarios para predicciones de alta precisión - la ventana fértil y la ovulación siguen siendo estimaciones aproximadas. No es un error, es normal al empezar: las predicciones se vuelven automáticamente más precisas cuantos más ciclos se registren. No se requiere ninguna acción; descarta este aviso si prefieres no verlo mientras se acumula el historial."
     }
   },
   "selector": {

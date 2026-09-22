@@ -40,6 +40,7 @@
           "nfp_analysis_mode": "NFP-Analysemodus",
           "onboarding_stage": "Einstiegsphase",
           "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen",
+          "calendar_enabled": "Zyklus-Kalender-Entität anzeigen",
           "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
           "pre_menarche_enabled": "Vor-der-Menarche-Tracking aktivieren",
           "menopause_enabled": "Menopause-Modus aktivieren",
@@ -60,6 +61,7 @@
           "num_predictions": "Wie viele zukünftige Zyklusstarts erzeugt werden sollen (1–12). Standard ist 6.",
           "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen.",
           "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu.",
+          "calendar_enabled": "Erstellt eine native calendar.<profil>_cycle-Entität mit vorhergesagten Perioden-, Fruchtbarkeitsfenster- und Eisprung-Terminen, nutzbar in HAs eigener Kalender-Ansicht und für calendar.*-Automatisierungs-Trigger. Deaktivieren, falls nicht benötigt - dieselben Termine bleiben weiterhin über den separaten ICS-Kalender-Feed verfügbar.",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
           "pre_menarche_enabled": "Verfolgt Pubertätszeichen vor der ersten Periode (Menarche) und zeigt als Nächstes einen Detail-Bildschirm.",
@@ -286,6 +288,10 @@
     "stale_ics_token": {
       "title": "Menstruation Cycle: Kalender-Feed-Token schon lange nicht rotiert",
       "description": "Profil: **{entry_title}**\n\nDie Kalender-Abo-URL (ICS) dieses Profils verwendet noch ein Token, das etwa {age_days} Tage alt ist. Wer diese URL jemals hatte (altes Gerät, geteilter Kalender, Screenshot, ...) kann damit weiterhin die Vorhersagen dieses Profils lesen, da der Feed keinen eigenen Login hat. Auf **Reparieren** klicken erzeugt ein neues Token — bestehende Kalender-Abos funktionieren dann nicht mehr und müssen mit der neuen URL neu eingerichtet werden — oder dieses Issue verwerfen, um das aktuelle Token zu behalten."
+    },
+    "low_prediction_confidence": {
+      "title": "Menstruation Cycle: Vorhersagen sind noch nicht hochpräzise",
+      "description": "Profil: **{entry_title}**\n\nFür dieses Profil liegen {valid_cycles} von {min_valid_cycles} benötigten Zyklen für hochpräzise Vorhersagen vor - fruchtbares Fenster und Eisprung sind noch grobe Schätzungen. Das ist kein Fehler, sondern normal am Anfang: Die Vorhersagen werden automatisch genauer, je mehr Zyklen erfasst werden. Hier ist keine Aktion nötig; verwerfe dieses Problem, falls du es während der Anfangsphase nicht sehen möchtest."
     }
   },
   "selector": {

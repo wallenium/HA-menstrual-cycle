@@ -40,6 +40,7 @@
           "nfp_analysis_mode": "NFP analysis mode",
           "onboarding_stage": "Onboarding stage",
           "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "calendar_enabled": "Show cycle calendar entity",
           "pregnancy_enabled": "Enable pregnancy mode",
           "pre_menarche_enabled": "Enable pre-menarche tracking",
           "menopause_enabled": "Enable menopause mode",
@@ -60,6 +61,7 @@
           "num_predictions": "How many future cycle starts to generate (1–12). Default is 6.",
           "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
           "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
+          "calendar_enabled": "Creates a native calendar.<profile>_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
           "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
@@ -286,6 +288,10 @@
     "stale_ics_token": {
       "title": "Menstruation Cycle: Calendar feed token hasn't been rotated in a while",
       "description": "Profile: **{entry_title}**\n\nThe calendar-subscription (ICS) URL for this profile still uses a token that's about {age_days} days old. Anyone who ever had that URL (an old device, a shared calendar, a screenshot, ...) can still use it to read this profile's predictions, since the feed has no separate login. Click **Fix** to generate a fresh token — existing calendar subscriptions will stop working and need to be re-added with the new URL — or dismiss this issue to keep the current one."
+    },
+    "low_prediction_confidence": {
+      "title": "Menstruation Cycle: Predictions are still low-confidence",
+      "description": "Profile: **{entry_title}**\n\nThis profile has {valid_cycles} of the {min_valid_cycles} recent cycles needed for high-precision predictions - fertile window and ovulation dates are still rough estimates. This isn't an error, just a normal part of getting started: predictions automatically become more precise the more cycles you log. No action needed here; dismiss this issue if you'd rather not see it while you're still building up history."
     }
   },
   "selector": {
