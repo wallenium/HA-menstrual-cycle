@@ -969,5 +969,17 @@
   "opt_gynecologist": "Frauenarzt",
   "opt_pap_smear": "PAP-Abstrich",
   "opt_sti_test": "STI-Test",
-  "opt_vaccination": "Impfung"
+  "opt_vaccination": "Impfung",
+  "quick_log_title": "Schnellprotokoll",
+  "cat_skin": "Haut",
+  "cat_energy_level": "Energielevel",
+  "cat_sleep_quality": "Schlafqualität",
+  "opt_breakouts": "Unreinheiten",
+  "opt_oily": "Fettig",
+  "opt_dry": "Trocken",
+  "opt_low": "Niedrig",
+  "opt_high": "Hoch",
+  "opt_poor": "Schlecht",
+  "opt_average": "Durchschnittlich",
+  "opt_good": "Gut"
 }

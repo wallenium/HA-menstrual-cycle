@@ -936,5 +936,17 @@
   "opt_gynecologist": "Gynekolog",
   "opt_pap_smear": "Cellprov",
   "opt_sti_test": "STI-Test",
-  "opt_vaccination": "Vaccination"
+  "opt_vaccination": "Vaccination",
+  "quick_log_title": "Snabbloggning",
+  "cat_skin": "Hud",
+  "cat_energy_level": "Energinivå",
+  "cat_sleep_quality": "Sömnkvalitet",
+  "opt_breakouts": "Finnar",
+  "opt_oily": "Fet",
+  "opt_dry": "Torr",
+  "opt_low": "Låg",
+  "opt_high": "Hög",
+  "opt_poor": "Dålig",
+  "opt_average": "Genomsnittlig",
+  "opt_good": "Bra"
 }

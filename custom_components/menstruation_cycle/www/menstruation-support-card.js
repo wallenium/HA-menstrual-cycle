@@ -881,9 +881,19 @@ class YoungGirlsSupportCard extends HTMLElement {
       }
 
       .rem-school-badge {
+        /* Dark-Mode-Fix (weitere Ideen, 22.09.2026, "Dark-Mode-Kontrast in
+           support-card.js"): vorher hartcodiertes helles Pastellblau/
+           dunkles Marineblau - blieb im Dunkelmodus unveraendert hell und
+           wirkte als grell abstechender Fleck auf der dann dunklen Karte.
+           color-mix() mit --card-background-color loest das rein ueber CSS
+           (reagiert live auf Themenwechsel, kein JS-Delay durch das
+           bestehende Render-Gating in set hass()), --info-color ist HAs
+           eigene, bereits themenabhaengige Standardfarbe fuer informative
+           Hinweise (bewusst nicht --ygs-accent/das Kartenpink, da dieses
+           Badge sich inhaltlich klar von den pinken Akzenten abheben soll). */
         font-size: 0.7rem;
-        background: #e3f2fd;
-        color: #1565c0;
+        background: color-mix(in srgb, var(--info-color, #2196f3) 20%, var(--card-background-color, #fff));
+        color: var(--primary-text-color, #212121);
         border-radius: 10px;
         padding: 2px 8px;
       }
@@ -1065,13 +1075,24 @@ class YoungGirlsSupportCard extends HTMLElement {
       }
 
       .howto-caution {
-        background: #fff8e1;
-        border-left: 4px solid #ffc107;
+        /* Dark-Mode-Fix (weitere Ideen, 22.09.2026) - dieselbe Begruendung
+           wie bei .rem-school-badge oben: vorher hartcodiertes helles Gelb
+           mit dunkelbraunem Text, blieb im Dunkelmodus als helle Flaeche
+           auf der dunklen Karte stehen. Gleiches color-mix()-Muster wie
+           bereits in menstruation-calendar-card.js/-heatmap-card.js fuer
+           das fruchtbare Fenster etabliert (var(--warning-color) gemischt
+           mit der Kartenfarbe statt eines festen Hex-Werts) - passend, da
+           dies bereits ein Warn-/Vorsichtshinweis ist, --warning-color also
+           semantisch ohnehin die richtige Wahl ist, nicht nur der
+           Dark-Mode-Fix nebenbei.
+        */
+        background: color-mix(in srgb, var(--warning-color, #ffc107) 16%, var(--card-background-color, #fff));
+        border-left: 4px solid var(--warning-color, #ffc107);
         border-radius: 4px;
         padding: 8px 12px;
         margin-bottom: 10px;
         font-size: 0.83rem;
-        color: #5d4037;
+        color: var(--primary-text-color, #212121);
       }
 
       .howto-disclaimer {

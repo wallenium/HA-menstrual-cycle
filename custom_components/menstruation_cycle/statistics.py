@@ -165,7 +165,11 @@ def _compute_symptom_stats(
     # pregnancy_symptoms - damit bleiben top_symptoms/Auswertungen konsistent
     # mit allen tatsächlich erfassbaren Feldern statt nur einer historischen
     # Teilmenge.
-    multi_keys = ("pain", "hygiene", "test", "vulva_vagina", "urinary", "breast", "appointments", "digestion", "pregnancy_symptoms", "menopause_symptoms")
+    # Nachtrag (22.09.2026): skin/energy_level/sleep_quality (weitere Ideen,
+    # "Weitere Clue-Symptomkategorien") direkt beim Anlegen mit aufgenommen,
+    # statt denselben, bereits zweimal dokumentierten Lueckentyp erneut zu
+    # riskieren.
+    multi_keys = ("pain", "hygiene", "test", "vulva_vagina", "urinary", "breast", "appointments", "digestion", "pregnancy_symptoms", "menopause_symptoms", "skin")
 
     for start_d, end_d, _ in periods:
         entries = _symptom_entries_in_range(symptom_history, start_d, end_d)
@@ -181,7 +185,7 @@ def _compute_symptom_stats(
             if isinstance(bleeding, str) and bleeding:
                 bleeding_strength_counter[bleeding] += 1
 
-            for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "clots", "clot_size", "cervix_position", "cervix_texture", "libido", "smell", "bleeding_type", "training_intensity", "contraception_method", "hot_flashes"):
+            for key in ("spotting", "discharge", "intercourse", "cervical_mucus", "clots", "clot_size", "cervix_position", "cervix_texture", "libido", "smell", "bleeding_type", "training_intensity", "contraception_method", "hot_flashes", "energy_level", "sleep_quality"):
                 val = entry.get(key)
                 if isinstance(val, str) and val:
                     symptom_counter[f"{key}:{val}"] += 1

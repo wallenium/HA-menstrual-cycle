@@ -969,5 +969,17 @@
   "opt_gynecologist": "Gynecologist",
   "opt_pap_smear": "Pap Smear",
   "opt_sti_test": "STI Test",
-  "opt_vaccination": "Vaccination"
+  "opt_vaccination": "Vaccination",
+  "quick_log_title": "Quick Log",
+  "cat_skin": "Skin",
+  "cat_energy_level": "Energy Level",
+  "cat_sleep_quality": "Sleep Quality",
+  "opt_breakouts": "Breakouts",
+  "opt_oily": "Oily",
+  "opt_dry": "Dry",
+  "opt_low": "Low",
+  "opt_high": "High",
+  "opt_poor": "Poor",
+  "opt_average": "Average",
+  "opt_good": "Good"
 }

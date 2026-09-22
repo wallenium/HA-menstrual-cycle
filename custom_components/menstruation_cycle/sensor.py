@@ -146,6 +146,12 @@ SYMPTOM_MULTI_VALUE_KEYS = (
     # symptome an einem Tag (z.B. Nachtschweiß UND Reizbarkeit) sind der
     # Normalfall, nicht die Ausnahme - gleiche Begründung wie oben.
     "menopause_symptoms",
+    # Added 22.09.2026 (weitere Ideen, "Weitere Clue-Symptomkategorien" -
+    # siehe const.py SYMPTOM_SKIN): mehrere gleichzeitige Hautzustaende an
+    # einem Tag (z.B. fettig UND Unreinheiten) sind plausibel, gleiche
+    # Begruendung wie oben. energy_level/sleep_quality sind bewusst NICHT
+    # hier gelistet - je ein einzelner Wert pro Tag, wie hot_flashes.
+    "skin",
 )
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12

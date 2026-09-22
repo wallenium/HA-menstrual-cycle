@@ -936,5 +936,17 @@
   "opt_gynecologist": "Gynécologue",
   "opt_pap_smear": "Frottis",
   "opt_sti_test": "Test IST",
-  "opt_vaccination": "Vaccination"
+  "opt_vaccination": "Vaccination",
+  "quick_log_title": "Journal rapide",
+  "cat_skin": "Peau",
+  "cat_energy_level": "Niveau d'énergie",
+  "cat_sleep_quality": "Qualité du sommeil",
+  "opt_breakouts": "Boutons",
+  "opt_oily": "Grasse",
+  "opt_dry": "Sèche",
+  "opt_low": "Faible",
+  "opt_high": "Élevé",
+  "opt_poor": "Mauvaise",
+  "opt_average": "Moyenne",
+  "opt_good": "Bonne"
 }

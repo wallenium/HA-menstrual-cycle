@@ -936,5 +936,17 @@
   "opt_gynecologist": "Ginecólogo",
   "opt_pap_smear": "Citología",
   "opt_sti_test": "Prueba de ITS",
-  "opt_vaccination": "Vacunación"
+  "opt_vaccination": "Vacunación",
+  "quick_log_title": "Registro rápido",
+  "cat_skin": "Piel",
+  "cat_energy_level": "Nivel de energía",
+  "cat_sleep_quality": "Calidad del sueño",
+  "opt_breakouts": "Brotes",
+  "opt_oily": "Grasa",
+  "opt_dry": "Seca",
+  "opt_low": "Bajo",
+  "opt_high": "Alto",
+  "opt_poor": "Mala",
+  "opt_average": "Regular",
+  "opt_good": "Buena"
 }

@@ -409,13 +409,28 @@ function getSymptomConfig(state, isPregnant = false) {
     // and gynecologist/screening appointments are both common topics there.
     { key: 'urinary', icon: 'mdi:water-alert-outline', multi: true, options: ['frequent_urination', 'burning', 'leakage'] },
     { key: 'appointments', icon: 'mdi:calendar-heart', multi: true, options: ['gynecologist', 'pap_smear', 'sti_test', 'vaccination'] },
+    // 22.09.2026 (weitere Ideen, "Weitere Clue-Symptomkategorien: Haut,
+    // Energie, Schlafqualitaet" - Roadmap-Punkt 4.69): drei neue, von der
+    // "Clue"-App inspirierte Kategorien. skin ist Mehrfachauswahl (siehe
+    // sensor.py SYMPTOM_MULTI_VALUE_KEYS), energy_level/sleep_quality sind
+    // je eine einzelne Graduierung pro Tag, wie hot_flashes. Keines der
+    // drei hat aktuell eine eigene Icon-SVG unter assets/buttons/ - alle
+    // drei nutzen deshalb, wie z.B. bleeding_type/clots/libido oben, ein
+    // Standard-mdi:-Icon statt renderOptionIcon()-Zuordnung.
+    { key: 'skin', icon: 'mdi:spa-outline', multi: true, options: ['clear', 'breakouts', 'oily', 'dry'] },
+    { key: 'energy_level', icon: 'mdi:lightning-bolt-outline', multi: false, options: ['low', 'normal', 'high'] },
+    { key: 'sleep_quality', icon: 'mdi:sleep', multi: false, options: ['poor', 'average', 'good'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (String(state || '') === 'menopause') {
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes', 'urinary', 'appointments']);
+    // 22.09.2026: skin/energy_level/sleep_quality mit aufgenommen - Hautver-
+    // aenderungen, Energielosigkeit und Schlafstoerungen sind allesamt
+    // gaengige Wechseljahres-Themen (aehnliche Begruendung wie zuvor bei
+    // hot_flashes/vulva_vagina).
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes', 'urinary', 'appointments', 'skin', 'energy_level', 'sleep_quality']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {

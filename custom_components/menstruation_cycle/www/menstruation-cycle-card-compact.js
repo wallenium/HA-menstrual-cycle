@@ -8,21 +8,51 @@ if (typeof _mcCompactCardI18n.normalizeLang !== 'function') {
   _mcCompactCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
-
-
+/**
+ * weitere Ideen, 22.09.2026: "Symptom-Quick-Log direkt vom Dashboard".
+ *
+ * Das separate Dashboard-Panel (menstruation-cycle-dashboard-panel.js) hat
+ * bereits ein eigenes "Schnellprotokoll"-Widget fuer Blutung/Schmerzen -
+ * das ist aber eine grosse, eigene Seite. Hier geht es explizit darum,
+ * die 3-4 haeufigsten Schmerz-Symptome direkt auf DIESER kleinen, ohnehin
+ * meist dauerhaft sichtbaren Statuskarte antippen zu koennen, ohne das
+ * grosse Symptom-Formular (Modal in menstruation-gauge-card.js) oder das
+ * Dashboard-Panel zu oeffnen. `pain` ist ein Mehrfachauswahl-Feld
+ * (SYMPTOM_MULTI_VALUE_KEYS in sensor.py) - add_symptom mergt zwar den
+ * Rest des Tageseintrags automatisch (__init__.py: `existing.update(...)`),
+ * ersetzt bei einem Update aber das gesamte `pain`-Array. Deshalb wird der
+ * heutige Stand vor dem ersten Tap ueber get_symptom nachgeladen
+ * (_fetchQuickLogState) und bei jedem Tap der volle, lokal zusammengefuehrte
+ * Satz gesendet - sonst wuerden bereits heute erfasste Schmerz-Eintraege
+ * durch einen einzelnen Quick-Log-Tap unbemerkt verloren gehen.
+ */
+const QUICK_LOG_PAIN_OPTIONS = ["cramps", "headache", "lower_back", "tender_breasts"];
 
 class MenstruationCycleCard extends HTMLElement {
   connectedCallback() {
     this._iconCache = {};
+    this._quickLogState = { iso: null, pain: null };
+    this._quickLogBusy = false;
+    this._quickLogFeedback = null;
     this.innerHTML = `
       <ha-card>
         <div class="card-content">
           <div class="status-badge" id="statusBadge"></div>
           <div class="cycle-info" id="cycleInfo"></div>
+          <div class="quick-log" id="quickLog"></div>
         </div>
       </ha-card>
     `;
     this.appendChild(this._getStyles());
+    // Ein einziger delegierter Listener auf dem Container statt pro Button -
+    // #quickLog wird bei jedem Render komplett neu aufgebaut (siehe
+    // _renderQuickLog()), einzeln angehaengte Listener wuerden dabei verloren
+    // gehen.
+    this.querySelector("#quickLog")?.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-quick-pain]");
+      if (!btn || btn.disabled) return;
+      this._toggleQuickPain(btn.getAttribute("data-quick-pain"));
+    });
     this.render();
   }
 
@@ -90,6 +120,152 @@ class MenstruationCycleCard extends HTMLElement {
           <span class="info-value">${cycleDay}/${cycleLength}</span>
         </div>
       `;
+    }
+
+    this._renderQuickLog();
+  }
+
+  /**
+   * Baut die Quick-Log-Buttonreihe neu auf. Wird von jedem render()-Aufruf
+   * mit aufgerufen (also potenziell oefter als noetig, bei jedem
+   * hass-Update) - diese Karte optimiert Re-Renders bewusst nicht weg (im
+   * Unterschied zu menstruation-gauge-card.js), das entspricht dem
+   * bisherigen, bewusst schlanken Stil dieser kleinen Karte. Der aktuell
+   * angezeigte Feedback-Text (_quickLogFeedback) wird dabei aus dem
+   * State neu eingesetzt, damit ein zwischenzeitlicher hass-Tick eine
+   * gerade sichtbare "Gespeichert."-Meldung nicht vorzeitig verschwinden
+   * laesst.
+   */
+  _renderQuickLog() {
+    const container = this.querySelector("#quickLog");
+    if (!container) return;
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (this._quickLogState.iso !== todayIso) {
+      // Neuer Tag (oder erster Render dieser Karteninstanz) - lokalen
+      // Zustand zuruecksetzen und den tatsaechlich gespeicherten Stand
+      // frisch laden, statt "still" von leer auszugehen (siehe Kommentar
+      // an QUICK_LOG_PAIN_OPTIONS oben).
+      this._quickLogState = { iso: todayIso, pain: null };
+      this._fetchQuickLogState(todayIso);
+    }
+
+    const loaded = this._quickLogState.pain !== null;
+    const activeSet = this._quickLogState.pain || new Set();
+    const escape = window.MenstruationFunctions?.escapeHtmlText || ((s) => String(s ?? ""));
+
+    const buttons = QUICK_LOG_PAIN_OPTIONS.map((key) => {
+      const icon = window.MenstruationFunctions?.renderOptionIcon?.("pain", key) || "";
+      const label = this._t(`opt_${key}`);
+      const isActive = activeSet.has(key);
+      const fallback = icon ? "" : `<span class="quick-log-fallback">${escape(label)}</span>`;
+      return `
+        <button
+          type="button"
+          class="quick-log-btn${isActive ? " active" : ""}"
+          data-quick-pain="${key}"
+          ${loaded ? "" : "disabled"}
+          title="${escape(label)}"
+          aria-pressed="${isActive ? "true" : "false"}"
+          aria-label="${escape(label)}"
+        >${icon}${fallback}</button>
+      `;
+    }).join("");
+
+    const feedback = this._quickLogFeedback;
+    container.innerHTML = `
+      <div class="quick-log-title">${escape(this._t("quick_log_title"))}</div>
+      <div class="quick-log-row">${buttons}</div>
+      <div class="quick-log-feedback${feedback ? (feedback.isError ? " error" : " success") : ""}" id="quickLogFeedback" ${feedback ? "" : "hidden"}>${feedback ? escape(feedback.text) : ""}</div>
+    `;
+  }
+
+  /**
+   * Laedt den heutigen `pain`-Stand ueber get_symptom nach (liest die volle,
+   * ungekappte Historie - anders als die ggf. auf ~30 Eintraege gekappte
+   * symptom_history-Attribut, siehe fetchFreshSymptomData() in
+   * menstruation-functions.js). Verworfen, falls sich `iso` inzwischen
+   * geaendert hat (z.B. Mitternacht waehrend des Ladens) - die Antwort
+   * gehoert dann nicht mehr zum aktuell angezeigten Tag.
+   */
+  async _fetchQuickLogState(iso) {
+    if (!window.MenstruationFunctions?.fetchFreshSymptomData) {
+      if (this._quickLogState.iso === iso) {
+        this._quickLogState = { iso, pain: new Set() };
+        this._renderQuickLog();
+      }
+      return;
+    }
+    const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
+      this._hass,
+      this.config?.entity,
+      iso,
+      "[menstruation-cycle-card]"
+    );
+    if (this._quickLogState.iso !== iso) return;
+    const painValue = data?.pain;
+    const painSet = new Set(Array.isArray(painValue) ? painValue : (painValue ? [painValue] : []));
+    this._quickLogState = { iso, pain: painSet };
+    this._renderQuickLog();
+  }
+
+  /**
+   * Ein Tap auf einen Quick-Log-Button: optimistisch sofort im UI
+   * umschalten, dann im Hintergrund speichern (gleiches Prinzip wie der
+   * bestehende Symptom-Grid-Handler in menstruation-countdown-timer.js).
+   * Schickt immer das komplette, lokal zusammengefuehrte `pain`-Array -
+   * siehe Kommentar an QUICK_LOG_PAIN_OPTIONS oben, warum das noetig ist.
+   */
+  async _toggleQuickPain(key) {
+    if (this._quickLogBusy || this._quickLogState.pain === null) return;
+
+    const iso = this._quickLogState.iso;
+    const previousSet = new Set(this._quickLogState.pain);
+    const nextSet = new Set(previousSet);
+    if (nextSet.has(key)) {
+      nextSet.delete(key);
+    } else {
+      nextSet.add(key);
+    }
+
+    this._quickLogState = { ...this._quickLogState, pain: nextSet };
+    this._quickLogBusy = true;
+    this._renderQuickLog();
+
+    try {
+      await this._hass.callService("menstruation_cycle", "add_symptom", {
+        entity_id: this.config?.entity,
+        date: iso,
+        symptom_data: { pain: Array.from(nextSet) },
+      });
+      this._setQuickLogFeedback(this._t("symptom_saved"), false);
+    } catch (error) {
+      console.error("[menstruation-cycle-card] Quick-Log (pain) konnte nicht gespeichert werden:", error);
+      if (this._quickLogState.iso === iso) {
+        this._quickLogState = { ...this._quickLogState, pain: previousSet };
+      }
+      this._setQuickLogFeedback(this._t("symptom_save_error"), true);
+      this._renderQuickLog();
+    } finally {
+      this._quickLogBusy = false;
+    }
+  }
+
+  _setQuickLogFeedback(text, isError) {
+    clearTimeout(this._quickLogFeedbackTimeout);
+    this._quickLogFeedback = text ? { text, isError: !!isError } : null;
+    const el = this.querySelector("#quickLogFeedback");
+    if (el) {
+      if (text) {
+        el.hidden = false;
+        el.textContent = text;
+        el.className = `quick-log-feedback${isError ? " error" : " success"}`;
+      } else {
+        el.hidden = true;
+      }
+    }
+    if (text) {
+      this._quickLogFeedbackTimeout = setTimeout(() => { this._setQuickLogFeedback(null); }, isError ? 3000 : 1800);
     }
   }
 
@@ -161,6 +337,13 @@ class MenstruationCycleCard extends HTMLElement {
         fertile: "Fertile",
         pms: "PMS",
         neutral: "Neutral",
+        quick_log_title: "Quick Log",
+        opt_cramps: "Cramps",
+        opt_headache: "Headache",
+        opt_lower_back: "Lower Back Pain",
+        opt_tender_breasts: "Tender Breasts",
+        symptom_saved: "Symptoms saved.",
+        symptom_save_error: "Could not save symptoms.",
       },
     };
     const val = translations.en[key];
@@ -259,6 +442,85 @@ class MenstruationCycleCard extends HTMLElement {
       .info-value {
         color: var(--primary-text-color);
         font-weight: 600;
+      }
+
+      /* weitere Ideen, 22.09.2026: Symptom-Quick-Log direkt vom Dashboard */
+      .quick-log {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+        background: var(--ha-card-background);
+        border: 1px solid var(--divider-color);
+        border-radius: 8px;
+      }
+
+      .quick-log-title {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+      }
+
+      .quick-log-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .quick-log-btn {
+        flex: 1 1 0;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--divider-color);
+        background: var(--card-background-color, #fff);
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+      }
+
+      .quick-log-btn:active {
+        transform: scale(0.94);
+      }
+
+      .quick-log-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .quick-log-btn.active {
+        background: color-mix(in srgb, var(--primary-color, #e91e63) 18%, var(--card-background-color, #fff));
+        border-color: var(--primary-color, #e91e63);
+      }
+
+      .quick-log-btn img,
+      .quick-log-btn svg {
+        width: 26px;
+        height: 26px;
+        display: block;
+      }
+
+      .quick-log-fallback {
+        font-size: 0.72rem;
+        color: var(--primary-text-color);
+        text-align: center;
+        line-height: 1.1;
+      }
+
+      .quick-log-feedback {
+        font-size: 0.78rem;
+        text-align: center;
+      }
+
+      .quick-log-feedback.success {
+        color: var(--success-color, #27ae60);
+      }
+
+      .quick-log-feedback.error {
+        color: var(--error-color, #e74c3c);
       }
 
       /* Dark Mode */

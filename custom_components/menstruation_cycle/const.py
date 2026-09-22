@@ -397,6 +397,18 @@ SYMPTOM_DIGESTION = "digestion"
 # bestehenden Felder hot_flashes bzw. vulva_vagina:vaginal_dryness.
 SYMPTOM_MENOPAUSE_EXTRA = "menopause_symptoms"
 
+# weitere Ideen, 22.09.2026 ("Weitere Clue-Symptomkategorien: Haut, Energie,
+# Schlafqualitaet" - Roadmap-Punkt 4.69): drei weitere, von der "Clue"-App
+# inspirierte Kategorien, gleiches additive Muster wie die 03.09./17.09.2026-
+# Batches oben. skin ist ein Listenfeld (mehrere gleichzeitige Hautzustaende
+# an einem Tag sind plausibel, z.B. fettig UND Unreinheiten) - siehe
+# sensor.py SYMPTOM_MULTI_VALUE_KEYS. energy_level/sleep_quality sind je ein
+# einzelner Wert pro Tag (eine Graduierung, kein Mehrfachauswahl-Konzept),
+# wie hot_flashes/bleeding_strength.
+SYMPTOM_SKIN = "skin"
+SYMPTOM_ENERGY_LEVEL = "energy_level"
+SYMPTOM_SLEEP_QUALITY = "sleep_quality"
+
 # Free-text symptom fields (03.09.2026, "Stimmungs-Schnellerfassung" /
 # M-Cycle-App-Nachtrag Abschnitt 4.47): unlike every other SYMPTOM_* field
 # above, these are NOT validated against a fixed SYMPTOM_OPTIONS list - a
@@ -501,6 +513,9 @@ SYMPTOM_OPTIONS = {
     SYMPTOM_APPOINTMENTS: ["gynecologist", "pap_smear", "sti_test", "vaccination"],
     SYMPTOM_DIGESTION: ["nausea", "bloating", "constipation", "diarrhea"],
     SYMPTOM_MENOPAUSE_EXTRA: ["night_sweats", "sleep_disturbance", "irritability", "weight_gain"],
+    SYMPTOM_SKIN: ["clear", "breakouts", "oily", "dry"],
+    SYMPTOM_ENERGY_LEVEL: ["low", "normal", "high"],
+    SYMPTOM_SLEEP_QUALITY: ["poor", "average", "good"],
 }
 
 # Pre-Menarche Body Signs - Tanner Stages
