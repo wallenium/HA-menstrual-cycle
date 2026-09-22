@@ -654,11 +654,16 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     const entityId = this._resolveEntityId();
     const stateObj = entityId ? this._hass?.states?.[entityId] : undefined;
     if (!stateObj) {
-      this.shadowRoot.innerHTML = `
-        <ha-card>
-          <div class="pad">${this._t('entity_not_found')}: ${this._config.entity || this._config.entry_id || this._t('unknown')}</div>
-        </ha-card>
-      `;
+      // HA-10 (Loading/Error/Empty-Baustein in weiteren Karten uebernehmen,
+      // 22.09.2026): vorher handgerollte Fehler-Markup, jetzt wie
+      // menstruation-cycle-history-card-row.js ueber die gemeinsamen Helfer
+      // aus menstruation-functions.js.
+      const notFoundMessage = `${this._t('entity_not_found')}: ${this._config.entity || this._config.entry_id || this._t('unknown')}`;
+      const errorMarkup = window.MenstruationFunctions
+        ? window.MenstruationFunctions.renderErrorState(notFoundMessage)
+        : `<div class="pad">${notFoundMessage}</div>`;
+      const errorStyles = window.MenstruationFunctions ? `<style>${window.MenstruationFunctions.mcStateStyles()}</style>` : '';
+      this.shadowRoot.innerHTML = `<ha-card>${errorStyles}${errorMarkup}</ha-card>`;
       return;
     }
 
@@ -690,14 +695,18 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     const alignMode = String(this._config.cycle_alignment || 'top').toLowerCase() === 'bottom' ? 'bottom' : 'top';
 
     if (!visibleCycles.length) {
-      this.shadowRoot.innerHTML = `
-        <style>
-          .pad { padding: 16px; color: var(--secondary-text-color); }
-        </style>
-        <ha-card>
-          <div class="pad">${this._t('too_little_history')} <code>grouped_starts/history</code>.</div>
-        </ha-card>
-      `;
+      // HA-10 (22.09.2026): wie oben - gemeinsamer Empty-State-Helfer statt
+      // eigener, minimaler `.pad`-Klasse. escapeHtmlText() innerhalb von
+      // renderEmptyState() wuerde ein eingebettetes <code>-Tag escapen,
+      // daher die Nachricht bewusst als reiner Text ohne Markup formuliert.
+      const emptyMessage = `${this._t('too_little_history')} (grouped_starts/history)`;
+      const emptyMarkup = window.MenstruationFunctions
+        ? window.MenstruationFunctions.renderEmptyState(emptyMessage)
+        : `<div class="pad">${emptyMessage}</div>`;
+      const emptyStyles = window.MenstruationFunctions
+        ? `<style>${window.MenstruationFunctions.mcStateStyles()}</style>`
+        : `<style>.pad { padding: 16px; color: var(--secondary-text-color); }</style>`;
+      this.shadowRoot.innerHTML = `${emptyStyles}<ha-card>${emptyMarkup}</ha-card>`;
       return;
     }
 

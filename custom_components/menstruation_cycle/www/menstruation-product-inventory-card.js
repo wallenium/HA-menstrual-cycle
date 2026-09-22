@@ -406,7 +406,16 @@ class MenstruationProductInventoryCard extends HTMLElement {
     const inventoryEntity = this._escapeHtml(this.config.inventory_entity);
     const stateObj = this._getEntity();
     if (!stateObj) {
-      this.shadowRoot.innerHTML = `<ha-card><div class="empty">${this._t("entity_not_found")}: ${inventoryEntity}</div></ha-card>`;
+      // HA-10 (Loading/Error/Empty-Baustein in weiteren Karten uebernehmen,
+      // 22.09.2026): wie bei den anderen Karten dieser Runde ueber die
+      // gemeinsamen Helfer aus menstruation-functions.js statt einer
+      // eigenen, handgerollten ".empty"-Div.
+      const notFoundMessage = `${this._t("entity_not_found")}: ${inventoryEntity}`;
+      const errorMarkup = window.MenstruationFunctions
+        ? window.MenstruationFunctions.renderErrorState(notFoundMessage)
+        : `<div class="empty">${notFoundMessage}</div>`;
+      const errorStyles = window.MenstruationFunctions ? `<style>${window.MenstruationFunctions.mcStateStyles()}</style>` : "";
+      this.shadowRoot.innerHTML = `<ha-card>${errorStyles}${errorMarkup}</ha-card>`;
       return;
     }
 
@@ -540,6 +549,8 @@ class MenstruationProductInventoryCard extends HTMLElement {
         .meta-inline { margin-bottom: 8px; font-size: 0.9rem; color: var(--mg-text-secondary); }
         .log-item { display: flex; justify-content: space-between; gap: 8px; font-size: 0.88rem; margin-top: 6px; }
         .empty { padding: 16px; color: var(--mg-text-secondary); }
+        /* HA-10 (22.09.2026): gemeinsame mc-state-Klassen fuer renderEmptyState/renderErrorState oben. */
+        ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ""}
         @media (prefers-color-scheme: dark) {
           :host { --mg-surface-accent: color-mix(in srgb, var(--mg-status-error) 20%, transparent); }
           button, select, input { background: color-mix(in srgb, var(--mg-card-bg) 88%, #000 12%); }
@@ -572,7 +583,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
               <span>${this._escapeHtml(this._t(entry.product))} ×${this._escapeHtml(entry.quantity)} · ${this._escapeHtml(entry.member || this._t("unknown"))}</span>
               <span>${this._escapeHtml(this._formatTimestamp(entry.timestamp))}</span>
             </div>
-          `).join("") : `<div class="empty">${this._t("no_logs")}</div>`}
+          `).join("") : (window.MenstruationFunctions ? window.MenstruationFunctions.renderEmptyState(this._t("no_logs")) : `<div class="empty">${this._t("no_logs")}</div>`)}
         </div>
       </ha-card>
     `;

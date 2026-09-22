@@ -71,7 +71,31 @@ class MenstruationCycleCard extends HTMLElement {
     if (!this._hass || !this.config?.entity) return;
 
     const stateObj = this._hass.states[this.config.entity];
-    if (!stateObj) return;
+    if (!stateObj) {
+      // HA-10 (Loading/Error/Empty-Baustein in weiteren Karten uebernehmen,
+      // 22.09.2026): vorher liess ein fehlendes Entity die Karte einfach
+      // leer/veraltet stehen (stilles `return`, kein Hinweis fuer die
+      // Nutzerin) - jetzt wie bei den Schwester-Karten dieser Runde ueber
+      // die gemeinsamen Helfer aus menstruation-functions.js. Anders als
+      // die anderen Karten hat diese Karte KEIN Shadow-DOM (siehe
+      // connectedCallback - direktes this.innerHTML auf dem Custom
+      // Element), deshalb direkt in die drei vorhandenen Content-Container
+      // statt eines kompletten innerHTML-Ersatzes der ganzen Karte.
+      const statusBadge = this.querySelector("#statusBadge");
+      const cycleInfo = this.querySelector("#cycleInfo");
+      const quickLog = this.querySelector("#quickLog");
+      const message = this.config.entity
+        ? `${this._t("entity_not_found")}: ${this.config.entity}`
+        : this._t("entity_not_found");
+      if (statusBadge) {
+        statusBadge.innerHTML = window.MenstruationFunctions
+          ? window.MenstruationFunctions.renderErrorState(message)
+          : message;
+      }
+      if (cycleInfo) cycleInfo.innerHTML = "";
+      if (quickLog) quickLog.innerHTML = "";
+      return;
+    }
 
     const attrs = stateObj.attributes || {};
     const status = this._getStatusInfo(stateObj.state, attrs);
@@ -353,6 +377,8 @@ class MenstruationCycleCard extends HTMLElement {
   _getStyles() {
     const style = document.createElement("style");
     style.textContent = `
+      /* HA-10 (22.09.2026): gemeinsame mc-state-Klassen fuer renderErrorState, siehe render(). */
+      ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ""}
       :host {
         display: block;
         --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
