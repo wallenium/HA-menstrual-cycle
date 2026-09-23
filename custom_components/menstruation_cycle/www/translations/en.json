@@ -981,5 +981,12 @@
   "opt_high": "High",
   "opt_poor": "Poor",
   "opt_average": "Average",
-  "opt_good": "Good"
+  "opt_good": "Good",
+  "cat_medication": "Medication",
+  "opt_iron": "Iron",
+  "opt_folic_acid": "Folic Acid",
+  "opt_vitamin_d": "Vitamin D",
+  "opt_magnesium": "Magnesium",
+  "opt_pain_relief": "Pain Relief",
+  "opt_hormone_therapy": "Hormone Therapy"
 }

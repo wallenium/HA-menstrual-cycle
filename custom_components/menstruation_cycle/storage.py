@@ -57,6 +57,19 @@ class MenstruationStorage:
         self._store = Store(hass, STORAGE_VERSION, key)
         self._legacy_store = Store(hass, STORAGE_VERSION, legacy_key) if legacy_key else None
 
+    async def async_load_raw(self) -> Any:
+        """Return the stored dict exactly as persisted, with none of
+        async_load()'s normalization/defaulting applied. Used by the
+        repair_storage service to detect when normalization is silently
+        dropping or resetting a field, rather than to read for regular use
+        (use async_load() for that)."""
+        data = await self._store.async_load()
+        if not isinstance(data, dict) and self._legacy_store is not None:
+            legacy_data = await self._legacy_store.async_load()
+            if isinstance(legacy_data, dict):
+                data = legacy_data
+        return data if isinstance(data, dict) else {}
+
     async def async_load(self) -> dict:
         """Load data from storage."""
         data = await self._store.async_load()
@@ -80,6 +93,11 @@ class MenstruationStorage:
                 "onboarding_stage": DEFAULT_ONBOARDING_STAGE,
                 "visibility_level": DEFAULT_VISIBILITY_LEVEL,
                 "ics_token_created_at": None,
+                # None = Checkliste wurde fuer dieses Profil noch nie
+                # angelegt (todo.py seedet dann DEFAULT_HOSPITAL_BAG_ITEMS).
+                # [] waere nicht von "Nutzer hat alles geloescht" zu
+                # unterscheiden.
+                "hospital_bag_items": None,
             }
 
         history = data.get("history", [])
@@ -159,6 +177,8 @@ class MenstruationStorage:
         if not isinstance(ics_token_created_at, str) or not ics_token_created_at:
             ics_token_created_at = None
 
+        hospital_bag_items = self._normalize_hospital_bag_items(data.get("hospital_bag_items"))
+
         return {
             "history": normalized,
             "period_duration_days": days,
@@ -174,6 +194,7 @@ class MenstruationStorage:
             "visibility_level": visibility_level,
             "ics_token": ics_token,
             "ics_token_created_at": ics_token_created_at,
+            "hospital_bag_items": hospital_bag_items,
         }
 
     async def async_save(
@@ -192,6 +213,7 @@ class MenstruationStorage:
         visibility_level: str | None = None,
         ics_token: str | None = None,
         ics_token_created_at: str | None = None,
+        hospital_bag_items: list[dict[str, Any]] | None = None,
     ) -> None:
         """Save data to storage."""
         from .const import CYCLE_LENGTH_OVERRIDE_MAX, CYCLE_LENGTH_OVERRIDE_MIN
@@ -220,6 +242,20 @@ class MenstruationStorage:
         if normalized_visibility not in VISIBILITY_LEVELS:
             normalized_visibility = DEFAULT_VISIBILITY_LEVEL
 
+        # Wie ics_token/ics_token_created_at: die meisten Aufrufer von
+        # async_save() (allen voran __init__.py's _async_save_and_notify,
+        # der zentrale Pfad bei jeder Zyklus-/Symptom-Aenderung) wissen
+        # nichts von der Checkliste und geben sie nicht mit - ohne diesen
+        # Fallback wuerde jeder ganz normale Speichervorgang die Checkliste
+        # still auf None zuruecksetzen (identische Bug-Klasse wie der
+        # visibility_level-Bug vom 15.09.2026, hier direkt an der Wurzel
+        # behoben statt an jeder Aufrufstelle einzeln).
+        resolved_bag_items = (
+            self._normalize_hospital_bag_items(hospital_bag_items)
+            if hospital_bag_items is not None
+            else await self._load_existing_hospital_bag_items()
+        )
+
         await self._store.async_save(
             {
                 "history": normalized,
@@ -245,8 +281,18 @@ class MenstruationStorage:
                     if isinstance(ics_token_created_at, str) and ics_token_created_at
                     else await self._load_existing_ics_token_created_at()
                 ),
+                "hospital_bag_items": resolved_bag_items,
             }
         )
+
+    async def _load_existing_hospital_bag_items(self) -> list[dict[str, Any]] | None:
+        """Return the hospital_bag_items currently persisted without a full
+        reload (mirrors _load_existing_ics_token below) - prevents every
+        ordinary history/symptom save from wiping the checklist."""
+        raw = await self._store.async_load()
+        if isinstance(raw, dict):
+            return self._normalize_hospital_bag_items(raw.get("hospital_bag_items"))
+        return None
 
     async def _load_existing_ics_token(self) -> str | None:
         """Return the ics_token currently persisted without a full reload."""
@@ -374,6 +420,51 @@ class MenstruationStorage:
             # weiter oben - identisches Problem, identischer Fix.
             visibility_level=data.get("visibility_level"),
         )
+
+    async def async_load_hospital_bag_items(self) -> list[dict[str, Any]] | None:
+        """Load only the hospital-bag/Geburtsplan-Checkliste. None means
+        this profile's list was never seeded yet (see todo.py)."""
+        data = await self.async_load()
+        return data["hospital_bag_items"]
+
+    async def async_save_hospital_bag_items(self, items: list[dict[str, Any]]) -> None:
+        """Persist the hospital-bag checklist while preserving all other
+        stored fields."""
+        data = await self.async_load()
+        await self.async_save(
+            data["history"],
+            data["period_duration_days"],
+            data.get("symptom_history", []),
+            data.get("product_usage", []),
+            data.get("pregnancy_data"),
+            data.get("menarche_data"),
+            data.get("pre_menarche_data"),
+            data.get("menopause_data"),
+            data.get("noncycle_data"),
+            data.get("cycle_length_override"),
+            data.get("onboarding_stage"),
+            visibility_level=data.get("visibility_level"),
+            hospital_bag_items=items,
+        )
+
+    @staticmethod
+    def _normalize_hospital_bag_items(raw: Any) -> list[dict[str, Any]] | None:
+        """Validate/clean stored todo items, dropping malformed entries.
+        Returns None (not []) when raw itself is None/missing, so callers
+        can tell "never seeded" apart from "user deleted everything"."""
+        if not isinstance(raw, list):
+            return None
+        items: list[dict[str, Any]] = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            uid = str(entry.get("uid") or "").strip()
+            summary = str(entry.get("summary") or "").strip()[:200]
+            status = str(entry.get("status") or "").strip().lower()
+            if not uid or not summary or status not in ("needs_action", "completed"):
+                continue
+            items.append({"uid": uid, "summary": summary, "status": status})
+        return items
 
     @staticmethod
     def _normalize_iso(value: Any) -> str | None:

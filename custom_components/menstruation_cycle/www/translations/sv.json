@@ -948,5 +948,12 @@
   "opt_high": "Hög",
   "opt_poor": "Dålig",
   "opt_average": "Genomsnittlig",
-  "opt_good": "Bra"
+  "opt_good": "Bra",
+  "cat_medication": "Läkemedel",
+  "opt_iron": "Järn",
+  "opt_folic_acid": "Folsyra",
+  "opt_vitamin_d": "D-vitamin",
+  "opt_magnesium": "Magnesium",
+  "opt_pain_relief": "Smärtlindring",
+  "opt_hormone_therapy": "Hormonbehandling"
 }

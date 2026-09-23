@@ -981,5 +981,12 @@
   "opt_high": "Hoch",
   "opt_poor": "Schlecht",
   "opt_average": "Durchschnittlich",
-  "opt_good": "Gut"
+  "opt_good": "Gut",
+  "cat_medication": "Medikamente",
+  "opt_iron": "Eisen",
+  "opt_folic_acid": "Folsäure",
+  "opt_vitamin_d": "Vitamin D",
+  "opt_magnesium": "Magnesium",
+  "opt_pain_relief": "Schmerzmittel",
+  "opt_hormone_therapy": "Hormonpräparat"
 }

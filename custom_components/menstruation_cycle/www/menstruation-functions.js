@@ -420,6 +420,12 @@ function getSymptomConfig(state, isPregnant = false) {
     { key: 'skin', icon: 'mdi:spa-outline', multi: true, options: ['clear', 'breakouts', 'oily', 'dry'] },
     { key: 'energy_level', icon: 'mdi:lightning-bolt-outline', multi: false, options: ['low', 'normal', 'high'] },
     { key: 'sleep_quality', icon: 'mdi:sleep', multi: false, options: ['poor', 'average', 'good'] },
+    // 23.09.2026 (weitere Ideen, Symptomkategorie "Medikamente", Runde 28):
+    // fester Options-Katalog fuer die gaengigsten Faelle (siehe const.py
+    // SYMPTOM_MEDICATION-Kommentar zur Abgrenzung von der groesseren, noch
+    // offenen Roadmap-Idee 4.72 mit freier Textliste). Mehrfachauswahl, kein
+    // eigenes Icon vorhanden, deshalb Standard-mdi: wie skin/energy_level.
+    { key: 'medication', icon: 'mdi:pill-multiple', multi: true, options: ['iron', 'folic_acid', 'vitamin_d', 'magnesium', 'pain_relief', 'hormone_therapy', 'other'] },
   ];
   if (String(state || '') === 'pre_menarche') {
     const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'pain', 'training_intensity']);
@@ -430,7 +436,7 @@ function getSymptomConfig(state, isPregnant = false) {
     // aenderungen, Energielosigkeit und Schlafstoerungen sind allesamt
     // gaengige Wechseljahres-Themen (aehnliche Begruendung wie zuvor bei
     // hot_flashes/vulva_vagina).
-    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes', 'urinary', 'appointments', 'skin', 'energy_level', 'sleep_quality']);
+    const allowed = new Set(['spotting', 'smell', 'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'cervix_texture', 'intercourse', 'libido', 'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion', 'vulva_vagina', 'hot_flashes', 'urinary', 'appointments', 'skin', 'energy_level', 'sleep_quality', 'medication']);
     return all.filter((cat) => allowed.has(cat.key));
   }
   if (pregnant) {

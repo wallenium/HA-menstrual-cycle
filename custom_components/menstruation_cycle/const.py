@@ -235,6 +235,14 @@ BACKUP_FORMAT_VERSION = 1
 # verlangt eine explizite Bestaetigung, siehe __init__.py::
 # _async_handle_import_full_backup.
 SERVICE_IMPORT_FULL_BACKUP = "import_full_backup"
+# Neue Idee (23.09.2026, "weitere Ideen die nicht auf der Roadmap
+# stehen?"): reiner Lese-/Report-Service, der den Storage-Stand aller
+# geladenen Profile auf Inkonsistenzen prueft (u.a. genau die Bug-Klasse,
+# die am 15.09.2026 mit visibility_level real aufgetreten ist - stille
+# Ruecksetzung durch eine schmale Speicher-Methode, die ein Feld beim
+# Roundtrip durch async_save() nicht durchreicht). Veraendert nichts,
+# siehe __init__.py::_async_handle_repair_storage.
+SERVICE_REPAIR_STORAGE = "repair_storage"
 SERVICE_FIELD_MODE = "mode"
 SERVICE_FIELD_CONFIRM = "confirm"
 IMPORT_FULL_BACKUP_MODES = ["merge", "overwrite"]
@@ -409,6 +417,19 @@ SYMPTOM_SKIN = "skin"
 SYMPTOM_ENERGY_LEVEL = "energy_level"
 SYMPTOM_SLEEP_QUALITY = "sleep_quality"
 
+# weitere Ideen, 23.09.2026 ("Symptomkategorie 'Medikamente'" -
+# Roadmap-Runde 28): Mehrfachauswahl-Listenfeld fuer haeufige
+# Medikamente/Nahrungsergaenzungsmittel rund um den Zyklus - bewusst
+# EIN fester Options-Katalog (wie skin/breast/etc.), NICHT die groessere,
+# noch offene Idee 4.72 ("Medikamenten-/Nahrungsergaenzungsmittel-
+# Tracker" mit freier Textliste + Erinnerungsfunktion) - diese Kategorie
+# deckt nur die gaengigsten Faelle ab (Eisen/Folsaeure/Vitamin D/
+# Magnesium/Schmerzmittel/Hormonpraeparat), 4.72 bleibt fuer freien Text
+# offen auf der Roadmap. Mehrfachauswahl, da an einem Tag durchaus
+# mehrere Praeparate gleichzeitig genommen werden (z.B. Folsaeure UND
+# Eisen in der Schwangerschaft) - siehe sensor.py SYMPTOM_MULTI_VALUE_KEYS.
+SYMPTOM_MEDICATION = "medication"
+
 # Free-text symptom fields (03.09.2026, "Stimmungs-Schnellerfassung" /
 # M-Cycle-App-Nachtrag Abschnitt 4.47): unlike every other SYMPTOM_* field
 # above, these are NOT validated against a fixed SYMPTOM_OPTIONS list - a
@@ -516,6 +537,7 @@ SYMPTOM_OPTIONS = {
     SYMPTOM_SKIN: ["clear", "breakouts", "oily", "dry"],
     SYMPTOM_ENERGY_LEVEL: ["low", "normal", "high"],
     SYMPTOM_SLEEP_QUALITY: ["poor", "average", "good"],
+    SYMPTOM_MEDICATION: ["iron", "folic_acid", "vitamin_d", "magnesium", "pain_relief", "hormone_therapy", "other"],
 }
 
 # Pre-Menarche Body Signs - Tanner Stages
@@ -570,4 +592,7 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         # HA-Idee 3 (weitere Ideen, 15.09.2026): calendar.py's native calendar
         # entity, same naming scheme as everything else here.
         "_cycle_calendar": f"menstruation_{slug}_cycle",
+        # Neue Idee (23.09.2026, "weitere Ideen die nicht auf der Roadmap
+        # stehen?"): todo.py's Klinik-Tasche/Geburtsplan-Checkliste.
+        "_hospital_bag": f"menstruation_{slug}_hospital_bag",
     }

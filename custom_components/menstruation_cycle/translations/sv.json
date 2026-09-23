@@ -274,6 +274,10 @@
           "description": "Måste sättas till true för att bekräfta denna skrivoperation."
         }
       }
+    },
+    "repair_storage": {
+      "name": "Kontrollera/diagnostisera lagring",
+      "description": "Skrivskyddad diagnostik av den lagrade datan för alla konfigurerade profiler. Rapporterar var normaliseringen tyst kasserade eller återställde ett ogiltigt värde (t.ex. ett cycle_length_override utanför intervallet, ett okänt onboarding_stage eller visibility_level, otolkbara historik-/symtom-/produktanvändningsposter) samt semantiska inkonsekvenser (t.ex. pregnancy_data markerad som aktiv utan start_date, eller graviditet och klimakteriet aktiva samtidigt). Ändrar ingenting."
     }
   },
   "issues": {

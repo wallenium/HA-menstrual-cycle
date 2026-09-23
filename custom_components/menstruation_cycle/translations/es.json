@@ -274,6 +274,10 @@
           "description": "Debe establecerse en true para confirmar esta operación de escritura."
         }
       }
+    },
+    "repair_storage": {
+      "name": "Comprobar/diagnosticar almacenamiento",
+      "description": "Diagnóstico de solo lectura sobre los datos almacenados de todos los perfiles configurados. Informa cuándo la normalización descartó o restableció silenciosamente un valor no válido (p. ej., un cycle_length_override fuera de rango, un onboarding_stage o visibility_level no reconocido, entradas de historial/síntomas/uso de productos no interpretables), así como inconsistencias semánticas (p. ej., pregnancy_data marcado como activo sin start_date, o embarazo y menopausia activos a la vez). No modifica nada."
     }
   },
   "issues": {

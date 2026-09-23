@@ -1069,3 +1069,14 @@ set_profile_visibility:
             - "full"
             - "status_only"
             - "private"
+
+repair_storage:
+  name: Repair/diagnose storage
+  description: |
+    Read-only diagnostic across every configured profile's stored data. Reports
+    where normalization silently discarded or reset an invalid value (e.g. an
+    out-of-range cycle_length_override, an unrecognized onboarding_stage or
+    visibility_level, unparsable history/symptom/product-usage entries) as well
+    as semantic inconsistencies (e.g. pregnancy_data marked active without a
+    start_date, or pregnancy and menopause both active at once). Changes
+    nothing — call export_full_backup first if you plan to act on the findings.

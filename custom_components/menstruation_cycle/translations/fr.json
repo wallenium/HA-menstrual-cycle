@@ -274,6 +274,10 @@
           "description": "Doit être défini sur true pour confirmer cette opération d'écriture."
         }
       }
+    },
+    "repair_storage": {
+      "name": "Vérifier/diagnostiquer le stockage",
+      "description": "Diagnostic en lecture seule sur les données stockées de tous les profils configurés. Signale les cas où la normalisation a silencieusement écarté ou réinitialisé une valeur invalide (par ex. un cycle_length_override hors plage, un onboarding_stage ou visibility_level non reconnu, des entrées d'historique/symptômes/usage de produits impossibles à interpréter), ainsi que les incohérences sémantiques (par ex. pregnancy_data marqué actif sans start_date, ou grossesse et ménopause actives en même temps). Ne modifie rien."
     }
   },
   "issues": {

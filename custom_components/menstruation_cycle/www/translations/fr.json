@@ -948,5 +948,12 @@
   "opt_high": "Élevé",
   "opt_poor": "Mauvaise",
   "opt_average": "Moyenne",
-  "opt_good": "Bonne"
+  "opt_good": "Bonne",
+  "cat_medication": "Médicaments",
+  "opt_iron": "Fer",
+  "opt_folic_acid": "Acide folique",
+  "opt_vitamin_d": "Vitamine D",
+  "opt_magnesium": "Magnésium",
+  "opt_pain_relief": "Antalgique",
+  "opt_hormone_therapy": "Traitement hormonal"
 }

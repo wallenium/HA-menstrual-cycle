@@ -152,6 +152,11 @@ SYMPTOM_MULTI_VALUE_KEYS = (
     # Begruendung wie oben. energy_level/sleep_quality sind bewusst NICHT
     # hier gelistet - je ein einzelner Wert pro Tag, wie hot_flashes.
     "skin",
+    # Added 23.09.2026 (weitere Ideen, Symptomkategorie "Medikamente" -
+    # siehe const.py SYMPTOM_MEDICATION): mehrere gleichzeitig genommene
+    # Praeparate an einem Tag sind plausibel (z.B. Folsaeure UND Eisen),
+    # gleiche Begruendung wie skin/breast/etc. oben.
+    "medication",
 )
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12

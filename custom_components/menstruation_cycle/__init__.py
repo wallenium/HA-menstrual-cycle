@@ -157,6 +157,7 @@ from .const import (
     SERVICE_EXPORT_FULL_BACKUP,
     BACKUP_FORMAT_VERSION,
     SERVICE_IMPORT_FULL_BACKUP,
+    SERVICE_REPAIR_STORAGE,
     SERVICE_FIELD_MODE,
     SERVICE_FIELD_CONFIRM,
     IMPORT_FULL_BACKUP_MODES,
@@ -178,7 +179,7 @@ from .model import (
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -1175,6 +1176,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_import_full_backup(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_import_full_backup(hass, call)
 
+    async def async_repair_storage(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_repair_storage(hass, call)
+
     async def async_refresh_cycle_model(call: ServiceCall) -> None:
         await _async_handle_refresh_cycle_model(hass, call)
 
@@ -1345,6 +1349,17 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _import_backup_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_IMPORT_FULL_BACKUP, async_import_full_backup, **_import_backup_register_kwargs
+    )
+
+    _repair_storage_register_kwargs: dict[str, Any] = {
+        # No fields at all - like export_full_backup, this always covers
+        # every currently loaded profile rather than one target.
+        "schema": vol.Schema({}),
+    }
+    if SupportsResponse is not None:
+        _repair_storage_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_REPAIR_STORAGE, async_repair_storage, **_repair_storage_register_kwargs
     )
 
     hass.services.async_register(
@@ -1886,6 +1901,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_EXPORT_HISTORY,
             SERVICE_EXPORT_FULL_BACKUP,
             SERVICE_IMPORT_FULL_BACKUP,
+            SERVICE_REPAIR_STORAGE,
             SERVICE_REFRESH_CYCLE_MODEL,
             SERVICE_LOG_PRODUCT_USAGE,
             SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
@@ -2285,6 +2301,115 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
 
     await hass.async_add_executor_job(_write_file)
     _LOGGER.info("Exported menstruation history for profile '%s' to %s", runtime.profile, target_path)
+
+
+async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Diagnose stored-data inconsistencies across every loaded profile.
+
+    Neue Idee (23.09.2026, "weitere Ideen die nicht auf der Roadmap
+    stehen?"). Reines Lese-/Report-Werkzeug - veraendert nichts an
+    hass.data oder im Storage.
+
+    Zwei Kategorien von Befunden:
+    1. Normalisierungs-Diffs: async_load_raw() (unveraendert wie gespeichert)
+       wird gegen async_load() (normalisiert/defaulted) verglichen. Weicht
+       etwas ab, hat die Normalisierung entweder ungueltige Werte verworfen/
+       zurueckgesetzt oder ein fehlendes Feld defaultet - genau die Art von
+       stiller Aenderung, die beim visibility_level-Bug (15.09.2026) real zu
+       Datenverlust gefuehrt hat, hier aber nur berichtet statt zu greifen.
+    2. Semantische Inkonsistenzen: z. B. is_pregnant=True ohne start_date,
+       oder gleichzeitig aktive Schwangerschaft und Menopause.
+    """
+    domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
+    if not domain_data:
+        raise HomeAssistantError("No menstruation_cycle profiles are currently loaded.")
+
+    profiles: dict[str, Any] = {}
+    total_issues = 0
+
+    for entry_id, runtime in domain_data.items():
+        issues: list[str] = []
+        raw = await runtime.storage.async_load_raw()
+        normalized = await runtime.storage.async_load()
+
+        if raw:
+            raw_history = raw.get("history")
+            if isinstance(raw_history, list):
+                dropped = len(raw_history) - len(normalized["history"])
+                if dropped > 0:
+                    issues.append(
+                        f"{dropped} history entr(y/ies) dropped as unparsable/duplicate dates"
+                    )
+
+            raw_symptoms = raw.get("symptom_history")
+            if isinstance(raw_symptoms, list) and len(raw_symptoms) != len(normalized["symptom_history"]):
+                issues.append(
+                    f"symptom_history: {len(raw_symptoms)} stored vs "
+                    f"{len(normalized['symptom_history'])} valid after normalization"
+                )
+
+            raw_usage = raw.get("product_usage")
+            if isinstance(raw_usage, list) and len(raw_usage) != len(normalized["product_usage"]):
+                issues.append(
+                    f"product_usage: {len(raw_usage)} stored vs "
+                    f"{len(normalized['product_usage'])} valid after normalization"
+                )
+
+            raw_stage = raw.get("onboarding_stage")
+            if raw_stage is not None and raw_stage != normalized["onboarding_stage"]:
+                issues.append(
+                    f"onboarding_stage '{raw_stage}' is invalid, reset to "
+                    f"'{normalized['onboarding_stage']}'"
+                )
+
+            raw_visibility = raw.get("visibility_level")
+            if raw_visibility is not None and raw_visibility != normalized["visibility_level"]:
+                issues.append(
+                    f"visibility_level '{raw_visibility}' is invalid, reset to "
+                    f"'{normalized['visibility_level']}'"
+                )
+
+            raw_override = raw.get("cycle_length_override")
+            if raw_override is not None and normalized["cycle_length_override"] is None:
+                issues.append(f"cycle_length_override '{raw_override}' out of range, discarded")
+
+        pregnancy_data = normalized["pregnancy_data"]
+        if pregnancy_data.get("is_pregnant") and not pregnancy_data.get("start_date"):
+            issues.append("pregnancy_data: is_pregnant is true but start_date is missing")
+
+        menarche_data = normalized["menarche_data"]
+        if menarche_data.get("is_menarche") and not menarche_data.get("menarche_date"):
+            issues.append("menarche_data: is_menarche is true but menarche_date is missing")
+
+        menopause_data = normalized["menopause_data"]
+        if menopause_data.get("is_menopause") and not menopause_data.get("start_date"):
+            issues.append("menopause_data: is_menopause is true but start_date is missing")
+
+        if pregnancy_data.get("is_pregnant") and menopause_data.get("is_menopause"):
+            issues.append("pregnancy_data and menopause_data are both active at the same time")
+
+        if bool(normalized.get("ics_token")) != bool(normalized.get("ics_token_created_at")):
+            issues.append("ics_token and ics_token_created_at disagree on whether a token exists")
+
+        bag_items = normalized.get("hospital_bag_items")
+        if bag_items:
+            uids = [item["uid"] for item in bag_items]
+            if len(uids) != len(set(uids)):
+                issues.append("hospital_bag_items: duplicate uid values")
+
+        profiles[runtime.profile] = {
+            "entry_id": entry_id,
+            "friendly_name": runtime.friendly_name,
+            "issues": issues,
+        }
+        total_issues += len(issues)
+
+    return {
+        "checked_at": dt_util.utcnow().isoformat(),
+        "profile_count": len(profiles),
+        "total_issues": total_issues,
+        "profiles": profiles,
+    }
 
 
 async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:

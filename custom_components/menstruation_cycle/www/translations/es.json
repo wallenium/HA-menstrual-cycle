@@ -948,5 +948,12 @@
   "opt_high": "Alto",
   "opt_poor": "Mala",
   "opt_average": "Regular",
-  "opt_good": "Buena"
+  "opt_good": "Buena",
+  "cat_medication": "Medicamentos",
+  "opt_iron": "Hierro",
+  "opt_folic_acid": "Ácido fólico",
+  "opt_vitamin_d": "Vitamina D",
+  "opt_magnesium": "Magnesio",
+  "opt_pain_relief": "Analgésico",
+  "opt_hormone_therapy": "Terapia hormonal"
 }
