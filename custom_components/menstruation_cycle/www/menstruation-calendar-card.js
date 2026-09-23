@@ -1416,6 +1416,9 @@ class MenstruationCalendarCard extends HTMLElement {
           .cycle-day { font-size: .62rem; }
           .btn { min-height: 36px; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .sym-opt-btn, .sym-opt-label { transition: none !important; }
+        }
       </style>
       <ha-card>
         <div class="wrap" id="root" style="position:relative">

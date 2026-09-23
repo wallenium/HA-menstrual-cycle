@@ -2601,6 +2601,11 @@ class MenstruationGaugeCard extends HTMLElement {
           .center-primary { font-size: .92rem; }
           .center-secondary { font-size: .72rem; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .tl-month-col, .tl-overlay-nav, .sym-opt-btn, .sym-opt-label, .pm-symptom-btn {
+            transition: none !important;
+          }
+        }
       </style>
       <div class="root-wrap">
         <ha-card>

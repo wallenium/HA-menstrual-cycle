@@ -218,7 +218,13 @@ class YoungGirlsSupportCard extends HTMLElement {
         return fn.call(this);
       } catch (err) {
         console.error(`[menstruation-support-card] Section "${label}" failed to render:`, err);
-        return `<p class="ygs-section-desc" style="color:var(--error-color,#b91c1c);">⚠ ${label} — render error, see console.</p>`;
+        // HA-10 (23.09.2026): vorher eine eigene, hier hartcodierte
+        // Fehler-Zeile - jetzt ueber den gemeinsamen Baustein, damit ein
+        // fehlgeschlagener Abschnitt optisch genauso aussieht wie ein
+        // Fehlerzustand in jeder anderen umgestellten Karte.
+        return window.MenstruationFunctions
+          ? window.MenstruationFunctions.renderErrorState(`${label} — render error, see console.`)
+          : `<p class="ygs-section-desc" style="color:var(--error-color,#b91c1c);">⚠ ${label} — render error, see console.</p>`;
       }
     };
 
@@ -655,6 +661,7 @@ class YoungGirlsSupportCard extends HTMLElement {
 
   _renderStyles() {
     return `<style>
+      ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ''}
       :host {
         display: block;
         --ygs-accent: var(--primary-color, #e91e63);

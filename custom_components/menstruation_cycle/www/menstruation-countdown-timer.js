@@ -130,7 +130,18 @@ class MenstruationCountdownTimer extends HTMLElement {
       // Sprache der/des Betrachtenden - jetzt über _t() lokalisiert wie der
       // Rest der Karte (fällt ohne geladene Übersetzung sauber auf
       // Englisch zurück, siehe 'load_error' oben in _t()).
-      this.innerHTML = `<ha-card><div style="padding: 16px; color: red;">⚠️ ${this._t('load_error')}</div></ha-card>`;
+      // HA-10 (Loading/Error/Empty-Baustein in weiteren Karten uebernehmen,
+      // 23.09.2026): vorher fest verdrahtete rote Fehlerbox, jetzt ueber
+      // den gemeinsamen Baustein aus menstruation-functions.js, analog zu
+      // den in frueheren Runden umgestellten Karten. this.innerHTML statt
+      // shadowRoot, da dieser Init-Fehlerpfad vor _ensureRoot() greifen kann.
+      const errorMarkup = window.MenstruationFunctions
+        ? window.MenstruationFunctions.renderErrorState(this._t('load_error'))
+        : `<div style="padding: 16px; color: red;">⚠️ ${this._t('load_error')}</div>`;
+      const errorStyles = window.MenstruationFunctions
+        ? `<style>${window.MenstruationFunctions.mcStateStyles()}</style>`
+        : '';
+      this.innerHTML = `<ha-card>${errorStyles}${errorMarkup}</ha-card>`;
     }
   }
 
@@ -239,7 +250,22 @@ class MenstruationCountdownTimer extends HTMLElement {
 
       const stateObj = this._hass.states[this.config.entity];
       if (!stateObj) {
+        // HA-10 (23.09.2026): vorher ein reines console.warn ohne jede
+        // sichtbare Reaktion - die Karte blieb bei fehlender Entity leer/
+        // veraltet stehen, ohne Hinweis fuer Nutzer:innen (derselbe
+        // stille-Luecke-Bug wie zuvor in menstruation-cycle-card-compact.js,
+        // 24. Runde). Jetzt ein sichtbarer Fehlerzustand ueber den
+        // gemeinsamen Baustein.
         console.warn("Entity not found:", this.config.entity);
+        const cardContent = this.querySelector("#cardContent");
+        const cardMeta = this.querySelector("#cardMeta");
+        const message = `${this._t('entity_not_found')}: ${this.config.entity}`;
+        if (cardContent) {
+          cardContent.innerHTML = window.MenstruationFunctions
+            ? window.MenstruationFunctions.renderErrorState(message)
+            : `<div style="padding: 16px;">${message}</div>`;
+        }
+        if (cardMeta) cardMeta.innerHTML = '';
         return;
       }
 
@@ -1938,6 +1964,7 @@ class MenstruationCountdownTimer extends HTMLElement {
 
   getStyles() {
     return `
+      ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ''}
       :host {
         display: block;
         --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));

@@ -991,6 +991,9 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
           height: 14px;
           flex-shrink: 0;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .scroll-cue { transition: none !important; }
+        }
       </style>
       <ha-card>
         <div class="title">${this._config.title}</div>
