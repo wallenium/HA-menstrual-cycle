@@ -1729,7 +1729,7 @@ class MenstruationGaugeCard extends HTMLElement {
 
   _weekdayLabels(locale) {
     const monday = new Date(Date.UTC(2026, 0, 5)); // Monday
-    const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+    const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }); // Bugfix 23.09.2026 (GitHub #255): reference dates are built via Date.UTC(), but without an explicit timeZone here, Intl formats them in the browser's LOCAL zone - for any negative UTC offset (most of the Americas), that rolls the formatted weekday back by one day, so the header row (and, for week_start=sunday, the whole week) appears shifted.
     return Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(monday);
       d.setUTCDate(monday.getUTCDate() + i);

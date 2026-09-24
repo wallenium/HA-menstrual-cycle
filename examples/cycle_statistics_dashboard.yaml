@@ -1,0 +1,16 @@
+# Voraussetzung: die "Externe Statistik" fuer dieses Profil muss bereits
+# mindestens einmal synchronisiert worden sein (automatisch nach jedem
+# abgeschlossenen Zyklus, siehe M-Cycle_HA-Component-Roadmap.md).
+# Kein eigenes Entity noetig - die native "statistics-graph"-Karte von
+# Home Assistant kann externe statistic_ids direkt referenzieren (genau wie
+# die Energie-Übersicht das fuer Versorger-Statistiken ohne Entity tut).
+# "anna" durch den eigenen Profilnamen (kleingeschrieben) ersetzen.
+type: statistics-graph
+title: Cycle Statistics
+entities:
+  - menstruation_cycle:anna_cycle_length
+  - menstruation_cycle:anna_pain_days
+stat_types:
+  - mean
+period: month
+days_to_show: 365
