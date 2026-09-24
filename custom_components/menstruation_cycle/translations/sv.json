@@ -296,6 +296,10 @@
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Förutsägelserna har fortfarande låg tillförlitlighet",
       "description": "Profil: **{entry_title}**\n\nDen här profilen har {valid_cycles} av de {min_valid_cycles} senaste cyklerna som behövs för högprecisa förutsägelser - fertilt fönster och ägglossning är fortfarande grova uppskattningar. Det är inget fel, utan normalt i början: förutsägelserna blir automatiskt mer exakta ju fler cykler som loggas. Ingen åtgärd krävs; avfärda detta problem om du hellre slipper se det medan historiken byggs upp."
+    },
+    "hospital_bag_incomplete": {
+      "title": "Menstruation Cycle: Checklistan för sjukhusväskan har fortfarande öppna punkter",
+      "description": "Profil: **{entry_title}**\n\nBeräknat förlossningsdatum ({due_date}) är omkring {days_until_due} dag(ar) bort och checklistan för sjukhusväskan har fortfarande {remaining_items} punkt(er) kvar att bocka av. Ingen åtgärd sker automatiskt - öppna uppgiftslistan **Hospital bag checklist** för att granska eller bocka av punkter, eller avfärda detta problem om du redan är klar."
     }
   },
   "selector": {

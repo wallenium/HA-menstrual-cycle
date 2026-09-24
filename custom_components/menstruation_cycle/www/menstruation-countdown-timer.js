@@ -1023,6 +1023,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     this.shadowRoot?.querySelector('#pm-first-period-modal')?.remove();
   }
 
+  _focusFirstModalElement(overlay) {
+    overlay.querySelector('.pm-modal button, .pm-modal input')?.focus();
+  }
+
   _handleLogFirstPeriod() {
     this._removeFirstPeriodModal();
     this._pendingFirstPeriodSymptoms = null;
@@ -1031,10 +1035,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     overlay.id = 'pm-first-period-modal';
     overlay.className = 'pm-overlay';
     overlay.innerHTML = `
-      <div class="pm-modal" role="dialog" aria-modal="true">
+      <div class="pm-modal" role="dialog" aria-modal="true" aria-labelledby="pm-modal-title">
         <div class="pm-modal-header">
           <span class="pm-modal-emoji">🩸</span>
-          <h3>${this._t('log_first_period_symptoms')}</h3>
+          <h3 id="pm-modal-title">${this._t('log_first_period_symptoms')}</h3>
         </div>
         <div class="pm-modal-body">
           <p class="pm-modal-description">${this._t('first_period_description')}</p>
@@ -1060,6 +1064,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       </div>
     `;
     this.shadowRoot?.appendChild(overlay);
+    this._focusFirstModalElement(overlay);
   }
 
   _collectFirstPeriodSymptoms() {
@@ -1086,10 +1091,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     overlay.id = 'pm-first-period-modal';
     overlay.className = 'pm-overlay';
     overlay.innerHTML = `
-      <div class="pm-modal" role="dialog" aria-modal="true">
+      <div class="pm-modal" role="dialog" aria-modal="true" aria-labelledby="pm-modal-title">
         <div class="pm-modal-header">
           <span class="pm-modal-emoji">🌸</span>
-          <h3>${this._t('leave_pre_menarche_title')}</h3>
+          <h3 id="pm-modal-title">${this._t('leave_pre_menarche_title')}</h3>
         </div>
         <div class="pm-modal-body">
           <p class="pm-modal-description">${this._t('leave_pre_menarche_message')}</p>
@@ -1101,6 +1106,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       </div>
     `;
     this.shadowRoot?.appendChild(overlay);
+    this._focusFirstModalElement(overlay);
   }
 
   async _doLogFirstPeriod() {
@@ -1144,10 +1150,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     overlay.id = 'pm-first-period-modal';
     overlay.className = 'pm-overlay';
     overlay.innerHTML = `
-      <div class="pm-modal pm-modal-welcome" role="dialog" aria-modal="true">
+      <div class="pm-modal pm-modal-welcome" role="dialog" aria-modal="true" aria-labelledby="pm-modal-title">
         <div class="pm-modal-header">
           <span class="pm-modal-emoji">🎉</span>
-          <h3>${this._t('welcome_period_title')}</h3>
+          <h3 id="pm-modal-title">${this._t('welcome_period_title')}</h3>
         </div>
         <div class="pm-modal-body">
           <ul class="pm-info-list">
@@ -1163,6 +1169,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       </div>
     `;
     this.shadowRoot?.appendChild(overlay);
+    this._focusFirstModalElement(overlay);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1238,8 +1245,32 @@ class MenstruationCountdownTimer extends HTMLElement {
       }
     };
 
+    this._onRootKeydown = (event) => {
+      const modal = this.shadowRoot?.querySelector('#pm-first-period-modal .pm-modal');
+      if (!modal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this._removeFirstPeriodModal();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = modal.querySelectorAll('button, input');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = this.shadowRoot.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
     root.addEventListener("click", this._onRootClick);
     root.addEventListener("change", this._onRootChange);
+    root.addEventListener("keydown", this._onRootKeydown);
   }
 
   _detachTimerEventListeners() {
@@ -1255,6 +1286,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (this._onRootChange) {
       root.removeEventListener("change", this._onRootChange);
       this._onRootChange = null;
+    }
+    if (this._onRootKeydown) {
+      root.removeEventListener("keydown", this._onRootKeydown);
+      this._onRootKeydown = null;
     }
     this._timerHandlersAttached = false;
   }

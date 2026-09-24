@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 import voluptuous as vol
@@ -17,7 +17,11 @@ from homeassistant.helpers.issue_registry import (
     async_delete_issue,
 )
 
-from .const import ICS_TOKEN_STALE_DAYS, menstruation_object_ids_for_profile
+from .const import (
+    HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
+    ICS_TOKEN_STALE_DAYS,
+    menstruation_object_ids_for_profile,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -332,6 +336,96 @@ def async_check_low_prediction_confidence(
     valid_cycles = int(gating.get("valid_cycles") or 0)
     async_create_low_prediction_confidence_issue(
         hass, entry_id, entry_title, valid_cycles, int(min_valid_cycles)
+    )
+
+
+def async_create_hospital_bag_incomplete_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    due_date: str,
+    days_until_due: int,
+    remaining_items: int,
+) -> None:
+    """Create a repair issue flagging that the hospital-bag checklist
+    (todo.py, "Klinik-Tasche/Geburtsplan-Checkliste", 23.09.2026) still has
+    unchecked items as the due date approaches ("weitere Ideen", 24.09.2026).
+
+    Purely informational (not fixable), same reasoning as
+    async_create_low_prediction_confidence_issue above - there is no action
+    to *apply* here, only "go check items off the todo list yourself", so
+    this just surfaces that nudge in HA's own Repairs UI rather than relying
+    on the user to remember to open the list unprompted.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"hospital_bag_incomplete_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="hospital_bag_incomplete",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "due_date": due_date,
+            "days_until_due": str(days_until_due),
+            "remaining_items": str(remaining_items),
+        },
+    )
+
+
+def async_delete_hospital_bag_incomplete_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the hospital-bag-incomplete repair issue (once the list is
+    fully checked off, the pregnancy ends, or the profile/entry is being
+    removed)."""
+    async_delete_issue(hass, DOMAIN, f"hospital_bag_incomplete_{entry_id}")
+
+
+def async_check_hospital_bag_incomplete(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    is_pregnant: bool,
+    due_date: str | None,
+    hospital_bag_items: list[dict[str, Any]] | None,
+) -> None:
+    """Raise (or clear) the hospital-bag-incomplete issue based on the
+    pregnancy's due date and the checklist's current completion state.
+
+    Safe to call repeatedly - idempotent create/delete, same pattern as the
+    other checks in this module. Deliberately does nothing (clears the
+    issue) outside of an active pregnancy, before the reminder window (more
+    than HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE days out), without a known
+    due date yet, or once every item is checked off - only the narrow
+    "getting close and still not done" window raises it. Uses date.today()
+    (local time), matching model.py's own due-date/pregnancy-week
+    calculations, not a UTC "now" - the same distinction that mattered for
+    the timezone bug class fixed elsewhere in this integration.
+    """
+    if not is_pregnant or not due_date:
+        async_delete_hospital_bag_incomplete_issue(hass, entry_id)
+        return
+
+    try:
+        due = date.fromisoformat(due_date)
+    except ValueError:
+        async_delete_hospital_bag_incomplete_issue(hass, entry_id)
+        return
+
+    days_until_due = (due - date.today()).days
+    if days_until_due > HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE:
+        async_delete_hospital_bag_incomplete_issue(hass, entry_id)
+        return
+
+    remaining_items = sum(
+        1 for item in (hospital_bag_items or []) if item.get("status") != "completed"
+    )
+    if remaining_items == 0:
+        async_delete_hospital_bag_incomplete_issue(hass, entry_id)
+        return
+
+    async_create_hospital_bag_incomplete_issue(
+        hass, entry_id, entry_title, due_date, max(days_until_due, 0), remaining_items
     )
 
 

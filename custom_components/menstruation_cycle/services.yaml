@@ -461,7 +461,7 @@ add_symptom:
         date: {}
     symptom_data:
       required: true
-      description: Dictionary with symptom fields. Optional fields - bleeding_strength, spotting, intercourse, pain (list), basal_temp (number), hygiene (list), test, mood (free text, max 100 chars), note (free text, max 2000 chars), vulva_vagina (list), hot_flashes, urinary (list), breast (list), appointments (list), digestion (list)
+      description: Dictionary with symptom fields. Optional fields - bleeding_strength, spotting, intercourse, pain (list), basal_temp (number), hygiene (list), test, mood (free text, max 100 chars), note (free text, max 2000 chars), vulva_vagina (list), hot_flashes, urinary (list), breast (list), appointments (list), digestion (list), pregnancy_symptoms (list), menopause_symptoms (list), skin (list), medication (list), bleeding_type, cervical_mucus, clots, clot_size, cervix_position, cervix_texture, libido, training_intensity, contraception_method, energy_level, sleep_quality
       selector:
         object:
 

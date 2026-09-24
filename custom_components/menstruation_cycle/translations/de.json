@@ -296,6 +296,10 @@
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Vorhersagen sind noch nicht hochpräzise",
       "description": "Profil: **{entry_title}**\n\nFür dieses Profil liegen {valid_cycles} von {min_valid_cycles} benötigten Zyklen für hochpräzise Vorhersagen vor - fruchtbares Fenster und Eisprung sind noch grobe Schätzungen. Das ist kein Fehler, sondern normal am Anfang: Die Vorhersagen werden automatisch genauer, je mehr Zyklen erfasst werden. Hier ist keine Aktion nötig; verwerfe dieses Problem, falls du es während der Anfangsphase nicht sehen möchtest."
+    },
+    "hospital_bag_incomplete": {
+      "title": "Menstruation Cycle: Kliniktaschen-Checkliste hat noch offene Punkte",
+      "description": "Profil: **{entry_title}**\n\nDer Entbindungstermin ({due_date}) ist noch etwa {days_until_due} Tag(e) entfernt, und die Kliniktaschen-Checkliste hat noch {remaining_items} offene Punkt(e). Es wird automatisch nichts geändert - öffne die Aufgabenliste **Hospital bag checklist**, um Punkte zu prüfen oder abzuhaken, oder verwerfe dieses Problem, falls du bereits alles erledigt hast."
     }
   },
   "selector": {

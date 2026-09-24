@@ -296,6 +296,10 @@
     "low_prediction_confidence": {
       "title": "Menstruation Cycle : les prédictions manquent encore de précision",
       "description": "Profil : **{entry_title}**\n\nCe profil compte {valid_cycles} des {min_valid_cycles} cycles récents nécessaires pour des prédictions de haute précision - la fenêtre fertile et l'ovulation restent des estimations approximatives. Ce n'est pas une erreur, c'est normal au début : les prédictions deviennent automatiquement plus précises à mesure que des cycles sont enregistrés. Aucune action n'est requise ; ignorez cet avis si vous préférez ne pas le voir pendant que l'historique se constitue."
+    },
+    "hospital_bag_incomplete": {
+      "title": "Menstruation Cycle : la liste de la valise de maternité a encore des points en attente",
+      "description": "Profil : **{entry_title}**\n\nLa date d'accouchement prévue ({due_date}) est dans environ {days_until_due} jour(s) et la liste de la valise de maternité compte encore {remaining_items} élément(s) non coché(s). Aucune action n'est effectuée automatiquement - ouvrez la liste de tâches **Hospital bag checklist** pour vérifier ou cocher les éléments, ou ignorez cet avis si tout est déjà prêt."
     }
   },
   "selector": {

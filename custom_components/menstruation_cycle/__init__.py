@@ -1807,6 +1807,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight low-prediction-confidence check failed for %s", entry.entry_id)
+        try:
+            # "weitere Ideen" 24.09.2026: same daily-recheck reasoning as the
+            # checks above - the due date gets closer every day, so this
+            # needs to re-evaluate daily rather than only on integration
+            # load/restart, same as the ICS-token/prediction-confidence checks.
+            from .repairs import async_check_hospital_bag_incomplete
+
+            async_check_hospital_bag_incomplete(
+                hass,
+                entry.entry_id,
+                entry.title,
+                bool(runtime.pregnancy_data.get("is_pregnant")),
+                _midnight_model.due_date,
+                await runtime.storage.async_load_hospital_bag_items(),
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight hospital-bag-incomplete check failed for %s", entry.entry_id)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1870,6 +1887,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
     )
     async_check_low_prediction_confidence(hass, entry.entry_id, entry.title, _setup_model.prediction_gating)
+
+    # "weitere Ideen" 24.09.2026: same "cheap, safe to run on every load"
+    # reasoning as the checks above.
+    from .repairs import async_check_hospital_bag_incomplete
+
+    async_check_hospital_bag_incomplete(
+        hass,
+        entry.entry_id,
+        entry.title,
+        bool(runtime.pregnancy_data.get("is_pregnant")),
+        _setup_model.due_date,
+        await runtime.storage.async_load_hospital_bag_items(),
+    )
 
     return True
 

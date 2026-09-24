@@ -727,9 +727,9 @@ class MenstruationStatisticsCard extends HTMLElement {
     this._daysBack = parseInt(this._config.days_back, 10) || 180;
     if (!this._planningRangeStart || !this._planningRangeEnd) {
       const today = new Date();
-      const end = new Date(today.getTime() + (9 * 86400000));
-      this._planningRangeStart = today.toISOString().slice(0, 10);
-      this._planningRangeEnd = end.toISOString().slice(0, 10);
+      const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 9);
+      this._planningRangeStart = todayDateKey();
+      this._planningRangeEnd = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
     }
     this._ensureRoot();
     this._render();
@@ -988,8 +988,8 @@ class MenstruationStatisticsCard extends HTMLElement {
   _computeStats(attrs) {
     if (!attrs) return null;
     const today = new Date();
-    const cutoffMs = today.getTime() - this._daysBack * 86400000;
-    const cutoffIso = new Date(cutoffMs).toISOString().slice(0, 10);
+    const cutoffDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - this._daysBack);
+    const cutoffIso = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}-${String(cutoffDate.getDate()).padStart(2, '0')}`;
 
     const rawHistory = Array.isArray(attrs.history) ? attrs.history : [];
     const history = rawHistory.filter(d => d >= cutoffIso).sort();
@@ -1077,7 +1077,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     const painTrend = cycleStarts.map((startIso, idx) => {
       const endIso = cycleStarts[idx + 1]
         ? (() => { const d = new Date(cycleStarts[idx + 1]); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })()
-        : today.toISOString().slice(0, 10);
+        : todayDateKey();
       const painDays = recentSymptoms.filter(s => s.date >= startIso && s.date <= endIso && (s.pain && (Array.isArray(s.pain) ? s.pain.length > 0 : true))).length;
       return { cycleStart: startIso, painDays };
     });

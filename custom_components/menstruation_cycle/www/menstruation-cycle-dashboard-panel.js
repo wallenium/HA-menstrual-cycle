@@ -1253,14 +1253,23 @@
 
     _loadPrefs(profile, mode) {
       const preset = this._preset(mode);
-      const raw = safeJsonParse(localStorage.getItem(this._storageKey(profile)));
+      let raw = null;
+      try {
+        raw = safeJsonParse(localStorage.getItem(this._storageKey(profile)));
+      } catch (_error) {
+        // localStorage may be unavailable (e.g. Safari private mode)
+      }
       return this._normalizePrefs(raw, profile, mode);
     }
 
     _savePrefs() {
       if (!this._prefs) return;
       const { __profile, __mode, ...persisted } = this._prefs;
-      localStorage.setItem(this._storageKey(this._activeProfile), JSON.stringify(persisted));
+      try {
+        localStorage.setItem(this._storageKey(this._activeProfile), JSON.stringify(persisted));
+      } catch (_error) {
+        // localStorage may be unavailable (e.g. Safari private mode)
+      }
       this._prefsVersion++;
     }
 

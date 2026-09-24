@@ -418,6 +418,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
     const maxRows = Math.min(Number(this._config.max_rows) || 12, 5);
     const showFertile = this._config.show_fertile_window !== false;
 
+    const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const today = new Date();
     const rows = [];
     for (let i = maxRows - 1; i >= 0; i--) {
@@ -427,8 +428,8 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
       endDate.setDate(startDate.getDate() + 27);
       const isLast = i === 0;
       const status = isLast ? this._t('current') : this._t('actual');
-      const startStr = startDate.toISOString().slice(0, 10);
-      const endStr = isLast ? '—' : endDate.toISOString().slice(0, 10);
+      const startStr = isoLocal(startDate);
+      const endStr = isLast ? '—' : isoLocal(endDate);
       rows.push({ idx: maxRows - i, startStr, endStr, length: 28, status, isCurrent: isLast });
     }
 

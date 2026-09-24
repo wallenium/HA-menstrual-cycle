@@ -296,6 +296,10 @@
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Las predicciones aún tienen baja confianza",
       "description": "Perfil: **{entry_title}**\n\nEste perfil tiene {valid_cycles} de los {min_valid_cycles} ciclos recientes necesarios para predicciones de alta precisión - la ventana fértil y la ovulación siguen siendo estimaciones aproximadas. No es un error, es normal al empezar: las predicciones se vuelven automáticamente más precisas cuantos más ciclos se registren. No se requiere ninguna acción; descarta este aviso si prefieres no verlo mientras se acumula el historial."
+    },
+    "hospital_bag_incomplete": {
+      "title": "Menstruation Cycle: La lista de la maleta para el hospital aún tiene puntos pendientes",
+      "description": "Perfil: **{entry_title}**\n\nLa fecha probable de parto ({due_date}) está a unos {days_until_due} día(s) y la lista de la maleta para el hospital todavía tiene {remaining_items} punto(s) sin marcar. No se realiza ninguna acción automáticamente - abre la lista de tareas **Hospital bag checklist** para revisar o marcar los puntos, o descarta este aviso si ya lo tienes todo listo."
     }
   },
   "selector": {

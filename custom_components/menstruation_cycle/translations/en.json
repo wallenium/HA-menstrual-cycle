@@ -296,6 +296,10 @@
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Predictions are still low-confidence",
       "description": "Profile: **{entry_title}**\n\nThis profile has {valid_cycles} of the {min_valid_cycles} recent cycles needed for high-precision predictions - fertile window and ovulation dates are still rough estimates. This isn't an error, just a normal part of getting started: predictions automatically become more precise the more cycles you log. No action needed here; dismiss this issue if you'd rather not see it while you're still building up history."
+    },
+    "hospital_bag_incomplete": {
+      "title": "Menstruation Cycle: Hospital bag checklist still has open items",
+      "description": "Profile: **{entry_title}**\n\nThe due date ({due_date}) is about {days_until_due} day(s) away and the hospital bag checklist still has {remaining_items} item(s) left unchecked. No action is taken automatically - open the **Hospital bag checklist** todo list to review or check off items, or dismiss this issue if you're already on top of it."
     }
   },
   "selector": {

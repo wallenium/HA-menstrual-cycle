@@ -329,6 +329,13 @@ ICS_HORIZON_MONTHS_MAX = 24
 ICS_TOKEN_CREATED_AT_KEY = "ics_token_created_at"
 ICS_TOKEN_STALE_DAYS = 365
 
+# Days before the computed due date at which
+# repairs.py::async_check_hospital_bag_incomplete starts flagging a still-
+# incomplete hospital-bag checklist (todo.py) - roughly the "pack your bag"
+# guidance point (~week 36-37), not the due date itself, since packing early
+# is the whole point of the reminder.
+HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE = 21
+
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"
 STATE_PMS = "pms"
