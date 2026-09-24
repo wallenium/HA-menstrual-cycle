@@ -2093,7 +2093,7 @@ class MenstruationGaugeCard extends HTMLElement {
 
   async _doLogFirstPeriod() {
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = this._isoFromDate(new Date()); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale - fuer Zeitzonen oestlich von UTC (z.B. Deutschland) kurz nach lokaler Mitternacht, oder westlich von UTC (Amerika) am spaeten Abend, weicht das vom tatsaechlichen lokalen Tag ab.
       const model = this._buildModel();
       const entityId = model.entityId || this._config?.entity || '';
       const profile = model.stateObj?.attributes?.profile || '';

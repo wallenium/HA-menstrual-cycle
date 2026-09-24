@@ -34,6 +34,11 @@ const _mcHeatmapSafeJsonParse = (value, fallback = null) => {
 
 
 class MenstruationCycleHeatmapCard extends HTMLElement {
+  _todayIso() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
   constructor() {
     super();
     this._heatmapCueObserver = null;
@@ -448,7 +453,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     if (!cachedHistory && profile) this._fetchFullHistory(entityId, profile); // fire-and-forget
 
     if (!symptomHistory.length) {
-      const todayIso = this._normalizeISO(new Date().toISOString().slice(0, 10));
+      const todayIso = this._normalizeISO(this._todayIso());
       if (todayIso && attrs.symptom_data_today && typeof attrs.symptom_data_today === 'object') {
         symptomHistory.push({ date: todayIso, ...attrs.symptom_data_today });
       } else if (todayIso && attrs.symptom_data_this_cycle && typeof attrs.symptom_data_this_cycle === 'object') {
@@ -691,7 +696,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     const periodDays = Math.max(1, Math.min(14, Number(this._config.period_duration_days || sensorPeriodDays || 5)));
     const showFertile = this._config.show_fertile_period !== false;
     const symptomSources = [...this._resolveSymptomSources(), ...this._resolveBuiltinSymptomSources()];
-    const todayIso = this._normalizeISO(new Date().toISOString().slice(0, 10));
+    const todayIso = this._normalizeISO(this._todayIso());
     const alignMode = String(this._config.cycle_alignment || 'top').toLowerCase() === 'bottom' ? 'bottom' : 'top';
 
     if (!visibleCycles.length) {

@@ -220,6 +220,11 @@ function todayOrdinal() {
   return Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
 }
 
+function todayDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function formatNumber(value) {
   return Number(value || 0).toFixed(1).replace(/\.0$/, '');
 }
@@ -1127,7 +1132,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       const nextStart = cycleStartsForCorr[idx + 1];
       const endIso = nextStart
         ? (() => { const d = new Date(nextStart); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })()
-        : new Date().toISOString().slice(0, 10);
+        : todayDateKey();
       return { startIso, endIso };
     });
 
@@ -2171,7 +2176,7 @@ class MenstruationStatisticsCard extends HTMLElement {
   _nfpPregnancyLikelihood(nfp, todayIso) {
     if (!nfp || typeof nfp !== 'object') return 'unknown';
 
-    const todayStr = todayIso || new Date().toISOString().slice(0, 10);
+    const todayStr = todayIso || todayDateKey();
     const today = new Date(todayStr + 'T12:00:00Z');
     if (isNaN(today.getTime())) return 'unknown';
 
@@ -3065,6 +3070,7 @@ MenstruationStatisticsCard._hygieneHelpers = {
   normalizeDateKey,
   dateKeyToOrdinal,
   todayOrdinal,
+  todayDateKey,
   formatNumber,
   dateLocale,
   formatDate,

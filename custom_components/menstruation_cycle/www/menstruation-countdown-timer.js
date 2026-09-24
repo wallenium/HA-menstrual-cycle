@@ -705,7 +705,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         ).map(cb => cb.getAttribute('data-symptom-key')).filter(Boolean);
 
         try {
-          const today = new Date().toISOString().slice(0, 10);
+          const today = this._todayIso(); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale.
           const serviceData = {
             entity_id: this.config?.entity,
             profile: this.config?.profile,
@@ -842,7 +842,7 @@ class MenstruationCountdownTimer extends HTMLElement {
     const items = this._menopauseSymptomItems;
     if (!symptomsGrid || !items || !window.MenstruationFunctions) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = this._todayIso(); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale.
     const entityId = this.config?.entity;
     const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, today, '[menstruation-countdown-timer]');
     if (!data) return;
@@ -872,7 +872,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         if (!item) return;
 
         try {
-          const today = new Date().toISOString().slice(0, 10);
+          const today = this._todayIso(); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale.
           const entityId = this.config?.entity;
           const profile = this.config?.profile;
           const entryId = this.config?.entry_id;
@@ -953,7 +953,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         if (!label) return;
 
         try {
-          const today = new Date().toISOString().slice(0, 10);
+          const today = this._todayIso(); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale.
           const entityId = this.config?.entity;
           const profile = this.config?.profile;
           const entryId = this.config?.entry_id;
@@ -1003,6 +1003,11 @@ class MenstruationCountdownTimer extends HTMLElement {
     wellnessTips.innerHTML = tips.map(tip => `
       <div class="wellness-tip">${tip}</div>
     `).join('');
+  }
+
+  _todayIso() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   }
 
   calculateDaysSince(date) {
@@ -1100,7 +1105,7 @@ class MenstruationCountdownTimer extends HTMLElement {
 
   async _doLogFirstPeriod() {
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = this._todayIso(); // Bugfix 24.09.2026 (weitere Vorkommen der Ursache von GitHub #255): 'jetzt' via new Date().toISOString() liefert das UTC-Kalenderdatum, nicht das lokale.
       const entityId = this.config?.entity;
       const profile = this.config?.profile;
       const entryId = this.config?.entry_id;

@@ -160,11 +160,16 @@ class MenstruationCycleCard extends HTMLElement {
    * gerade sichtbare "Gespeichert."-Meldung nicht vorzeitig verschwinden
    * laesst.
    */
+  _todayIso() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
   _renderQuickLog() {
     const container = this.querySelector("#quickLog");
     if (!container) return;
 
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = this._todayIso();
     if (this._quickLogState.iso !== todayIso) {
       // Neuer Tag (oder erster Render dieser Karteninstanz) - lokalen
       // Zustand zuruecksetzen und den tatsaechlich gespeicherten Stand
