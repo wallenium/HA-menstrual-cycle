@@ -21,8 +21,10 @@ global.HTMLElement = class HTMLElement {};
 const defined = {};
 global.customElements = { define: (name, cls) => { defined[name] = cls; }, get: () => undefined };
 
+// Historical filename - the icon logic now lives in menstruation-functions.js
+// (see the note at the top of that file).
 const iconsSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-functions.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
@@ -48,6 +50,16 @@ function makeCard(config = {}) {
   card.closest = () => null;
   card.setConfig({ entity: 'sensor.menstruation', ...config });
   card._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0);
+  // The 60-day gauge view is always "today"-centric (±30 days from
+  // _todayDate(), independent of _viewDate - see menstruation-gauge-card.js)
+  // and this test's fixture dates are anchored to July 2026, so _todayDate()
+  // must be pinned to match - otherwise the predicted/fertile/ovulation
+  // fixture dates silently drift outside the 60-day window (and every
+  // marker assertion below sees zero matches) once real time moves far
+  // enough past July 2026. Discovered 25.09.2026 while fixing this test's
+  // menstruation-icons.js import path (previously ENOENT, so this test
+  // never actually ran until now).
+  card._todayDate = () => new Date(2026, 6, 1, 12, 0, 0, 0);
   return card;
 }
 

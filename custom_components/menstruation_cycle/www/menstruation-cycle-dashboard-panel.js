@@ -794,6 +794,7 @@
       this._boundHandleClick = (event) => this._handleClick(event);
       this._boundHandleChange = (event) => this._handleChange(event);
       this._boundHandleSubmit = (event) => this._handleSubmit(event);
+      this._boundHandleKeydown = (event) => this._handleKeydown(event);
       this._boundHandleChatEnter = () => this._handleChatSend();
       this._boundDragPointerDown = (event) => this._handleDragPointerDown(event);
       this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
@@ -812,6 +813,7 @@
       this.shadowRoot?.addEventListener('click', this._boundHandleClick);
       this.shadowRoot?.addEventListener('change', this._boundHandleChange);
       this.shadowRoot?.addEventListener('submit', this._boundHandleSubmit);
+      this.shadowRoot?.addEventListener('keydown', this._boundHandleKeydown);
       this.addEventListener('mc-chat-enter', this._boundHandleChatEnter);
 
       // Widget reordering drag-and-drop (edit mode). Uses Pointer Events rather than
@@ -3071,6 +3073,42 @@
       this.render();
     }
 
+    _closeQuickLog() {
+      this._quickLogOpen = false;
+      this._quickLogSelections = {};
+      this.render();
+    }
+
+    // Escape/Tab handling for the quick-log modal (role="dialog"). Mirrors the
+    // focus-trap pattern used for the first-period modals in
+    // menstruation-countdown-timer.js/menstruation-gauge-card.js: this._quickLogOpen
+    // gates it so the listener is a no-op while no modal is open, and
+    // shadowRoot.activeElement (not document.activeElement) is used since focus
+    // lives inside an open shadow root.
+    _handleKeydown(event) {
+      if (!this._quickLogOpen) return;
+      const modal = this.shadowRoot?.querySelector('.mc-modal-backdrop .mc-modal');
+      if (!modal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this._closeQuickLog();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = modal.querySelectorAll('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = this.shadowRoot.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
     _handleClick(event) {
       const rawTarget = event.target;
       if (!(rawTarget instanceof HTMLElement)) return;
@@ -3080,9 +3118,7 @@
       // title or padding — doesn't bubble-match a stale ancestor action. Only
       // clicking the backdrop itself (outside the modal box) closes it.
       if (rawTarget.classList.contains('mc-modal-backdrop')) {
-        this._quickLogOpen = false;
-        this._quickLogSelections = {};
-        this.render();
+        this._closeQuickLog();
         return;
       }
 
@@ -3106,13 +3142,14 @@
         this._quickLogSelections = {};
         this._quickLogOpen = true;
         this.render();
+        requestAnimationFrame(() => {
+          this.shadowRoot?.querySelector('.mc-modal-backdrop .mc-modal button, .mc-modal-backdrop .mc-modal input')?.focus();
+        });
         return;
       }
 
       if (action === 'quick-log-close') {
-        this._quickLogOpen = false;
-        this._quickLogSelections = {};
-        this.render();
+        this._closeQuickLog();
         return;
       }
 

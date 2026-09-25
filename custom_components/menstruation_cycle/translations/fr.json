@@ -129,7 +129,8 @@
     },
     "error": {
       "invalid_date": "Format de date invalide. Veuillez utiliser AAAA-MM-JJ.",
-      "invalid_menarche_age": "L'âge doit être un nombre compris entre 8 et 20."
+      "invalid_menarche_age": "L'âge doit être un nombre compris entre 8 et 20.",
+      "invalid_cycle_length_override": "La durée du cycle doit être un nombre compris entre 20 et 38, ou 0 pour utiliser le calcul automatique."
     }
   },
   "services": {

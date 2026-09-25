@@ -129,7 +129,8 @@
     },
     "error": {
       "invalid_date": "Ogiltigt datumformat. Använd ÅÅÅÅ-MM-DD.",
-      "invalid_menarche_age": "Åldern måste vara ett tal mellan 8 och 20."
+      "invalid_menarche_age": "Åldern måste vara ett tal mellan 8 och 20.",
+      "invalid_cycle_length_override": "Cykellängden måste vara ett tal mellan 20 och 38, eller 0 för automatisk beräkning."
     }
   },
   "services": {

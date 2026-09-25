@@ -129,7 +129,8 @@
     },
     "error": {
       "invalid_date": "Invalid date format. Please use YYYY-MM-DD.",
-      "invalid_menarche_age": "Age must be a number between 8 and 20."
+      "invalid_menarche_age": "Age must be a number between 8 and 20.",
+      "invalid_cycle_length_override": "Cycle length must be a number between 20 and 38, or 0 to use automatic calculation."
     }
   },
   "services": {

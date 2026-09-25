@@ -88,6 +88,7 @@ from .const import (
     DOMAIN,
     MAX_NUM_PREDICTIONS,
     SIGNAL_HISTORY_UPDATED,
+    SYMPTOM_MULTI_VALUE_KEYS,
 )
 from .badges import evaluate_badges, new_badges_this_week
 from .model import (
@@ -125,39 +126,9 @@ PRODUCT_USAGE_CYCLES_CONSIDERED = 3
 PRODUCT_USAGE_TIMELINE_DAYS = 30
 SYMPTOM_SENSOR_HISTORY_LIMIT = 60
 SYMPTOM_STATS_MAX_CYCLES = 6
-SYMPTOM_MULTI_VALUE_KEYS = (
-    "pain", "hygiene", "test",
-    # Added 03.09.2026 (M-Cycle-App-Nachtrag 4.54/4.56-4.58, plus a
-    # follow-up request for nausea/digestion tracking) - same reasoning as
-    # pain/hygiene: multiple simultaneous values per day are plausible for
-    # each of these. hot_flashes deliberately stays OUT of this list (single
-    # intensity level per day, handled in the single-value loop below
-    # alongside bleeding_strength/mood/etc.).
-    "vulva_vagina", "urinary", "breast", "appointments", "digestion",
-    # Added 16.09.2026 (M-Cycle iOS/macOS app icon parity round, wiring up
-    # pregnancy_symptoms in the calendar/gauge logging UI): same reasoning
-    # as the five fields above - multiple simultaneous pregnancy symptoms
-    # in one day (e.g. nausea AND fatigue AND headache) are the common
-    # case, not the exception, so this is treated as multi-value like its
-    # 03.09.2026 siblings rather than as a single pick like hot_flashes.
-    "pregnancy_symptoms",
-    # Added 17.09.2026 (Menopause-Modus "tote Checkboxen"-Fix, siehe const.py
-    # SYMPTOM_MENOPAUSE_EXTRA): mehrere gleichzeitige Menopause-Begleit-
-    # symptome an einem Tag (z.B. Nachtschweiß UND Reizbarkeit) sind der
-    # Normalfall, nicht die Ausnahme - gleiche Begründung wie oben.
-    "menopause_symptoms",
-    # Added 22.09.2026 (weitere Ideen, "Weitere Clue-Symptomkategorien" -
-    # siehe const.py SYMPTOM_SKIN): mehrere gleichzeitige Hautzustaende an
-    # einem Tag (z.B. fettig UND Unreinheiten) sind plausibel, gleiche
-    # Begruendung wie oben. energy_level/sleep_quality sind bewusst NICHT
-    # hier gelistet - je ein einzelner Wert pro Tag, wie hot_flashes.
-    "skin",
-    # Added 23.09.2026 (weitere Ideen, Symptomkategorie "Medikamente" -
-    # siehe const.py SYMPTOM_MEDICATION): mehrere gleichzeitig genommene
-    # Praeparate an einem Tag sind plausibel (z.B. Folsaeure UND Eisen),
-    # gleiche Begruendung wie skin/breast/etc. oben.
-    "medication",
-)
+# SYMPTOM_MULTI_VALUE_KEYS moved to const.py (25.09.2026) - it had drifted
+# into a second, stale copy in model.py that missed every category added
+# here since; now a single canonical constant imported by both.
 BLEEDING_STRENGTH_PRIORITY = {"none": 0, "keine": 0, "light": 1, "medium": 2, "heavy": 3, "very_heavy": 4}
 CYCLE_STATS_MAX_CYCLES = 12
 CYCLE_RECENT_LIMIT = 12

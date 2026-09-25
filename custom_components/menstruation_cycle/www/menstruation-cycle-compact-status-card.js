@@ -111,11 +111,17 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         symptoms: 'Symptoms',
         tt_no_data: 'No additional data',
         tt_status_icon: 'Status icon',
-        tampon_duration: 'Tampon',
-        pad_duration: 'Pad',
-        cup_duration: 'Menstrual Cup',
-        liner_duration: 'Liner',
-        underwear_duration: 'Period Underwear',
+        // Tooltip product labels (25.09.2026 fix): _buildTooltipContent()
+        // looks these up as `tt_${product}` - they were previously named
+        // tampon_duration/pad_duration/etc. (a leftover/mismatched copy from
+        // a duration-settings context elsewhere), which never matched the
+        // lookup key, so the tooltip literally rendered the raw key string
+        // (e.g. "tt_tampon") instead of a label.
+        tt_tampon: 'Tampon',
+        tt_pad: 'Pad',
+        tt_cup: 'Menstrual Cup',
+        tt_liner: 'Liner',
+        tt_underwear: 'Period Underwear',
         tt_bleeding: 'Bleeding',
         mood: 'Mood',
         pain: 'Pain',

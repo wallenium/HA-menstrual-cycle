@@ -1,5 +1,10 @@
 /**
- * Tests for menstruation-icons.js – pregnancy icon mapping.
+ * Tests for the ProductIcons namespace (pregnancy/state/product icon
+ * mapping), exported from menstruation-functions.js. This file used to
+ * live in a separate menstruation-icons.js module (see the "historical
+ * filename" note at the top of menstruation-functions.js) - that module
+ * was folded into menstruation-functions.js and this test's import path
+ * was never updated, so it had been failing with ENOENT (25.09.2026 fix).
  *
  * Run with:  node tests/product-icons.test.js
  */
@@ -15,7 +20,7 @@ global.window = {};
 global.document = undefined;
 
 const src = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-functions.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval
@@ -41,8 +46,12 @@ const STATE_ASSET_BASE = '/menstruation_cycle/assets/state';
 // ---------------------------------------------------------------------------
 
 function iconFilename(html) {
-  const m = html.match(/url\('([^']+)'\)/);
-  assert.ok(m, `Expected url(...) in: ${html}`);
+  // Pregnancy icons render as a plain <img src="..."> (the illustrations
+  // keep their own colors rather than being currentColor-masked like the
+  // period/state icons) - see buildImageAssetIcon() in
+  // menstruation-functions.js.
+  const m = html.match(/src="([^"]+)"/);
+  assert.ok(m, `Expected src="..." in: ${html}`);
   return m[1];
 }
 
@@ -156,8 +165,8 @@ function testGetPregnancyIcon() {
     'object { weeks_pregnant: 6 } → preg_02.svg',
   );
   assert.ok(
-    html.includes('background-color:currentColor'),
-    'pregnancy icon remains currentColor-masked',
+    html.includes('<img '),
+    'pregnancy icon renders as an <img> (illustration keeps its own colors, not currentColor-masked)',
   );
 
   console.log('  ✓ getPregnancyIcon');

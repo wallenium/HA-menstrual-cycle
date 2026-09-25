@@ -505,6 +505,23 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             elif birth_date_parsed and birth_date_parsed > date.today().isoformat():
                 errors[CONF_BIRTH_DATE] = "invalid_date"
 
+            # 0 is the explicit "clear override, use automatic calculation"
+            # sentinel (matches the field's default/empty state) - anything
+            # else outside [MIN, MAX] is a mistake (e.g. a typo like "15"),
+            # not a reset request, and must not be silently discarded. Same
+            # errors-dict pattern as CONF_FAMILY_MENARCHE_AGE below.
+            raw_cycle_override = user_input.get(CONF_CYCLE_LENGTH_OVERRIDE, 0)
+            try:
+                cycle_override_int = int(raw_cycle_override)
+            except (TypeError, ValueError):
+                errors[CONF_CYCLE_LENGTH_OVERRIDE] = "invalid_cycle_length_override"
+                cycle_override_int = 0
+            else:
+                if cycle_override_int != 0 and not (
+                    CYCLE_LENGTH_OVERRIDE_MIN <= cycle_override_int <= CYCLE_LENGTH_OVERRIDE_MAX
+                ):
+                    errors[CONF_CYCLE_LENGTH_OVERRIDE] = "invalid_cycle_length_override"
+
             if not errors:
                 self._data[CONF_FRIENDLY_NAME] = str(user_input.get(CONF_FRIENDLY_NAME, DEFAULT_NAME)).strip() or DEFAULT_NAME
                 self._data[CONF_ICON] = str(user_input.get(CONF_ICON, "")).strip()
@@ -513,16 +530,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     1, min(14, int(user_input.get(CONF_PERIOD_DURATION_DAYS, DEFAULT_PERIOD_DURATION_DAYS)))
                 )
 
-                raw_cycle_override = user_input.get(CONF_CYCLE_LENGTH_OVERRIDE, 0)
-                try:
-                    cycle_override_int = int(raw_cycle_override)
-                    self._data[CONF_CYCLE_LENGTH_OVERRIDE] = (
-                        cycle_override_int
-                        if CYCLE_LENGTH_OVERRIDE_MIN <= cycle_override_int <= CYCLE_LENGTH_OVERRIDE_MAX
-                        else None
-                    )
-                except (TypeError, ValueError):
-                    self._data[CONF_CYCLE_LENGTH_OVERRIDE] = None
+                self._data[CONF_CYCLE_LENGTH_OVERRIDE] = cycle_override_int or None
 
                 self._data[CONF_NUM_PREDICTIONS] = max(
                     1, min(MAX_NUM_PREDICTIONS, int(user_input.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)))

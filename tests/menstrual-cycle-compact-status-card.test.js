@@ -33,6 +33,25 @@ class FakeShadowRoot {
 
 global.window = { customCards: [] };
 global.document = undefined;
+
+// Pre-seed the runtime i18n cache from the real translation JSON files, the
+// same content a real browser session would have loaded via fetch by the
+// time _t() runs - without this every lookup falls back to the small
+// hardcoded English-only table inlined in this card's _t(), so e.g. the
+// German-locale test below would see English text.
+global.window.menstruationCycleI18n = {
+  cache: {
+    en: JSON.parse(fs.readFileSync(
+      path.join(__dirname, '../custom_components/menstruation_cycle/www/translations/en.json'), 'utf8',
+    )),
+    de: JSON.parse(fs.readFileSync(
+      path.join(__dirname, '../custom_components/menstruation_cycle/www/translations/de.json'), 'utf8',
+    )),
+  },
+  loading: {},
+  fallback: { en: {} },
+};
+
 global.HTMLElement = class HTMLElement {};
 const _definedElements = {};
 global.customElements = {
@@ -40,9 +59,11 @@ global.customElements = {
   define: (name, cls) => { _definedElements[name] = cls; },
 };
 
-// Load product-icons so ProductIcons is available on window
+// Load product-icons so ProductIcons is available on window. Historical
+// filename - the icon logic now lives in menstruation-functions.js (see the
+// note at the top of that file).
 const productIconsSrc = fs.readFileSync(
-  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-icons.js'),
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-functions.js'),
   'utf8',
 );
 // eslint-disable-next-line no-eval

@@ -129,7 +129,8 @@
     },
     "error": {
       "invalid_date": "Ungültiges Datumsformat. Bitte JJJJ-MM-TT verwenden.",
-      "invalid_menarche_age": "Das Alter muss eine Zahl zwischen 8 und 20 sein."
+      "invalid_menarche_age": "Das Alter muss eine Zahl zwischen 8 und 20 sein.",
+      "invalid_cycle_length_override": "Die Zykluslänge muss eine Zahl zwischen 20 und 38 sein, oder 0 für die automatische Berechnung."
     }
   },
   "services": {

@@ -22,6 +22,8 @@ from .const import (
     ONBOARDING_STAGES,
     STATE_FERTILE,
     SYMPTOM_CONTRACEPTION_METHOD,
+    SYMPTOM_MULTI_VALUE_KEYS,
+    SYMPTOM_SINGLE_VALUE_KEYS,
     STATE_MENARCHE,
     STATE_MENOPAUSE,
     STATE_POSTPARTUM,
@@ -424,8 +426,6 @@ PHASE_ORDER = (
     PHASE_LATE_LUTEAL,
 )
 
-SYMPTOM_MULTI_VALUE_KEYS = ("pain", "hygiene", "test")
-SYMPTOM_SINGLE_VALUE_KEYS = ("spotting", "discharge", "intercourse", "cervical_mucus", "bleeding_strength")
 _CONFIDENCE_WEIGHT = {"low": 1.0, "medium": 1.6, "high": 2.2}
 
 

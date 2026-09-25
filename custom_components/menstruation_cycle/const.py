@@ -458,6 +458,41 @@ SYMPTOM_NOTE = "note"
 SYMPTOM_MOOD_MAX_LENGTH = 100
 SYMPTOM_NOTE_MAX_LENGTH = 2000
 
+# Canonical symptom-category classification for "does this day have any
+# logged value in category X" purposes (compute_symptom_correlation_insights
+# in model.py, the symptom_variety badge in badges.py). Single source of
+# truth - previously model.py duplicated a stale, hand-copied version of
+# this list that fell out of sync with sensor.py's list as new categories
+# were added over time (see the 25.09.2026 fix). mood/note are deliberately
+# excluded - free text, not a fixed category. energy_level/sleep_quality/
+# hot_flashes/bleeding_strength are single-value (one graduation per day);
+# the rest are multi-value list fields (multiple simultaneous values per
+# day are plausible, e.g. dryness AND soreness the same day).
+SYMPTOM_MULTI_VALUE_KEYS = (
+    SYMPTOM_PAIN,
+    SYMPTOM_HYGIENE,
+    SYMPTOM_TEST,
+    SYMPTOM_VULVA_VAGINA,
+    SYMPTOM_URINARY,
+    SYMPTOM_BREAST,
+    SYMPTOM_APPOINTMENTS,
+    SYMPTOM_DIGESTION,
+    SYMPTOM_PREGNANCY,
+    SYMPTOM_MENOPAUSE_EXTRA,
+    SYMPTOM_SKIN,
+    SYMPTOM_MEDICATION,
+)
+SYMPTOM_SINGLE_VALUE_KEYS = (
+    SYMPTOM_SPOTTING,
+    SYMPTOM_DISCHARGE,
+    SYMPTOM_INTERCOURSE,
+    SYMPTOM_CERVICAL_MUCUS,
+    SYMPTOM_BLEEDING_STRENGTH,
+    SYMPTOM_HOT_FLASHES,
+    SYMPTOM_ENERGY_LEVEL,
+    SYMPTOM_SLEEP_QUALITY,
+)
+
 # Contraception methods and their properties. "none" means explicitly no
 # contraception logged (distinct from never having logged anything at all).
 CONTRACEPTION_METHOD_NONE = "none"

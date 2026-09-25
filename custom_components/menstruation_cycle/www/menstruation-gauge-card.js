@@ -116,6 +116,12 @@ class MenstruationGaugeCard extends HTMLElement {
     return _mcCycleCardI18n.normalizeLang(language);
   }
 
+  _escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
   _t(key) {
     const loaded = window.menstruationCycleI18n?.cache?.[this._lang()] || {};
     if (loaded[key] !== undefined) return loaded[key];
@@ -2643,8 +2649,8 @@ class MenstruationGaugeCard extends HTMLElement {
           <div class="wrap">
             ${(friendlyName || cardTitle) ? `
             <div class="head">
-              ${friendlyName ? `<div class="friendly">${friendlyName}</div>` : ''}
-              ${cardTitle ? `<div class="title-label">${cardTitle}</div>` : ''}
+              ${friendlyName ? `<div class="friendly">${this._escapeHtml(friendlyName)}</div>` : ''}
+              ${cardTitle ? `<div class="title-label">${this._escapeHtml(cardTitle)}</div>` : ''}
             </div>` : ''}
             <div class="gauge-wrap">
               ${this._renderGauge(model, palette)}

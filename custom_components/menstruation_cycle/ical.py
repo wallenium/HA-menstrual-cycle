@@ -91,6 +91,23 @@ def _deterministic_uid(entry_id: str, event_type: str, start_date: str) -> str:
     return f"{digest}@menstruation_cycle.ha"
 
 
+def _escape_ics_text(value: str) -> str:
+    """Escape a value for an RFC 5545 TEXT property (SUMMARY/DESCRIPTION/...).
+
+    Per RFC 5545 §3.3.11, backslash, comma, semicolon and newline are
+    reserved and must be backslash-escaped. Order matters: backslash first,
+    so escaping the other characters doesn't double-escape their own
+    backslashes.
+    """
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
 def _vevent_lines(
     uid: str,
     dtstamp: str,
@@ -107,10 +124,10 @@ def _vevent_lines(
         f"LAST-MODIFIED:{dtstamp}",
         f"DTSTART;VALUE=DATE:{_format_date(start)}",
         f"DTEND;VALUE=DATE:{_format_date(end_exclusive)}",
-        f"SUMMARY:{summary}",
+        f"SUMMARY:{_escape_ics_text(summary)}",
     ]
     if description:
-        lines.append(f"DESCRIPTION:{description}")
+        lines.append(f"DESCRIPTION:{_escape_ics_text(description)}")
     lines.append("END:VEVENT")
     return lines
 
