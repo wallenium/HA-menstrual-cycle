@@ -33,3 +33,45 @@ jobs:
         continue-on-error: true
         run: |
           pylint custom_components/menstruation_cycle --disable=all --enable=E,F
+
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Lovelace card test suite
+        run: |
+          # HA-Idee 1 ("weitere Ideen?", 25.09.2026): tests/*.test.js used to
+          # be a manual-only pre-push check - hacstest.yml never ran it, so a
+          # test file could silently stop working (e.g. importing a module
+          # that no longer existed) for months without anyone noticing, as
+          # happened with four test files fixed in M-Cycle_HA-Component-
+          # Roadmap.md's Runde 34. Four OTHER test files still fail for
+          # pre-existing, unrelated reasons (see HA-15 in that roadmap) -
+          # excluded here explicitly rather than leaving the whole job red,
+          # so a real regression in the other 15 files doesn't get lost in
+          # permanent CI noise. Fix one of these and remove it from the list
+          # below - never add a newly-broken file to this list instead of
+          # fixing it.
+          exclude="dashboard-config-options.test.js menstruation-calendar-card.test.js menstruation-cycle-dashboard-panel.test.js period-countdown-timer-animation.test.js"
+          status=0
+          for f in tests/*.test.js; do
+            name="$(basename "$f")"
+            skip=0
+            for x in $exclude; do
+              [ "$name" = "$x" ] && skip=1
+            done
+            if [ "$skip" = "1" ]; then
+              echo "SKIP (pre-existing failure, see M-Cycle_HA-Component-Roadmap.md HA-15): $name"
+              continue
+            fi
+            echo "=== $name ==="
+            node "$f" || status=1
+          done
+          exit $status

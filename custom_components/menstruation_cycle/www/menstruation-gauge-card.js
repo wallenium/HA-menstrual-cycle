@@ -1165,11 +1165,17 @@ class MenstruationGaugeCard extends HTMLElement {
       const triW = 7;
       const triangleMarker = `<polygon points="${cx},${Math.round(triTipY)} ${cx - triW},${Math.round(triBaseY)} ${cx + triW},${Math.round(triBaseY)}" fill="${palette.hand}" opacity="0.9"></polygon>`;
 
-      // Month label (static, shows today's context)
+      // Month label (static, shows today's context).
+      // HA-14 (M-Cycle_HA-Component-Roadmap.md, decided 25.09.2026): used to
+      // prefer model.todayIso (the sensor-provided value) over the UI's own
+      // current date - a stale/delayed sensor update could then show the
+      // wrong month even though the UI itself knew better. Now the UI date
+      // is tried first, model.todayIso is only a fallback for when
+      // _todayDate() isn't available.
       const modelToday = this._parseISO(model.todayIso);
       const uiToday = this._todayDate?.();
-      const todayForLabel = modelToday
-        || (uiToday instanceof Date && !Number.isNaN(uiToday.getTime()) ? uiToday : new Date());
+      const validUiToday = uiToday instanceof Date && !Number.isNaN(uiToday.getTime()) ? uiToday : null;
+      const todayForLabel = validUiToday || modelToday || new Date();
       const monthLabel60 = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(todayForLabel);
 
       return `

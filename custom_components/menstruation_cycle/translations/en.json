@@ -8,7 +8,11 @@
           "profile": "Username/Profile",
           "friendly_name": "Friendly name",
           "icon": "Icon (optional, e.g. mdi:calendar-heart)",
-          "onboarding_stage": "Onboarding stage"
+          "onboarding_stage": "Onboarding stage",
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar"
+        },
+        "data_description": {
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar. Can be changed later in the options."
         }
       },
       "reconfigure": {
@@ -301,6 +305,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: Hospital bag checklist still has open items",
       "description": "Profile: **{entry_title}**\n\nThe due date ({due_date}) is about {days_until_due} day(s) away and the hospital bag checklist still has {remaining_items} item(s) left unchecked. No action is taken automatically - open the **Hospital bag checklist** todo list to review or check off items, or dismiss this issue if you're already on top of it."
+    },
+    "storage_integrity": {
+      "title": "Menstruation Cycle: Storage integrity findings",
+      "description": "Profile: **{entry_title}**\n\nThe repair_storage diagnostic found {issue_count} finding(s) for this profile, e.g.: {first_issue}. This ranges from harmless (a value normalization already corrected) to worth a closer look - call the **repair_storage** service for the full list per profile. No action is taken automatically; dismiss this issue once you've reviewed it or it no longer applies."
     }
   },
   "selector": {

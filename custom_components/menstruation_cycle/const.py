@@ -265,6 +265,11 @@ SERVICE_REMOVE_SYMPTOM = "remove_symptom"
 SERVICE_GET_SYMPTOM = "get_symptom"
 SERVICE_GET_FULL_HISTORY = "get_full_history"
 SERVICE_GET_CYCLE_PREDICTIONS = "get_cycle_predictions"
+# HA-Idee 6 ("weitere Ideen?", 25.09.2026): read-only, like
+# get_cycle_predictions/repair_storage above - compares the current,
+# still-ongoing cycle against the recent average rather than requiring
+# an external client to pull the full history and recompute that itself.
+SERVICE_COMPARE_CURRENT_CYCLE = "compare_current_cycle"
 SERVICE_SET_PREGNANCY_MODE = "set_pregnancy_mode"
 SERVICE_UPDATE_PREGNANCY_DATE = "update_pregnancy_date"
 SERVICE_SET_MENARCHE_MODE = "set_menarche_mode"

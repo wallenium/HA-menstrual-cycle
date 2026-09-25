@@ -143,9 +143,18 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_ICON: icon,
                     CONF_ONBOARDING_STAGE: onboarding_stage,
                 }
+                # HA-Idee 8 ("weitere Ideen?", 25.09.2026): the sidebar
+                # Cycle Dashboard (CONF_DASHBOARD_ENABLED) previously lived
+                # only in the options flow, opened via "Configure" after
+                # setup - a brand-new user had no way to discover it exists
+                # unless they went looking afterward. Offered here too now,
+                # stored straight into the new entry's options (the options
+                # flow's own field, further down in this file, still shows
+                # and can change the same value later).
                 return self.async_create_entry(
                     title=friendly_name,
                     data=data,
+                    options={CONF_DASHBOARD_ENABLED: bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))},
                 )
 
         schema = vol.Schema(
@@ -160,6 +169,9 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Formularfeld aendert sich.
                 vol.Optional(CONF_ICON, default=""): selector.IconSelector(),
                 vol.Optional(CONF_ONBOARDING_STAGE, default=DEFAULT_ONBOARDING_STAGE): vol.In(ONBOARDING_STAGES),
+                # HA-Idee 8 ("weitere Ideen?", 25.09.2026): see comment above
+                # - same field/default as the options flow's dashboard_enabled.
+                vol.Optional(CONF_DASHBOARD_ENABLED, default=DEFAULT_DASHBOARD_ENABLED): bool,
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)

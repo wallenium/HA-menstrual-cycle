@@ -8,7 +8,11 @@
           "profile": "Användarnamn/Profil",
           "friendly_name": "Visningsnamn",
           "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)",
-          "onboarding_stage": "Introduktionsfas"
+          "onboarding_stage": "Introduktionsfas",
+          "dashboard_enabled": "Visa cykelöversikt i sidopanelen"
+        },
+        "data_description": {
+          "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel. Kan ändras senare i alternativen."
         }
       },
       "reconfigure": {
@@ -301,6 +305,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: Checklistan för sjukhusväskan har fortfarande öppna punkter",
       "description": "Profil: **{entry_title}**\n\nBeräknat förlossningsdatum ({due_date}) är omkring {days_until_due} dag(ar) bort och checklistan för sjukhusväskan har fortfarande {remaining_items} punkt(er) kvar att bocka av. Ingen åtgärd sker automatiskt - öppna uppgiftslistan **Hospital bag checklist** för att granska eller bocka av punkter, eller avfärda detta problem om du redan är klar."
+    },
+    "storage_integrity": {
+      "title": "Menstruation Cycle: Resultat för lagringsintegritet",
+      "description": "Profil: **{entry_title}**\n\nDiagnosen repair_storage hittade {issue_count} resultat för denna profil, t.ex.: {first_issue}. Det spänner från ofarligt (ett värde som redan korrigerats av normaliseringen) till värt en närmare titt - anropa tjänsten **repair_storage** för den fullständiga listan per profil. Ingen åtgärd sker automatiskt; avfärda detta problem när du har granskat det eller det inte längre gäller."
     }
   },
   "selector": {

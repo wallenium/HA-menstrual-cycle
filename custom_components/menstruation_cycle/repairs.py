@@ -429,6 +429,66 @@ def async_check_hospital_bag_incomplete(
     )
 
 
+def async_create_storage_integrity_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    issue_count: int,
+    first_issue: str,
+) -> None:
+    """Create a repair issue flagging that repair_storage found stored-data
+    inconsistencies for this profile ("weitere Ideen?", 25.09.2026).
+
+    Purely informational (not fixable), same reasoning as the low-
+    prediction-confidence and hospital-bag issues above - there is no
+    automatic action to *apply* here (the underlying findings range from
+    "harmless, already self-corrected by normalization" to "call
+    export_full_backup and look closer yourself"), so this only surfaces
+    the nudge in HA's own Repairs UI instead of relying on someone to run
+    the repair_storage service unprompted.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"storage_integrity_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="storage_integrity",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "issue_count": str(issue_count),
+            "first_issue": first_issue,
+        },
+    )
+
+
+def async_delete_storage_integrity_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the storage-integrity repair issue (once repair_storage no
+    longer finds anything for this profile, or the entry is being
+    removed)."""
+    async_delete_issue(hass, DOMAIN, f"storage_integrity_{entry_id}")
+
+
+def async_check_storage_integrity(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    issues: list[str],
+) -> None:
+    """Raise (or clear) the storage-integrity issue based on findings
+    already computed by __init__.py::_async_diagnose_profile_storage - the
+    same detection logic the repair_storage service exposes on demand, now
+    also driving this issue so a finding doesn't require someone to think
+    to call that service. Safe to call repeatedly - idempotent create/
+    delete, same pattern as the other checks in this module.
+    """
+    if not issues:
+        async_delete_storage_integrity_issue(hass, entry_id)
+        return
+    async_create_storage_integrity_issue(hass, entry_id, entry_title, len(issues), issues[0])
+
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,

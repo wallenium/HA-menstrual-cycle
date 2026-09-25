@@ -442,18 +442,21 @@ function getSymptomConfig(state, isPregnant = false) {
   if (pregnant) {
     // pregnancy_symptoms (16.09.2026) is deliberately NOT part of the `all`
     // list above - it is scoped to pregnancy tracking only (see const.py's
-    // SYMPTOM_PREGNANCY comment), so it is appended here rather than being
-    // filtered out of the non-pregnant paths one by one.
+    // SYMPTOM_PREGNANCY comment), so it is placed first here rather than
+    // being filtered out of the non-pregnant paths one by one.
+    // HA-13 (M-Cycle_HA-Component-Roadmap.md, decided 25.09.2026): used to
+    // be .concat()-ed onto the END of the list instead - moved to the
+    // front since it's the category a pregnant user most wants to log.
     const pregnancySymptoms = { key: 'pregnancy_symptoms', icon: 'mdi:human-pregnant', multi: true, options: ['nausea', 'fatigue', 'heartburn', 'swelling', 'headache', 'back_pain'] };
-    return all
+    const rest = all
       .filter((cat) => (cat.key !== 'bleeding_strength' && cat.key !== 'clots' && cat.key !== 'clot_size' && cat.key !== 'bleeding_type' && cat.key !== 'contraception_method'))
       .map((cat) => {
         if (cat.key === 'hygiene') {
           return { ...cat, options: cat.options.filter((opt) => opt !== 'tampon' && opt !== 'cup') };
         }
         return cat;
-      })
-      .concat([pregnancySymptoms]);
+      });
+    return [pregnancySymptoms, ...rest];
   }
   return all;
 }

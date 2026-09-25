@@ -8,7 +8,11 @@
           "profile": "Benutzername/Profil",
           "friendly_name": "Anzeigename",
           "icon": "Icon (optional, z. B. mdi:calendar-heart)",
-          "onboarding_stage": "Einstiegsphase"
+          "onboarding_stage": "Einstiegsphase",
+          "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen"
+        },
+        "data_description": {
+          "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu. Kann später in den Optionen geändert werden."
         }
       },
       "reconfigure": {
@@ -301,6 +305,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: Kliniktaschen-Checkliste hat noch offene Punkte",
       "description": "Profil: **{entry_title}**\n\nDer Entbindungstermin ({due_date}) ist noch etwa {days_until_due} Tag(e) entfernt, und die Kliniktaschen-Checkliste hat noch {remaining_items} offene Punkt(e). Es wird automatisch nichts geändert - öffne die Aufgabenliste **Hospital bag checklist**, um Punkte zu prüfen oder abzuhaken, oder verwerfe dieses Problem, falls du bereits alles erledigt hast."
+    },
+    "storage_integrity": {
+      "title": "Menstruation Cycle: Speicher-Integritätsbefunde",
+      "description": "Profil: **{entry_title}**\n\nDie repair_storage-Diagnose hat {issue_count} Befund(e) für dieses Profil gefunden, z. B.: {first_issue}. Das reicht von harmlos (ein Wert wurde bereits durch die Normalisierung korrigiert) bis sehenswert - rufe den Service **repair_storage** für die vollständige Liste pro Profil auf. Es wird automatisch nichts geändert; verwirf dieses Problem, sobald du es geprüft hast oder es nicht mehr zutrifft."
     }
   },
   "selector": {

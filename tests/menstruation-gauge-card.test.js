@@ -471,15 +471,12 @@ function testPregnancyModeSymptomModalFields() {
   assert.ok(!keys.includes('bleeding_strength'), 'bleeding_strength must be hidden in pregnancy mode');
 
   // Verify pregnancy_symptoms category is present.
-  // NOTE (25.09.2026): getSymptomConfig() in menstruation-functions.js
-  // appends pregnancy_symptoms via .concat([pregnancySymptoms]) rather than
-  // placing it first - so it's currently the LAST category, not the first,
-  // in pregnancy mode. Whether it should instead lead (the category a
-  // pregnant user most wants to log) is an open UX question, logged as a
-  // new roadmap item rather than changed unilaterally here. This test now
-  // documents the actual, current order.
+  // HA-13 (M-Cycle_HA-Component-Roadmap.md, decided 25.09.2026):
+  // getSymptomConfig() used to .concat([pregnancySymptoms]) onto the end of
+  // the list; now placed first, since it's the category a pregnant user
+  // most wants to log.
   assert.ok(keys.includes('pregnancy_symptoms'), 'pregnancy_symptoms category must be present in pregnancy mode');
-  assert.strictEqual(keys[keys.length - 1], 'pregnancy_symptoms', 'pregnancy_symptoms is currently appended last in pregnancy mode');
+  assert.strictEqual(keys[0], 'pregnancy_symptoms', 'pregnancy_symptoms now leads the category list in pregnancy mode');
   const pregnancySymptoms = pregConfig.find((c) => c.key === 'pregnancy_symptoms');
   assert.deepStrictEqual(
     pregnancySymptoms.options,
@@ -733,9 +730,10 @@ function testDischargeSymptomConfigAndOrdering() {
   const pregnantConfig = proto._symptomConfig.call(card, 'pregnant', true);
   const pregnantKeys = pregnantConfig.map((c) => c.key);
   assert.ok(pregnantKeys.includes('discharge'), 'discharge must be present in pregnancy mode');
-  // See the NOTE in testPregnancyModeSymptomModalFields above - pregnancy_symptoms
-  // is currently appended last (.concat), not placed first.
-  assert.strictEqual(pregnantKeys[pregnantKeys.length - 1], 'pregnancy_symptoms', 'pregnancy symptoms are currently appended last');
+  // HA-13 (M-Cycle_HA-Component-Roadmap.md, decided 25.09.2026): see
+  // testPregnancyModeSymptomModalFields above - pregnancy_symptoms now
+  // leads the category list instead of being appended last.
+  assert.strictEqual(pregnantKeys[0], 'pregnancy_symptoms', 'pregnancy symptoms now lead the category list');
   assert.deepStrictEqual(
     pregnantConfig.find((c) => c.key === 'pregnancy_symptoms')?.options,
     ['nausea', 'fatigue', 'heartburn', 'swelling', 'headache', 'back_pain'],
@@ -1579,21 +1577,26 @@ function testGaugeHeaderMonthUsesUiToday() {
   card._hass = makeHass({ state: 'neutral', days_until: 5 });
   card._todayDate = () => new Date(2026, 7, 9, 12, 0, 0, 0);
 
-  // model.todayIso present and valid -> header uses it, not _todayDate().
+  // HA-14 (M-Cycle_HA-Component-Roadmap.md, decided 25.09.2026): UI current
+  // date now takes priority over model.todayIso, so it wins even when
+  // model.todayIso is also present.
   const modelWithTodayIso = card._buildModel();
   modelWithTodayIso.todayIso = '2026-02-03';
   const htmlWithTodayIso = card._renderGauge(modelWithTodayIso, card._palette(modelWithTodayIso.state));
-  const sensorMonth = new Intl.DateTimeFormat('de', { month: 'long', year: 'numeric' }).format(new Date(2026, 1, 3, 12, 0, 0, 0));
-  assert.ok(htmlWithTodayIso.includes(sensorMonth), '60-day header month should use model.todayIso when present');
-
-  // model.todayIso absent -> header falls back to _todayDate() (the UI's current date).
-  const modelWithoutTodayIso = card._buildModel();
-  modelWithoutTodayIso.todayIso = '';
-  const htmlWithoutTodayIso = card._renderGauge(modelWithoutTodayIso, card._palette(modelWithoutTodayIso.state));
   const uiMonth = new Intl.DateTimeFormat('de', { month: 'long', year: 'numeric' }).format(card._todayDate());
-  assert.ok(htmlWithoutTodayIso.includes(uiMonth), '60-day header month should fall back to the UI current date when todayIso is missing');
+  assert.ok(htmlWithTodayIso.includes(uiMonth), '60-day header month should use the UI current date even when model.todayIso is present');
 
-  console.log('  ✓ 60-day gauge header month: prefers model.todayIso, falls back to UI current date');
+  // _todayDate() unavailable -> header falls back to model.todayIso.
+  const modelWithoutUiToday = card._buildModel();
+  modelWithoutUiToday.todayIso = '2026-02-03';
+  const originalTodayDate = card._todayDate;
+  card._todayDate = () => undefined;
+  const htmlWithoutUiToday = card._renderGauge(modelWithoutUiToday, card._palette(modelWithoutUiToday.state));
+  const sensorMonth = new Intl.DateTimeFormat('de', { month: 'long', year: 'numeric' }).format(new Date(2026, 1, 3, 12, 0, 0, 0));
+  assert.ok(htmlWithoutUiToday.includes(sensorMonth), '60-day header month should fall back to model.todayIso when the UI current date is unavailable');
+  card._todayDate = originalTodayDate;
+
+  console.log('  ✓ 60-day gauge header month: prefers the UI current date, falls back to model.todayIso');
 }
 
 function testRenderKeyIgnoresTimelineMonthScrollState() {

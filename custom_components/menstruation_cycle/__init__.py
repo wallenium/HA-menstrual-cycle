@@ -103,6 +103,7 @@ from .const import (
     SERVICE_GET_SYMPTOM,
     SERVICE_GET_FULL_HISTORY,
     SERVICE_GET_CYCLE_PREDICTIONS,
+    SERVICE_COMPARE_CURRENT_CYCLE,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
     SERVICE_REIMPORT_BASAL_TEMP_STATS,
@@ -972,6 +973,31 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
     await _async_sync_cycle_statistics(hass, runtime)
 
 
+def _count_pain_days(symptom_history: list[dict] | None, range_start: date, range_end_exclusive: date) -> int:
+    """Count days with a logged pain entry in [range_start, range_end_exclusive).
+
+    Extracted from _async_sync_cycle_statistics's per-cycle loop (25.09.2026,
+    HA-Idee 6 "weitere Ideen?") so it can also drive _async_handle_compare_
+    current_cycle below - one "what counts as a pain day" definition instead
+    of two copies that could quietly drift apart.
+    """
+    count = 0
+    for entry in symptom_history or []:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            entry_date = date.fromisoformat(str(entry.get("date")))
+        except (TypeError, ValueError):
+            continue
+        if not (range_start <= entry_date < range_end_exclusive):
+            continue
+        pain_value = entry.get("pain")
+        has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
+        if has_pain:
+            count += 1
+    return count
+
+
 async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: MenstruationRuntime) -> None:
     """Feed average cycle length and pain-days-per-cycle into Home Assistant's
     native long-term statistics (HA-5, M-Cycle_HA-Component-Roadmap.md).
@@ -1022,20 +1048,7 @@ async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: Menstruatio
             StatisticData(start=point_start, mean=float(length), min=float(length), max=float(length))
         )
 
-        pain_days = 0
-        for entry in runtime.symptom_history or []:
-            if not isinstance(entry, dict):
-                continue
-            try:
-                entry_date = date.fromisoformat(str(entry.get("date")))
-            except (TypeError, ValueError):
-                continue
-            if not (start_d <= entry_date < next_d):
-                continue
-            pain_value = entry.get("pain")
-            has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
-            if has_pain:
-                pain_days += 1
+        pain_days = _count_pain_days(runtime.symptom_history, start_d, next_d)
         pain_points.append(
             StatisticData(start=point_start, mean=float(pain_days), min=float(pain_days), max=float(pain_days))
         )
@@ -1450,6 +1463,18 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _cycle_predictions_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(DOMAIN, SERVICE_GET_CYCLE_PREDICTIONS, async_get_cycle_predictions, **_cycle_predictions_register_kwargs)
 
+    async def async_compare_current_cycle(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_compare_current_cycle(hass, call)
+
+    _compare_current_cycle_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({**common_profile_field}),
+    }
+    if SupportsResponse is not None:
+        _compare_current_cycle_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_COMPARE_CURRENT_CYCLE, async_compare_current_cycle, **_compare_current_cycle_register_kwargs
+    )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_PREGNANCY_MODE,
@@ -1824,6 +1849,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight hospital-bag-incomplete check failed for %s", entry.entry_id)
+        try:
+            # "weitere Ideen?" 25.09.2026: re-diagnosed daily, same reasoning
+            # as the checks above - new history/symptom data can introduce or
+            # resolve a finding on any day, not just on integration
+            # load/restart.
+            from .repairs import async_check_storage_integrity
+
+            _storage_issues = await _async_diagnose_profile_storage(runtime)
+            async_check_storage_integrity(hass, entry.entry_id, entry.title, _storage_issues)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight storage-integrity check failed for %s", entry.entry_id)
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1900,6 +1936,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _setup_model.due_date,
         await runtime.storage.async_load_hospital_bag_items(),
     )
+
+    # "weitere Ideen?" 25.09.2026: same "cheap, safe to run on every load"
+    # reasoning as the checks above - reuses the exact detection logic the
+    # repair_storage service already exposes on demand (see
+    # _async_diagnose_profile_storage), so this can never diverge from what
+    # that service would report.
+    from .repairs import async_check_storage_integrity
+
+    _setup_storage_issues = await _async_diagnose_profile_storage(runtime)
+    async_check_storage_integrity(hass, entry.entry_id, entry.title, _setup_storage_issues)
 
     return True
 
@@ -2333,22 +2379,108 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
     _LOGGER.info("Exported menstruation history for profile '%s' to %s", runtime.profile, target_path)
 
 
+async def _async_diagnose_profile_storage(runtime: MenstruationRuntime) -> list[str]:
+    """Compare a single profile's raw vs. normalized storage and flag
+    semantic inconsistencies.
+
+    Extracted from _async_handle_repair_storage (23.09.2026, "weitere Ideen
+    die nicht auf der Roadmap stehen?") on 25.09.2026 (HA-Idee 4, "weitere
+    Ideen?") so the exact same detection logic can also drive a repair issue
+    (async_check_storage_integrity below), not just the on-demand
+    repair_storage service - one shared source of truth instead of two
+    copies that could drift apart.
+
+    Two categories of findings:
+    1. Normalization diffs: async_load_raw() (unchanged as stored) compared
+       against async_load() (normalized/defaulted). A difference means
+       normalization either discarded/reset an invalid value or defaulted a
+       missing field - exactly the kind of silent change that caused the
+       visibility_level bug (15.09.2026) to actually lose data, only
+       reported here rather than acted on.
+    2. Semantic inconsistencies: e.g. is_pregnant=True without a start_date,
+       or pregnancy and menopause both active at once.
+    """
+    issues: list[str] = []
+    raw = await runtime.storage.async_load_raw()
+    normalized = await runtime.storage.async_load()
+
+    if raw:
+        raw_history = raw.get("history")
+        if isinstance(raw_history, list):
+            dropped = len(raw_history) - len(normalized["history"])
+            if dropped > 0:
+                issues.append(
+                    f"{dropped} history entr(y/ies) dropped as unparsable/duplicate dates"
+                )
+
+        raw_symptoms = raw.get("symptom_history")
+        if isinstance(raw_symptoms, list) and len(raw_symptoms) != len(normalized["symptom_history"]):
+            issues.append(
+                f"symptom_history: {len(raw_symptoms)} stored vs "
+                f"{len(normalized['symptom_history'])} valid after normalization"
+            )
+
+        raw_usage = raw.get("product_usage")
+        if isinstance(raw_usage, list) and len(raw_usage) != len(normalized["product_usage"]):
+            issues.append(
+                f"product_usage: {len(raw_usage)} stored vs "
+                f"{len(normalized['product_usage'])} valid after normalization"
+            )
+
+        raw_stage = raw.get("onboarding_stage")
+        if raw_stage is not None and raw_stage != normalized["onboarding_stage"]:
+            issues.append(
+                f"onboarding_stage '{raw_stage}' is invalid, reset to "
+                f"'{normalized['onboarding_stage']}'"
+            )
+
+        raw_visibility = raw.get("visibility_level")
+        if raw_visibility is not None and raw_visibility != normalized["visibility_level"]:
+            issues.append(
+                f"visibility_level '{raw_visibility}' is invalid, reset to "
+                f"'{normalized['visibility_level']}'"
+            )
+
+        raw_override = raw.get("cycle_length_override")
+        if raw_override is not None and normalized["cycle_length_override"] is None:
+            issues.append(f"cycle_length_override '{raw_override}' out of range, discarded")
+
+    pregnancy_data = normalized["pregnancy_data"]
+    if pregnancy_data.get("is_pregnant") and not pregnancy_data.get("start_date"):
+        issues.append("pregnancy_data: is_pregnant is true but start_date is missing")
+
+    menarche_data = normalized["menarche_data"]
+    if menarche_data.get("is_menarche") and not menarche_data.get("menarche_date"):
+        issues.append("menarche_data: is_menarche is true but menarche_date is missing")
+
+    menopause_data = normalized["menopause_data"]
+    if menopause_data.get("is_menopause") and not menopause_data.get("start_date"):
+        issues.append("menopause_data: is_menopause is true but start_date is missing")
+
+    if pregnancy_data.get("is_pregnant") and menopause_data.get("is_menopause"):
+        issues.append("pregnancy_data and menopause_data are both active at the same time")
+
+    if bool(normalized.get("ics_token")) != bool(normalized.get("ics_token_created_at")):
+        issues.append("ics_token and ics_token_created_at disagree on whether a token exists")
+
+    bag_items = normalized.get("hospital_bag_items")
+    if bag_items:
+        uids = [item["uid"] for item in bag_items]
+        if len(uids) != len(set(uids)):
+            issues.append("hospital_bag_items: duplicate uid values")
+
+    return issues
+
+
 async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Diagnose stored-data inconsistencies across every loaded profile.
 
     Neue Idee (23.09.2026, "weitere Ideen die nicht auf der Roadmap
     stehen?"). Reines Lese-/Report-Werkzeug - veraendert nichts an
-    hass.data oder im Storage.
-
-    Zwei Kategorien von Befunden:
-    1. Normalisierungs-Diffs: async_load_raw() (unveraendert wie gespeichert)
-       wird gegen async_load() (normalisiert/defaulted) verglichen. Weicht
-       etwas ab, hat die Normalisierung entweder ungueltige Werte verworfen/
-       zurueckgesetzt oder ein fehlendes Feld defaultet - genau die Art von
-       stiller Aenderung, die beim visibility_level-Bug (15.09.2026) real zu
-       Datenverlust gefuehrt hat, hier aber nur berichtet statt zu greifen.
-    2. Semantische Inkonsistenzen: z. B. is_pregnant=True ohne start_date,
-       oder gleichzeitig aktive Schwangerschaft und Menopause.
+    hass.data oder im Storage. Per-profile detection now lives in
+    _async_diagnose_profile_storage above (25.09.2026), shared with the
+    storage-integrity repair issue (see repairs.py::async_check_storage_
+    integrity) so both surfaces always agree.
     """
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
@@ -2358,75 +2490,7 @@ async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -
     total_issues = 0
 
     for entry_id, runtime in domain_data.items():
-        issues: list[str] = []
-        raw = await runtime.storage.async_load_raw()
-        normalized = await runtime.storage.async_load()
-
-        if raw:
-            raw_history = raw.get("history")
-            if isinstance(raw_history, list):
-                dropped = len(raw_history) - len(normalized["history"])
-                if dropped > 0:
-                    issues.append(
-                        f"{dropped} history entr(y/ies) dropped as unparsable/duplicate dates"
-                    )
-
-            raw_symptoms = raw.get("symptom_history")
-            if isinstance(raw_symptoms, list) and len(raw_symptoms) != len(normalized["symptom_history"]):
-                issues.append(
-                    f"symptom_history: {len(raw_symptoms)} stored vs "
-                    f"{len(normalized['symptom_history'])} valid after normalization"
-                )
-
-            raw_usage = raw.get("product_usage")
-            if isinstance(raw_usage, list) and len(raw_usage) != len(normalized["product_usage"]):
-                issues.append(
-                    f"product_usage: {len(raw_usage)} stored vs "
-                    f"{len(normalized['product_usage'])} valid after normalization"
-                )
-
-            raw_stage = raw.get("onboarding_stage")
-            if raw_stage is not None and raw_stage != normalized["onboarding_stage"]:
-                issues.append(
-                    f"onboarding_stage '{raw_stage}' is invalid, reset to "
-                    f"'{normalized['onboarding_stage']}'"
-                )
-
-            raw_visibility = raw.get("visibility_level")
-            if raw_visibility is not None and raw_visibility != normalized["visibility_level"]:
-                issues.append(
-                    f"visibility_level '{raw_visibility}' is invalid, reset to "
-                    f"'{normalized['visibility_level']}'"
-                )
-
-            raw_override = raw.get("cycle_length_override")
-            if raw_override is not None and normalized["cycle_length_override"] is None:
-                issues.append(f"cycle_length_override '{raw_override}' out of range, discarded")
-
-        pregnancy_data = normalized["pregnancy_data"]
-        if pregnancy_data.get("is_pregnant") and not pregnancy_data.get("start_date"):
-            issues.append("pregnancy_data: is_pregnant is true but start_date is missing")
-
-        menarche_data = normalized["menarche_data"]
-        if menarche_data.get("is_menarche") and not menarche_data.get("menarche_date"):
-            issues.append("menarche_data: is_menarche is true but menarche_date is missing")
-
-        menopause_data = normalized["menopause_data"]
-        if menopause_data.get("is_menopause") and not menopause_data.get("start_date"):
-            issues.append("menopause_data: is_menopause is true but start_date is missing")
-
-        if pregnancy_data.get("is_pregnant") and menopause_data.get("is_menopause"):
-            issues.append("pregnancy_data and menopause_data are both active at the same time")
-
-        if bool(normalized.get("ics_token")) != bool(normalized.get("ics_token_created_at")):
-            issues.append("ics_token and ics_token_created_at disagree on whether a token exists")
-
-        bag_items = normalized.get("hospital_bag_items")
-        if bag_items:
-            uids = [item["uid"] for item in bag_items]
-            if len(uids) != len(set(uids)):
-                issues.append("hospital_bag_items: duplicate uid values")
-
+        issues = await _async_diagnose_profile_storage(runtime)
         profiles[runtime.profile] = {
             "entry_id": entry_id,
             "friendly_name": runtime.friendly_name,
@@ -3131,6 +3195,73 @@ async def _async_handle_get_cycle_predictions(hass: HomeAssistant, call: Service
         days_back=days_back,
     )
     return {"cycles": cycles, "days_back": days_back, "future_cycles": future_cycles}
+
+
+async def _async_handle_compare_current_cycle(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Compare the current, still-ongoing cycle against the recent average
+    (HA-Idee 6, "weitere Ideen?" 25.09.2026).
+
+    Reuses build_cycle_model()'s avg_cycle_length (last up to 7 completed
+    cycles, DEFAULT_CYCLE_LENGTH fallback) rather than recomputing an
+    average independently - the same value the sensor and predictions
+    already show, so this can never quietly diverge from what's displayed
+    elsewhere. The "recent completed cycles" window used for the pain-days
+    comparison mirrors model.py::_recent_cycle_lengths's own windowing/
+    plausibility filter (10 < diff < 80 days) so both numbers describe the
+    same set of cycles. Read-only, changes nothing.
+    """
+    runtime = _runtime_for_call(hass, call)
+    starts = grouped_cycle_starts(runtime.history)
+    if not starts:
+        raise HomeAssistantError("No cycle history recorded for this profile yet.")
+
+    today = dt_util.now().date()
+    current_start = date.fromisoformat(starts[-1])
+    elapsed_days = (today - current_start).days
+
+    model = build_cycle_model(
+        history=runtime.history,
+        period_duration_days=runtime.period_duration_days,
+        symptom_history=runtime.symptom_history,
+        pregnancy_data=runtime.pregnancy_data,
+        menarche_data=runtime.menarche_data,
+        pre_menarche_data=runtime.pre_menarche_data,
+        menopause_data=runtime.menopause_data,
+        noncycle_data=runtime.noncycle_data,
+        today=today,
+        cycle_length_override=runtime.cycle_length_override,
+        nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+        onboarding_stage=getattr(runtime, "onboarding_stage", None),
+    )
+    avg_cycle_length = model.avg_cycle_length
+
+    recent_starts = starts[-max(2, 7):]
+    recent_pairs: list[tuple[str, str]] = []
+    for idx in range(1, len(recent_starts)):
+        try:
+            diff = (date.fromisoformat(recent_starts[idx]) - date.fromisoformat(recent_starts[idx - 1])).days
+        except ValueError:
+            continue
+        if 10 < diff < 80:
+            recent_pairs.append((recent_starts[idx - 1], recent_starts[idx]))
+
+    pain_counts: list[int] = []
+    for start_iso, end_iso in recent_pairs:
+        pain_counts.append(
+            _count_pain_days(runtime.symptom_history, date.fromisoformat(start_iso), date.fromisoformat(end_iso))
+        )
+    avg_pain_days = round(sum(pain_counts) / len(pain_counts), 1) if pain_counts else None
+    current_pain_days = _count_pain_days(runtime.symptom_history, current_start, today + timedelta(days=1))
+
+    return {
+        "cycle_start": starts[-1],
+        "current_cycle_day": elapsed_days + 1,
+        "average_cycle_length": avg_cycle_length,
+        "days_relative_to_average": (elapsed_days - avg_cycle_length) if avg_cycle_length else None,
+        "current_pain_days": current_pain_days,
+        "average_pain_days_per_cycle": avg_pain_days,
+        "cycles_compared": len(recent_pairs),
+    }
 
 
 async def _async_handle_set_pregnancy_mode(hass: HomeAssistant, call: ServiceCall) -> None:

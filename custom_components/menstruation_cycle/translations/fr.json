@@ -8,7 +8,11 @@
           "profile": "Nom d'utilisateur/Profil",
           "friendly_name": "Nom convivial",
           "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
-          "onboarding_stage": "Étape d'intégration"
+          "onboarding_stage": "Étape d'intégration",
+          "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale"
+        },
+        "data_description": {
+          "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant. Modifiable plus tard dans les options."
         }
       },
       "reconfigure": {
@@ -301,6 +305,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle : la liste de la valise de maternité a encore des points en attente",
       "description": "Profil : **{entry_title}**\n\nLa date d'accouchement prévue ({due_date}) est dans environ {days_until_due} jour(s) et la liste de la valise de maternité compte encore {remaining_items} élément(s) non coché(s). Aucune action n'est effectuée automatiquement - ouvrez la liste de tâches **Hospital bag checklist** pour vérifier ou cocher les éléments, ou ignorez cet avis si tout est déjà prêt."
+    },
+    "storage_integrity": {
+      "title": "Menstruation Cycle : résultats d'intégrité du stockage",
+      "description": "Profil : **{entry_title}**\n\nLe diagnostic repair_storage a trouvé {issue_count} résultat(s) pour ce profil, par exemple : {first_issue}. Cela va d'un point anodin (une valeur déjà corrigée par la normalisation) à un point méritant un examen - appelez le service **repair_storage** pour la liste complète par profil. Aucune action n'est effectuée automatiquement ; ignorez cet avis une fois qu'il a été examiné ou qu'il ne s'applique plus."
     }
   },
   "selector": {
