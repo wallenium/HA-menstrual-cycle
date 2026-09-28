@@ -9,10 +9,12 @@
           "friendly_name": "Visningsnamn",
           "icon": "Ikon (valfritt, t.ex. mdi:calendar-heart)",
           "onboarding_stage": "Introduktionsfas",
-          "dashboard_enabled": "Visa cykelöversikt i sidopanelen"
+          "dashboard_enabled": "Visa cykelöversikt i sidopanelen",
+          "copy_settings_from": "Kopiera inställningar från"
         },
         "data_description": {
-          "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel. Kan ändras senare i alternativen."
+          "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel. Kan ändras senare i alternativen.",
+          "copy_settings_from": "Återanvänder en annan profils delade inställningar (avisering/förvarningstid, NFP-läge, temperaturenhet, synlighetsnivå, kalender) som utgångspunkt. Lämna tomt för att börja från grunden. Kopierar inget personspecifikt som den länkade personen eller den manuella cykellängden."
         }
       },
       "reconfigure": {

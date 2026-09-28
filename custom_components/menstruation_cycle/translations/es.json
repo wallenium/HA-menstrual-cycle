@@ -9,10 +9,12 @@
           "friendly_name": "Nombre para mostrar",
           "icon": "Icono (opcional, p. ej. mdi:calendar-heart)",
           "onboarding_stage": "Etapa de incorporación",
-          "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral"
+          "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral",
+          "copy_settings_from": "Copiar ajustes de"
         },
         "data_description": {
-          "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant. Se puede cambiar más adelante en las opciones."
+          "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant. Se puede cambiar más adelante en las opciones.",
+          "copy_settings_from": "Reutiliza las preferencias compartidas de otro perfil (destino/tiempos de aviso, modo NFP, unidad de temperatura, nivel de visibilidad, calendario) como punto de partida. Deja vacío para empezar desde cero. No copia nada específico de la persona, como la persona vinculada o el ajuste manual de duración del ciclo."
         }
       },
       "reconfigure": {

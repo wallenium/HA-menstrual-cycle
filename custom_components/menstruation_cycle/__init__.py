@@ -192,7 +192,7 @@ from .model import (
 from .statistics import compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -3703,6 +3703,22 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             matched_runtime.cycle_length_override,
         )
 
+        # HA-Idee 2 ("weitere Ideen fuer Features?" 28.09.2026): reuses the
+        # existing period-reminder lead-days setting for the ICS feed's own
+        # VALARM, rather than adding a second, separate config option - the
+        # same number of days already means "how long before the period
+        # should I be reminded" for the HA-native notify_service path.
+        matched_entry = hass.config_entries.async_get_entry(matched_entry_id)
+        period_alarm_days_before = (
+            int(
+                matched_entry.options.get(
+                    CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS
+                )
+            )
+            if matched_entry is not None
+            else DEFAULT_NOTIFY_PERIOD_LEAD_DAYS
+        )
+
         ics_bytes = await hass.async_add_executor_job(
             generate_ics,
             matched_entry_id,
@@ -3711,6 +3727,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             cycle_model.avg_cycle_length,
             horizon_months,
             hass.config.language,
+            period_alarm_days_before,
         )
 
         return Response(

@@ -82,6 +82,7 @@ from .const import (
     STATE_PMS,
     STATE_PRIVATE,
     VISIBILITY_LEVEL_FULL,
+    EVENT_STATE_CHANGED,
     VISIBILITY_LEVEL_PRIVATE,
     VISIBILITY_LEVEL_STATUS_ONLY,
     CONF_BIRTH_DATE,
@@ -1142,6 +1143,11 @@ class MenstruationGaugeSensor(SensorEntity):
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_menstruation"]
         self._state: str = "neutral"
         self._attrs: dict[str, StateType] = {}
+        # HA-Idee 1 ("weitere Ideen fuer Features?" 28.09.2026): guards
+        # against firing a spurious "transition" on the very first
+        # async_update() after (re)start, when self._state still holds
+        # its constructor sentinel rather than a real previous value.
+        self._state_initialized = False
         self._icon: str | None = runtime.icon or None
 
     @property
@@ -1318,6 +1324,7 @@ class MenstruationGaugeSensor(SensorEntity):
         )
         progress_badges_new_this_week = new_badges_this_week(progress_badges, today=today)
 
+        old_state = self._state
         self._state = model.state
         has_history = bool(model.history)
         resolved_menarche_date = self._resolve_estimated_menarche_date(
@@ -1444,6 +1451,34 @@ class MenstruationGaugeSensor(SensorEntity):
             # schon verraten, was eigentlich verborgen bleiben soll - siehe
             # STATE_PRIVATE-Kommentar in const.py.
             self._state = STATE_PRIVATE
+
+        # HA-Idee 1 ("weitere Ideen fuer Features?" 28.09.2026): fires a
+        # bus event on every real state transition, so automations can
+        # react to e.g. "period just started" without polling/templating
+        # around a state-change trigger themselves. Skipped entirely for
+        # visibility_level: private - a raw bus event bypasses the
+        # sensor's own attribute-level visibility filtering completely,
+        # so it needs its own, coarser check here (status_only is fine:
+        # the plain state itself, unlike detailed attributes, is already
+        # shown at that level too). Also skipped on the very first
+        # async_update() after (re)start - that's initialization, not a
+        # transition.
+        if (
+            self._state_initialized
+            and model.state != old_state
+            and visibility_level != VISIBILITY_LEVEL_PRIVATE
+        ):
+            self.hass.bus.async_fire(
+                EVENT_STATE_CHANGED,
+                {
+                    "entry_id": self._entry.entry_id,
+                    "profile": runtime.profile,
+                    "friendly_name": runtime.friendly_name,
+                    "old_state": old_state,
+                    "new_state": model.state,
+                },
+            )
+        self._state_initialized = True
 
     def _resolve_estimated_menarche_date(
         self,

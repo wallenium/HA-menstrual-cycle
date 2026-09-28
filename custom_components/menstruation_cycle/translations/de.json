@@ -9,10 +9,12 @@
           "friendly_name": "Anzeigename",
           "icon": "Icon (optional, z. B. mdi:calendar-heart)",
           "onboarding_stage": "Einstiegsphase",
-          "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen"
+          "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen",
+          "copy_settings_from": "Einstellungen kopieren von"
         },
         "data_description": {
-          "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu. Kann später in den Optionen geändert werden."
+          "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu. Kann später in den Optionen geändert werden.",
+          "copy_settings_from": "Übernimmt die gemeinsam nutzbaren Einstellungen eines bestehenden Profils (Benachrichtigungsziel/-Vorlaufzeiten, NFP-Modus, Temperatureinheit, Sichtbarkeitsstufe, Kalender-Schalter) als Ausgangspunkt. Leer lassen für ein Profil von Grund auf. Kopiert nichts Personenbezogenes wie die verknüpfte Person oder den Zyklänge-Override."
         }
       },
       "reconfigure": {

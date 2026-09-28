@@ -9,10 +9,12 @@
           "friendly_name": "Nom convivial",
           "icon": "Icône (facultatif, p. ex. mdi:calendar-heart)",
           "onboarding_stage": "Étape d'intégration",
-          "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale"
+          "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
+          "copy_settings_from": "Copier les paramètres depuis"
         },
         "data_description": {
-          "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant. Modifiable plus tard dans les options."
+          "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant. Modifiable plus tard dans les options.",
+          "copy_settings_from": "Réutilise les préférences partagées d'un autre profil (cible/délais de notification, mode NFP, unité de température, niveau de visibilité, calendrier) comme point de départ. Laisser vide pour repartir de zéro. Ne copie rien de spécifique à la personne, comme la personne liée ou la durée de cycle personnalisée."
         }
       },
       "reconfigure": {

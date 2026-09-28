@@ -9,10 +9,12 @@
           "friendly_name": "Friendly name",
           "icon": "Icon (optional, e.g. mdi:calendar-heart)",
           "onboarding_stage": "Onboarding stage",
-          "dashboard_enabled": "Show Cycle Dashboard in sidebar"
+          "dashboard_enabled": "Show Cycle Dashboard in sidebar",
+          "copy_settings_from": "Copy settings from"
         },
         "data_description": {
-          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar. Can be changed later in the options."
+          "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar. Can be changed later in the options.",
+          "copy_settings_from": "Reuses another profile's shared preferences (notify target/lead times, NFP mode, temperature unit, visibility level, calendar toggle) as a starting point. Leave empty to start from scratch. Does not copy anything person-specific such as the linked person or the cycle length override."
         }
       },
       "reconfigure": {

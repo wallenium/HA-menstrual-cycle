@@ -21,6 +21,7 @@ from .const import (
     CONF_MENOPAUSE_ENABLED,
     CONF_MENOPAUSE_START_DATE,
     CONF_NFP_ANALYSIS_MODE,
+    CONF_COPY_SETTINGS_FROM,
     CONF_ONBOARDING_STAGE,
     CONF_NUM_PREDICTIONS,
     CONF_PERIOD_DURATION_DAYS,
@@ -126,6 +127,29 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle first step."""
         errors: dict[str, str] = {}
 
+        # HA-Idee 5 ("weitere Ideen fuer Features?" 28.09.2026, "Profil
+        # duplizieren"): nur household-weite Praeferenzen, die fuer ein
+        # zweites/drittes Profil sinnvoll identisch sein koennen (gleiches
+        # Notify-Ziel, gleiche Vorlaufzeiten, gleiche Temperatureinheit, ...)
+        # - bewusst NICHT dabei: CONF_LINKED_PERSON_ENTITY_ID (jedes Profil
+        # gehoert zu einer anderen Person, ein Kopieren wuerde beide Profile
+        # faelschlich an dieselbe HA-person-Entity haengen) und
+        # CONF_CYCLE_LENGTH_OVERRIDE (ein zutiefst individueller,
+        # koerperlicher Wert, kein Haushalts-Setting).
+        copyable_option_keys = (
+            CONF_NOTIFY_SERVICE,
+            CONF_NOTIFICATIONS_ENABLED,
+            CONF_NOTIFY_PERIOD_ENABLED,
+            CONF_NOTIFY_PERIOD_LEAD_DAYS,
+            CONF_NOTIFY_FERTILE_ENABLED,
+            CONF_NOTIFY_FERTILE_LEAD_DAYS,
+            CONF_CALENDAR_ENABLED,
+            CONF_NFP_ANALYSIS_MODE,
+            CONF_TEMPERATURE_UNIT,
+            CONF_VISIBILITY_LEVEL,
+        )
+        existing_entries = self.hass.config_entries.async_entries(DOMAIN)
+
         if user_input is not None:
             profile = slugify(str(user_input[CONF_PROFILE])).strip("_")
             if not profile:
@@ -151,10 +175,25 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # stored straight into the new entry's options (the options
                 # flow's own field, further down in this file, still shows
                 # and can change the same value later).
+                options: dict[str, object] = {
+                    CONF_DASHBOARD_ENABLED: bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
+                }
+                copy_from_entry_id = str(user_input.get(CONF_COPY_SETTINGS_FROM, "") or "")
+                if copy_from_entry_id:
+                    source_entry = self.hass.config_entries.async_get_entry(copy_from_entry_id)
+                    if source_entry is not None:
+                        options.update(
+                            {
+                                key: value
+                                for key, value in source_entry.options.items()
+                                if key in copyable_option_keys
+                            }
+                        )
+
                 return self.async_create_entry(
                     title=friendly_name,
                     data=data,
-                    options={CONF_DASHBOARD_ENABLED: bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))},
+                    options=options,
                 )
 
         schema = vol.Schema(
@@ -174,6 +213,24 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=DEFAULT_DASHBOARD_ENABLED): bool,
             }
         )
+        if existing_entries:
+            # Only worth offering once a second profile actually could copy
+            # from something - the very first profile in a household has
+            # nothing to copy from.
+            schema = schema.extend(
+                {
+                    vol.Optional(CONF_COPY_SETTINGS_FROM, default=""): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[selector.SelectOptionDict(value="", label="\u2014")]
+                            + [
+                                selector.SelectOptionDict(value=entry.entry_id, label=entry.title)
+                                for entry in existing_entries
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
     async def async_step_import(self, import_data: dict) -> FlowResult:

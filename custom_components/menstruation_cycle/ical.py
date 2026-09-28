@@ -115,8 +115,20 @@ def _vevent_lines(
     start: date,
     end_exclusive: date,
     description: str = "",
+    alarm_days_before: int | None = None,
 ) -> list[str]:
-    """Build the lines for a VEVENT block."""
+    """Build the lines for a VEVENT block.
+
+    alarm_days_before (HA-Idee 2, "weitere Ideen fuer Features?" 28.09.2026):
+    when set to a positive number, adds a VALARM so calendar apps that
+    subscribe to this feed (Apple/Google Calendar, ...) can show their own
+    native reminder ahead of the event, instead of relying purely on HA's
+    separate notify_service push. Whole-day DATE events need an explicit
+    DTSTART-relative trigger (VALUE=DATE-TIME with a negative duration would
+    be ambiguous against a date-only DTSTART), so this uses TRIGGER;VALUE=
+    DURATION:-P{n}D, which every mainstream calendar app resolves against
+    the event's own start date.
+    """
     lines = [
         "BEGIN:VEVENT",
         f"UID:{uid}",
@@ -128,6 +140,16 @@ def _vevent_lines(
     ]
     if description:
         lines.append(f"DESCRIPTION:{_escape_ics_text(description)}")
+    if alarm_days_before and alarm_days_before > 0:
+        lines.extend(
+            [
+                "BEGIN:VALARM",
+                "ACTION:DISPLAY",
+                f"DESCRIPTION:{_escape_ics_text(summary)}",
+                f"TRIGGER;VALUE=DURATION:-P{alarm_days_before}D",
+                "END:VALARM",
+            ]
+        )
     lines.append("END:VEVENT")
     return lines
 
@@ -139,6 +161,7 @@ def generate_ics(
     avg_cycle_length: int | None = None,
     horizon_months: int = ICS_HORIZON_MONTHS_DEFAULT,
     lang: str | None = None,
+    period_alarm_days_before: int | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -204,6 +227,7 @@ def generate_ics(
                     start=p_start,
                     end_exclusive=p_end + timedelta(days=1),
                     description=desc,
+                    alarm_days_before=period_alarm_days_before,
                 )
             )
 

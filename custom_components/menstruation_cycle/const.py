@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 DOMAIN = "menstruation_cycle"
+
+# HA-Idee 1 ("weitere Ideen fuer Features?" 28.09.2026) - ein einziger,
+# generischer Event-Typ statt eines pro Zustand (period_started/
+# fertile_window_started/...): trigger.event.data.new_state im
+# automation-Trigger deckt jeden einzelnen Fall genauso ab, ohne fuer
+# jeden moeglichen Zustandsuebergang einen eigenen Event-Typ zu pflegen.
+EVENT_STATE_CHANGED = f"{DOMAIN}_state_changed"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1
@@ -61,6 +68,12 @@ CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
 
 # New canonical dashboard option keys (preferred; old keys kept for backward compat)
 CONF_DASHBOARD_ENABLED = "dashboard_enabled"
+# HA-Idee 5 ("weitere Ideen fuer Features?" 28.09.2026): nur waehrend
+# des Setup-Flows verwendet, um ein bestehendes Profil als Vorlage zu
+# waehlen - wird nirgends dauerhaft in entry.data/entry.options
+# gespeichert, bekommt aber trotzdem einen CONF_-Namen wie jedes andere
+# Formularfeld dieser Integration.
+CONF_COPY_SETTINGS_FROM = "copy_settings_from"
 # HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person einschalten/
 # ausschalten koennen. Aktuell sind sie immer aktiv"): die native
 # calendar.<profil>_cycle-Entity (calendar.py, HA-Idee 3 aus der
@@ -654,4 +667,7 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         # Neue Idee (23.09.2026, "weitere Ideen die nicht auf der Roadmap
         # stehen?"): todo.py's Klinik-Tasche/Geburtsplan-Checkliste.
         "_hospital_bag": f"menstruation_{slug}_hospital_bag",
+        # HA-Idee 6 ("weitere Ideen fuer Features?" 28.09.2026):
+        # image.py's cycle-phase illustration entity.
+        "_cycle_phase_image": f"menstruation_{slug}_cycle_phase",
     }
