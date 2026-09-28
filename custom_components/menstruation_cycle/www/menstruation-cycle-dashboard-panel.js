@@ -4874,7 +4874,16 @@
         const dayLabel = p.cycle_day
           ? ` (${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''})`
           : '';
-        return `<span class="household-row"><strong>${name}</strong>${label ? `: ${escapeHtml(label)}` : ''}${dayLabel}</span>`;
+        // Same small status illustration the hero/other cards already use
+        // (Nachfrage 28.09.2026, "Icons in der Familienuebersicht
+        // verwenden") - skipped for a private profile (state is collapsed
+        // to STATE_PRIVATE there, an icon would just be a meaningless
+        // "neutral" fallback and add visual noise without any real info).
+        // `p` itself doubles as the attrs object for the pregnant case:
+        // get_household_summary attaches weeks_pregnant alongside state for
+        // exactly this (also full-visibility-only, see there).
+        const icon = p.state && p.state !== 'private' ? this._statusIconHtml(p.state, 16, p) : '';
+        return `<span class="household-row">${icon}<strong>${name}</strong>${label ? `: ${escapeHtml(label)}` : ''}${dayLabel}</span>`;
       }).join('');
       const title = this._t('dashboard_household_title') || 'Haushalts-\u00dcbersicht';
       return `
@@ -6598,6 +6607,7 @@
           }
           .household-counters { display: flex; flex-wrap: wrap; gap: 4px 14px; }
           .household-rows { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--secondary-text-color, #6b7280); }
+          .household-row { display: inline-flex; align-items: center; gap: 4px; }
           .household-row strong { color: var(--primary-text-color, #1f2937); }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }

@@ -45,6 +45,7 @@ from .const import (
     STATE_PMS,
     STATE_NEUTRAL,
     STATE_PRIVATE,
+    STATE_PREGNANT,
     VISIBILITY_LEVEL_FULL,
     VISIBILITY_LEVEL_PRIVATE,
     CONF_ONBOARDING_STAGE,
@@ -2660,6 +2661,14 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
         if getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_FULL and model.grouped_starts:
             start_d = date.fromisoformat(model.grouped_starts[-1])
             profile_entry["cycle_day"] = (today - start_d).days + 1
+        # weeks_pregnant: same "full" cutoff as cycle_day above - sensor.py's
+        # _VISIBILITY_STATUS_ONLY_KEYS doesn't carry it either (Nachfrage
+        # 28.09.2026, "Icons in der Familienuebersicht verwenden"): the
+        # frontend's pregnancy icon needs a week number to pick the right
+        # month illustration, otherwise it falls back to month 1 for every
+        # pregnant profile.
+        if getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_FULL and model.state == STATE_PREGNANT:
+            profile_entry["weeks_pregnant"] = model.weeks_pregnant
         if model.state in state_counts:
             state_counts[model.state] += 1
         profiles.append(profile_entry)
