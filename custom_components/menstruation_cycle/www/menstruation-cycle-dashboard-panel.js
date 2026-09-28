@@ -1043,6 +1043,7 @@
       const existingScript = listDocumentScripts().find((script) => matchesScriptPath(script, I18N_SCRIPT_PATH));
       const script = existingScript || document.createElement('script');
       if (!existingScript) {
+        script.type = 'module';
         script.src = this._buildI18nScriptUrl();
         script.async = true;
         script.dataset.menstruationCycleI18n = 'true';
