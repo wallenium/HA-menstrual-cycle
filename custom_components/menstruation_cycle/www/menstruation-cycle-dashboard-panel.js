@@ -4865,6 +4865,12 @@
         const label = this._t(state);
         return label !== state ? label : state;
       };
+      // Rows carry a household-row--<state> modifier (period/fertile/pms/
+      // pregnant/neutral/...) for a subtle per-state tint, same rose/sage/
+      // amber/plum palette the rest of the panel already uses - keeps a
+      // private profile visually calm (no tint class -> plain neutral chip)
+      // instead of a jarring plain-emoji list (Nachfrage 28.09.2026,
+      // "besserer Style bitte").
       const rows = (summary.profiles || []).map((p) => {
         const name = escapeHtml(p.friendly_name || p.profile || '');
         const label = p.state ? stateLabel(p.state) : '';
@@ -4872,7 +4878,7 @@
         // (see get_household_summary in __init__.py) - status_only/private
         // profiles simply won't have it, no extra check needed here.
         const dayLabel = p.cycle_day
-          ? ` (${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''})`
+          ? ` · ${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''}`
           : '';
         // Same small status illustration the hero/other cards already use
         // (Nachfrage 28.09.2026, "Icons in der Familienuebersicht
@@ -4882,16 +4888,18 @@
         // `p` itself doubles as the attrs object for the pregnant case:
         // get_household_summary attaches weeks_pregnant alongside state for
         // exactly this (also full-visibility-only, see there).
-        const icon = p.state && p.state !== 'private' ? this._statusIconHtml(p.state, 16, p) : '';
-        return `<span class="household-row">${icon}<strong>${name}</strong>${label ? `: ${escapeHtml(label)}` : ''}${dayLabel}</span>`;
+        const icon = p.state && p.state !== 'private' ? this._statusIconHtml(p.state, 18, p) : '';
+        const tintClass = p.state && p.state !== 'private' ? ` household-row--${escapeHtml(p.state)}` : '';
+        return `<span class="household-row${tintClass}">${icon}<strong>${name}</strong>${label ? `<span class="household-row-status">${escapeHtml(label)}${escapeHtml(dayLabel)}</span>` : ''}</span>`;
       }).join('');
-      const title = this._t('dashboard_household_title') || 'Haushalts-\u00dcbersicht';
+      const title = this._t('dashboard_household_title') || 'Haushalts-Übersicht';
       return `
         <section class="household-summary" aria-label="${title}">
+          <div class="household-summary-title">${title}</div>
           <div class="household-counters">
-            <span>\ud83d\udd34 ${this._t('dashboard_household_in_period') || 'In Periode'}: <strong>${summary.currently_in_period ?? 0}</strong></span>
-            <span>\ud83d\udfe2 ${this._t('dashboard_household_fertile') || 'Fruchtbar'}: <strong>${summary.currently_fertile ?? 0}</strong></span>
-            <span>\ud83d\udfe1 ${this._t('dashboard_household_pms') || 'PMS'}: <strong>${summary.currently_pms ?? 0}</strong></span>
+            <span class="household-counter"><span class="household-dot household-dot--period"></span>${this._t('dashboard_household_in_period') || 'In Periode'}: <strong>${summary.currently_in_period ?? 0}</strong></span>
+            <span class="household-counter"><span class="household-dot household-dot--fertile"></span>${this._t('dashboard_household_fertile') || 'Fruchtbar'}: <strong>${summary.currently_fertile ?? 0}</strong></span>
+            <span class="household-counter"><span class="household-dot household-dot--pms"></span>${this._t('dashboard_household_pms') || 'PMS'}: <strong>${summary.currently_pms ?? 0}</strong></span>
           </div>
           <div class="household-rows">${rows}</div>
         </section>`;
@@ -6600,15 +6608,36 @@
             min-width: 10px;
           }
           .household-summary {
-            display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+            display: flex; flex-direction: column; gap: 10px;
             background: var(--card-background-color, #fff);
             border: 1px solid var(--divider-color, #e5e7eb);
-            border-radius: 14px; padding: 10px 14px; font-size: 0.8rem;
+            border-radius: 16px; padding: 14px 16px; font-size: 0.8rem;
           }
-          .household-counters { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-          .household-rows { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--secondary-text-color, #6b7280); }
-          .household-row { display: inline-flex; align-items: center; gap: 4px; }
-          .household-row strong { color: var(--primary-text-color, #1f2937); }
+          .household-summary-title {
+            font-family: var(--mc-font-display, inherit);
+            font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--secondary-text-color, #6b7280);
+          }
+          .household-counters { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+          .household-counter { display: inline-flex; align-items: center; gap: 6px; color: var(--secondary-text-color, #6b7280); }
+          .household-counter strong { color: var(--primary-text-color, #1f2937); font-size: 0.95em; }
+          .household-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+          .household-dot--period { background: var(--mc-rose-deep, #C43F5E); }
+          .household-dot--fertile { background: var(--mc-sage, #7C9885); }
+          .household-dot--pms { background: var(--mc-amber, #D9A441); }
+          .household-rows { display: flex; flex-wrap: wrap; gap: 8px; }
+          .household-row {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px 5px 8px; border-radius: 999px;
+            background: var(--secondary-background-color, #f3f4f6);
+          }
+          .household-row strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
+          .household-row-status { color: var(--secondary-text-color, #6b7280); }
+          .household-row--period { background: var(--mc-rose-tint, #FBE3E8); }
+          .household-row--fertile { background: var(--mc-sage-tint, #E6EDE7); }
+          .household-row--pms { background: var(--mc-amber-tint, #FBEEDC); }
+          .household-row--pregnant { background: var(--mc-plum-tint, #EFE3EA); }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }

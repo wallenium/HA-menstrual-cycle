@@ -3671,7 +3671,22 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             content_type="application/json",
             charset="utf-8",
             headers={
-                "Cache-Control": "public, max-age=86400, immutable",
+                # Bugfix 28.09.2026 (Simon: Uebersetzungen fehlten in der
+                # Haushalts-Uebersicht, roh Schluessel/State-Strings statt
+                # deutschem Text): "immutable" + 24h max-age liess den
+                # Browser eine Antwort blind wiederverwenden, OHNE je erneut
+                # nachzufragen - und die versionierende ?v=-Query auf dieser
+                # URL (buildUrls() in menstruation-i18n.js) haengt an
+                # RESOURCE_VERSION/manifest.json, das absichtlich nicht bei
+                # jeder Runde hochgezaehlt wird (siehe Cache-Bust-Tradeoff-
+                # Hinweise in der Roadmap) - jede Aenderung an
+                # translations/*.json blieb dadurch unter derselben URL
+                # haengen, bis die 24h abliefen oder der Browser-Cache
+                # manuell geleert wurde. "no-cache" erzwingt stattdessen bei
+                # JEDER Anfrage eine Revalidierung (kleine JSON-Datei, die
+                # Mehrkosten sind vernachlaessigbar) - Uebersetzungsaenderu-
+                # ngen sind damit sofort sichtbar, unabhaengig vom Manifest.
+                "Cache-Control": "no-cache",
             },
         )
 
