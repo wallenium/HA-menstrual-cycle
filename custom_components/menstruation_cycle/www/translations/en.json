@@ -988,5 +988,10 @@
   "opt_vitamin_d": "Vitamin D",
   "opt_magnesium": "Magnesium",
   "opt_pain_relief": "Pain Relief",
-  "opt_hormone_therapy": "Hormone Therapy"
+  "opt_hormone_therapy": "Hormone Therapy",
+  "private": "Private",
+  "dashboard_household_title": "Household Overview",
+  "dashboard_household_in_period": "On period",
+  "dashboard_household_fertile": "Fertile",
+  "dashboard_household_pms": "PMS"
 }

@@ -783,6 +783,16 @@
       // Keyed by profile so multiple profiles' data doesn't collide.
       this._fullHistoryCache = {};
       this._fullHistoryFetching = new Set();
+      // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
+      // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
+      // get_household_summary service and shown as a compact bar above the
+      // profile switcher whenever more than one profile is loaded. Cached for
+      // 5 minutes (see _fetchHouseholdSummary) rather than per-render, since
+      // it covers every profile at once and doesn't need to be as fresh as a
+      // single selected profile's own data.
+      this._householdSummary = null;
+      this._householdSummaryFetchedAt = 0;
+      this._householdSummaryFetching = false;
 
       // Bound once here (not as inline arrow functions in connectedCallback) so the
       // same function reference is reused across every connectedCallback call. Home
@@ -4798,6 +4808,87 @@
       return Array.isArray(attrs.symptom_history) ? attrs.symptom_history : [];
     }
 
+    /**
+     * Fetches the cross-profile household summary via the get_household_summary
+     * service (Runde 37, Nachtrag zu Punkt 87 - Simon wollte das im eigenen
+     * Cycle-Dashboard sehen, nicht nur als Beispiel-YAML fuer ein separates
+     * Lovelace-Dashboard). Uses hass.connection.sendMessagePromise directly,
+     * same as _fetchFullHistory above, since hass.callService()'s
+     * return_response support doesn't reliably surface response data across
+     * every HA frontend version. Cached for 5 minutes - the summary covers
+     * every profile at once, so it doesn't need per-render freshness.
+     */
+    async _fetchHouseholdSummary() {
+      if (this._householdSummaryFetching) return;
+      if (this._householdSummary && Date.now() - this._householdSummaryFetchedAt < 300000) return;
+      if (!this._hass?.connection?.sendMessagePromise) return;
+      this._householdSummaryFetching = true;
+      try {
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'get_household_summary',
+          service_data: {},
+          return_response: true,
+        });
+        const response = result?.response;
+        if (response && Array.isArray(response.profiles)) {
+          this._householdSummary = response;
+          this._householdSummaryFetchedAt = Date.now();
+        }
+      } catch (err) {
+        console.warn('[menstruation-cycle] get_household_summary call failed', err);
+      } finally {
+        this._householdSummaryFetching = false;
+      }
+      this.render();
+    }
+
+    /**
+     * Compact cross-profile stats bar shown above the profile switcher, only
+     * when more than one profile is loaded and discreet mode is off (the bar
+     * would otherwise defeat the point of discreet mode by showing other
+     * profiles' cycle states on screen). Reads from the get_household_summary
+     * cache, kicking off/refreshing the fetch as a side effect - same
+     * fire-and-forget pattern as _getFullSymptomHistory above. A profile with
+     * visibility_level: private already collapses to just its name server-side
+     * (see get_household_summary in __init__.py), so no extra filtering is
+     * needed here.
+     */
+    _renderHouseholdSummary(availableEntities, discreetMode) {
+      const entities = Array.isArray(availableEntities) ? availableEntities : [];
+      if (entities.length <= 1 || discreetMode) return '';
+      this._fetchHouseholdSummary(); // fire-and-forget, re-renders on completion/staleness
+      const summary = this._householdSummary;
+      if (!summary) return '';
+      const stateLabel = (state) => {
+        const label = this._t(state);
+        return label !== state ? label : state;
+      };
+      const rows = (summary.profiles || []).map((p) => {
+        const name = escapeHtml(p.friendly_name || p.profile || '');
+        const label = p.state ? stateLabel(p.state) : '';
+        // cycle_day is only present for a profile at visibility_level: full
+        // (see get_household_summary in __init__.py) - status_only/private
+        // profiles simply won't have it, no extra check needed here.
+        const dayLabel = p.cycle_day
+          ? ` (${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''})`
+          : '';
+        return `<span class="household-row"><strong>${name}</strong>${label ? `: ${escapeHtml(label)}` : ''}${dayLabel}</span>`;
+      }).join('');
+      const title = this._t('dashboard_household_title') || 'Haushalts-\u00dcbersicht';
+      return `
+        <section class="household-summary" aria-label="${title}">
+          <div class="household-counters">
+            <span>\ud83d\udd34 ${this._t('dashboard_household_in_period') || 'In Periode'}: <strong>${summary.currently_in_period ?? 0}</strong></span>
+            <span>\ud83d\udfe2 ${this._t('dashboard_household_fertile') || 'Fruchtbar'}: <strong>${summary.currently_fertile ?? 0}</strong></span>
+            <span>\ud83d\udfe1 ${this._t('dashboard_household_pms') || 'PMS'}: <strong>${summary.currently_pms ?? 0}</strong></span>
+          </div>
+          <div class="household-rows">${rows}</div>
+        </section>`;
+    }
+
+
     _renderBasalTempChart(stateObj) {
       const attrs = stateObj?.attributes || {};
       const history = this._getFullSymptomHistory(stateObj);
@@ -6499,6 +6590,15 @@
             border-radius: 3px;
             min-width: 10px;
           }
+          .household-summary {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+            background: var(--card-background-color, #fff);
+            border: 1px solid var(--divider-color, #e5e7eb);
+            border-radius: 14px; padding: 10px 14px; font-size: 0.8rem;
+          }
+          .household-counters { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+          .household-rows { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--secondary-text-color, #6b7280); }
+          .household-row strong { color: var(--primary-text-color, #1f2937); }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
@@ -6527,6 +6627,7 @@
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
           </header>
+          ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}</div>` : ''}

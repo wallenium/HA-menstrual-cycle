@@ -27,6 +27,7 @@ except ImportError:
     SupportsResponse = None  # type: ignore[assignment,misc]
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import label_registry as lr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
@@ -44,6 +45,7 @@ from .const import (
     STATE_PMS,
     STATE_NEUTRAL,
     STATE_PRIVATE,
+    VISIBILITY_LEVEL_FULL,
     VISIBILITY_LEVEL_PRIVATE,
     CONF_ONBOARDING_STAGE,
     CONF_VISIBILITY_LEVEL,
@@ -209,6 +211,8 @@ _DASHBOARD_PANEL_REGISTERED_KEY = f"{DOMAIN}_dashboard_panel_registered"
 _DASHBOARD_PANEL_URL_PATH = "cycle-dashboard"
 _DASHBOARD_PANEL_TITLE = "Cycle Dashboard"
 _DASHBOARD_PANEL_ICON = "mdi:view-dashboard-outline"
+
+_PROFILE_LABEL_PREFIX = "Cycle: "
 
 # Domain that was used before the rename to menstruation_cycle
 OLD_DOMAIN = "menstruation_gauge"
@@ -1740,6 +1744,33 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def _sync_profile_label(hass: HomeAssistant, entry: ConfigEntry, friendly_name: str) -> None:
+    """Groups all of this profile's entities under one HA label (HA-17 Idee 7,
+    "weitere Ideen?" 27.09.2026, "Automatische HA-Labels pro Profil") so they
+    can be filtered/managed together under Settings -> Labels, independent of
+    any dashboard. Idempotent and cheap - safe to run on every load, same as
+    the repair checks below.
+
+    Known limitation: looks the label up by name (async_get_or_create), so
+    renaming a profile creates a second label rather than renaming the
+    existing one - acceptable for a nice-to-have organizational feature.
+    Upgrade path if that becomes annoying in practice: persist the created
+    label_id in entry.data and rename that same label directly on future
+    loads instead of relooking it up by name.
+    """
+    label_reg = lr.async_get(hass)
+    label = label_reg.async_get_or_create(
+        f"{_PROFILE_LABEL_PREFIX}{friendly_name}", icon=_icon_from_entry(entry) or None
+    )
+
+    entity_reg = er.async_get(hass)
+    for entity_entry in er.async_entries_for_config_entry(entity_reg, entry.entry_id):
+        if label.label_id not in entity_entry.labels:
+            entity_reg.async_update_entity(
+                entity_entry.entity_id, labels=entity_entry.labels | {label.label_id}
+            )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up menstruation gauge profile from config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -1950,6 +1981,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async_check_entity_naming(hass, entry.entry_id, entry.title, friendly_name)
     async_check_stale_ics_token(hass, entry.entry_id, entry.title, ics_token_created_at)
+
+    # HA-17 Idee 7 ("weitere Ideen?" 27.09.2026, Simon: "Automatische
+    # HA-Labels pro Profil") - same "cheap, safe to run on every load"
+    # reasoning as the checks above and below.
+    _sync_profile_label(hass, entry, friendly_name)
 
     # HA-3 (M-Cycle_HA-Component-Roadmap.md, "weitere Ideen" 22.09.2026):
     # same "cheap, safe to run on every load" reasoning as the two checks
@@ -2615,6 +2651,15 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
         )
         profile_entry["state"] = model.state
         profile_entry["days_until_next_start"] = model.days_until_next_start
+        profile_entry["avg_cycle_length"] = model.avg_cycle_length
+        # cycle_day is deliberately NOT in sensor.py's
+        # _VISIBILITY_STATUS_ONLY_KEYS - only included here for a profile
+        # explicitly set to "full", the same cutoff the main sensor's own
+        # attributes already draw (Nachtrag 28.09.2026, Simon: "Zyklustage
+        # einbauen (Tag 4/28)" fuer die neue Dashboard-Uebersicht).
+        if getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_FULL and model.grouped_starts:
+            start_d = date.fromisoformat(model.grouped_starts[-1])
+            profile_entry["cycle_day"] = (today - start_d).days + 1
         if model.state in state_counts:
             state_counts[model.state] += 1
         profiles.append(profile_entry)

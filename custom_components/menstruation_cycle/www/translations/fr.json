@@ -955,5 +955,10 @@
   "opt_vitamin_d": "Vitamine D",
   "opt_magnesium": "Magnésium",
   "opt_pain_relief": "Antalgique",
-  "opt_hormone_therapy": "Traitement hormonal"
+  "opt_hormone_therapy": "Traitement hormonal",
+  "private": "Privé",
+  "dashboard_household_title": "Aperçu du foyer",
+  "dashboard_household_in_period": "En période",
+  "dashboard_household_fertile": "Féconde",
+  "dashboard_household_pms": "SPM"
 }

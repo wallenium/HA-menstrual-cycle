@@ -1,0 +1,16 @@
+# Zeigt sensor.household_cycle_summary (siehe household_summary_sensor.yaml,
+# das zuerst eingerichtet werden muss) als Dashboard-Karte an: die drei
+# Zaehler sowie eine Zeile pro Profil. Ein Profil mit visibility_level:
+# private zeigt dabei bewusst nur seinen Namen, keinen Zyklusstatus -
+# siehe get_household_summary in der Roadmap.
+type: markdown
+title: Haushalts-Übersicht
+content: >
+  🔴 In Periode: **{{ state_attr('sensor.household_cycle_summary', 'currently_in_period') }}**
+  &nbsp;&nbsp; 🟢 Fruchtbar: **{{ state_attr('sensor.household_cycle_summary', 'currently_fertile') }}**
+  &nbsp;&nbsp; 🟡 PMS: **{{ state_attr('sensor.household_cycle_summary', 'currently_pms') }}**
+
+
+  {% for p in state_attr('sensor.household_cycle_summary', 'profiles') or [] %}
+  - **{{ p.friendly_name }}**: {{ p.state }}
+  {% endfor %}

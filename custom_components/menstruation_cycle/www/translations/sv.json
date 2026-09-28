@@ -955,5 +955,10 @@
   "opt_vitamin_d": "D-vitamin",
   "opt_magnesium": "Magnesium",
   "opt_pain_relief": "Smärtlindring",
-  "opt_hormone_therapy": "Hormonbehandling"
+  "opt_hormone_therapy": "Hormonbehandling",
+  "private": "Privat",
+  "dashboard_household_title": "Hushållsöversikt",
+  "dashboard_household_in_period": "Mens",
+  "dashboard_household_fertile": "Fertil",
+  "dashboard_household_pms": "PMS"
 }

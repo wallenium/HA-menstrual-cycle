@@ -1,0 +1,31 @@
+# get_household_summary ist ein reiner Service-Aufruf (liefert eine Antwort,
+# ist aber selbst keine Entity) - dieser Trigger-basierte Template-Sensor
+# ruft ihn periodisch auf und macht das Ergebnis als sensor.household_
+# cycle_summary verfuegbar, das dann in einer Dashboard-Karte referenziert
+# werden kann (siehe household_summary_dashboard.yaml). Kein eigener Code
+# in der Integration noetig - "response_variable" in Template-Trigger-
+# Aktionen ist eine native Home-Assistant-Funktion ab HA 2024.3.
+#
+# In configuration.yaml uebernehmen (bzw. eine per !include eingebundene
+# Datei):
+template:
+  - trigger:
+      - trigger: time_pattern
+        minutes: "/15"
+      - trigger: homeassistant
+        event: start
+    action:
+      - action: menstruation_cycle.get_household_summary
+        response_variable: household_summary
+    sensor:
+      - name: "Household Cycle Summary"
+        unique_id: household_cycle_summary
+        state: "{{ household_summary.profile_count }}"
+        unit_of_measurement: profiles
+        icon: mdi:home-heart
+        attributes:
+          currently_in_period: "{{ household_summary.currently_in_period }}"
+          currently_fertile: "{{ household_summary.currently_fertile }}"
+          currently_pms: "{{ household_summary.currently_pms }}"
+          profiles: "{{ household_summary.profiles }}"
+          checked_at: "{{ household_summary.checked_at }}"
