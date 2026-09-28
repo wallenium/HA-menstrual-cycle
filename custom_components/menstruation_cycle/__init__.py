@@ -1752,17 +1752,25 @@ def _sync_profile_label(hass: HomeAssistant, entry: ConfigEntry, friendly_name: 
     any dashboard. Idempotent and cheap - safe to run on every load, same as
     the repair checks below.
 
-    Known limitation: looks the label up by name (async_get_or_create), so
-    renaming a profile creates a second label rather than renaming the
-    existing one - acceptable for a nice-to-have organizational feature.
-    Upgrade path if that becomes annoying in practice: persist the created
-    label_id in entry.data and rename that same label directly on future
-    loads instead of relooking it up by name.
+    Bugfix 28.09.2026 (Fehlermeldung aus Simons Live-Instanz): LabelRegistry
+    hat KEIN async_get_or_create - dieser Aufruf liess async_setup_entry mit
+    einem AttributeError fuer JEDES Profil crashen, noch nach dem bereits
+    erfolgreichen async_forward_entry_setups(entry, PLATFORMS) weiter oben.
+    Echte Registry-API: async_get_label_by_name zum Nachschlagen,
+    async_create nur wenn noch keins existiert - selbst nachgebaut.
+
+    Known limitation: looks the label up by name, so renaming a profile
+    creates a second label rather than renaming the existing one -
+    acceptable for a nice-to-have organizational feature. Upgrade path if
+    that becomes annoying in practice: persist the created label_id in
+    entry.data and rename that same label directly on future loads instead
+    of relooking it up by name.
     """
     label_reg = lr.async_get(hass)
-    label = label_reg.async_get_or_create(
-        f"{_PROFILE_LABEL_PREFIX}{friendly_name}", icon=_icon_from_entry(entry) or None
-    )
+    label_name = f"{_PROFILE_LABEL_PREFIX}{friendly_name}"
+    label = label_reg.async_get_label_by_name(label_name)
+    if label is None:
+        label = label_reg.async_create(label_name, icon=_icon_from_entry(entry) or None)
 
     entity_reg = er.async_get(hass)
     for entity_entry in er.async_entries_for_config_entry(entity_reg, entry.entry_id):
