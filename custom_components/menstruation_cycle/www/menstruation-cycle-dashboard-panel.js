@@ -4897,9 +4897,9 @@
         <section class="household-summary" aria-label="${title}">
           <div class="household-summary-title">${title}</div>
           <div class="household-counters">
-            <span class="household-counter"><span class="household-dot household-dot--period"></span>${this._t('dashboard_household_in_period') || 'In Periode'}: <strong>${summary.currently_in_period ?? 0}</strong></span>
-            <span class="household-counter"><span class="household-dot household-dot--fertile"></span>${this._t('dashboard_household_fertile') || 'Fruchtbar'}: <strong>${summary.currently_fertile ?? 0}</strong></span>
-            <span class="household-counter"><span class="household-dot household-dot--pms"></span>${this._t('dashboard_household_pms') || 'PMS'}: <strong>${summary.currently_pms ?? 0}</strong></span>
+            <div class="household-stat household-stat--period">${this._statusIconHtml('period', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_in_period ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_in_period') || 'In Periode'}</div></div></div>
+            <div class="household-stat household-stat--fertile">${this._statusIconHtml('fertile', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_fertile ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_fertile') || 'Fruchtbar'}</div></div></div>
+            <div class="household-stat household-stat--pms">${this._statusIconHtml('pms', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_pms ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_pms') || 'PMS'}</div></div></div>
           </div>
           <div class="household-rows">${rows}</div>
         </section>`;
@@ -6619,13 +6619,25 @@
             text-transform: uppercase;
             color: var(--secondary-text-color, #6b7280);
           }
-          .household-counters { display: flex; flex-wrap: wrap; gap: 6px 18px; }
-          .household-counter { display: inline-flex; align-items: center; gap: 6px; color: var(--secondary-text-color, #6b7280); }
-          .household-counter strong { color: var(--primary-text-color, #1f2937); font-size: 0.95em; }
-          .household-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-          .household-dot--period { background: var(--mc-rose-deep, #C43F5E); }
-          .household-dot--fertile { background: var(--mc-sage, #7C9885); }
-          .household-dot--pms { background: var(--mc-amber, #D9A441); }
+          .household-counters { display: flex; flex-wrap: wrap; gap: 10px; }
+          .household-stat {
+            display: flex; align-items: center; gap: 12px; flex: 1 1 150px;
+            padding: 10px 16px; border-radius: 16px;
+          }
+          .household-stat img { flex: none; }
+          .household-stat-value {
+            font-family: var(--mc-font-display); font-size: 30px; font-weight: 600; line-height: 1;
+          }
+          .household-stat-label {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--secondary-text-color, #6b7280); margin-top: 2px;
+          }
+          .household-stat--period { background: var(--mc-rose-tint, #FBE3E8); }
+          .household-stat--period .household-stat-value { color: var(--mc-rose-deep, #C43F5E); }
+          .household-stat--fertile { background: var(--mc-sage-tint, #E6EDE7); }
+          .household-stat--fertile .household-stat-value { color: var(--mc-sage-deep, #3F5A47); }
+          .household-stat--pms { background: var(--mc-amber-tint, #FBEEDC); }
+          .household-stat--pms .household-stat-value { color: var(--mc-amber-deep, #8a5a12); }
           .household-rows { display: flex; flex-wrap: wrap; gap: 8px; }
           .household-row {
             display: inline-flex; align-items: center; gap: 6px;
