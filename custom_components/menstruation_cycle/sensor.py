@@ -71,8 +71,15 @@ from .const import (
     ATTR_VISIBILITY_LEVEL,
     ATTR_LINKED_PERSON_ENTITY_ID,
     ATTR_PROFILE_PICTURE,
+    ATTR_CYCLE_PHASE,
+    ATTR_CYCLE_PHASE_TIP,
+    ATTR_WELLNESS_SCORE,
     CONF_LINKED_PERSON_ENTITY_ID,
     DEFAULT_VISIBILITY_LEVEL,
+    STATE_FERTILE,
+    STATE_NEUTRAL,
+    STATE_PERIOD,
+    STATE_PMS,
     STATE_PRIVATE,
     VISIBILITY_LEVEL_FULL,
     VISIBILITY_LEVEL_PRIVATE,
@@ -96,6 +103,8 @@ from .model import (
     build_cycle_model,
     compute_contraception_status,
     compute_prediction_day_confidence,
+    current_cycle_phase,
+    cycle_wellness_score,
     estimate_menarche_from_signs,
     grouped_cycle_starts,
     normalize_history,
@@ -379,6 +388,12 @@ _VISIBILITY_STATUS_ONLY_KEYS = _VISIBILITY_ALWAYS_KEPT_KEYS | {
     "period_duration_default_days",
     "period_duration_learned_avg_days",
     ATTR_PERIOD_FORECAST,
+    # HA-Idee 5 ("weitere Ideen?", 27.09.2026): reine Phasen-/Vorhersageinfo
+    # wie ATTR_PERIOD_FORECAST direkt darueber - kein Symptom-/Schmerzbezug,
+    # deshalb auch bei status_only sichtbar. ATTR_WELLNESS_SCORE bleibt
+    # bewusst NICHT hier (fliesst aus Schmerztagen ein, siehe dort).
+    ATTR_CYCLE_PHASE,
+    ATTR_CYCLE_PHASE_TIP,
 }
 
 
@@ -1048,6 +1063,64 @@ def _device_info_for_entry(hass: HomeAssistant, entry: ConfigEntry) -> DeviceInf
     )
 
 
+# HA-Idee 5 ("weitere Ideen?", 27.09.2026): kurze, bewusst allgemein
+# gehaltene Hinweise je Zyklusphase ("Cycle Syncing"-Prinzip) - keine
+# medizinische Beratung, nur ein optionaler Zusatzhinweis. Gleiches Muster
+# wie __init__.py::_NOTIFY_STRINGS (kleine, in sich geschlossene
+# Uebersetzungstabelle statt Anbindung an strings.json/translations, da der
+# Text in einem Entity-*Attribut* landet, nicht in der HA-eigenen UI).
+_PHASE_TIP_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "period": "Lower energy is common — a good time to rest and go easy on yourself.",
+        "follicular": "Energy often rises — a good window for new projects or harder workouts.",
+        "fertile_window": "Energy is often at its peak.",
+        "ovulation_day": "Often the day of peak energy and confidence.",
+        "luteal": "Energy may start easing off — a good time to wind down demanding tasks.",
+        "late_luteal": "PMS symptoms are more likely now — extra rest can help.",
+    },
+    "de": {
+        "period": "Die Energie ist oft niedriger - ein guter Zeitpunkt fuer Ruhe und Nachsicht mit dir selbst.",
+        "follicular": "Die Energie steigt oft an - ein guter Zeitraum fuer neue Vorhaben oder intensiveres Training.",
+        "fertile_window": "Die Energie ist oft besonders hoch.",
+        "ovulation_day": "Oft der Tag mit der hoechsten Energie und Selbstsicherheit.",
+        "luteal": "Die Energie kann langsam nachlassen - ein guter Zeitpunkt, anspruchsvolle Aufgaben ausklingen zu lassen.",
+        "late_luteal": "PMS-Symptome treten jetzt haeufiger auf - mehr Ruhe kann helfen.",
+    },
+    "fr": {
+        "period": "L'energie est souvent plus basse - un bon moment pour se reposer et etre indulgente avec soi-meme.",
+        "follicular": "L'energie augmente souvent - une bonne periode pour de nouveaux projets ou un entrainement plus intense.",
+        "fertile_window": "L'energie est souvent a son maximum.",
+        "ovulation_day": "Souvent le jour d'energie et de confiance maximales.",
+        "luteal": "L'energie peut commencer a diminuer - un bon moment pour ralentir sur les taches exigeantes.",
+        "late_luteal": "Les symptomes de SPM sont plus frequents maintenant - davantage de repos peut aider.",
+    },
+    "es": {
+        "period": "La energia suele ser mas baja - un buen momento para descansar y ser indulgente contigo misma.",
+        "follicular": "La energia suele aumentar - un buen momento para nuevos proyectos o entrenamientos mas intensos.",
+        "fertile_window": "La energia suele estar en su punto mas alto.",
+        "ovulation_day": "A menudo el dia de mayor energia y confianza.",
+        "luteal": "La energia puede empezar a bajar - un buen momento para reducir tareas exigentes.",
+        "late_luteal": "Los sintomas premenstruales son mas frecuentes ahora - mas descanso puede ayudar.",
+    },
+    "sv": {
+        "period": "Energin ar ofta lagre - ett bra tillfalle att vila och vara skonsam mot dig sjalv.",
+        "follicular": "Energin okar ofta - ett bra tillfalle for nya projekt eller tuffare traning.",
+        "fertile_window": "Energin ar ofta som hogst.",
+        "ovulation_day": "Ofta dagen med hogst energi och sjalvfortroende.",
+        "luteal": "Energin kan borja avta - ett bra tillfalle att trappa ner krävande uppgifter.",
+        "late_luteal": "PMS-symtom ar vanligare nu - extra vila kan hjalpa.",
+    },
+}
+
+
+def _phase_tip(phase: str | None, lang: str | None) -> str | None:
+    if not phase:
+        return None
+    key = str(lang or "en").strip().lower()[:2]
+    table = _PHASE_TIP_STRINGS.get(key, _PHASE_TIP_STRINGS["en"])
+    return table.get(phase)
+
+
 class MenstruationGaugeSensor(SensorEntity):
     """Expose cycle state and computed attributes including symptoms and pregnancy."""
 
@@ -1147,6 +1220,19 @@ class MenstruationGaugeSensor(SensorEntity):
 
         cycle_statistics = _build_cycle_statistics(model.grouped_starts, model.bleeding_blocks, today)
         current_bleeding_block = _get_current_bleeding_block(model.current_period)
+
+        # HA-Idee 5/6 ("weitere Ideen?", 27.09.2026): nur fuer "normales"
+        # Zyklus-Tracking sinnvoll (nicht waehrend Schwangerschaft/
+        # Wochenbett/Menarche/Menopause) - beide Helfer geben in jedem
+        # anderen Fall bzw. ohne genug Historie bereits None zurueck, die
+        # State-Pruefung hier vermeidet nur unnoetige Berechnung.
+        cycle_phase: str | None = None
+        cycle_phase_tip: str | None = None
+        wellness_score: dict[str, Any] | None = None
+        if model.state in (STATE_PERIOD, STATE_FERTILE, STATE_PMS, STATE_NEUTRAL):
+            cycle_phase = current_cycle_phase(model, today)
+            cycle_phase_tip = _phase_tip(cycle_phase, self.hass.config.language)
+            wellness_score = cycle_wellness_score(model, today)
         raw_num_predictions = self._entry.options.get(CONF_NUM_PREDICTIONS, DEFAULT_NUM_PREDICTIONS)
         try:
             num_predictions = int(raw_num_predictions)
@@ -1346,6 +1432,9 @@ class MenstruationGaugeSensor(SensorEntity):
             ATTR_ICS_URL: f"/{DOMAIN}/ics/{runtime.ics_token}.ics",
             "progress_badges": progress_badges,
             "progress_badges_new_this_week": progress_badges_new_this_week,
+            ATTR_CYCLE_PHASE: cycle_phase,
+            ATTR_CYCLE_PHASE_TIP: cycle_phase_tip,
+            ATTR_WELLNESS_SCORE: wellness_score,
         }
         visibility_level = getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL)
         raw_attrs = _filter_attributes_for_visibility(raw_attrs, visibility_level)

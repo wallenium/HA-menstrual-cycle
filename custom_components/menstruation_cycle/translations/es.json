@@ -309,6 +309,10 @@
     "storage_integrity": {
       "title": "Menstruation Cycle: Hallazgos de integridad del almacenamiento",
       "description": "Perfil: **{entry_title}**\n\nEl diagnóstico repair_storage encontró {issue_count} hallazgo(s) para este perfil, por ejemplo: {first_issue}. Esto va desde inofensivo (un valor ya corregido por la normalización) hasta algo que merece revisión - llama al servicio **repair_storage** para ver la lista completa por perfil. No se realiza ninguna acción automáticamente; descarta este aviso una vez que lo hayas revisado o ya no aplique."
+    },
+    "household_inventory_critical": {
+      "title": "Menstruation Cycle: Las existencias del hogar están bajas",
+      "description": "Los siguientes productos están en o por debajo de su nivel crítico de existencias: **{products_list}**. Ya se añadieron a la lista de compras de Home Assistant al alcanzar el umbral de advertencia - este aviso adicional significa que las existencias son ahora críticamente bajas. Reabastece pronto, o ajusta el umbral crítico mediante el servicio **manage_household_inventory** si esto no coincide con tu uso real. Descarta este aviso una vez que hayas reabastecido."
     }
   },
   "selector": {

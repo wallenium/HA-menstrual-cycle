@@ -309,6 +309,10 @@
     "storage_integrity": {
       "title": "Menstruation Cycle: Resultat för lagringsintegritet",
       "description": "Profil: **{entry_title}**\n\nDiagnosen repair_storage hittade {issue_count} resultat för denna profil, t.ex.: {first_issue}. Det spänner från ofarligt (ett värde som redan korrigerats av normaliseringen) till värt en närmare titt - anropa tjänsten **repair_storage** för den fullständiga listan per profil. Ingen åtgärd sker automatiskt; avfärda detta problem när du har granskat det eller det inte längre gäller."
+    },
+    "household_inventory_critical": {
+      "title": "Menstruation Cycle: Hushållets förråd tar slut",
+      "description": "Följande produkter är på eller under sin kritiska lagernivå: **{products_list}**. De lades redan till Home Assistants inköpslista när de nådde varningströskeln - denna extra avisering betyder att lagret nu är kritiskt lågt. Fyll på snart, eller justera den kritiska tröskeln via tjänsten **manage_household_inventory** om detta inte stämmer med din faktiska förbrukning. Avfärda detta problem när du har fyllt på."
     }
   },
   "selector": {

@@ -209,6 +209,13 @@ ATTR_VISIBILITY_LEVEL = "visibility_level"
 # siehe CONF_LINKED_PERSON_ENTITY_ID oben.
 ATTR_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
 ATTR_PROFILE_PICTURE = "profile_picture"
+# HA-Idee 5/6 ("weitere Ideen?", 27.09.2026): aktuelle Zyklusphase samt
+# generischem Tipp sowie ein zusammenfassender Wellness-Score, siehe
+# model.py::current_cycle_phase()/cycle_wellness_score() und die
+# Sichtbarkeitsfilterung in sensor.py.
+ATTR_CYCLE_PHASE = "cycle_phase"
+ATTR_CYCLE_PHASE_TIP = "cycle_phase_tip"
+ATTR_WELLNESS_SCORE = "wellness_score"
 
 SERVICE_ADD_CYCLE_START = "add_cycle_start"
 SERVICE_REMOVE_CYCLE_START = "remove_cycle_start"
@@ -270,6 +277,11 @@ SERVICE_GET_CYCLE_PREDICTIONS = "get_cycle_predictions"
 # still-ongoing cycle against the recent average rather than requiring
 # an external client to pull the full history and recompute that itself.
 SERVICE_COMPARE_CURRENT_CYCLE = "compare_current_cycle"
+# HA-Idee 4 ("weitere Ideen?", 27.09.2026): read-only, household-wide (not
+# per-profile, like repair_storage/export_full_backup above) - one call
+# across every currently loaded profile instead of a client having to call
+# get_cycle_predictions once per profile and merge the results itself.
+SERVICE_GET_HOUSEHOLD_SUMMARY = "get_household_summary"
 SERVICE_SET_PREGNANCY_MODE = "set_pregnancy_mode"
 SERVICE_UPDATE_PREGNANCY_DATE = "update_pregnancy_date"
 SERVICE_SET_MENARCHE_MODE = "set_menarche_mode"

@@ -489,6 +489,56 @@ def async_check_storage_integrity(
     async_create_storage_integrity_issue(hass, entry_id, entry_title, len(issues), issues[0])
 
 
+_HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"
+
+
+def async_create_household_inventory_critical_issue(hass: HomeAssistant, product_names: list[str]) -> None:
+    """Create a repair issue when a purchasable household product has
+    reached its CRITICAL stock threshold (HA-Idee 2, "weitere Ideen?",
+    27.09.2026).
+
+    The existing warning threshold already adds the product to HA's native
+    shopping list (see __init__.py::_async_check_and_update_todo_list) -
+    that happens quietly, though, and is easy to miss if the shopping list
+    isn't checked regularly. This escalates once stock is critically low
+    (by definition at/below the warning threshold too, since critical <=
+    warning is enforced where thresholds are set) into HA's own Repairs UI,
+    which is more likely to be noticed. Not per-profile like the other
+    issues in this module - household inventory is shared across all
+    profiles (HOUSEHOLD_INVENTORY_DATA_KEY), so this uses a single, fixed
+    issue_id instead of one per entry_id.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID,
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="household_inventory_critical",
+        translation_placeholders={
+            "products_list": ", ".join(product_names),
+        },
+    )
+
+
+def async_delete_household_inventory_critical_issue(hass: HomeAssistant) -> None:
+    """Delete the household-inventory-critical issue once no purchasable
+    product is at/below its critical threshold any more."""
+    async_delete_issue(hass, DOMAIN, _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID)
+
+
+def async_check_household_inventory_critical(hass: HomeAssistant, product_names: list[str]) -> None:
+    """Raise (or clear) the household-inventory-critical issue. Safe to call
+    repeatedly (e.g. once per loaded profile on every consumption event) -
+    idempotent create/delete, same pattern as the other checks in this
+    module."""
+    if not product_names:
+        async_delete_household_inventory_critical_issue(hass)
+        return
+    async_create_household_inventory_critical_issue(hass, product_names)
+
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,

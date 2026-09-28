@@ -309,6 +309,10 @@
     "storage_integrity": {
       "title": "Menstruation Cycle: Speicher-Integritätsbefunde",
       "description": "Profil: **{entry_title}**\n\nDie repair_storage-Diagnose hat {issue_count} Befund(e) für dieses Profil gefunden, z. B.: {first_issue}. Das reicht von harmlos (ein Wert wurde bereits durch die Normalisierung korrigiert) bis sehenswert - rufe den Service **repair_storage** für die vollständige Liste pro Profil auf. Es wird automatisch nichts geändert; verwirf dieses Problem, sobald du es geprüft hast oder es nicht mehr zutrifft."
+    },
+    "household_inventory_critical": {
+      "title": "Menstruation Cycle: Haushaltsvorräte werden knapp",
+      "description": "Folgende Produkte sind auf oder unter ihrem kritischen Bestandswert: **{products_list}**. Sie wurden bereits beim Erreichen der Warnschwelle zur Home-Assistant-Einkaufsliste hinzugefügt - dieser zusätzliche Hinweis bedeutet, dass der Bestand jetzt kritisch niedrig ist. Bald nachbestellen, oder die kritische Schwelle über den Service **manage_household_inventory** anpassen, falls das nicht zum tatsächlichen Verbrauch passt. Verwirf dieses Problem, sobald du nachbestellt hast."
     }
   },
   "selector": {

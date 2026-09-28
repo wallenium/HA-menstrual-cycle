@@ -305,6 +305,10 @@
     "storage_integrity": {
       "title": "Menstruation Cycle: Storage integrity findings",
       "description": "Profile: **{entry_title}**\n\nThe repair_storage diagnostic found {issue_count} finding(s) for this profile, e.g.: {first_issue}. This ranges from harmless (a value normalization already corrected) to worth a closer look - call the **repair_storage** service for the full list per profile. No action is taken automatically; dismiss this issue once you've reviewed it or it no longer applies."
+    },
+    "household_inventory_critical": {
+      "title": "Menstruation Cycle: Household supplies running low",
+      "description": "The following products are at or below their critical stock level: **{products_list}**. They were already added to the Home Assistant shopping list when they first hit the warning threshold - this additional notice means stock is now critically low. Restock soon, or adjust the critical threshold via the **manage_household_inventory** service if this doesn't match your actual usage. Dismiss this issue once you've restocked."
     }
   },
   "selector": {

@@ -39,6 +39,12 @@ from .const import (
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
     ATTR_VISIBILITY_LEVEL,
+    STATE_PERIOD,
+    STATE_FERTILE,
+    STATE_PMS,
+    STATE_NEUTRAL,
+    STATE_PRIVATE,
+    VISIBILITY_LEVEL_PRIVATE,
     CONF_ONBOARDING_STAGE,
     CONF_VISIBILITY_LEVEL,
     CONF_SHOW_CYCLE_DASHBOARD,
@@ -104,6 +110,7 @@ from .const import (
     SERVICE_GET_FULL_HISTORY,
     SERVICE_GET_CYCLE_PREDICTIONS,
     SERVICE_COMPARE_CURRENT_CYCLE,
+    SERVICE_GET_HOUSEHOLD_SUMMARY,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
     SERVICE_REIMPORT_BASAL_TEMP_STATS,
@@ -171,8 +178,11 @@ from .const import (
 )
 from .ical import generate_ics
 from .model import (
+    _count_pain_days,
     build_cycle_model,
     build_cycle_predictions,
+    cycle_wellness_score,
+    current_cycle_phase,
     find_implausible_cycle_gaps,
     grouped_cycle_starts,
     normalize_history,
@@ -581,6 +591,9 @@ async def _async_register_consumption(
     await _async_check_and_update_todo_list(hass, household_data, product)
     if product == "underwear":
         await _async_check_underwear_washing_todo(hass, household_data)
+    from .repairs import async_check_household_inventory_critical
+
+    async_check_household_inventory_critical(hass, _household_inventory_critical_products(household_data))
 
 
 def _apply_optional_thresholds(
@@ -635,6 +648,32 @@ async def _async_check_and_update_todo_list(hass: HomeAssistant, household_data:
             "Added '%s' to shopping list (stock: %d, warning threshold: %d).",
             display_name, quantity, warning,
         )
+
+
+def _household_inventory_critical_products(household_data: dict[str, Any]) -> list[str]:
+    """Return display names of purchasable products at/below their CRITICAL
+    threshold (HA-Idee 2, "weitere Ideen?", 27.09.2026).
+
+    Mirrors _async_check_and_update_todo_list's exclusions (cup is reusable,
+    underwear is washed rather than bought - see _SKIP_SHOPPING_PRODUCTS)
+    since "critical" only makes sense for the same purchasable products that
+    already get a shopping-list entry at the warning threshold.
+    """
+    inventory = household_data.get("inventory", {})
+    thresholds = household_data.get("thresholds", {})
+    critical_products: list[str] = []
+    for product in HOUSEHOLD_PRODUCTS:
+        if product in _SKIP_SHOPPING_PRODUCTS:
+            continue
+        display_name = _SHOPPING_PRODUCT_NAMES.get(product)
+        if not display_name:
+            continue
+        quantity = max(0, int(inventory.get(product, 0)))
+        threshold = thresholds.get(product, {})
+        critical = max(0, int(threshold.get("critical", 5) if isinstance(threshold, dict) else 5))
+        if quantity <= critical:
+            critical_products.append(display_name)
+    return critical_products
 
 
 async def _async_add_todo_item_if_missing(
@@ -973,29 +1012,6 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
     await _async_sync_cycle_statistics(hass, runtime)
 
 
-def _count_pain_days(symptom_history: list[dict] | None, range_start: date, range_end_exclusive: date) -> int:
-    """Count days with a logged pain entry in [range_start, range_end_exclusive).
-
-    Extracted from _async_sync_cycle_statistics's per-cycle loop (25.09.2026,
-    HA-Idee 6 "weitere Ideen?") so it can also drive _async_handle_compare_
-    current_cycle below - one "what counts as a pain day" definition instead
-    of two copies that could quietly drift apart.
-    """
-    count = 0
-    for entry in symptom_history or []:
-        if not isinstance(entry, dict):
-            continue
-        try:
-            entry_date = date.fromisoformat(str(entry.get("date")))
-        except (TypeError, ValueError):
-            continue
-        if not (range_start <= entry_date < range_end_exclusive):
-            continue
-        pain_value = entry.get("pain")
-        has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
-        if has_pain:
-            count += 1
-    return count
 
 
 async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: MenstruationRuntime) -> None:
@@ -1192,6 +1208,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_repair_storage(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_repair_storage(hass, call)
 
+    async def async_get_household_summary(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_get_household_summary(hass, call)
+
     async def async_refresh_cycle_model(call: ServiceCall) -> None:
         await _async_handle_refresh_cycle_model(hass, call)
 
@@ -1373,6 +1392,17 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _repair_storage_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_REPAIR_STORAGE, async_repair_storage, **_repair_storage_register_kwargs
+    )
+
+    _household_summary_register_kwargs: dict[str, Any] = {
+        # No fields at all - same reasoning as repair_storage above: always
+        # covers every currently loaded profile, never a single target.
+        "schema": vol.Schema({}),
+    }
+    if SupportsResponse is not None:
+        _household_summary_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_GET_HOUSEHOLD_SUMMARY, async_get_household_summary, **_household_summary_register_kwargs
     )
 
     hass.services.async_register(
@@ -1860,6 +1890,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             async_check_storage_integrity(hass, entry.entry_id, entry.title, _storage_issues)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight storage-integrity check failed for %s", entry.entry_id)
+        try:
+            # HA-Idee 2 ("weitere Ideen?" 27.09.2026): household inventory is
+            # shared, not per-profile, so this is a safety net for thresholds
+            # changed (or stock aged) without a fresh consumption event to
+            # trigger the checks in _async_register_consumption/
+            # _async_handle_manage_household_inventory - idempotent, so
+            # running it once per loaded profile every midnight is harmless.
+            from .repairs import async_check_household_inventory_critical
+
+            await _async_ensure_household_inventory_loaded(hass)
+            _household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY)
+            if isinstance(_household_data, dict):
+                async_check_household_inventory_critical(
+                    hass, _household_inventory_critical_products(_household_data)
+                )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight household-inventory-critical check failed")
 
     runtime.unregister_midnight_listener = async_track_time_change(
         hass,
@@ -1946,6 +1993,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _setup_storage_issues = await _async_diagnose_profile_storage(runtime)
     async_check_storage_integrity(hass, entry.entry_id, entry.title, _setup_storage_issues)
+
+    # HA-Idee 2 ("weitere Ideen?" 27.09.2026): same safety net as the
+    # midnight refresh above, also run once on load so a critical stock
+    # level found while the integration was unloaded is surfaced right away
+    # rather than waiting for the next consumption event or midnight.
+    from .repairs import async_check_household_inventory_critical
+
+    await _async_ensure_household_inventory_loaded(hass)
+    _setup_household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY)
+    if isinstance(_setup_household_data, dict):
+        async_check_household_inventory_critical(
+            hass, _household_inventory_critical_products(_setup_household_data)
+        )
 
     return True
 
@@ -2506,6 +2566,69 @@ async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -
     }
 
 
+async def _async_handle_get_household_summary(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """One-glance overview across every currently loaded profile (HA-Idee 4,
+    "weitere Ideen?" 27.09.2026) - e.g. "2 of 3 profiles currently in their
+    period" without a client having to call get_cycle_predictions once per
+    profile and merge the results itself.
+
+    Respects each profile's own visibility_level the same way the sensor's
+    own extra_state_attributes do (see sensor.py::_filter_attributes_for_
+    visibility): a profile set to "private" contributes only to the total
+    profile_count, with its own entry collapsed to STATE_PRIVATE and no
+    state/days_until_next_start - it is deliberately not excluded outright,
+    so callers can still see that a private profile exists without learning
+    anything about its actual cycle state.
+    """
+    domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
+    if not domain_data:
+        raise HomeAssistantError("No menstruation_cycle profiles are currently loaded.")
+
+    today = dt_util.now().date()
+    profiles: list[dict[str, Any]] = []
+    state_counts: dict[str, int] = {STATE_PERIOD: 0, STATE_FERTILE: 0, STATE_PMS: 0, STATE_NEUTRAL: 0}
+
+    for runtime in domain_data.values():
+        is_private = getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_PRIVATE
+        profile_entry: dict[str, Any] = {
+            "profile": runtime.profile,
+            "friendly_name": runtime.friendly_name,
+        }
+        if is_private:
+            profile_entry["state"] = STATE_PRIVATE
+            profiles.append(profile_entry)
+            continue
+
+        model = build_cycle_model(
+            history=runtime.history,
+            period_duration_days=runtime.period_duration_days,
+            symptom_history=runtime.symptom_history,
+            pregnancy_data=runtime.pregnancy_data,
+            menarche_data=runtime.menarche_data,
+            pre_menarche_data=runtime.pre_menarche_data,
+            menopause_data=runtime.menopause_data,
+            noncycle_data=runtime.noncycle_data,
+            today=today,
+            cycle_length_override=runtime.cycle_length_override,
+            nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+            onboarding_stage=getattr(runtime, "onboarding_stage", None),
+        )
+        profile_entry["state"] = model.state
+        profile_entry["days_until_next_start"] = model.days_until_next_start
+        if model.state in state_counts:
+            state_counts[model.state] += 1
+        profiles.append(profile_entry)
+
+    return {
+        "checked_at": dt_util.utcnow().isoformat(),
+        "profile_count": len(profiles),
+        "profiles": profiles,
+        "currently_in_period": state_counts[STATE_PERIOD],
+        "currently_fertile": state_counts[STATE_FERTILE],
+        "currently_pms": state_counts[STATE_PMS],
+    }
+
+
 async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Export the complete stored data for EVERY configured profile into one
     JSON file (HA-Idee 4, "weitere Ideen" 15.09.2026).
@@ -2942,6 +3065,10 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         await _async_check_and_update_todo_list(hass, household_data, product)
     if action in {"set", "add", "set_thresholds"} and product == "underwear":
         await _async_check_underwear_washing_todo(hass, household_data)
+    if action in {"set", "add", "set_thresholds"}:
+        from .repairs import async_check_household_inventory_critical
+
+        async_check_household_inventory_critical(hass, _household_inventory_critical_products(household_data))
 
 
 async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> None:

@@ -411,6 +411,32 @@ def normalize_symptoms(symptom_history: list[dict[str, Any]]) -> list[dict[str, 
     return sorted(normalized, key=lambda x: x.get("date", ""))
 
 
+def _count_pain_days(symptom_history: list[dict[str, Any]] | None, range_start: date, range_end_exclusive: date) -> int:
+    """Count days with a logged pain entry in [range_start, range_end_exclusive).
+
+    Moved here from __init__.py (27.09.2026, HA-Idee 6 "weitere Ideen?", round
+    36) so cycle_wellness_score() below can reuse it too, alongside its
+    original callers in __init__.py (_async_sync_cycle_statistics,
+    _async_handle_compare_current_cycle) - one "what counts as a pain day"
+    definition instead of a second copy living in model.py.
+    """
+    count = 0
+    for entry in symptom_history or []:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            entry_date = date.fromisoformat(str(entry.get("date")))
+        except (TypeError, ValueError):
+            continue
+        if not (range_start <= entry_date < range_end_exclusive):
+            continue
+        pain_value = entry.get("pain")
+        has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
+        if has_pain:
+            count += 1
+    return count
+
+
 PHASE_PERIOD = "period"
 PHASE_FOLLICULAR = "follicular"
 PHASE_FERTILE_WINDOW = "fertile_window"
@@ -542,6 +568,90 @@ def assign_symptom_day_phase(
     if fertile_end and day > fertile_end:
         return PHASE_LUTEAL
     return PHASE_FOLLICULAR
+
+
+def current_cycle_phase(model: "CycleModel", today: date) -> str | None:
+    """Which of the six symptom-correlation phases "today" falls into for the
+    ongoing cycle (HA-Idee 5, "weitere Ideen?" 27.09.2026).
+
+    Reuses assign_symptom_day_phase() - the exact same function
+    compute_symptom_correlation_insights() calls per historical day - instead
+    of a second, parallel phase computation that could drift out of sync with
+    the one already driving the symptom-correlation insights. Only meaningful
+    for "normal" cycling (the caller is expected to gate on model.state);
+    returns None when there isn't at least one recorded cycle start to anchor
+    the calculation on.
+    """
+    if not model.grouped_starts:
+        return None
+    cycle_start_iso = model.grouped_starts[-1]
+    try:
+        cycle_start = date.fromisoformat(cycle_start_iso)
+    except ValueError:
+        return None
+
+    if model.next_predicted_start:
+        cycle_end_anchor_iso = model.next_predicted_start
+    else:
+        cycle_length = max(20, min(60, int(model.avg_cycle_length or DEFAULT_CYCLE_LENGTH)))
+        cycle_end_anchor_iso = (cycle_start + timedelta(days=cycle_length - 1)).isoformat()
+
+    history_set = set(normalize_history(model.history))
+    return assign_symptom_day_phase(
+        day_iso=today.isoformat(),
+        cycle_start_iso=cycle_start_iso,
+        cycle_end_anchor_iso=cycle_end_anchor_iso,
+        period_duration_days=model.period_duration_days,
+        history_set=history_set,
+        fertile_window_start_iso=model.fertile_window_start,
+        fertile_window_end_iso=model.fertile_window_end,
+        ovulation_day_iso=model.ovulation_day,
+    )
+
+
+def cycle_wellness_score(model: "CycleModel", today: date) -> dict[str, Any] | None:
+    """Single 0-100 summary combining cycle regularity, recent pain burden,
+    and how much history backs the prediction (HA-Idee 6, "weitere Ideen?"
+    27.09.2026).
+
+    Deliberately reuses the exact building blocks the confidence/regularity
+    computations above already use (_cycle_regularity_std,
+    _regularity_score, _recent_cycle_lengths, _history_depth_score) plus
+    _count_pain_days, instead of a fourth, independent scoring system that
+    could tell a different story than the confidence/regularity numbers
+    shown elsewhere. Returns None when there isn't at least one recent
+    cycle to score, or outside normal cycling (the caller is expected to
+    gate on model.state) - a score built on zero data would be misleading
+    rather than merely absent.
+    """
+    if len(model.grouped_starts) < 2:
+        return None
+    lengths = _recent_cycle_lengths(model.grouped_starts)
+    valid_cycles = len(lengths)
+    if valid_cycles < 1:
+        return None
+
+    cycle_std_days = _cycle_regularity_std(model.grouped_starts)
+    regularity_score = _regularity_score(cycle_std_days)
+    history_score = _history_depth_score(valid_cycles)
+
+    window_start_iso = model.grouped_starts[-min(len(model.grouped_starts), 8)]
+    try:
+        window_start = date.fromisoformat(window_start_iso)
+    except ValueError:
+        window_start = today
+    pain_days = _count_pain_days(model.symptom_history, window_start, today + timedelta(days=1))
+    avg_pain_days_per_cycle = pain_days / valid_cycles
+    period_days = max(1, int(model.period_duration_days or DEFAULT_PERIOD_DURATION_DAYS))
+    pain_score = max(0.0, min(1.0, 1.0 - avg_pain_days_per_cycle / (period_days * 1.5)))
+
+    score = round(100 * (regularity_score * 0.4 + pain_score * 0.35 + history_score * 0.25))
+    return {
+        "score": max(0, min(100, score)),
+        "regularity_component": round(regularity_score * 100),
+        "pain_component": round(pain_score * 100),
+        "history_component": round(history_score * 100),
+    }
 
 
 def compute_symptom_correlation_insights(

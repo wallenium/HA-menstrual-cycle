@@ -1106,3 +1106,12 @@ repair_storage:
     as semantic inconsistencies (e.g. pregnancy_data marked active without a
     start_date, or pregnancy and menopause both active at once). Changes
     nothing — call export_full_backup first if you plan to act on the findings.
+
+get_household_summary:
+  name: Get household summary
+  description: |
+    Read-only one-glance overview across every currently loaded profile (e.g.
+    how many profiles are currently in their period, or fertile, right now).
+    Respects each profile's visibility_level — a profile set to "private"
+    contributes only to the total profile count, with its own entry showing
+    no more than that it exists.
