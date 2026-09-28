@@ -4866,43 +4866,83 @@
         const label = this._t(state);
         return label !== state ? label : state;
       };
-      // Rows carry a household-row--<state> modifier (period/fertile/pms/
-      // pregnant/neutral/...) for a subtle per-state tint, same rose/sage/
-      // amber/plum palette the rest of the panel already uses - keeps a
-      // private profile visually calm (no tint class -> plain neutral chip)
-      // instead of a jarring plain-emoji list (Nachfrage 28.09.2026,
-      // "besserer Style bitte").
-      const rows = (summary.profiles || []).map((p) => {
+
+      // Group every profile by its raw state so each becomes a member
+      // bubble INSIDE its matching category box below, instead of a
+      // separate flat list underneath (Nachfrage 28.09.2026: "die Bubbles
+      // mit den Namen und Zykluspunkt in die jeweilige Kaestchen ...
+      // aufgeraeumter").
+      const byState = {};
+      (summary.profiles || []).forEach((p) => {
+        const key = p.state || 'neutral';
+        (byState[key] = byState[key] || []).push(p);
+      });
+
+      const memberBubble = (p) => {
         const name = escapeHtml(p.friendly_name || p.profile || '');
-        const label = p.state ? stateLabel(p.state) : '';
-        // cycle_day is only present for a profile at visibility_level: full
-        // (see get_household_summary in __init__.py) - status_only/private
-        // profiles simply won't have it, no extra check needed here.
-        const dayLabel = p.cycle_day
+        // cycle_day/weeks_pregnant are only present at visibility_level:
+        // full (see get_household_summary in __init__.py) - status_only/
+        // private profiles simply omit them, no extra check needed here.
+        const point = p.cycle_day
           ? ` · ${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''}`
-          : '';
-        // Same small status illustration the hero/other cards already use
-        // (Nachfrage 28.09.2026, "Icons in der Familienuebersicht
-        // verwenden") - skipped for a private profile (state is collapsed
-        // to STATE_PRIVATE there, an icon would just be a meaningless
-        // "neutral" fallback and add visual noise without any real info).
-        // `p` itself doubles as the attrs object for the pregnant case:
-        // get_household_summary attaches weeks_pregnant alongside state for
-        // exactly this (also full-visibility-only, see there).
-        const icon = p.state && p.state !== 'private' ? this._statusIconHtml(p.state, 18, p) : '';
-        const tintClass = p.state && p.state !== 'private' ? ` household-row--${escapeHtml(p.state)}` : '';
-        return `<span class="household-row${tintClass}">${icon}<strong>${name}</strong>${label ? `<span class="household-row-status">${escapeHtml(label)}${escapeHtml(dayLabel)}</span>` : ''}</span>`;
-      }).join('');
+          : (p.weeks_pregnant ? ` · ${this._t('week') || 'Woche'} ${Math.floor(p.weeks_pregnant)}` : '');
+        return `<span class="household-member"><strong>${name}</strong>${point ? `<span class="household-member-point">${escapeHtml(point)}</span>` : ''}</span>`;
+      };
+
+      // "In Periode"/"Fruchtbar"/"PMS" stay fixed, always-shown boxes (even
+      // at 0) exactly like before. Every OTHER state actually present among
+      // the profiles - pregnant, pre_menarche, menarche, menopause,
+      // postpartum, neutral, private - gets its own box too, but only when
+      // at least one profile is in it (Nachfrage 28.09.2026: "noch schwanger
+      // (wenn jemand schwanger ist) und Pre Menarche (wenn jemand da
+      // ist)") - generalized to every state instead of hardcoding just
+      // those two, so no profile is ever left without a box to sit in.
+      const FIXED_STATES = ['period', 'fertile', 'pms'];
+      const STATE_ORDER = ['pregnant', 'pre_menarche', 'menarche', 'menopause', 'postpartum', 'neutral', 'private'];
+      const dynamicStates = Object.keys(byState)
+        .filter((s) => !FIXED_STATES.includes(s))
+        .sort((a, b) => {
+          const ia = STATE_ORDER.indexOf(a);
+          const ib = STATE_ORDER.indexOf(b);
+          return (ia === -1 ? STATE_ORDER.length : ia) - (ib === -1 ? STATE_ORDER.length : ib);
+        });
+
+      const renderBox = (state, count, members) => {
+        // "pregnant" keeps its own plum tint (explicitly requested); every
+        // other dynamic category (pre_menarche/menarche/menopause/
+        // postpartum/neutral/private) shares one calm, non-alert sand-toned
+        // box instead of inventing a bespoke color per rare life stage.
+        const tintClass = FIXED_STATES.includes(state) ? `household-stat--${state}`
+          : state === 'pregnant' ? 'household-stat--pregnant'
+          : 'household-stat--neutral';
+        const label = state === 'period' ? (this._t('dashboard_household_in_period') || 'In Periode')
+          : state === 'fertile' ? (this._t('dashboard_household_fertile') || 'Fruchtbar')
+          : state === 'pms' ? (this._t('dashboard_household_pms') || 'PMS')
+          : escapeHtml(stateLabel(state));
+        // No category icon for "private" - same reasoning as the per-
+        // profile icon decision in the previous round: there is no real
+        // state to illustrate, a generic fallback icon would add nothing.
+        const icon = state === 'private' ? '' : this._statusIconHtml(state, 50);
+        const bubbles = members.map(memberBubble).join('');
+        return `
+          <div class="household-stat ${tintClass}">
+            <div class="household-stat-header">${icon}<div class="household-stat-body"><div class="household-stat-value">${count}</div><div class="household-stat-label">${label}</div></div></div>
+            ${bubbles ? `<div class="household-stat-members">${bubbles}</div>` : ''}
+          </div>`;
+      };
+
+      const boxes = [
+        renderBox('period', summary.currently_in_period ?? 0, byState.period || []),
+        renderBox('fertile', summary.currently_fertile ?? 0, byState.fertile || []),
+        renderBox('pms', summary.currently_pms ?? 0, byState.pms || []),
+        ...dynamicStates.map((s) => renderBox(s, byState[s].length, byState[s])),
+      ].join('');
+
       const title = this._t('dashboard_household_title') || 'Haushalts-Übersicht';
       return `
         <section class="household-summary" aria-label="${title}">
           <div class="household-summary-title">${title}</div>
-          <div class="household-counters">
-            <div class="household-stat household-stat--period">${this._statusIconHtml('period', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_in_period ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_in_period') || 'In Periode'}</div></div></div>
-            <div class="household-stat household-stat--fertile">${this._statusIconHtml('fertile', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_fertile ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_fertile') || 'Fruchtbar'}</div></div></div>
-            <div class="household-stat household-stat--pms">${this._statusIconHtml('pms', 50)}<div class="household-stat-body"><div class="household-stat-value">${summary.currently_pms ?? 0}</div><div class="household-stat-label">${this._t('dashboard_household_pms') || 'PMS'}</div></div></div>
-          </div>
-          <div class="household-rows">${rows}</div>
+          <div class="household-counters">${boxes}</div>
         </section>`;
     }
 
@@ -6622,10 +6662,11 @@
           }
           .household-counters { display: flex; flex-wrap: wrap; gap: 10px; }
           .household-stat {
-            display: flex; align-items: center; gap: 12px; flex: 1 1 150px;
+            display: flex; flex-direction: column; gap: 8px; flex: 1 1 170px;
             padding: 10px 16px; border-radius: 16px;
           }
-          .household-stat img { flex: none; }
+          .household-stat-header { display: flex; align-items: center; gap: 12px; }
+          .household-stat-header img { flex: none; }
           .household-stat-value {
             font-family: var(--mc-font-display); font-size: 30px; font-weight: 600; line-height: 1;
           }
@@ -6639,18 +6680,17 @@
           .household-stat--fertile .household-stat-value { color: var(--mc-sage-deep, #3F5A47); }
           .household-stat--pms { background: var(--mc-amber-tint, #FBEEDC); }
           .household-stat--pms .household-stat-value { color: var(--mc-amber-deep, #8a5a12); }
-          .household-rows { display: flex; flex-wrap: wrap; gap: 8px; }
-          .household-row {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 12px 5px 8px; border-radius: 999px;
-            background: var(--secondary-background-color, #f3f4f6);
+          .household-stat--pregnant { background: var(--mc-plum-tint, #EFE3EA); }
+          .household-stat--pregnant .household-stat-value { color: var(--mc-plum, #6B3654); }
+          .household-stat--neutral { background: var(--mc-sand, #EDE6DB); }
+          .household-stat-members { display: flex; flex-wrap: wrap; gap: 6px; }
+          .household-member {
+            display: inline-flex; align-items: baseline; gap: 4px;
+            padding: 3px 10px; border-radius: 999px; font-size: 0.78rem;
+            background: rgba(0, 0, 0, 0.15);
           }
-          .household-row strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
-          .household-row-status { color: var(--secondary-text-color, #6b7280); }
-          .household-row--period { background: var(--mc-rose-tint, #FBE3E8); }
-          .household-row--fertile { background: var(--mc-sage-tint, #E6EDE7); }
-          .household-row--pms { background: var(--mc-amber-tint, #FBEEDC); }
-          .household-row--pregnant { background: var(--mc-plum-tint, #EFE3EA); }
+          .household-member strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
+          .household-member-point { color: var(--secondary-text-color, #6b7280); }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
