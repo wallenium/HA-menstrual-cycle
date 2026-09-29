@@ -1477,6 +1477,8 @@ class MenstruationGaugeSensor(SensorEntity):
                     "friendly_name": runtime.friendly_name,
                     "old_state": old_state,
                     "new_state": model.state,
+                    # Lets logbook.py link the entry to this entity.
+                    "entity_id": self.entity_id,
                 },
             )
         self._state_initialized = True

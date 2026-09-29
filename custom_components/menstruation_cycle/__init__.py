@@ -37,6 +37,7 @@ from homeassistant.util import slugify
 
 from .const import (
     ATTR_HISTORY,
+    EVENT_CYCLE_START_LOGGED,
     EVENT_PRODUCT_CONSUMED,
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
@@ -586,11 +587,7 @@ async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
             # HA-Idee ("weitere neue Ideen", 29.09.2026): optionales Area-Tracking.
             "track_by_area": bool(household_data.get("track_by_area", False)),
             "area_usage": _household_area_usage_breakdown(household_data.get("consumption_log", [])),
-            # HA-Idee ("weitere neue Ideen", 29.09.2026): unit_of_measurement
-            # macht diesen Sensor fuer den Logbook-"continuous domain"-Filter
-            # sichtbar, wodurch HA seine automatischen Rohzahlen-Logbuch-
-            # Eintraege unterdrueckt - die neue logbook.py-Beschreibung wird
-            # dadurch die einzige (statt eine zusaetzliche) Darstellung.
+            # Makes this sensor visible to the logbook "continuous domain" filter, suppressing its raw state-change entries in favor of logbook.py's description.
             "unit_of_measurement": "pcs",
             "restock_forecast": _household_restock_forecast(household_data),
         },
@@ -690,10 +687,7 @@ async def _async_register_consumption(
             entry["area_id"] = area_id
             entry["area_name"] = area.name
 
-    # HA-Idee ("weitere neue Ideen", 29.09.2026): fuer die neue logbook.py-
-    # Beschreibung - jede Konsum-Buchung wird als eigenes Event gefeuert,
-    # unabhaengig davon ob sie ueber log_product_usage oder
-    # manage_household_inventory("consume") ausgeloest wurde.
+    # Fired for every consumption, from either service path; described in logbook.py.
     hass.bus.async_fire(EVENT_PRODUCT_CONSUMED, dict(entry))
     household_data["last_usage"] = entry
     log = household_data.setdefault("consumption_log", [])
@@ -2421,6 +2415,18 @@ async def _async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
         if history_date not in runtime.history:
             runtime.history.append(history_date)
     await _async_save_and_notify(hass, runtime)
+
+    # Described in logbook.py; skipped for private profiles like EVENT_STATE_CHANGED.
+    if runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE:
+        hass.bus.async_fire(
+            EVENT_CYCLE_START_LOGGED,
+            {
+                "entry_id": _entry_id_for_runtime(hass, runtime),
+                "profile": runtime.profile,
+                "friendly_name": runtime.friendly_name,
+                "date": date_iso,
+            },
+        )
 
 
 async def _async_handle_remove(hass: HomeAssistant, call: ServiceCall) -> None:
