@@ -4944,7 +4944,7 @@
         }
         const detail = state === 'private' ? '' : `
           <span class="household-member-detail">
-            ${this._statusIconHtml(state, 88, p)}
+            ${this._statusIconHtml(state, 112, p)}
             <span class="household-member-detail-name">${this._avatarHtml(p, 28)}${name}</span>
             <span class="household-member-detail-state">${escapeHtml(stateLabel(state))}</span>
             ${detailLines.map((l) => `<span class="household-member-detail-line">${escapeHtml(l)}</span>`).join('')}
@@ -6813,8 +6813,8 @@
             .household-member:hover, .household-member:focus-within { transform: scale(1.12); z-index: 5; }
             .household-member-detail {
               display: flex; flex-direction: column; align-items: center; gap: 2px;
-              position: absolute; bottom: calc(100% + 8px); left: 50%;
-              min-width: 140px; padding: 10px 14px; border-radius: 14px;
+              position: absolute; top: calc(100% + 8px); left: 50%;
+              min-width: 160px; padding: 10px 14px; border-radius: 14px;
               background: var(--card-background-color, #fff);
               border: 1px solid var(--divider-color, #e5e7eb);
               box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
