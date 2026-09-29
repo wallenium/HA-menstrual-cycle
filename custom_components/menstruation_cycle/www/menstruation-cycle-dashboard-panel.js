@@ -696,6 +696,13 @@
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
+  // Per-profile identity color, picked deterministically from the profile
+  // id/name (same hash approach as the avatar variant picker below).
+  const HOUSEHOLD_ACCENT_COLORS = [
+    '#6B7FD7', '#D7A23D', '#8E6BD7', '#4F9DA6',
+    '#D77A3D', '#5C8AA3', '#A35C8A', '#7A9A4F',
+  ];
+
   /**
    * Safe JSON.parse wrapper that never throws to the UI runtime.
    * - Returns `fallback` for null, undefined, or non-string inputs that are not plain objects/arrays.
@@ -3882,19 +3889,33 @@
       }
     }
 
-    // Real person picture if the profile has one linked, else a deterministic
-    // placeholder avatar (picked by hashing the profile id, so it's stable
-    // across renders) rather than an AI-generated image at runtime.
-    _avatarHtml(profile, size = 24) {
-      const pictureUrl = profile?.profile_picture;
-      if (pictureUrl) {
-        return `<img src="${escapeHtml(pictureUrl)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:0 0 auto;" />`;
-      }
+    // Stable hash of the profile id/name, shared by the avatar variant
+    // picker and the accent color picker so both stay deterministic.
+    _hashProfileKey(profile) {
       const key = String(profile?.profile || profile?.friendly_name || '');
       let hash = 0;
       for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-      const variant = (hash % 6) + 1;
-      return `<img src="/menstruation_cycle/assets/avatars/girl_${variant}.svg" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:0 0 auto;" />`;
+      return hash;
+    }
+
+    // Per-profile identity color (bubble/avatar ring, timeline label) -
+    // deterministic, not user-configurable yet.
+    _accentColor(profile) {
+      return HOUSEHOLD_ACCENT_COLORS[this._hashProfileKey(profile) % HOUSEHOLD_ACCENT_COLORS.length];
+    }
+
+    // Real person picture if the profile has one linked, else a deterministic
+    // placeholder avatar (picked by hashing the profile id, so it's stable
+    // across renders) rather than an AI-generated image at runtime. Always
+    // gets a colored ring in the profile's accent color for identity even
+    // when a real picture is shown.
+    _avatarHtml(profile, size = 24) {
+      const ring = `box-shadow:0 0 0 2px ${this._accentColor(profile)};`;
+      const pictureUrl = profile?.profile_picture;
+      const src = pictureUrl
+        ? escapeHtml(pictureUrl)
+        : `/menstruation_cycle/assets/avatars/girl_${(this._hashProfileKey(profile) % 6) + 1}.svg`;
+      return `<img src="${src}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:0 0 auto;${ring}" />`;
     }
 
     _renderCycleHero(stateObj, discreetMode) {
