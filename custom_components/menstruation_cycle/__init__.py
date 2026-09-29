@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import re
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ from homeassistant.util import slugify
 
 from .const import (
     ATTR_HISTORY,
+    EVENT_PRODUCT_CONSUMED,
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
@@ -501,6 +503,54 @@ def _underwear_available(household_data: dict[str, Any]) -> int:
     return max(0, settings["total_owned"] - min(in_use, settings["total_owned"]))
 
 
+_RESTOCK_FORECAST_PRODUCTS: tuple[str, ...] = tuple(_SHOPPING_PRODUCT_NAMES.keys())
+
+
+def _average_daily_usage_from_log(consumption_log: list, product: str) -> float:
+    """Average daily usage of one product from the consumption log.
+
+    Direct Python port of the card's own JS _averageDailyUsageFromLog
+    (www/menstruation-product-inventory-card.js) - kept byte-for-byte
+    equivalent so the backend forecast (idea 4, "weitere neue Ideen",
+    29.09.2026) agrees with what the card has shown for underwear all along.
+    ponytail: a single-day log overstates the daily rate (span floors to 1
+    day) - same known ceiling the JS version already accepted, no fix here.
+    """
+    entries = [e for e in consumption_log if isinstance(e, dict) and str(e.get("product", "")).lower() == product]
+    if not entries:
+        return 0.0
+    dates = sorted(
+        d for d in (str(e.get("timestamp", "")).strip()[:10] for e in entries) if re.match(r"^\d{4}-\d{2}-\d{2}$", d)
+    )
+    if not dates:
+        return 0.0
+    total_quantity = sum(max(1, int(e.get("quantity", 1))) for e in entries)
+    start = date.fromisoformat(dates[0])
+    end = date.fromisoformat(dates[-1])
+    days_span = max(1, (end - start).days + 1)
+    return total_quantity / days_span
+
+
+def _household_restock_forecast(household_data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """"Reicht noch fuer ca. N Tage"-Schaetzung pro Haushaltsprodukt (idea 4,
+    "weitere neue Ideen", 29.09.2026) - generalizes the card's underwear-only
+    _averageDailyUsageFromLog to every purchasable product (never cup, which
+    is emptied/reused rather than stocked). Underwear uses the number
+    currently AVAILABLE (clean, unworn) as its "stock", matching the card's
+    own washing-recommendation math - not the in-use count.
+    """
+    consumption_log = household_data.get("consumption_log", [])
+    inventory = household_data.get("inventory", {})
+    forecast: dict[str, dict[str, Any]] = {}
+    for product in _RESTOCK_FORECAST_PRODUCTS:
+        stock = _underwear_available(household_data) if product == "underwear" else max(0, int(inventory.get(product, 0)))
+        daily_usage = _average_daily_usage_from_log(consumption_log, product)
+        days_remaining = round(stock / daily_usage, 1) if daily_usage > 0 else None
+        forecast[product] = {"daily_usage": round(daily_usage, 2), "days_remaining": days_remaining}
+    return forecast
+
+
+
 async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
     household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY)
     if not isinstance(household_data, dict):
@@ -536,6 +586,13 @@ async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
             # HA-Idee ("weitere neue Ideen", 29.09.2026): optionales Area-Tracking.
             "track_by_area": bool(household_data.get("track_by_area", False)),
             "area_usage": _household_area_usage_breakdown(household_data.get("consumption_log", [])),
+            # HA-Idee ("weitere neue Ideen", 29.09.2026): unit_of_measurement
+            # macht diesen Sensor fuer den Logbook-"continuous domain"-Filter
+            # sichtbar, wodurch HA seine automatischen Rohzahlen-Logbuch-
+            # Eintraege unterdrueckt - die neue logbook.py-Beschreibung wird
+            # dadurch die einzige (statt eine zusaetzliche) Darstellung.
+            "unit_of_measurement": "pcs",
+            "restock_forecast": _household_restock_forecast(household_data),
         },
     )
 
@@ -632,6 +689,12 @@ async def _async_register_consumption(
         if area is not None:
             entry["area_id"] = area_id
             entry["area_name"] = area.name
+
+    # HA-Idee ("weitere neue Ideen", 29.09.2026): fuer die neue logbook.py-
+    # Beschreibung - jede Konsum-Buchung wird als eigenes Event gefeuert,
+    # unabhaengig davon ob sie ueber log_product_usage oder
+    # manage_household_inventory("consume") ausgeloest wurde.
+    hass.bus.async_fire(EVENT_PRODUCT_CONSUMED, dict(entry))
     household_data["last_usage"] = entry
     log = household_data.setdefault("consumption_log", [])
     if isinstance(log, list):

@@ -10,6 +10,9 @@ DOMAIN = "menstruation_cycle"
 # automation-Trigger deckt jeden einzelnen Fall genauso ab, ohne fuer
 # jeden moeglichen Zustandsuebergang einen eigenen Event-Typ zu pflegen.
 EVENT_STATE_CHANGED = f"{DOMAIN}_state_changed"
+# HA-Idee ("weitere neue Ideen", 29.09.2026): gefeuert bei jedem
+# Haushaltsbestand-Verbrauch, fuer die neue logbook.py-Beschreibung.
+EVENT_PRODUCT_CONSUMED = f"{DOMAIN}_product_consumed"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1
