@@ -18,6 +18,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
       inventory_entity: "sensor.household_product_stock",
       title: "Household inventory",
       member: "",
+      area_id: "",
       visible_products: ["tampon", "pad", "cup", "liner", "underwear"],
       product_order: ["tampon", "pad", "cup", "liner", "underwear"],
       thresholds: {},
@@ -39,6 +40,10 @@ class MenstruationProductInventoryCard extends HTMLElement {
       inventory_entity: "sensor.household_product_stock",
       title: "",
       member: "",
+      // HA-Idee ("weitere neue Ideen", 29.09.2026): welche HA-Area diese
+      // Karteninstanz repraesentiert - nur genutzt, wenn Area-Tracking im
+      // Backend aktiviert ist (set_area_tracking), sonst folgenlos.
+      area_id: "",
       thresholds: {},
       underwear_total_owned: 12,
       underwear_washing_threshold: 3,
@@ -111,6 +116,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
         add_to_shopping: "Add to shopping list",
         recent_usage: "Recent usage",
         no_logs: "No consumption logs",
+        area_usage: "Usage by area",
         good: "Good",
         warning: "Warning",
         critical: "Critical",
@@ -202,6 +208,10 @@ class MenstruationProductInventoryCard extends HTMLElement {
         if (configThreshold.warning !== undefined) serviceData.warning_threshold = Number(configThreshold.warning);
         if (configThreshold.critical !== undefined) serviceData.critical_threshold = Number(configThreshold.critical);
       }
+    }
+
+    if (action === "consume" && this.config?.area_id) {
+      serviceData.area_id = this.config.area_id;
     }
 
     if (product === "underwear") {
@@ -585,6 +595,17 @@ class MenstruationProductInventoryCard extends HTMLElement {
             </div>
           `).join("") : (window.MenstruationFunctions ? window.MenstruationFunctions.renderEmptyState(this._t("no_logs")) : `<div class="empty">${this._t("no_logs")}</div>`)}
         </div>
+        ${attrs.track_by_area && attrs.area_usage && Object.keys(attrs.area_usage).length ? `
+          <div class="logs">
+            <strong>${this._t("area_usage")}</strong>
+            ${Object.values(attrs.area_usage).map((area) => `
+              <div class="log-item">
+                <span>${this._escapeHtml(area.area_name)}</span>
+                <span>${this._escapeHtml(area.total)}</span>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
       </ha-card>
     `;
   }
@@ -647,6 +668,8 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
         warning: "Warning",
         critical: "Critical",
         options: "Options",
+        area: "Area",
+        area_help: "Tag quick-log actions from this card with a Home Assistant area (only recorded if area tracking is enabled).",
         tampon: "Tampons",
         pad: "Pads",
         cup: "Menstrual Cups",
@@ -707,6 +730,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   _render() {
     const ordered = this._getOrderedProducts();
     const visible = this._getVisibleSet();
+    const hasHaSelector = Boolean(customElements.get("ha-selector"));
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -863,7 +887,21 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
           </div>
         </div>
       </div>
+      <div class="section">
+        <div class="section-title">${this._escapeHtml(this._t("area"))}</div>
+        <div class="hint" style="font-size: 0.85rem; color: var(--secondary-text-color, #6b7280); margin-bottom: 6px;">${this._escapeHtml(this._t("area_help"))}</div>
+        ${hasHaSelector
+          ? '<ha-selector id="area_selector"></ha-selector>'
+          : `<input id="area_input" type="text" value="${this._escapeHtml(this._config.area_id || "")}" placeholder="bathroom_upstairs">`}
+      </div>
     `;
+
+    const areaSelector = this.shadowRoot.getElementById("area_selector");
+    if (areaSelector) {
+      areaSelector.hass = this._hass;
+      areaSelector.selector = { area: {} };
+      areaSelector.value = this._config.area_id || "";
+    }
 
     this._attachHandlers();
   }
@@ -875,6 +913,12 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
     this._onRootChange = (event) => {
       const target = event.target;
       if (!target) return;
+
+      if (target.id === "area_selector" || target.id === "area_input") {
+        const value = event?.detail?.value ?? target.value ?? "";
+        this._fireConfigChanged({ ...this._config, area_id: value || "" });
+        return;
+      }
 
       if (target.matches("#visibility-list input[type='checkbox'][data-product]")) {
         const ordered = this._getOrderedProducts();
@@ -972,6 +1016,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
     };
 
     this.shadowRoot.addEventListener("change", this._onRootChange);
+    this.shadowRoot.addEventListener("value-changed", this._onRootChange);
     this.shadowRoot.addEventListener("dragstart", this._onDragStart);
     this.shadowRoot.addEventListener("dragend", this._onDragEnd);
     this.shadowRoot.addEventListener("dragover", this._onDragOver);
@@ -982,6 +1027,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
   _detachHandlers() {
     if (!this.shadowRoot || !this._handlersAttached) return;
     this.shadowRoot.removeEventListener("change", this._onRootChange);
+    this.shadowRoot.removeEventListener("value-changed", this._onRootChange);
     this.shadowRoot.removeEventListener("dragstart", this._onDragStart);
     this.shadowRoot.removeEventListener("dragend", this._onDragEnd);
     this.shadowRoot.removeEventListener("dragover", this._onDragOver);

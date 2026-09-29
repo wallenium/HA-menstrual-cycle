@@ -341,6 +341,10 @@ SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
 SERVICE_FIELD_INCLUDE_CHARTS = "include_charts"
 SERVICE_FIELD_VISIBILITY_LEVEL = "level"
+# HA-Idee ("weitere neue Ideen", 29.09.2026): optionale HA-Area-Zuordnung
+# fuer Haushaltsbestand-Verbrauchsereignisse.
+SERVICE_FIELD_AREA_ID = "area_id"
+SERVICE_FIELD_ENABLED = "enabled"
 
 SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
@@ -670,4 +674,7 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         # HA-Idee 6 ("weitere Ideen fuer Features?" 28.09.2026):
         # image.py's cycle-phase illustration entity.
         "_cycle_phase_image": f"menstruation_{slug}_cycle_phase",
+        # HA-Idee ("weitere neue Ideen", 29.09.2026): sensor.py's dedizierte
+        # naechster-Eisprung-Entity, gleiches Namensschema.
+        "_next_ovulation": f"menstruation_{slug}_next_ovulation",
     }

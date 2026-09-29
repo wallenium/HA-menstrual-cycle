@@ -339,6 +339,12 @@ log_product_usage:
       description: Optional backfill date in YYYY-MM-DD format. Defaults to today.
       selector:
         date: {}
+    area_id:
+      required: false
+      example: "bathroom_upstairs"
+      description: Optional Home Assistant area to tag this usage with (only recorded if area tracking is enabled via manage_household_inventory's set_area_tracking action).
+      selector:
+        area: {}
 
 reimport_basal_temp_statistics:
   name: Re-import basal temperature statistics
@@ -382,6 +388,7 @@ manage_household_inventory:
             - "set_thresholds"
             - "add_to_shopping_list"
             - "reset"
+            - "set_area_tracking"
     product:
       required: false
       example: "tampon"
@@ -432,6 +439,18 @@ manage_household_inventory:
           min: 1
           max: 5000
           mode: box
+    area_id:
+      required: false
+      example: "bathroom_upstairs"
+      description: Optional Home Assistant area to tag a "consume" action with. Only relevant when area tracking is enabled.
+      selector:
+        area: {}
+    enabled:
+      required: false
+      example: true
+      description: Used only with inventory_action "set_area_tracking" to turn per-area usage tagging on or off.
+      selector:
+        boolean: {}
 
 add_symptom:
   name: Add or update symptom data for a date

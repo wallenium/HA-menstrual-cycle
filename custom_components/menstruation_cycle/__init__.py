@@ -123,6 +123,8 @@ from .const import (
     SERVICE_REFRESH_CYCLE_MODEL,
     SERVICE_FIELD_INVENTORY_ACTION,
     SERVICE_FIELD_MEMBER,
+    SERVICE_FIELD_AREA_ID,
+    SERVICE_FIELD_ENABLED,
     SERVICE_REMOVE_CYCLE_START,
     SERVICE_REMOVE_PRE_MENARCHE_SIGN,
     SERVICE_REMOVE_SYMPTOM,
@@ -356,6 +358,10 @@ def _default_household_inventory_data() -> dict[str, Any]:
             "total_owned": _DEFAULT_UNDERWEAR_TOTAL_OWNED,
             "washing_threshold": _DEFAULT_UNDERWEAR_WASHING_THRESHOLD,
         },
+        # HA-Idee ("weitere neue Ideen", 29.09.2026): optionale Zuordnung von
+        # Verbrauchsereignissen zu HA-Areas (Raeumen) - Standard AUS, siehe
+        # set_area_tracking-Action und _async_register_consumption.
+        "track_by_area": False,
     }
 
 
@@ -432,15 +438,18 @@ def _normalize_household_inventory_data(data: Any) -> dict[str, Any]:
         timestamp = str(entry.get("timestamp", "")).strip()
         if not timestamp:
             continue
-        normalized_log.append(
-            {
-                "product": product,
-                "quantity": quantity,
-                "member": str(entry.get("member", "")).strip() or "unknown",
-                "timestamp": timestamp,
-                "source": str(entry.get("source", "")).strip() or "manual",
-            }
-        )
+        log_entry = {
+            "product": product,
+            "quantity": quantity,
+            "member": str(entry.get("member", "")).strip() or "unknown",
+            "timestamp": timestamp,
+            "source": str(entry.get("source", "")).strip() or "manual",
+        }
+        area_id = str(entry.get("area_id", "")).strip() or None
+        if area_id:
+            log_entry["area_id"] = area_id
+            log_entry["area_name"] = str(entry.get("area_name", "")).strip() or area_id
+        normalized_log.append(log_entry)
 
     last_usage = data.get("last_usage")
     if not isinstance(last_usage, dict):
@@ -455,6 +464,7 @@ def _normalize_household_inventory_data(data: Any) -> dict[str, Any]:
             "total_owned": total_owned,
             "washing_threshold": washing_threshold,
         },
+        "track_by_area": bool(data.get("track_by_area", False)),
     }
 
 
@@ -523,8 +533,35 @@ async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
             "underwear_total_owned": underwear_settings["total_owned"],
             "underwear_washing_threshold": underwear_settings["washing_threshold"],
             "underwear_available": max(0, underwear_settings["total_owned"] - underwear_in_use),
+            # HA-Idee ("weitere neue Ideen", 29.09.2026): optionales Area-Tracking.
+            "track_by_area": bool(household_data.get("track_by_area", False)),
+            "area_usage": _household_area_usage_breakdown(household_data.get("consumption_log", [])),
         },
     )
+
+
+def _household_area_usage_breakdown(consumption_log: list) -> dict[str, dict[str, Any]]:
+    """Aggregate consumption_log entries by area (HA-Idee, "weitere neue
+    Ideen", 29.09.2026) - e.g. "how much got used in the upstairs vs.
+    downstairs bathroom" for restocking each room's own stash.
+
+    Derived on the fly from the (already-capped) consumption_log rather than
+    a separate persisted per-area stock structure - stock itself stays one
+    shared household pool (see _async_register_consumption's comment); only
+    WHERE items get used is optionally tracked. Entries without an area_id
+    (the vast majority when track_by_area is off, or simply not tagged) are
+    skipped, so this is an empty dict whenever nothing has been tagged yet.
+    """
+    breakdown: dict[str, dict[str, Any]] = {}
+    for entry in consumption_log:
+        if not isinstance(entry, dict):
+            continue
+        area_id = entry.get("area_id")
+        if not area_id:
+            continue
+        bucket = breakdown.setdefault(area_id, {"area_name": entry.get("area_name") or area_id, "total": 0})
+        bucket["total"] += max(1, int(entry.get("quantity", 1)))
+    return breakdown
 
 
 async def _async_save_household_inventory(hass: HomeAssistant) -> None:
@@ -555,6 +592,7 @@ async def _async_register_consumption(
     member: str,
     *,
     source: str,
+    area_id: str | None = None,
 ) -> None:
     household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY)
     if not isinstance(household_data, dict):
@@ -581,6 +619,19 @@ async def _async_register_consumption(
         "timestamp": dt_util.now().isoformat(),
         "source": source,
     }
+    # HA-Idee ("weitere neue Ideen", 29.09.2026): Area nur anhaengen, wenn
+    # track_by_area aktiv ist UND ein gueltiger HA-Area-id uebergeben wurde -
+    # bewusst tolerant (ungueltige/fehlende Area wird nur ignoriert, nie ein
+    # Fehler), da area_id reine Zusatzinfo fuer die Verbrauchsstatistik ist,
+    # nicht Teil des eigentlichen Lager-Datenmodells (das bleibt ein
+    # gemeinsamer Topf, siehe Roadmap-Begruendung).
+    if area_id and household_data.get("track_by_area"):
+        from homeassistant.helpers import area_registry as ar
+
+        area = ar.async_get(hass).async_get_area(area_id)
+        if area is not None:
+            entry["area_id"] = area_id
+            entry["area_name"] = area.name
     household_data["last_usage"] = entry
     log = household_data.setdefault("consumption_log", [])
     if isinstance(log, list):
@@ -1431,6 +1482,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
                 vol.Optional(SERVICE_FIELD_ACTION, default="used"): vol.In(VALID_PRODUCT_USAGE_ACTIONS),
                 vol.Optional(SERVICE_FIELD_QUANTITY, default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
                 vol.Optional(SERVICE_FIELD_DATE): cv.string,
+                vol.Optional(SERVICE_FIELD_AREA_ID): cv.string,
             }
         ),
     )
@@ -1450,7 +1502,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
             {
                 **common_profile_field,
                 vol.Required(SERVICE_FIELD_INVENTORY_ACTION): vol.In(
-                    ["set", "add", "consume", "set_thresholds", "add_to_shopping_list", "reset"]
+                    ["set", "add", "consume", "set_thresholds", "add_to_shopping_list", "reset", "set_area_tracking"]
                 ),
                 vol.Optional(SERVICE_FIELD_PRODUCT): vol.In(HOUSEHOLD_PRODUCTS),
                 vol.Optional(SERVICE_FIELD_QUANTITY, default=1): vol.All(vol.Coerce(int), vol.Range(min=0, max=5000)),
@@ -1458,6 +1510,8 @@ def _register_domain_services(hass: HomeAssistant) -> None:
                 vol.Optional(SERVICE_FIELD_CRITICAL_THRESHOLD): vol.All(vol.Coerce(int), vol.Range(min=0, max=5000)),
                 vol.Optional(SERVICE_FIELD_MEMBER): cv.string,
                 vol.Optional(_SERVICE_FIELD_UNDERWEAR_TOTAL_OWNED): vol.All(vol.Coerce(int), vol.Range(min=1, max=5000)),
+                vol.Optional(SERVICE_FIELD_AREA_ID): cv.string,
+                vol.Optional(SERVICE_FIELD_ENABLED): cv.boolean,
             }
         ),
     )
@@ -2756,6 +2810,17 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
     - rather than only adding a version marker once older, unversioned
     backup files are already out there and ambiguous to interpret.
     """
+    return await _async_write_full_backup_snapshot(hass, call.data.get(SERVICE_FIELD_FILENAME))
+
+
+async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | None = None) -> dict[str, Any]:
+    """Build and write the full-backup JSON snapshot to disk.
+
+    Split out of _async_handle_export_full_backup (HA-Idee, "weitere neue
+    Ideen", 29.09.2026) so backup.py's async_pre_backup hook can write the
+    exact same snapshot right before every native HA backup runs, without
+    duplicating this logic or needing to fabricate a ServiceCall.
+    """
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
         raise HomeAssistantError("No menstruation_cycle profiles are currently loaded.")
@@ -2778,7 +2843,6 @@ async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCal
         "profiles": profiles,
     }
 
-    stem = call.data.get(SERVICE_FIELD_FILENAME)
     if stem:
         stem = _sanitize_export_filename(str(stem))
     else:
@@ -3067,8 +3131,11 @@ async def _async_handle_log_product_usage(hass: HomeAssistant, call: ServiceCall
             "action": action,
         }
     )
+    area_id = str(call.data.get(SERVICE_FIELD_AREA_ID, "")).strip() or None
     if action == "used":
-        await _async_register_consumption(hass, product, max(1, quantity), runtime.friendly_name, source="log_product_usage")
+        await _async_register_consumption(
+            hass, product, max(1, quantity), runtime.friendly_name, source="log_product_usage", area_id=area_id
+        )
     await _async_save_and_notify(hass, runtime)
 
 
@@ -3082,6 +3149,12 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
     product = str(call.data.get(SERVICE_FIELD_PRODUCT, "")).strip().lower()
     quantity = int(call.data.get(SERVICE_FIELD_QUANTITY, 1))
     member = str(call.data.get(SERVICE_FIELD_MEMBER, "")).strip() or "manual"
+    area_id = str(call.data.get(SERVICE_FIELD_AREA_ID, "")).strip() or None
+
+    if action == "set_area_tracking":
+        household_data["track_by_area"] = bool(call.data.get(SERVICE_FIELD_ENABLED, False))
+        await _async_save_household_inventory(hass)
+        return
 
     if action != "reset" and product not in HOUSEHOLD_PRODUCTS:
         raise HomeAssistantError(f"Unsupported product '{product}'.")
@@ -3124,7 +3197,9 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         # HA-6: the shopping-list/underwear-washing todo checks now happen
         # inside _async_register_consumption itself (see comment there), so
         # they're no longer duplicated here.
-        await _async_register_consumption(hass, product, max(1, quantity), member, source="inventory_service")
+        await _async_register_consumption(
+            hass, product, max(1, quantity), member, source="inventory_service", area_id=area_id
+        )
         return
     elif action == "set_thresholds":
         if product == "cup":
@@ -3158,7 +3233,8 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         hass.data[HOUSEHOLD_INVENTORY_DATA_KEY] = _default_household_inventory_data()
     else:
         raise HomeAssistantError(
-            "Unsupported inventory_action. Use one of: set, add, consume, set_thresholds, add_to_shopping_list, reset."
+            "Unsupported inventory_action. Use one of: set, add, consume, set_thresholds, "
+            "add_to_shopping_list, reset, set_area_tracking."
         )
 
     await _async_save_household_inventory(hass)

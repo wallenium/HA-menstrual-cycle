@@ -993,5 +993,8 @@
   "dashboard_household_title": "Household Overview",
   "dashboard_household_in_period": "On period",
   "dashboard_household_fertile": "Fertile",
-  "dashboard_household_pms": "PMS"
+  "dashboard_household_pms": "PMS",
+  "area_usage": "Usage by area",
+  "area": "Area",
+  "area_help": "Tag quick-log actions from this card with a Home Assistant area (only recorded if area tracking is enabled)."
 }

@@ -126,6 +126,7 @@ async def async_setup_entry(
             MenstruationGaugeSensor(hass, entry),
             ProductUsageStatsConsolidatedSensor(hass, entry),
             MenstruationBasalTempSensor(hass, entry),
+            MenstruationNextOvulationSensor(hass, entry),
         ],
         True,
     )
@@ -1913,6 +1914,99 @@ class MenstruationBasalTempSensor(SensorEntity):
     @property
     def available(self) -> bool:
         return self._entry.entry_id in self.hass.data.get(DOMAIN, {})
+
+    def _safe_schedule_update(self) -> None:
+        if not self.hass:
+            return
+
+        def _do_update() -> None:
+            if self.hass and self.hass.is_running:
+                self.async_schedule_update_ha_state(True)
+
+        self.hass.loop.call_soon_threadsafe(_do_update)
+
+    def _handle_runtime_update(self) -> None:
+        self._safe_schedule_update()
+
+
+class MenstruationNextOvulationSensor(SensorEntity):
+    """Dedicated next-ovulation-date sensor (HA-Idee, "weitere neue Ideen",
+    29.09.2026).
+
+    ovulation_day previously only existed as an attribute on the main gauge
+    sensor (ATTR_OVULATION_DAY) - fine to read once there, but no dedicated
+    date entity to put on its own dashboard tile, history graph, or use as
+    an automation trigger. Recomputes the same CycleModel the gauge sensor
+    builds (build_cycle_model) rather than reading the gauge entity's state,
+    matching the established pattern of MenstruationBasalTempSensor above -
+    each sensor derives its own value straight from runtime, no entity
+    reads another entity's state.
+
+    Respects the same "fertility detail" visibility cutoff as the gauge's
+    ATTR_OVULATION_DAY attribute (see _VISIBILITY_STATUS_ONLY_KEYS - it is
+    deliberately NOT included there): unavailable unless visibility_level is
+    "full", since unlike the gauge this is a standalone entity and can't
+    filter per-attribute - hiding the whole entity's value is the equivalent
+    for a dedicated sensor.
+    """
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.DATE
+    _attr_icon = "mdi:egg-outline"
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.hass = hass
+        self._entry = entry
+        runtime = self.hass.data[DOMAIN][entry.entry_id]
+        self._friendly_name = runtime.friendly_name
+        self._attr_unique_id = f"{entry.entry_id}_next_ovulation"
+        self._attr_name = "Next ovulation"
+        self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_next_ovulation"]
+        self._attr_native_value: date | None = None
+        self._visible = False
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return _device_info_for_entry(self.hass, self._entry)
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_HISTORY_UPDATED, self._handle_runtime_update)
+        )
+        await self.async_update()
+
+    async def async_update(self) -> None:
+        runtime = self.hass.data[DOMAIN][self._entry.entry_id]
+        self._friendly_name = runtime.friendly_name
+        self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
+        if not self._visible:
+            self._attr_native_value = None
+            return
+
+        today = dt_util.now().date()
+        model = build_cycle_model(
+            history=runtime.history,
+            period_duration_days=runtime.period_duration_days,
+            symptom_history=runtime.symptom_history,
+            pregnancy_data=runtime.pregnancy_data,
+            menarche_data=runtime.menarche_data,
+            pre_menarche_data=runtime.pre_menarche_data,
+            menopause_data=runtime.menopause_data,
+            noncycle_data=runtime.noncycle_data,
+            today=today,
+            cycle_length_override=runtime.cycle_length_override,
+            nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            onboarding_stage=getattr(runtime, "onboarding_stage", None),
+        )
+        self._attr_native_value = _parse_iso_date(model.ovulation_day) if model.ovulation_day else None
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    @property
+    def available(self) -> bool:
+        return self._visible and self._entry.entry_id in self.hass.data.get(DOMAIN, {})
 
     def _safe_schedule_update(self) -> None:
         if not self.hass:

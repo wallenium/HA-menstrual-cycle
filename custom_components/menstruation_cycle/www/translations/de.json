@@ -995,5 +995,8 @@
   "dashboard_household_fertile": "Fruchtbar",
   "dashboard_household_pms": "PMS",
   "dashboard_household_synchrony": "Zyklus-Synchronität",
-  "dashboard_household_timeline_title": "Vorschau (30 Tage)"
+  "dashboard_household_timeline_title": "Vorschau (30 Tage)",
+  "area_usage": "Verbrauch nach Bereich",
+  "area": "Bereich",
+  "area_help": "Verbrauchsereignisse dieser Karte einem HA-Bereich zuordnen (nur gespeichert, wenn Bereichs-Tracking aktiviert ist)."
 }
