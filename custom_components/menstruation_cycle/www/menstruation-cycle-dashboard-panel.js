@@ -4880,13 +4880,40 @@
 
       const memberBubble = (p) => {
         const name = escapeHtml(p.friendly_name || p.profile || '');
+        const state = p.state || 'neutral';
         // cycle_day/weeks_pregnant are only present at visibility_level:
         // full (see get_household_summary in __init__.py) - status_only/
         // private profiles simply omit them, no extra check needed here.
         const point = p.cycle_day
           ? ` · ${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''}`
           : (p.weeks_pregnant ? ` · ${this._t('week') || 'Woche'} ${Math.floor(p.weeks_pregnant)}` : '');
-        return `<span class="household-member"><strong>${name}</strong>${point ? `<span class="household-member-point">${escapeHtml(point)}</span>` : ''}</span>`;
+        // Hover detail popover (Nachfrage 29.09.2026: "wenn man ueber einen
+        // Namen hovert ... grosses Bild des aktuellen Status und alle
+        // Infos anzeigen die relevant sind") - built from whichever fields
+        // are actually present, same fallback chain as `point` above, plus
+        // days_until_next_start only alongside an active cycle_day (a
+        // cycle-based prediction is only meaningful together with cycle
+        // tracking, not for e.g. pregnant/pre_menarche profiles). A
+        // `private` profile gets no popover at all - the box header
+        // already withholds its icon for the same reason, and hovering
+        // must not reveal anything a private profile chose to hide.
+        const detailLines = [];
+        if (p.cycle_day) {
+          detailLines.push(`${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''}`);
+          if (p.days_until_next_start != null) {
+            detailLines.push(`${p.days_until_next_start} ${this._t('dashboard_days_until_next') || 'Tage bis zur nächsten Periode'}`);
+          }
+        } else if (p.weeks_pregnant) {
+          detailLines.push(`${this._t('week') || 'Woche'} ${Math.floor(p.weeks_pregnant)}`);
+        }
+        const detail = state === 'private' ? '' : `
+          <span class="household-member-detail">
+            ${this._statusIconHtml(state, 88, p)}
+            <span class="household-member-detail-name">${name}</span>
+            <span class="household-member-detail-state">${escapeHtml(stateLabel(state))}</span>
+            ${detailLines.map((l) => `<span class="household-member-detail-line">${escapeHtml(l)}</span>`).join('')}
+          </span>`;
+        return `<span class="household-member" tabindex="0">${detail}<strong>${name}</strong>${point ? `<span class="household-member-point">${escapeHtml(point)}</span>` : ''}</span>`;
       };
 
       // "In Periode"/"Fruchtbar"/"PMS" stay fixed, always-shown boxes (even
@@ -6691,11 +6718,39 @@
           }
           .household-member strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
           .household-member-point { color: var(--secondary-text-color, #6b7280); }
+          .household-member-detail { display: none; }
+          @media (hover: hover) {
+            .household-member { position: relative; transition: transform 0.15s ease; }
+            .household-member:hover, .household-member:focus-within { transform: scale(1.12); z-index: 5; }
+            .household-member-detail {
+              display: flex; flex-direction: column; align-items: center; gap: 2px;
+              position: absolute; bottom: calc(100% + 8px); left: 50%;
+              min-width: 140px; padding: 10px 14px; border-radius: 14px;
+              background: var(--card-background-color, #fff);
+              border: 1px solid var(--divider-color, #e5e7eb);
+              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+              opacity: 0; pointer-events: none; visibility: hidden;
+              transform: translateX(-50%) scale(0.9);
+              transition: opacity 0.15s ease, transform 0.15s ease;
+              z-index: 10;
+            }
+            .household-member:hover .household-member-detail,
+            .household-member:focus-within .household-member-detail {
+              opacity: 1; visibility: visible; transform: translateX(-50%) scale(1);
+            }
+            .household-member-detail-name { font-weight: 600; color: var(--primary-text-color, #1f2937); }
+            .household-member-detail-state {
+              font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
+              color: var(--secondary-text-color, #6b7280);
+            }
+            .household-member-detail-line { font-size: 0.78rem; color: var(--primary-text-color, #1f2937); }
+          }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }
             .kpi-strip { gap: 8px; }
             .kpi-item { min-width: 60px; padding: 8px 10px; }
+            .household-stat { flex: 1 1 calc(50% - 5px); box-sizing: border-box; }
           }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
