@@ -1,0 +1,55 @@
+blueprint:
+  name: M-Cycle - Action on cycle state
+  description: >
+    Runs any action you choose when a profile enters a given cycle state
+    (e.g. turn on a heating-pad outlet when the period starts) - generic for
+    any state (period/fertile/pms/pregnant/pre_menarche/menarche/menopause/
+    postpartum/neutral) instead of needing a separate blueprint per state.
+    The profile's main sensor entity already carries the cycle state as its
+    own entity state, so a plain state trigger is all that's needed.
+  domain: automation
+  input:
+    profile_sensor:
+      name: Profile sensor
+      description: The main cycle sensor of the desired profile.
+      selector:
+        entity:
+          filter:
+            - integration: menstruation_cycle
+              domain: sensor
+
+    target_state:
+      name: State
+      description: Which cycle state should trigger the action.
+      selector:
+        select:
+          options:
+            - { value: period, label: "Period" }
+            - { value: fertile, label: "Fertile" }
+            - { value: pms, label: "PMS" }
+            - { value: pregnant, label: "Pregnant" }
+            - { value: pre_menarche, label: "Pre-menarche" }
+            - { value: menarche, label: "Menarche" }
+            - { value: menopause, label: "Menopause" }
+            - { value: postpartum, label: "Postpartum" }
+            - { value: neutral, label: "Neutral" }
+
+    action_to_run:
+      name: Action
+      description: >
+        What should happen - e.g. turn on a switch/light, activate a scene,
+        or send your own notification.
+      selector:
+        action: {}
+
+trigger:
+  - trigger: state
+    entity_id: !input profile_sensor
+    to: !input target_state
+
+condition: []
+
+action:
+  - !input action_to_run
+
+mode: single

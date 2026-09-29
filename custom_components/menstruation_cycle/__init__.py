@@ -40,6 +40,7 @@ from .const import (
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
     ATTR_VISIBILITY_LEVEL,
+    CONF_LINKED_PERSON_ENTITY_ID,
     STATE_PERIOD,
     STATE_FERTILE,
     STATE_PMS,
@@ -204,7 +205,9 @@ ASSETS_DIR = Path(__file__).parent / "assets"
 # assets/buttons/ folder directly by the user, exposed here the same way the
 # existing pregnancy/period/state/brands folders already are, for a future
 # Lovelace card that logs symptoms with the same icon-chip pickers as the app.
-_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state", "brands", "buttons"})
+_ALLOWED_ASSET_SUBFOLDERS: frozenset[str] = frozenset({"pregnancy", "period", "state", "brands", "buttons", "avatars"})
+# How many days ahead the household timeline forecast is trimmed to.
+_TIMELINE_HORIZON_DAYS = 30
 _HTTP_ROUTES_REGISTERED_KEY = f"{DOMAIN}_http_routes_registered"
 _LOVELACE_RESOURCES_ENSURED_KEY = f"{DOMAIN}_lovelace_resources_ensured"
 _LOVELACE_RESOURCES_SCHEDULED_KEY = f"{DOMAIN}_lovelace_resources_scheduled"
@@ -2633,12 +2636,23 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
     profiles: list[dict[str, Any]] = []
     state_counts: dict[str, int] = {STATE_PERIOD: 0, STATE_FERTILE: 0, STATE_PMS: 0, STATE_NEUTRAL: 0}
 
-    for runtime in domain_data.values():
+    for entry_id, runtime in domain_data.items():
         is_private = getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_PRIVATE
         profile_entry: dict[str, Any] = {
             "profile": runtime.profile,
             "friendly_name": runtime.friendly_name,
         }
+        # profile_picture: linked person entity's picture, shown at every visibility level (identity, not cycle data).
+        config_entry = hass.config_entries.async_get_entry(entry_id)
+        linked_person_entity_id = (
+            str(config_entry.options.get(CONF_LINKED_PERSON_ENTITY_ID) or "") or None
+            if config_entry is not None
+            else None
+        )
+        if linked_person_entity_id:
+            person_state = hass.states.get(linked_person_entity_id)
+            if person_state is not None:
+                profile_entry["profile_picture"] = person_state.attributes.get("entity_picture") or None
         if is_private:
             profile_entry["state"] = STATE_PRIVATE
             profiles.append(profile_entry)
@@ -2677,9 +2691,36 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
         # pregnant profile.
         if getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_FULL and model.state == STATE_PREGNANT:
             profile_entry["weeks_pregnant"] = model.weeks_pregnant
+        # forecast fields for the household timeline: full visibility only, trimmed to _TIMELINE_HORIZON_DAYS.
+        if getattr(runtime, "visibility_level", None) == VISIBILITY_LEVEL_FULL:
+            profile_entry["period_duration_days"] = model.period_duration_days
+            horizon = today + timedelta(days=_TIMELINE_HORIZON_DAYS)
+            profile_entry["predicted_cycle_starts"] = [
+                d for d in model.predicted_cycle_starts
+                if date.fromisoformat(d) <= horizon
+            ]
+            if model.fertile_window_start:
+                profile_entry["fertile_window_start"] = model.fertile_window_start
+            if model.fertile_window_end:
+                profile_entry["fertile_window_end"] = model.fertile_window_end
         if model.state in state_counts:
             state_counts[model.state] += 1
         profiles.append(profile_entry)
+
+    # avg pairwise gap between profiles' next predicted starts; None if fewer than 2 have a value.
+    next_start_offsets = [
+        p["days_until_next_start"]
+        for p in profiles
+        if p.get("days_until_next_start") is not None
+    ]
+    household_synchrony_days: float | None = None
+    if len(next_start_offsets) >= 2:
+        pairwise_diffs = [
+            abs(a - b)
+            for i, a in enumerate(next_start_offsets)
+            for b in next_start_offsets[i + 1:]
+        ]
+        household_synchrony_days = round(sum(pairwise_diffs) / len(pairwise_diffs), 1)
 
     return {
         "checked_at": dt_util.utcnow().isoformat(),
@@ -2688,6 +2729,7 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
         "currently_in_period": state_counts[STATE_PERIOD],
         "currently_fertile": state_counts[STATE_FERTILE],
         "currently_pms": state_counts[STATE_PMS],
+        "household_synchrony_days": household_synchrony_days,
     }
 
 

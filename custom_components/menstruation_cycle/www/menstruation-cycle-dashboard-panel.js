@@ -3882,6 +3882,21 @@
       }
     }
 
+    // Real person picture if the profile has one linked, else a deterministic
+    // placeholder avatar (picked by hashing the profile id, so it's stable
+    // across renders) rather than an AI-generated image at runtime.
+    _avatarHtml(profile, size = 24) {
+      const pictureUrl = profile?.profile_picture;
+      if (pictureUrl) {
+        return `<img src="${escapeHtml(pictureUrl)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:0 0 auto;" />`;
+      }
+      const key = String(profile?.profile || profile?.friendly_name || '');
+      let hash = 0;
+      for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+      const variant = (hash % 6) + 1;
+      return `<img src="/menstruation_cycle/assets/avatars/girl_${variant}.svg" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:0 0 auto;" />`;
+    }
+
     _renderCycleHero(stateObj, discreetMode) {
       const attrs = stateObj?.attributes || {};
       const cycleDay = Number(attrs.cycle_day ?? 0) || 0;
@@ -4909,11 +4924,11 @@
         const detail = state === 'private' ? '' : `
           <span class="household-member-detail">
             ${this._statusIconHtml(state, 88, p)}
-            <span class="household-member-detail-name">${name}</span>
+            <span class="household-member-detail-name">${this._avatarHtml(p, 28)}${name}</span>
             <span class="household-member-detail-state">${escapeHtml(stateLabel(state))}</span>
             ${detailLines.map((l) => `<span class="household-member-detail-line">${escapeHtml(l)}</span>`).join('')}
           </span>`;
-        return `<span class="household-member" tabindex="0">${detail}<strong>${name}</strong>${point ? `<span class="household-member-point">${escapeHtml(point)}</span>` : ''}</span>`;
+        return `<span class="household-member" tabindex="0">${detail}${this._avatarHtml(p, 20)}<strong>${name}</strong>${point ? `<span class="household-member-point">${escapeHtml(point)}</span>` : ''}</span>`;
       };
 
       // "In Periode"/"Fruchtbar"/"PMS" stay fixed, always-shown boxes (even
@@ -4966,11 +4981,64 @@
       ].join('');
 
       const title = this._t('dashboard_household_title') || 'Haushalts-Übersicht';
+      const synchrony = summary.household_synchrony_days;
+      const synchronyLine = synchrony == null ? '' : `
+          <div class="household-synchrony">${this._t('dashboard_household_synchrony') || 'Zyklus-Synchronität'}: Ø ${synchrony} ${this._t('days') || 'Tage'}</div>`;
       return `
         <section class="household-summary" aria-label="${title}">
           <div class="household-summary-title">${title}</div>
-          <div class="household-counters">${boxes}</div>
+          <div class="household-counters">${boxes}</div>${synchronyLine}
+          ${this._renderHouseholdTimeline(summary)}
         </section>`;
+    }
+
+    // 30-day forecast strip per profile (predicted period blocks + the
+    // current fertile window) - a forward-looking complement to the
+    // current-status boxes/hover-detail above. Only profiles with
+    // visibility_level "full" carry predicted_cycle_starts, so this
+    // silently renders nothing for the rest instead of a half-empty row.
+    _renderHouseholdTimeline(summary) {
+      const profiles = (summary.profiles || []).filter(
+        (p) => Array.isArray(p.predicted_cycle_starts) && p.predicted_cycle_starts.length
+      );
+      if (!profiles.length) return '';
+      const todayIso = this._todayIso();
+      const addDays = (iso, n) => new Date(new Date(iso).getTime() + n * 86400000).toISOString().slice(0, 10);
+      const HORIZON_DAYS = 30;
+
+      const rows = profiles.map((p) => {
+        const name = escapeHtml(p.friendly_name || p.profile || '');
+        const duration = p.period_duration_days || 5;
+        const periodDays = new Set();
+        p.predicted_cycle_starts.forEach((start) => {
+          for (let i = 0; i < duration; i++) periodDays.add(addDays(start, i));
+        });
+        const fertileDays = new Set();
+        if (p.fertile_window_start && p.fertile_window_end) {
+          for (let iso = p.fertile_window_start; iso <= p.fertile_window_end; iso = addDays(iso, 1)) {
+            fertileDays.add(iso);
+          }
+        }
+        const cells = [];
+        for (let i = 0; i < HORIZON_DAYS; i++) {
+          const iso = addDays(todayIso, i);
+          const cls = periodDays.has(iso) ? ' household-timeline-cell--period'
+            : fertileDays.has(iso) ? ' household-timeline-cell--fertile' : '';
+          cells.push(`<span class="household-timeline-cell${cls}"></span>`);
+        }
+        return `
+          <div class="household-timeline-row">
+            <span class="household-timeline-label">${this._avatarHtml(p, 20)}${name}</span>
+            <div class="household-timeline-bar">${cells.join('')}</div>
+          </div>`;
+      }).join('');
+
+      const timelineTitle = this._t('dashboard_household_timeline_title') || 'Vorschau (30 Tage)';
+      return `
+        <div class="household-timeline">
+          <div class="household-timeline-title">${timelineTitle}</div>
+          ${rows}
+        </div>`;
     }
 
 
@@ -6712,8 +6780,8 @@
           .household-stat--neutral { background: var(--mc-sand, #EDE6DB); }
           .household-stat-members { display: flex; flex-wrap: wrap; gap: 6px; }
           .household-member {
-            display: inline-flex; align-items: baseline; gap: 4px;
-            padding: 3px 10px; border-radius: 999px; font-size: 0.78rem;
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px 3px 4px; border-radius: 999px; font-size: 0.78rem;
             background: rgba(0, 0, 0, 0.15);
           }
           .household-member strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
@@ -6738,13 +6806,30 @@
             .household-member:focus-within .household-member-detail {
               opacity: 1; visibility: visible; transform: translateX(-50%) scale(1);
             }
-            .household-member-detail-name { font-weight: 600; color: var(--primary-text-color, #1f2937); }
+            .household-member-detail-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--primary-text-color, #1f2937); }
             .household-member-detail-state {
               font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
               color: var(--secondary-text-color, #6b7280);
             }
             .household-member-detail-line { font-size: 0.78rem; color: var(--primary-text-color, #1f2937); }
           }
+          .household-synchrony { font-size: 0.72rem; color: var(--secondary-text-color, #6b7280); }
+          .household-timeline { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+          .household-timeline-title {
+            font-family: var(--mc-font-display, inherit); font-size: 0.72rem; font-weight: 600;
+            letter-spacing: 0.04em; text-transform: uppercase; color: var(--secondary-text-color, #6b7280);
+          }
+          .household-timeline-row { display: flex; align-items: center; gap: 8px; }
+          .household-timeline-label {
+            display: inline-flex; align-items: center; gap: 6px; flex: 0 0 110px;
+            font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          }
+          .household-timeline-bar { display: flex; gap: 2px; flex: 1 1 auto; }
+          .household-timeline-cell {
+            flex: 1 1 auto; height: 12px; border-radius: 3px; background: var(--mc-sand, #EDE6DB);
+          }
+          .household-timeline-cell--period { background: var(--mc-rose, #E8637D); }
+          .household-timeline-cell--fertile { background: var(--mc-sage, #7C9885); }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; }
             .grid { grid-template-columns: 1fr; gap: 10px; }

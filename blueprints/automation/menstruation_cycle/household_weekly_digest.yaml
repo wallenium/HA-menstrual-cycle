@@ -1,0 +1,80 @@
+blueprint:
+  name: M-Cycle - Weekly household digest
+  description: >
+    Sends one combined overview across all loaded M-Cycle profiles once a
+    week ("Sarah: period in 3 days. Anna: fertile.") instead of only the
+    existing per-person/per-event notifications - calls the existing
+    menstruation_cycle.get_household_summary service (already supports a
+    response, no new integration code needed) and builds the message from
+    that response via a template. Respects the same visibility level as the
+    household summary in the Cycle Dashboard panel - a profile set to
+    "private" is not named with its cycle status, only counted.
+  domain: automation
+  input:
+    weekday:
+      name: Weekday
+      description: Which day of the week to send the digest on.
+      default: mon
+      selector:
+        select:
+          options:
+            - { value: mon, label: "Monday" }
+            - { value: tue, label: "Tuesday" }
+            - { value: wed, label: "Wednesday" }
+            - { value: thu, label: "Thursday" }
+            - { value: fri, label: "Friday" }
+            - { value: sat, label: "Saturday" }
+            - { value: sun, label: "Sunday" }
+
+    time_of_day:
+      name: Time
+      default: "08:00:00"
+      selector:
+        time: {}
+
+    notify_action:
+      name: Notify action
+      description: >
+        Where to send the finished digest text - e.g. a notify.mobile_app_*
+        action. The finished text is available as "{{ digest_message }}" if
+        the chosen action needs its own message field filled in.
+      selector:
+        action: {}
+
+trigger:
+  - trigger: time
+    at: !input time_of_day
+
+condition:
+  - condition: time
+    weekday: [!input weekday]
+
+action:
+  - action: menstruation_cycle.get_household_summary
+    response_variable: household_summary
+
+  - variables:
+      # namespace() needed: plain {% set %} inside {% for %} doesn't accumulate across iterations in Jinja.
+      digest_message: >-
+        {%- set ns = namespace(lines=[]) -%}
+        {%- for p in household_summary.profiles -%}
+          {%- if p.state == 'private' -%}
+          {%- elif p.state == 'period' -%}
+            {%- set ns.lines = ns.lines + [p.friendly_name ~ ': currently on their period'] -%}
+          {%- elif p.state == 'fertile' -%}
+            {%- set ns.lines = ns.lines + [p.friendly_name ~ ': fertile window'] -%}
+          {%- elif p.state == 'pms' -%}
+            {%- set ns.lines = ns.lines + [p.friendly_name ~ ': PMS'] -%}
+          {%- elif p.days_until_next_start is not none -%}
+            {%- set ns.lines = ns.lines + [p.friendly_name ~ ': period in ' ~ p.days_until_next_start ~ ' day(s)'] -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if ns.lines | length > 0 -%}
+        {{ ns.lines | join('. ') }}.
+        {%- else -%}
+        No predictions available this week.
+        {%- endif -%}
+
+  - !input notify_action
+
+mode: single

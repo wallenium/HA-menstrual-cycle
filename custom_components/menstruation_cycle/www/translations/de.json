@@ -993,5 +993,7 @@
   "dashboard_household_title": "Haushalts-Übersicht",
   "dashboard_household_in_period": "In Periode",
   "dashboard_household_fertile": "Fruchtbar",
-  "dashboard_household_pms": "PMS"
+  "dashboard_household_pms": "PMS",
+  "dashboard_household_synchrony": "Zyklus-Synchronität",
+  "dashboard_household_timeline_title": "Vorschau (30 Tage)"
 }
