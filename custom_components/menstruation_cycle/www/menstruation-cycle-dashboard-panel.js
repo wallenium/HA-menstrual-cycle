@@ -3011,10 +3011,17 @@
             const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon(cat.key, opt) : '';
             return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${isSelected ? ' sym-selected' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${icon}<span class="sym-opt-text">${escapeHtml(tOption(opt))}</span></button>`;
           }).join('');
+          // A row with more than a handful of tiles overflows its column and needs the
+          // horizontal scroll strip (Nachfrage 30.09.2026: "fehlt indikator dass man da
+          // scrollen muss") — the fade + chevron hint below only render for those, so short
+          // rows that already show every option (e.g. "Ja"/"Nein") stay clean.
+          const overflows = (cat.options || []).length > 3;
           return `
             <div class="sym-row">
               <div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : ''}<span>${escapeHtml(tCategory(cat.key))}</span></div>
-              <div class="sym-options">${tiles}</div>
+              <div class="sym-options-wrap${overflows ? ' sym-options-wrap--scrollable' : ''}">
+                <div class="sym-options">${tiles}</div>
+              </div>
             </div>`;
         }).join('');
 
@@ -6267,6 +6274,19 @@
           .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
           .sym-opt-icon, .sym-opt-btn img { width: 64px; height: 64px; object-fit: contain; flex: 0 0 auto; border-radius: 12px; }
           .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          /* Fade + chevron hinting that a tile row scrolls sideways, instead of tiles just
+             cutting off at the edge with no cue (Nachfrage 30.09.2026). */
+          .sym-options-wrap { position: relative; }
+          .sym-options-wrap--scrollable::after {
+            content: ''; position: absolute; top: 0; right: 0; bottom: 6px; width: 40px;
+            background: linear-gradient(to right, transparent, var(--card-background-color, #fff) 75%);
+            pointer-events: none;
+          }
+          .sym-options-wrap--scrollable::before {
+            content: '›'; position: absolute; right: 2px; top: calc(50% - 9px);
+            font-size: 1.2rem; line-height: 1; color: var(--secondary-text-color, #6b7280);
+            opacity: .8; pointer-events: none; z-index: 1;
+          }
           @media (prefers-reduced-motion: reduce) { .sym-opt-btn { transition: none !important; } }
           .mc-chat-history {
             display: flex; flex-direction: column; gap: 8px;
@@ -6855,9 +6875,9 @@
             .household-member { position: relative; transition: transform 0.15s ease; }
             .household-member:hover, .household-member:focus-within { transform: scale(1.12); z-index: 5; }
             .household-member-detail {
-              display: flex; flex-direction: column; align-items: center; gap: 2px;
+              display: flex; flex-direction: column; align-items: center; gap: 5px;
               position: absolute; top: calc(100% + 10px); left: 50%;
-              min-width: 160px; padding: 10px 14px; border-radius: 14px;
+              min-width: 180px; padding: 12px 16px 14px; border-radius: 14px;
               background: var(--mc-sand, #EDE6DB);
               border: 1px solid transparent;
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -6865,6 +6885,7 @@
               transform: translateX(-50%) translateY(-4px);
               transition: opacity 0.15s ease, transform 0.15s ease;
               z-index: 10;
+              --mc-tip-accent: var(--primary-text-color, #1f2937);
             }
             /* Small caret linking the popover back to the bubble it belongs to, so it reads as
                a tooltip instead of an unrelated card floating underneath (Nachfrage 30.09.2026). */
@@ -6873,13 +6894,13 @@
               transform: translateX(-50%);
               border: 6px solid transparent; border-bottom-color: var(--mc-sand, #EDE6DB);
             }
-            .household-member-detail--period { background: var(--mc-rose-tint, #FBE3E8); border-color: color-mix(in srgb, var(--mc-rose-deep, #C43F5E) 25%, transparent); }
+            .household-member-detail--period { background: var(--mc-rose-tint, #FBE3E8); border-color: color-mix(in srgb, var(--mc-rose-deep, #C43F5E) 25%, transparent); --mc-tip-accent: var(--mc-rose-deep, #C43F5E); }
             .household-member-detail--period::before { border-bottom-color: var(--mc-rose-tint, #FBE3E8); }
-            .household-member-detail--fertile { background: var(--mc-sage-tint, #E6EDE7); border-color: color-mix(in srgb, var(--mc-sage-deep, #3F5A47) 25%, transparent); }
+            .household-member-detail--fertile { background: var(--mc-sage-tint, #E6EDE7); border-color: color-mix(in srgb, var(--mc-sage-deep, #3F5A47) 25%, transparent); --mc-tip-accent: var(--mc-sage-deep, #3F5A47); }
             .household-member-detail--fertile::before { border-bottom-color: var(--mc-sage-tint, #E6EDE7); }
-            .household-member-detail--pms { background: var(--mc-amber-tint, #FBEEDC); border-color: color-mix(in srgb, var(--mc-amber-deep, #8a5a12) 25%, transparent); }
+            .household-member-detail--pms { background: var(--mc-amber-tint, #FBEEDC); border-color: color-mix(in srgb, var(--mc-amber-deep, #8a5a12) 25%, transparent); --mc-tip-accent: var(--mc-amber-deep, #8a5a12); }
             .household-member-detail--pms::before { border-bottom-color: var(--mc-amber-tint, #FBEEDC); }
-            .household-member-detail--pregnant { background: var(--mc-plum-tint, #EFE3EA); border-color: color-mix(in srgb, var(--mc-plum, #6B3654) 25%, transparent); }
+            .household-member-detail--pregnant { background: var(--mc-plum-tint, #EFE3EA); border-color: color-mix(in srgb, var(--mc-plum, #6B3654) 25%, transparent); --mc-tip-accent: var(--mc-plum, #6B3654); }
             .household-member-detail--pregnant::before { border-bottom-color: var(--mc-plum-tint, #EFE3EA); }
             .household-member:hover .household-member-detail,
             .household-member:focus-within .household-member-detail {
@@ -6887,10 +6908,16 @@
             }
             .household-member-detail-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--primary-text-color, #1f2937); }
             .household-member-detail-state {
-              font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
-              color: var(--secondary-text-color, #6b7280);
+              font-family: var(--mc-font-display, inherit);
+              font-size: 1.1rem; font-weight: 700; letter-spacing: .01em;
+              color: var(--mc-tip-accent); margin: 1px 0 3px;
             }
-            .household-member-detail-line { font-size: 0.78rem; color: var(--primary-text-color, #1f2937); }
+            .household-member-detail-line {
+              font-size: 0.8rem; line-height: 1.35; color: var(--primary-text-color, #1f2937);
+            }
+            .household-member-detail-line:not(:first-of-type) {
+              font-size: 0.74rem; color: var(--secondary-text-color, #6b7280);
+            }
           }
           .household-synchrony { font-size: 0.72rem; color: var(--secondary-text-color, #6b7280); }
           .household-timeline { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
