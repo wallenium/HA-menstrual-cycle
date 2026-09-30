@@ -751,6 +751,9 @@
       this._quickLogOpen = false;
       this._quickLogSelections = {};
       this._quickLogDate = this._todayIso();
+      this._quickLogCategorySearch = '';
+      this._quickLogUndo = null;
+      this._quickLogUndoTimer = null;
       // Local, offline Q&A widget — no external AI, pattern-matches against
       // real cycle data + a small glossary. History kept in memory only (not
       // persisted), reset on page reload.
@@ -811,6 +814,7 @@
       // times per interaction.
       this._boundHandleClick = (event) => this._handleClick(event);
       this._boundHandleChange = (event) => this._handleChange(event);
+      this._boundHandleQuickLogSearchInput = (event) => this._handleQuickLogSearchInput(event);
       this._boundHandleSubmit = (event) => this._handleSubmit(event);
       this._boundHandleKeydown = (event) => this._handleKeydown(event);
       this._boundHandleChatEnter = () => this._handleChatSend();
@@ -830,6 +834,7 @@
     connectedCallback() {
       this.shadowRoot?.addEventListener('click', this._boundHandleClick);
       this.shadowRoot?.addEventListener('change', this._boundHandleChange);
+      this.shadowRoot?.addEventListener('input', this._boundHandleQuickLogSearchInput);
       this.shadowRoot?.addEventListener('submit', this._boundHandleSubmit);
       this.shadowRoot?.addEventListener('keydown', this._boundHandleKeydown);
       this.addEventListener('mc-chat-enter', this._boundHandleChatEnter);
@@ -1292,6 +1297,33 @@
         // localStorage may be unavailable (e.g. Safari private mode)
       }
       this._prefsVersion++;
+    }
+
+    // Wunsch 30.09.2026: recently used symptom categories pinned to the top of
+    // the quick-log modal, so frequent categories don't need scrolling past.
+    // Per-profile, same localStorage convention as _storageKey above.
+    _recentCategoriesKey(profile) {
+      const userId = this._hass?.user?.id || 'anon';
+      return `menstruation_cycle.recent_symptom_categories.${userId}.${profile}`;
+    }
+
+    _loadRecentCategories() {
+      try {
+        const raw = safeJsonParse(localStorage.getItem(this._recentCategoriesKey(this._activeProfile)));
+        return Array.isArray(raw) ? raw.filter((key) => typeof key === 'string') : [];
+      } catch (_error) {
+        return [];
+      }
+    }
+
+    _recordRecentCategory(key) {
+      try {
+        const recent = this._loadRecentCategories().filter((k) => k !== key);
+        recent.unshift(key);
+        localStorage.setItem(this._recentCategoriesKey(this._activeProfile), JSON.stringify(recent.slice(0, 4)));
+      } catch (_error) {
+        // localStorage may be unavailable (e.g. Safari private mode)
+      }
     }
 
     _findPrimaryState() {
@@ -2998,7 +3030,23 @@
         return prefixed !== `cat_${key}` ? prefixed : this._t(key);
       };
 
-      const rows = fields
+      // Wunsch 30.09.2026: recently used categories first, then an optional
+      // live search filter on top of that order.
+      const recentKeys = this._loadRecentCategories();
+      let orderedFields = fields;
+      if (recentKeys.length) {
+        const byKey = new Map(fields.map((cat) => [cat.key, cat]));
+        const pinned = recentKeys.map((key) => byKey.get(key)).filter(Boolean);
+        const rest = fields.filter((cat) => !recentKeys.includes(cat.key));
+        orderedFields = [...pinned, ...rest];
+      }
+      const searchTerm = (this._quickLogCategorySearch || '').trim().toLowerCase();
+      if (searchTerm) {
+        orderedFields = orderedFields.filter((cat) =>
+          tCategory(cat.key).toLowerCase().includes(searchTerm) || cat.key.toLowerCase().includes(searchTerm));
+      }
+
+      const rows = orderedFields
         .filter((cat) => !cat.hiddenInModal)
         .filter((cat) => !(cat.key === 'clot_size' && this._quickLogSelections.clots !== 'yes'))
         .map((cat) => {
@@ -3025,9 +3073,9 @@
             </div>`;
         }).join('');
 
-      const rowsOrFallback = window.MenstruationFunctions
-        ? rows
-        : `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`;
+      const rowsOrFallback = !window.MenstruationFunctions
+        ? `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`
+        : (rows || `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_no_match') || 'Keine passende Kategorie gefunden.')}</p>`);
 
       return `
         <div class="mc-modal-backdrop" role="presentation">
@@ -3036,9 +3084,10 @@
               <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
               <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
             </div>
-            <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 14px;">${this._t('dashboard_quick_log_date') || 'Datum'}
+            <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;">${this._t('dashboard_quick_log_date') || 'Datum'}
               <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
             </label>
+            <input type="text" data-action="quick-log-category-search" value="${escapeHtml(this._quickLogCategorySearch || '')}" placeholder="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" aria-label="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" style="width:100%;box-sizing:border-box;margin:0 0 14px;padding:7px 10px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;font-size:.85rem;" />
             <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
@@ -3069,24 +3118,83 @@
       // full calendar/gauge modals enforce, kept consistent here.
       if (symptomData.clots !== 'yes') delete symptomData.clot_size;
 
+      const entityId = this._selectedEntityId;
+      const date = this._quickLogDate || this._todayIso();
       this._quickLogOpen = false;
       this._quickLogSelections = {};
       this.render();
 
       if (Object.keys(symptomData).length === 0) return;
 
+      // Wunsch 30.09.2026: undo toast for a mistap. add_symptom only merges/
+      // overwrites keys, it can't delete one, so a key with no previous value
+      // is restored to an empty string/array rather than truly removed —
+      // ponytail: good enough to fix a mistap, not a full history revert.
+      const previous = {};
+      if (window.MenstruationFunctions) {
+        const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
+          this._hass, entityId, date, '[menstruation-cycle-dashboard-panel]');
+        Object.keys(symptomData).forEach((key) => {
+          previous[key] = data && key in data ? data[key] : (Array.isArray(symptomData[key]) ? [] : '');
+        });
+      }
+
       try {
         await this._hass.callService('menstruation_cycle', 'add_symptom', {
-          entity_id: this._selectedEntityId,
-          date: this._quickLogDate || this._todayIso(),
+          entity_id: entityId,
+          date,
           symptom_data: symptomData,
         });
         this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
+        clearTimeout(this._quickLogUndoTimer);
+        this._quickLogUndo = { entityId, date, previous };
+        this._quickLogUndoTimer = setTimeout(() => {
+          this._quickLogUndo = null;
+          this.render();
+        }, 8000);
       } catch (err) {
         console.error('[menstruation-cycle] Quick-log save failed:', err);
         this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
       }
       this.render();
+    }
+
+    async _handleQuickLogUndo() {
+      const undo = this._quickLogUndo;
+      if (!undo || !this._hass?.callService) return;
+      clearTimeout(this._quickLogUndoTimer);
+      this._quickLogUndo = null;
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: undo.entityId,
+          date: undo.date,
+          symptom_data: undo.previous,
+        });
+        this._message = this._t('dashboard_quick_log_undone') || 'Rückgängig gemacht.';
+      } catch (err) {
+        console.error('[menstruation-cycle] Quick-log undo failed:', err);
+        this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
+      }
+      this.render();
+    }
+
+    // Live filtering for the quick-log category search box needs 'input'
+    // (not 'change', which only fires on blur) — re-render replaces the
+    // whole innerHTML, so focus/caret are explicitly restored afterwards,
+    // same pattern as the existing chat-input/quick-log-open focus calls.
+    _handleQuickLogSearchInput(event) {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.dataset.action !== 'quick-log-category-search') return;
+      this._quickLogCategorySearch = target.value;
+      this.render();
+      requestAnimationFrame(() => {
+        const input = this.shadowRoot?.querySelector('[data-action="quick-log-category-search"]');
+        if (input instanceof HTMLInputElement) {
+          const pos = input.value.length;
+          input.focus();
+          input.setSelectionRange(pos, pos);
+        }
+      });
     }
 
     _moveWidget(id, direction) {
@@ -3189,6 +3297,7 @@
         const val = target.dataset.val;
         if (key && val !== undefined) {
           this._quickLogSelections[key] = this._quickLogSelections[key] === val ? undefined : val;
+          this._recordRecentCategory(key);
           this.render();
         }
         return;
@@ -3202,6 +3311,7 @@
           this._quickLogSelections[key] = current.includes(val)
             ? current.filter((v) => v !== val)
             : [...current, val];
+          this._recordRecentCategory(key);
           this.render();
         }
         return;
@@ -3209,6 +3319,11 @@
 
       if (action === 'quick-log-save') {
         this._handleQuickLogSave();
+        return;
+      }
+
+      if (action === 'quick-log-undo') {
+        this._handleQuickLogUndo();
         return;
       }
 
@@ -6968,7 +7083,7 @@
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
-          ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}</div>` : ''}
+          ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel()}
           ${this._renderQuickLogModal(stateObj)}
           ${this._renderChatFab(stateObj)}
