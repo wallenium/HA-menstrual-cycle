@@ -413,18 +413,17 @@ function getSymptomConfig(state, isPregnant = false) {
     // Energie, Schlafqualitaet" - Roadmap-Punkt 4.69): drei neue, von der
     // "Clue"-App inspirierte Kategorien. skin ist Mehrfachauswahl (siehe
     // sensor.py SYMPTOM_MULTI_VALUE_KEYS), energy_level/sleep_quality sind
-    // je eine einzelne Graduierung pro Tag, wie hot_flashes. Keines der
-    // drei hat aktuell eine eigene Icon-SVG unter assets/buttons/ - alle
-    // drei nutzen deshalb, wie z.B. bleeding_type/clots/libido oben, ein
-    // Standard-mdi:-Icon statt renderOptionIcon()-Zuordnung.
+    // je eine einzelne Graduierung pro Tag, wie hot_flashes.
+    // 30.09.2026: Icon-SVGs nachgeliefert, jetzt per renderOptionIcon()
+    // ueber SYMPTOM_OPTION_ICONS abgedeckt statt Standard-mdi:-Icon.
     { key: 'skin', icon: 'mdi:spa-outline', multi: true, options: ['clear', 'breakouts', 'oily', 'dry'] },
     { key: 'energy_level', icon: 'mdi:lightning-bolt-outline', multi: false, options: ['low', 'normal', 'high'] },
     { key: 'sleep_quality', icon: 'mdi:sleep', multi: false, options: ['poor', 'average', 'good'] },
     // 23.09.2026 (weitere Ideen, Symptomkategorie "Medikamente", Runde 28):
     // fester Options-Katalog fuer die gaengigsten Faelle (siehe const.py
     // SYMPTOM_MEDICATION-Kommentar zur Abgrenzung von der groesseren, noch
-    // offenen Roadmap-Idee 4.72 mit freier Textliste). Mehrfachauswahl, kein
-    // eigenes Icon vorhanden, deshalb Standard-mdi: wie skin/energy_level.
+    // offenen Roadmap-Idee 4.72 mit freier Textliste). Mehrfachauswahl.
+    // 30.09.2026: Icon-SVGs nachgeliefert, siehe SYMPTOM_OPTION_ICONS.
     { key: 'medication', icon: 'mdi:pill-multiple', multi: true, options: ['iron', 'folic_acid', 'vitamin_d', 'magnesium', 'pain_relief', 'hormone_therapy', 'other'] },
   ];
   if (String(state || '') === 'pre_menarche') {
@@ -599,7 +598,8 @@ function mcStateStyles() {
  * filenames, now served from this integration's own assets/buttons/).
  *
  * Deliberately NOT every option has an icon here - the app's own icon set
- * has the exact same gaps (no template for cervical_mucus's "untypisch").
+ * has similar gaps (30.09.2026: cervical_mucus's "untypisch" and
+ * discharge's "other" icons added, no longer gaps).
  * A category/option missing from this table just falls back to its
  * existing plain-text button/checkbox label, exactly like the app falls
  * back to a text chip when it has no matching asset for a given case.
@@ -619,8 +619,7 @@ function mcStateStyles() {
  * asset exists for them) - same graceful text fallback as always.
  *
  * 16.09.2026, second app-icon-parity round: the two ovulation-test results
- * (previously the only remaining gap in `test` besides cervical_mucus's
- * "untypisch") now have icons (button_test_ovulation_positive/negative.svg)
+ * (a former gap in `test`) now have icons (button_test_ovulation_positive/negative.svg)
  * and are mapped below. A new vulva_vagina category (vaginal_dryness/
  * itching/soreness) is added the same way breast/digestion were in the
  * first round - valid backend field, now has icons too, just needed a
@@ -663,6 +662,7 @@ const SYMPTOM_OPTION_ICONS = {
     brown: 'button_spotting_brownish',
     white: 'button_spotting_whitish',
     clear: 'button_spotting_transparent',
+    other: 'button_spotting_others',
   },
   hygiene: {
     pad: 'button_hygenic_pad',
@@ -676,6 +676,7 @@ const SYMPTOM_OPTION_ICONS = {
     klebrig: 'button_mucus_sticky',
     cremig: 'button_mucus_creamy',
     fadenziehend: 'button_mucus_fluid',
+    untypisch: 'button_mucus_untypical',
   },
   cervix_position: {
     cervix_high: 'button_cervix_high',
@@ -755,9 +756,9 @@ const SYMPTOM_OPTION_ICONS = {
     soreness: 'button_vulva_sore',
   },
   // 16.09.2026: four hot-flash intensity icons added (low/medium/high/
-  // extreme). "none" has no icon, same graceful-fallback pattern as
-  // digestion's bloating/constipation/diarrhea gap above.
+  // extreme). 30.09.2026: "none" icon added too, now fully covered.
   hot_flashes: {
+    none: 'button_hotflashes_none',
     light: 'button_hotflashes_low',
     moderate: 'button_hotflashes_medium',
     strong: 'button_hotflashes_high',
@@ -775,6 +776,32 @@ const SYMPTOM_OPTION_ICONS = {
     pap_smear: 'button_obgyn_paptest',
     sti_test: 'button_obgyn_std',
     vaccination: 'button_obgyn_vaccinate',
+  },
+  // 30.09.2026: skin/energy_level/sleep_quality/medication icons added.
+  skin: {
+    clear: 'button_skin_clean',
+    breakouts: 'button_skin_pimples',
+    oily: 'button_skin_fatty',
+    dry: 'button_skin_dry',
+  },
+  energy_level: {
+    low: 'button_energy_low',
+    normal: 'button_energy_medium',
+    high: 'button_energy_high',
+  },
+  sleep_quality: {
+    poor: 'button_sleep_bad',
+    average: 'button_sleep_medium',
+    good: 'button_sleep_good',
+  },
+  medication: {
+    iron: 'button_medicine_iron',
+    folic_acid: 'button_medicine_folic_acid',
+    vitamin_d: 'button_medicine_vitamine_d',
+    magnesium: 'button_medicine_magnesium',
+    pain_relief: 'button_medicine_painkiller',
+    hormone_therapy: 'button_medicine_hormone',
+    other: 'button_medicine_others',
   },
 };
 
