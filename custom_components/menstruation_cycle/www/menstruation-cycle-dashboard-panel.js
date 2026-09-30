@@ -750,6 +750,7 @@
       // menstruation-functions.js (the same one the calendar/gauge cards use).
       this._quickLogOpen = false;
       this._quickLogSelections = {};
+      this._quickLogDate = this._todayIso();
       // Local, offline Q&A widget — no external AI, pattern-matches against
       // real cycle data + a small glossary. History kept in memory only (not
       // persisted), reset on page reload.
@@ -3026,7 +3027,9 @@
               <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
               <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
             </div>
-            <p class="helper" style="margin:0 0 14px;">${escapeHtml(this._formatDate(this._todayIso()))}</p>
+            <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 14px;">${this._t('dashboard_quick_log_date') || 'Datum'}
+              <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
+            </label>
             <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
@@ -3066,7 +3069,7 @@
       try {
         await this._hass.callService('menstruation_cycle', 'add_symptom', {
           entity_id: this._selectedEntityId,
-          date: this._todayIso(),
+          date: this._quickLogDate || this._todayIso(),
           symptom_data: symptomData,
         });
         this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
@@ -3158,6 +3161,7 @@
 
       if (action === 'open-quick-log') {
         this._quickLogSelections = {};
+        this._quickLogDate = this._todayIso();
         this._quickLogOpen = true;
         this.render();
         requestAnimationFrame(() => {
@@ -3274,7 +3278,14 @@
 
     _handleChange(event) {
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !this._prefs) return;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-date-change') {
+        this._quickLogDate = target.value || this._todayIso();
+        return;
+      }
+
+      if (!this._prefs) return;
 
       if (target.tagName === 'SELECT' && target.classList.contains('entity-picker')) {
         this._handleEntityChange(target.value);
@@ -4902,6 +4913,10 @@
         const label = this._t(state);
         return label !== state ? label : state;
       };
+      // Shared category bucket for both the stat-box tint and the popover tint below, so a
+      // member's hover detail always echoes the color of the box it sits in instead of a
+      // generic, disconnected-looking card (Nachfrage 30.09.2026: "wirkt gekuenstelt extra").
+      const stateTint = (state) => ['period', 'fertile', 'pms', 'pregnant'].includes(state) ? state : 'neutral';
 
       // Group every profile by its raw state so each becomes a member
       // bubble INSIDE its matching category box below, instead of a
@@ -4937,13 +4952,20 @@
         if (p.cycle_day) {
           detailLines.push(`${this._t('day') || 'Tag'} ${p.cycle_day}${p.avg_cycle_length ? `/${p.avg_cycle_length}` : ''}`);
           if (p.days_until_next_start != null) {
-            detailLines.push(`${p.days_until_next_start} ${this._t('dashboard_days_until_next') || 'Tage bis zur nächsten Periode'}`);
+            const nextStartIso = new Date(new Date(this._todayIso()).getTime() + p.days_until_next_start * 86400000).toISOString().slice(0, 10);
+            const nextStartFmt = this._formatDate(nextStartIso, { day: '2-digit', month: '2-digit' });
+            detailLines.push(`${p.days_until_next_start} ${this._t('dashboard_days_until_next') || 'Tage bis zur nächsten Periode'} (${nextStartFmt})`);
+          }
+          if (p.fertile_window_start && p.fertile_window_end) {
+            const fws = this._formatDate(p.fertile_window_start, { day: '2-digit', month: '2-digit' });
+            const fwe = this._formatDate(p.fertile_window_end, { day: '2-digit', month: '2-digit' });
+            detailLines.push(`${this._t('dashboard_household_fertile') || 'Fruchtbar'}: ${fws}–${fwe}`);
           }
         } else if (p.weeks_pregnant) {
           detailLines.push(`${this._t('week') || 'Woche'} ${Math.floor(p.weeks_pregnant)}`);
         }
         const detail = state === 'private' ? '' : `
-          <span class="household-member-detail">
+          <span class="household-member-detail household-member-detail--${stateTint(state)}">
             ${this._statusIconHtml(state, 112, p)}
             <span class="household-member-detail-name">${this._avatarHtml(p, 28)}${name}</span>
             <span class="household-member-detail-state">${escapeHtml(stateLabel(state))}</span>
@@ -4975,9 +4997,7 @@
         // other dynamic category (pre_menarche/menarche/menopause/
         // postpartum/neutral/private) shares one calm, non-alert sand-toned
         // box instead of inventing a bespoke color per rare life stage.
-        const tintClass = FIXED_STATES.includes(state) ? `household-stat--${state}`
-          : state === 'pregnant' ? 'household-stat--pregnant'
-          : 'household-stat--neutral';
+        const tintClass = `household-stat--${stateTint(state)}`;
         const label = state === 'period' ? (this._t('dashboard_household_in_period') || 'In Periode')
           : state === 'fertile' ? (this._t('dashboard_household_fertile') || 'Fruchtbar')
           : state === 'pms' ? (this._t('dashboard_household_pms') || 'PMS')
@@ -6813,19 +6833,34 @@
             .household-member:hover, .household-member:focus-within { transform: scale(1.12); z-index: 5; }
             .household-member-detail {
               display: flex; flex-direction: column; align-items: center; gap: 2px;
-              position: absolute; top: calc(100% + 8px); left: 50%;
+              position: absolute; top: calc(100% + 10px); left: 50%;
               min-width: 160px; padding: 10px 14px; border-radius: 14px;
-              background: var(--card-background-color, #fff);
-              border: 1px solid var(--divider-color, #e5e7eb);
-              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+              background: var(--mc-sand, #EDE6DB);
+              border: 1px solid transparent;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
               opacity: 0; pointer-events: none; visibility: hidden;
-              transform: translateX(-50%) scale(0.9);
+              transform: translateX(-50%) translateY(-4px);
               transition: opacity 0.15s ease, transform 0.15s ease;
               z-index: 10;
             }
+            /* Small caret linking the popover back to the bubble it belongs to, so it reads as
+               a tooltip instead of an unrelated card floating underneath (Nachfrage 30.09.2026). */
+            .household-member-detail::before {
+              content: ''; position: absolute; bottom: 100%; left: 50%;
+              transform: translateX(-50%);
+              border: 6px solid transparent; border-bottom-color: var(--mc-sand, #EDE6DB);
+            }
+            .household-member-detail--period { background: var(--mc-rose-tint, #FBE3E8); border-color: color-mix(in srgb, var(--mc-rose-deep, #C43F5E) 25%, transparent); }
+            .household-member-detail--period::before { border-bottom-color: var(--mc-rose-tint, #FBE3E8); }
+            .household-member-detail--fertile { background: var(--mc-sage-tint, #E6EDE7); border-color: color-mix(in srgb, var(--mc-sage-deep, #3F5A47) 25%, transparent); }
+            .household-member-detail--fertile::before { border-bottom-color: var(--mc-sage-tint, #E6EDE7); }
+            .household-member-detail--pms { background: var(--mc-amber-tint, #FBEEDC); border-color: color-mix(in srgb, var(--mc-amber-deep, #8a5a12) 25%, transparent); }
+            .household-member-detail--pms::before { border-bottom-color: var(--mc-amber-tint, #FBEEDC); }
+            .household-member-detail--pregnant { background: var(--mc-plum-tint, #EFE3EA); border-color: color-mix(in srgb, var(--mc-plum, #6B3654) 25%, transparent); }
+            .household-member-detail--pregnant::before { border-bottom-color: var(--mc-plum-tint, #EFE3EA); }
             .household-member:hover .household-member-detail,
             .household-member:focus-within .household-member-detail {
-              opacity: 1; visibility: visible; transform: translateX(-50%) scale(1);
+              opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
             }
             .household-member-detail-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--primary-text-color, #1f2937); }
             .household-member-detail-state {
