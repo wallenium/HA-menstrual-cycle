@@ -79,6 +79,8 @@
   "cat_cervix_texture": "Textura del cuello uterino",
   "cat_libido": "Libido",
   "cat_training_intensity": "Intensidad del entrenamiento",
+"opt_medium": "Media",
+"opt_heavy": "Abundante",
   "opt_light": "Leve",
   "nfp_confidence_medium": "Media",
   "bleeding_heavy": "Abundante",

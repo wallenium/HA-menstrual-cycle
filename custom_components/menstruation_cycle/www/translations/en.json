@@ -79,6 +79,8 @@
   "cat_cervix_texture": "Cervix Texture",
   "cat_libido": "Libido",
   "cat_training_intensity": "Training Intensity",
+"opt_medium": "Medium",
+"opt_heavy": "Heavy",
   "opt_light": "Light",
   "nfp_confidence_medium": "Medium",
   "bleeding_heavy": "Heavy",

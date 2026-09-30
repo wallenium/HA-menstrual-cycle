@@ -79,6 +79,8 @@
   "cat_cervix_texture": "Livmodertappens konsistens",
   "cat_libido": "Libido",
   "cat_training_intensity": "Träningsintensitet",
+"opt_medium": "Medel",
+"opt_heavy": "Kraftig",
   "opt_light": "Lätt",
   "nfp_confidence_medium": "Medel",
   "bleeding_heavy": "Kraftig",

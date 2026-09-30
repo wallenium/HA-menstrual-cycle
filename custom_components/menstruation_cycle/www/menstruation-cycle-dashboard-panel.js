@@ -2995,24 +2995,26 @@
       };
       const tCategory = (key) => {
         const prefixed = this._t(`cat_${key}`);
-        return prefixed !== `cat_${key}` ? prefixed : key;
+        return prefixed !== `cat_${key}` ? prefixed : this._t(key);
       };
 
       const rows = fields
         .filter((cat) => !cat.hiddenInModal)
         .filter((cat) => !(cat.key === 'clot_size' && this._quickLogSelections.clots !== 'yes'))
         .map((cat) => {
-          const options = (cat.options || []).map((opt) => {
-            const isSelected = cat.multi
-              ? (Array.isArray(this._quickLogSelections[cat.key]) && this._quickLogSelections[cat.key].includes(opt))
-              : this._quickLogSelections[cat.key] === opt;
-            const action = cat.multi ? 'quick-log-toggle-multi' : 'quick-log-select';
-            return `<button type="button" class="mode-btn${isSelected ? ' active' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${escapeHtml(tOption(opt))}</button>`;
+          const action = cat.multi ? 'quick-log-toggle-multi' : 'quick-log-select';
+          const currentValues = cat.multi
+            ? (Array.isArray(this._quickLogSelections[cat.key]) ? this._quickLogSelections[cat.key] : [])
+            : [this._quickLogSelections[cat.key]];
+          const tiles = (cat.options || []).map((opt) => {
+            const isSelected = currentValues.includes(opt);
+            const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon(cat.key, opt) : '';
+            return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${isSelected ? ' sym-selected' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${icon}<span class="sym-opt-text">${escapeHtml(tOption(opt))}</span></button>`;
           }).join('');
           return `
-            <div>
-              <div class="stat-label sym-cat-head" style="margin-bottom:6px;">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : ''}<span>${escapeHtml(tCategory(cat.key))}</span></div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px;">${options}</div>
+            <div class="sym-row">
+              <div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : ''}<span>${escapeHtml(tCategory(cat.key))}</span></div>
+              <div class="sym-options">${tiles}</div>
             </div>`;
         }).join('');
 
@@ -3030,7 +3032,7 @@
             <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 14px;">${this._t('dashboard_quick_log_date') || 'Datum'}
               <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
             </label>
-            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 16px;align-content:start;">
+            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
@@ -6242,9 +6244,30 @@
             flex: 1;
           }
           .mc-chat-fab-body .mc-chat-history { max-height: none; }
-          .sym-cat-head { display: flex; align-items: center; gap: 6px; }
+          .sym-cat-head { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; opacity: .85; margin-bottom: 6px; }
           .sym-cat-head ha-icon { --mdc-icon-size: 18px; color: var(--mc-rose-deep, #C43F5E); flex: none; }
           .sym-cat-head img { flex: none; }
+          .sym-row { display: grid; gap: 6px; }
+          /* Icon-tile options, ported from the calendar/gauge symptom-logging UI so the
+             quick-log modal matches instead of using its own plain-text pills. */
+          .sym-options {
+            display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden;
+            padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; -ms-overflow-style: none;
+          }
+          .sym-options::-webkit-scrollbar { display: none; }
+          .sym-opt-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+            flex: 0 0 82px; width: 82px; min-height: 100px; border: 1px solid rgba(128,128,128,.35);
+            border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .8rem;
+            background: transparent; color: inherit; scroll-snap-align: start;
+            transition: background 120ms, border-color 120ms;
+          }
+          .sym-opt-btn:hover { border-color: var(--primary-color); }
+          .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
+          .sym-opt-icon, .sym-opt-btn img { width: 64px; height: 64px; object-fit: contain; flex: 0 0 auto; border-radius: 12px; }
+          .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          @media (prefers-reduced-motion: reduce) { .sym-opt-btn { transition: none !important; } }
           .mc-chat-history {
             display: flex; flex-direction: column; gap: 8px;
             max-height: 280px; overflow-y: auto;
@@ -6277,8 +6300,8 @@
             background: var(--card-background-color, #fff);
             border-radius: 16px;
             padding: 20px;
-            max-width: 720px;
             width: 100%;
+            max-width: min(1200px, 80vw);
             max-height: 85vh;
             display: flex;
             flex-direction: column;
