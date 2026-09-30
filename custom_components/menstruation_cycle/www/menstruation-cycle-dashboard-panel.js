@@ -6369,7 +6369,7 @@
           .sym-cat-head { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; opacity: .85; margin-bottom: 6px; }
           .sym-cat-head ha-icon { --mdc-icon-size: 18px; color: var(--mc-rose-deep, #C43F5E); flex: none; }
           .sym-cat-head img { flex: none; }
-          .sym-row { display: grid; gap: 6px; }
+          .sym-row { display: grid; gap: 6px; min-width: 0; }
           /* Icon-tile options, ported from the calendar/gauge symptom-logging UI so the
              quick-log modal matches instead of using its own plain-text pills. */
           .sym-options {
@@ -6391,7 +6391,7 @@
           .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           /* Fade + chevron hinting that a tile row scrolls sideways, instead of tiles just
              cutting off at the edge with no cue (Nachfrage 30.09.2026). */
-          .sym-options-wrap { position: relative; }
+          .sym-options-wrap { position: relative; min-width: 0; }
           .sym-options-wrap--scrollable::after {
             content: ''; position: absolute; top: 0; right: 0; bottom: 6px; width: 40px;
             background: linear-gradient(to right, transparent, var(--card-background-color, #fff) 75%);

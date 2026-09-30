@@ -74,6 +74,8 @@ from .const import (
     STORAGE_KEY_LEGACY,
     MAX_NUM_PREDICTIONS,
     VISIBILITY_LEVELS,
+    VISIBILITY_LEVEL_PRIVATE,
+    VISIBILITY_LEVEL_STATUS_ONLY,
 )
 
 
@@ -517,7 +519,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         lines.append(f"- Future predictions: {d.get(CONF_NUM_PREDICTIONS, '?')} cycle(s)")
         lines.append(f"- NFP analysis mode: {d.get(CONF_NFP_ANALYSIS_MODE, '?')}")
         lines.append(f"- Onboarding stage: {d.get(CONF_ONBOARDING_STAGE, '?')}")
-        lines.append(f"- Visibility level: {d.get(CONF_VISIBILITY_LEVEL, '?')}")
+        visibility_level = d.get(CONF_VISIBILITY_LEVEL, '?')
+        # Wunsch 01.10.2026: spell out the consequence right before saving,
+        # not just the raw level name — grounded in sensor.py's actual
+        # _VISIBILITY_STATUS_ONLY_KEYS/_VISIBILITY_ALWAYS_KEPT_KEYS filters.
+        visibility_note = {
+            VISIBILITY_LEVEL_STATUS_ONLY: " (others with dashboard access see only next-period/cycle-phase info, no symptom or health details)",
+            VISIBILITY_LEVEL_PRIVATE: " (others with dashboard access see only that the profile exists, no cycle status at all)",
+        }.get(visibility_level, "")
+        lines.append(f"- Visibility level: {visibility_level}{visibility_note}")
         lines.append(f"- Basal temperature input unit: {d.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)}")
         lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
         lines.append(f"- Cycle calendar entity: {'yes' if d.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED) else 'no'}")

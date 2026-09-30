@@ -744,6 +744,7 @@
   "dashboard_drag_to_reorder": "Glisser pour réorganiser",
   "dashboard_last_updated": "Dernière mise à jour",
   "conflict_warning": "Ces données ont été modifiées entre-temps sur un autre appareil. Les écraser quand même avec votre version ?",
+  "confirm_remove_cycle_start": "Supprimer ce début de règles confirmé ?",
   "dashboard_sensor_unavailable": "Capteur actuellement indisponible",
   "dashboard_sensor_unavailable_hint": "L'entité indique actuellement « indisponible » — cela peut arriver brièvement après un redémarrage ou pendant le rechargement de l'intégration. Cela se résout généralement en quelques secondes.",
   "dashboard_discreet_quick_on_aria": "Activer le mode discret",

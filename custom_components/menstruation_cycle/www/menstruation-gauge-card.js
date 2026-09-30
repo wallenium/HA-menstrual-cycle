@@ -138,6 +138,7 @@ class MenstruationGaugeCard extends HTMLElement {
         week: 'Week',
         month: 'Month',
         trimester: 'Trimester',
+        confirm_remove_cycle_start: 'Remove this confirmed period start?',
         // Modal UI
         modal_edit_day: 'Edit Day',
         period: 'Period',
@@ -1755,6 +1756,10 @@ class MenstruationGaugeCard extends HTMLElement {
     const model = this._buildModel();
     if (model.pregnancyInfo?.isPregnant) return;
     const service = model.confirmedSet.has(iso) ? 'remove_cycle_start' : 'add_cycle_start';
+    // Wunsch 01.10.2026: removing a confirmed start shrinks the history, so it
+    // gets a confirmation — adding one doesn't need it (reversible either way,
+    // but removal is the more surprising direction to trigger by accident).
+    if (service === 'remove_cycle_start' && !window.confirm(this._t('confirm_remove_cycle_start'))) return;
     const profile = model.stateObj?.attributes?.profile;
     const entityId = model.entityId || this._config?.entity || '';
     const entryId = model.stateObj?.attributes?.entry_id || this._config?.entry_id || '';
@@ -2571,7 +2576,7 @@ class MenstruationGaugeCard extends HTMLElement {
         .sym-close:hover { opacity: 1; }
         .sym-body { overflow-y: auto; padding: 10px 14px; display: grid; gap: 10px; }
         .sym-footer { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid rgba(128,128,128,.2); justify-content: flex-end; }
-        .sym-row { display: grid; gap: 6px; }
+        .sym-row { display: grid; gap: 6px; min-width: 0; }
         .sym-cat-head { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; opacity: .85; }
         .sym-cat-head ha-icon { --mdc-icon-size: 16px; }
         /* Optionsreihen (15.09.2026, elfte Runde): fest einzeilig mit
