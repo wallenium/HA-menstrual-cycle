@@ -540,6 +540,24 @@
 
   const WIDGET_IDS = WIDGET_DEFS.map((widget) => widget.id);
 
+  // Wunsch 01.10.2026 ("jede Kategorie einblendbar ... Drag & Drop"): mirrors
+  // the menstruation-functions.js symptom catalog order. Kept as a separate
+  // static list (like WIDGET_IDS above) rather than reading the live catalog,
+  // so prefs normalize without depending on that script having loaded yet.
+  // cervix_texture is excluded: it's always hiddenInModal, never shown here.
+  // Keep in sync if a category is added/removed in menstruation-functions.js.
+  const CATEGORY_KEYS = [
+    'bleeding_strength', 'clots', 'clot_size', 'bleeding_type', 'spotting', 'smell',
+    'discharge', 'hygiene', 'cervical_mucus', 'cervix_position', 'intercourse', 'libido',
+    'pain', 'test', 'training_intensity', 'contraception_method', 'breast', 'digestion',
+    'vulva_vagina', 'hot_flashes', 'urinary', 'appointments', 'skin', 'energy_level',
+    'sleep_quality', 'medication', 'pregnancy_symptoms',
+  ];
+
+  // Generalizes the widget drag-and-drop/up-down reordering (below) to also
+  // cover the category list, instead of duplicating the handlers.
+  const DRAG_GROUP_ORDER_FIELD = { widget: 'widgetOrder', category: 'categoryOrder' };
+
   const PRESETS = {
     young: {
       discreetMode: true,
@@ -1263,6 +1281,11 @@
       const widgetVisibility = { ...preset.widgetVisibility, ...(raw?.widgetVisibility || {}) };
       const rawOrder = Array.isArray(raw?.widgetOrder) ? raw.widgetOrder.filter((id) => WIDGET_IDS.includes(id)) : [];
       const widgetOrder = [...rawOrder, ...WIDGET_IDS.filter((id) => !rawOrder.includes(id))];
+      // Wunsch 01.10.2026: same show/hide + reorder pattern as widgets above,
+      // for the quick-log modal's symptom categories.
+      const categoryVisibility = { ...(raw?.categoryVisibility || {}) };
+      const rawCategoryOrder = Array.isArray(raw?.categoryOrder) ? raw.categoryOrder.filter((key) => CATEGORY_KEYS.includes(key)) : [];
+      const categoryOrder = [...rawCategoryOrder, ...CATEGORY_KEYS.filter((key) => !rawCategoryOrder.includes(key))];
       const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
       return {
         __profile: profile,
@@ -1270,6 +1293,8 @@
         discreetMode,
         widgetVisibility,
         widgetOrder,
+        categoryVisibility,
+        categoryOrder,
         myInfo: {
           displayName: String(raw?.myInfo?.displayName || '').trim(),
           pronouns: String(raw?.myInfo?.pronouns || '').trim(),
@@ -1724,7 +1749,7 @@
       if (!handle) return;
       const row = handle.closest('.edit-row');
       if (!row || !this._editDraft) return;
-      this._dragState = { widgetId: row.dataset.widgetId, pointerId: event.pointerId };
+      this._dragState = { group: row.dataset.dragGroup, itemId: row.dataset.itemId, pointerId: event.pointerId };
       row.setPointerCapture?.(event.pointerId);
       row.classList.add('dragging');
       event.preventDefault();
@@ -1732,8 +1757,8 @@
 
     _handleDragPointerMove(event) {
       if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
-      const container = this.shadowRoot?.querySelector('.edit-widget-list');
-      const dragRow = this.shadowRoot?.querySelector(`.edit-row[data-widget-id="${this._dragState.widgetId}"]`);
+      const container = this.shadowRoot?.querySelector(`.edit-widget-list[data-drag-group="${this._dragState.group}"]`);
+      const dragRow = container?.querySelector(`.edit-row[data-item-id="${this._dragState.itemId}"]`);
       if (!container || !dragRow) return;
 
       const rows = Array.from(container.querySelectorAll('.edit-row')).filter((r) => r !== dragRow);
@@ -1751,15 +1776,16 @@
 
     _handleDragPointerUp(event) {
       if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
-      const container = this.shadowRoot?.querySelector('.edit-widget-list');
-      const dragRow = this.shadowRoot?.querySelector(`.edit-row[data-widget-id="${this._dragState.widgetId}"]`);
+      const { group, itemId } = this._dragState;
+      const container = this.shadowRoot?.querySelector(`.edit-widget-list[data-drag-group="${group}"]`);
+      const dragRow = container?.querySelector(`.edit-row[data-item-id="${itemId}"]`);
       dragRow?.classList.remove('dragging');
       dragRow?.releasePointerCapture?.(event.pointerId);
       this._dragState = null;
 
       if (container && this._editDraft) {
-        const newOrder = Array.from(container.querySelectorAll('.edit-row')).map((r) => r.dataset.widgetId);
-        this._editDraft.widgetOrder = newOrder;
+        const newOrder = Array.from(container.querySelectorAll('.edit-row')).map((r) => r.dataset.itemId);
+        this._editDraft[DRAG_GROUP_ORDER_FIELD[group]] = newOrder;
         this.render();
       }
     }
@@ -3030,14 +3056,27 @@
         return prefixed !== `cat_${key}` ? prefixed : this._t(key);
       };
 
+      // Wunsch 01.10.2026: user-configurable category visibility + order from
+      // the edit-mode settings panel, applied before the recent-first/search
+      // layers below.
+      const categoryVisibility = this._prefs?.categoryVisibility || {};
+      const categoryOrder = this._prefs?.categoryOrder || [];
+      let visibleFields = fields.filter((cat) => categoryVisibility[cat.key] !== false);
+      if (categoryOrder.length) {
+        const byOrderKey = new Map(visibleFields.map((cat) => [cat.key, cat]));
+        const ordered = categoryOrder.map((key) => byOrderKey.get(key)).filter(Boolean);
+        const rest = visibleFields.filter((cat) => !categoryOrder.includes(cat.key));
+        visibleFields = [...ordered, ...rest];
+      }
+
       // Wunsch 30.09.2026: recently used categories first, then an optional
       // live search filter on top of that order.
       const recentKeys = this._loadRecentCategories();
-      let orderedFields = fields;
+      let orderedFields = visibleFields;
       if (recentKeys.length) {
-        const byKey = new Map(fields.map((cat) => [cat.key, cat]));
+        const byKey = new Map(visibleFields.map((cat) => [cat.key, cat]));
         const pinned = recentKeys.map((key) => byKey.get(key)).filter(Boolean);
-        const rest = fields.filter((cat) => !recentKeys.includes(cat.key));
+        const rest = visibleFields.filter((cat) => !recentKeys.includes(cat.key));
         orderedFields = [...pinned, ...rest];
       }
       const searchTerm = (this._quickLogCategorySearch || '').trim().toLowerCase();
@@ -3059,15 +3098,10 @@
             const icon = window.MenstruationFunctions ? window.MenstruationFunctions.renderOptionIcon(cat.key, opt) : '';
             return `<button type="button" class="sym-opt-btn${icon ? ' sym-opt-btn--icon' : ''}${isSelected ? ' sym-selected' : ''}" data-action="${action}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}">${icon}<span class="sym-opt-text">${escapeHtml(tOption(opt))}</span></button>`;
           }).join('');
-          // A row with more than a handful of tiles overflows its column and needs the
-          // horizontal scroll strip (Nachfrage 30.09.2026: "fehlt indikator dass man da
-          // scrollen muss") — the fade + chevron hint below only render for those, so short
-          // rows that already show every option (e.g. "Ja"/"Nein") stay clean.
-          const overflows = (cat.options || []).length > 3;
           return `
             <div class="sym-row">
               <div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : ''}<span>${escapeHtml(tCategory(cat.key))}</span></div>
-              <div class="sym-options-wrap${overflows ? ' sym-options-wrap--scrollable' : ''}">
+              <div class="sym-options-wrap">
                 <div class="sym-options">${tiles}</div>
               </div>
             </div>`;
@@ -3088,7 +3122,7 @@
               <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
             </label>
             <input type="text" data-action="quick-log-category-search" value="${escapeHtml(this._quickLogCategorySearch || '')}" placeholder="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" aria-label="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" style="width:100%;box-sizing:border-box;margin:0 0 14px;padding:7px 10px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;font-size:.85rem;" />
-            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 16px;align-content:start;">
+            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(470px,1fr));gap:10px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
@@ -3197,16 +3231,16 @@
       });
     }
 
-    _moveWidget(id, direction) {
+    _moveOrderItem(orderField, id, direction) {
       const target = this._editMode ? this._editDraft : this._prefs;
       if (!target) return;
-      const idx = target.widgetOrder.indexOf(id);
+      const idx = target[orderField].indexOf(id);
       if (idx < 0) return;
       const next = direction === 'up' ? idx - 1 : idx + 1;
-      if (next < 0 || next >= target.widgetOrder.length) return;
-      const order = [...target.widgetOrder];
+      if (next < 0 || next >= target[orderField].length) return;
+      const order = [...target[orderField]];
       [order[idx], order[next]] = [order[next], order[idx]];
-      target.widgetOrder = order;
+      target[orderField] = order;
       if (!this._editMode) this._savePrefs();
       this.render();
     }
@@ -3372,9 +3406,13 @@
         this._editMode = false;
         this.render();
       } else if (action === 'widget-up' && widget) {
-        this._moveWidget(widget, 'up');
+        this._moveOrderItem('widgetOrder', widget, 'up');
       } else if (action === 'widget-down' && widget) {
-        this._moveWidget(widget, 'down');
+        this._moveOrderItem('widgetOrder', widget, 'down');
+      } else if (action === 'category-up' && target.dataset.category) {
+        this._moveOrderItem('categoryOrder', target.dataset.category, 'up');
+      } else if (action === 'category-down' && target.dataset.category) {
+        this._moveOrderItem('categoryOrder', target.dataset.category, 'down');
       } else if (action === 'reset-preset') {
         const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
         if (this._editMode) {
@@ -3420,6 +3458,11 @@
       if (!draft) return;
       if (target instanceof HTMLInputElement && target.dataset.widgetVisibility) {
         draft.widgetVisibility[target.dataset.widgetVisibility] = target.checked;
+        if (!this._editMode) this._savePrefs();
+        this.render();
+      }
+      if (target instanceof HTMLInputElement && target.dataset.categoryVisibility) {
+        draft.categoryVisibility[target.dataset.categoryVisibility] = target.checked;
         if (!this._editMode) this._savePrefs();
         this.render();
       }
@@ -5831,7 +5874,7 @@
       `;
     }
 
-    _renderEditPanel() {
+    _renderEditPanel(stateObj) {
       if (!this._editMode || !this._editDraft) return '';
       const draft = this._editDraft;
       const widgetById = {};
@@ -5850,7 +5893,7 @@
         const idx = draft.widgetOrder.indexOf(widget.id);
         const widgetLabel = this._t(widget.title);
         return `
-          <div class="edit-row" data-widget-id="${widget.id}">
+          <div class="edit-row" data-drag-group="widget" data-item-id="${widget.id}">
             <span class="edit-drag-handle" data-drag-handle="true" aria-hidden="true" title="${this._t('dashboard_drag_to_reorder') || 'Ziehen zum Sortieren'}">⠿</span>
             <label>
               <input type="checkbox" data-widget-visibility="${widget.id}" ${visible ? 'checked' : ''}
@@ -5869,6 +5912,46 @@
         `;
       }).join('');
 
+      // Wunsch 01.10.2026: same show/hide + drag/up-down reordering as the
+      // widget list above, for the quick-log modal's symptom categories.
+      const catMode = this._resolveContentMode(stateObj);
+      const categoryFields = window.MenstruationFunctions
+        ? window.MenstruationFunctions.getSymptomConfig(catMode, catMode === 'pregnancy').filter((cat) => !cat.hiddenInModal)
+        : [];
+      const categoryByKey = {};
+      categoryFields.forEach((cat) => { categoryByKey[cat.key] = cat; });
+      const orderedCategoryKeys = [
+        ...draft.categoryOrder.filter((key) => categoryByKey[key]),
+        ...categoryFields.map((cat) => cat.key).filter((key) => !draft.categoryOrder.includes(key)),
+      ];
+      const tCategory = (key) => {
+        const prefixed = this._t(`cat_${key}`);
+        return prefixed !== `cat_${key}` ? prefixed : this._t(key);
+      };
+      const categoryRows = orderedCategoryKeys.map((key) => {
+        const visible = draft.categoryVisibility[key] !== false;
+        const idx = draft.categoryOrder.indexOf(key);
+        const categoryLabel = tCategory(key);
+        return `
+          <div class="edit-row" data-drag-group="category" data-item-id="${key}">
+            <span class="edit-drag-handle" data-drag-handle="true" aria-hidden="true" title="${this._t('dashboard_drag_to_reorder') || 'Ziehen zum Sortieren'}">⠿</span>
+            <label>
+              <input type="checkbox" data-category-visibility="${key}" ${visible ? 'checked' : ''}
+                aria-label="${(this._t('dashboard_toggle_category_aria') || 'Sichtbarkeit der Kategorie {category} umschalten').replace('{category}', categoryLabel)}"/>
+              ${categoryLabel}
+            </label>
+            <div class="edit-buttons">
+              <button type="button" data-action="category-up" data-category="${key}"
+                ${idx <= 0 ? 'disabled' : ''}
+                aria-label="${(this._t('dashboard_move_category_up_aria') || 'Kategorie {category} nach oben verschieben').replace('{category}', categoryLabel)}">↑</button>
+              <button type="button" data-action="category-down" data-category="${key}"
+                ${idx >= draft.categoryOrder.length - 1 ? 'disabled' : ''}
+                aria-label="${(this._t('dashboard_move_category_down_aria') || 'Kategorie {category} nach unten verschieben').replace('{category}', categoryLabel)}">↓</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
       return `
         <section class="edit-mode" aria-label="${this._t('dashboard_edit_mode')}">
           <h2>${this._t('dashboard_edit_mode')}</h2>
@@ -5876,7 +5959,9 @@
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
           <p class="helper">${this._t('dashboard_widget_order_label')}</p>
-          <div class="edit-widget-list">${rows}</div>
+          <div class="edit-widget-list" data-drag-group="widget">${rows}</div>
+          <p class="helper">${this._t('dashboard_category_order_label') || 'Reihenfolge und Sichtbarkeit der Symptom-Kategorien'}</p>
+          <div class="edit-widget-list" data-drag-group="category">${categoryRows}</div>
           <div class="edit-actions">
             <button type="button" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
             <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
@@ -6372,36 +6457,19 @@
           .sym-row { display: grid; gap: 6px; min-width: 0; }
           /* Icon-tile options, ported from the calendar/gauge symptom-logging UI so the
              quick-log modal matches instead of using its own plain-text pills. */
-          .sym-options {
-            display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden;
-            padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; -ms-overflow-style: none;
-          }
-          .sym-options::-webkit-scrollbar { display: none; }
+          .sym-options { display: flex; flex-wrap: wrap; gap: 8px; overflow: visible; padding: 2px 2px 6px; }
           .sym-opt-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
             flex: 0 0 82px; width: 82px; min-height: 100px; border: 1px solid rgba(128,128,128,.35);
             border-radius: 12px; padding: 8px 4px 6px; cursor: pointer; font-size: .8rem;
-            background: transparent; color: inherit; scroll-snap-align: start;
+            background: transparent; color: inherit;
             transition: background 120ms, border-color 120ms;
           }
           .sym-opt-btn:hover { border-color: var(--primary-color); }
           .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
           .sym-opt-icon, .sym-opt-btn img { width: 64px; height: 64px; object-fit: contain; flex: 0 0 auto; border-radius: 12px; }
           .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          /* Fade + chevron hinting that a tile row scrolls sideways, instead of tiles just
-             cutting off at the edge with no cue (Nachfrage 30.09.2026). */
           .sym-options-wrap { position: relative; min-width: 0; }
-          .sym-options-wrap--scrollable::after {
-            content: ''; position: absolute; top: 0; right: 0; bottom: 6px; width: 40px;
-            background: linear-gradient(to right, transparent, var(--card-background-color, #fff) 75%);
-            pointer-events: none;
-          }
-          .sym-options-wrap--scrollable::before {
-            content: '›'; position: absolute; right: 2px; top: calc(50% - 9px);
-            font-size: 1.2rem; line-height: 1; color: var(--secondary-text-color, #6b7280);
-            opacity: .8; pointer-events: none; z-index: 1;
-          }
           @media (prefers-reduced-motion: reduce) { .sym-opt-btn { transition: none !important; } }
           .mc-chat-history {
             display: flex; flex-direction: column; gap: 8px;
@@ -7084,7 +7152,7 @@
           ${this._renderLastUpdated(stateObj)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
-          ${this._renderEditPanel()}
+          ${this._renderEditPanel(stateObj)}
           ${this._renderQuickLogModal(stateObj)}
           ${this._renderChatFab(stateObj)}
           <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>

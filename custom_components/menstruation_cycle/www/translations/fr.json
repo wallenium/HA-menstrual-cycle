@@ -79,8 +79,8 @@
   "cat_cervix_texture": "Consistance du col",
   "cat_libido": "Libido",
   "cat_training_intensity": "Intensité de l&apos;entraînement",
-"opt_medium": "Moyen",
-"opt_heavy": "Abondant",
+  "opt_medium": "Moyen",
+  "opt_heavy": "Abondant",
   "opt_light": "Léger",
   "nfp_confidence_medium": "Moyen",
   "bleeding_heavy": "Abondant",
@@ -968,5 +968,9 @@
   "dashboard_household_title": "Aperçu du foyer",
   "dashboard_household_in_period": "En période",
   "dashboard_household_fertile": "Féconde",
-  "dashboard_household_pms": "SPM"
+  "dashboard_household_pms": "SPM",
+  "dashboard_category_order_label": "Ordre et visibilité des catégories",
+  "dashboard_toggle_category_aria": "Basculer la visibilité de la catégorie {category}",
+  "dashboard_move_category_up_aria": "Déplacer la catégorie {category} vers le haut",
+  "dashboard_move_category_down_aria": "Déplacer la catégorie {category} vers le bas"
 }

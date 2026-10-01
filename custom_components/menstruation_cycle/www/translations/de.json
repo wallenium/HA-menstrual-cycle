@@ -79,8 +79,8 @@
   "cat_cervix_texture": "Zervixbeschaffenheit",
   "cat_libido": "Libido",
   "cat_training_intensity": "Trainingsintensität",
-"opt_medium": "Mittel",
-"opt_heavy": "Stark",
+  "opt_medium": "Mittel",
+  "opt_heavy": "Stark",
   "opt_light": "Gering",
   "nfp_confidence_medium": "Mittel",
   "bleeding_heavy": "Stark",
@@ -1006,5 +1006,9 @@
   "dashboard_household_timeline_title": "Vorschau (30 Tage)",
   "area_usage": "Verbrauch nach Bereich",
   "area": "Bereich",
-  "area_help": "Verbrauchsereignisse dieser Karte einem HA-Bereich zuordnen (nur gespeichert, wenn Bereichs-Tracking aktiviert ist)."
+  "area_help": "Verbrauchsereignisse dieser Karte einem HA-Bereich zuordnen (nur gespeichert, wenn Bereichs-Tracking aktiviert ist).",
+  "dashboard_category_order_label": "Reihenfolge und Sichtbarkeit der Symptom-Kategorien",
+  "dashboard_toggle_category_aria": "Sichtbarkeit der Kategorie {category} umschalten",
+  "dashboard_move_category_up_aria": "Kategorie {category} nach oben verschieben",
+  "dashboard_move_category_down_aria": "Kategorie {category} nach unten verschieben"
 }

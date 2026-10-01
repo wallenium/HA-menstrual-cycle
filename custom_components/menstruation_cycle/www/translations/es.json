@@ -79,8 +79,8 @@
   "cat_cervix_texture": "Textura del cuello uterino",
   "cat_libido": "Libido",
   "cat_training_intensity": "Intensidad del entrenamiento",
-"opt_medium": "Media",
-"opt_heavy": "Abundante",
+  "opt_medium": "Media",
+  "opt_heavy": "Abundante",
   "opt_light": "Leve",
   "nfp_confidence_medium": "Media",
   "bleeding_heavy": "Abundante",
@@ -968,5 +968,9 @@
   "dashboard_household_title": "Resumen del hogar",
   "dashboard_household_in_period": "Con la regla",
   "dashboard_household_fertile": "Fértil",
-  "dashboard_household_pms": "SPM"
+  "dashboard_household_pms": "SPM",
+  "dashboard_category_order_label": "Orden y visibilidad de categorías",
+  "dashboard_toggle_category_aria": "Alternar visibilidad de la categoría {category}",
+  "dashboard_move_category_up_aria": "Mover la categoría {category} hacia arriba",
+  "dashboard_move_category_down_aria": "Mover la categoría {category} hacia abajo"
 }

@@ -79,8 +79,8 @@
   "cat_cervix_texture": "Livmodertappens konsistens",
   "cat_libido": "Libido",
   "cat_training_intensity": "Träningsintensitet",
-"opt_medium": "Medel",
-"opt_heavy": "Kraftig",
+  "opt_medium": "Medel",
+  "opt_heavy": "Kraftig",
   "opt_light": "Lätt",
   "nfp_confidence_medium": "Medel",
   "bleeding_heavy": "Kraftig",
@@ -968,5 +968,9 @@
   "dashboard_household_title": "Hushållsöversikt",
   "dashboard_household_in_period": "Mens",
   "dashboard_household_fertile": "Fertil",
-  "dashboard_household_pms": "PMS"
+  "dashboard_household_pms": "PMS",
+  "dashboard_category_order_label": "Kategoriordning och synlighet",
+  "dashboard_toggle_category_aria": "Växla synlighet för kategori {category}",
+  "dashboard_move_category_up_aria": "Flytta kategori {category} uppåt",
+  "dashboard_move_category_down_aria": "Flytta kategori {category} nedåt"
 }

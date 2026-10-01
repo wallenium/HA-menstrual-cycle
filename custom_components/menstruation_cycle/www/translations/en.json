@@ -79,8 +79,8 @@
   "cat_cervix_texture": "Cervix Texture",
   "cat_libido": "Libido",
   "cat_training_intensity": "Training Intensity",
-"opt_medium": "Medium",
-"opt_heavy": "Heavy",
+  "opt_medium": "Medium",
+  "opt_heavy": "Heavy",
   "opt_light": "Light",
   "nfp_confidence_medium": "Medium",
   "bleeding_heavy": "Heavy",
@@ -1004,5 +1004,9 @@
   "dashboard_household_pms": "PMS",
   "area_usage": "Usage by area",
   "area": "Area",
-  "area_help": "Tag quick-log actions from this card with a Home Assistant area (only recorded if area tracking is enabled)."
+  "area_help": "Tag quick-log actions from this card with a Home Assistant area (only recorded if area tracking is enabled).",
+  "dashboard_category_order_label": "Category order and visibility",
+  "dashboard_toggle_category_aria": "Toggle {category} category visibility",
+  "dashboard_move_category_up_aria": "Move {category} category up",
+  "dashboard_move_category_down_aria": "Move {category} category down"
 }
