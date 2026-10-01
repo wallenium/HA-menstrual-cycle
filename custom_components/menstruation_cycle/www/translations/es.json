@@ -975,5 +975,6 @@
   "dashboard_move_category_down_aria": "Mover la categoría {category} hacia abajo",
   "dashboard_quick_log_copy_previous": "Como ayer",
   "dashboard_quick_log_copy_previous_empty": "No se encontró ningún registro del día anterior.",
-  "dashboard_quick_log_copy_previous_done": "Copiado del día anterior."
+  "dashboard_quick_log_copy_previous_done": "Copiado del día anterior.",
+  "dashboard_prefs_synced": "Configuración sincronizada desde otro dispositivo."
 }

@@ -975,5 +975,6 @@
   "dashboard_move_category_down_aria": "Flytta kategori {category} nedåt",
   "dashboard_quick_log_copy_previous": "Som igår",
   "dashboard_quick_log_copy_previous_empty": "Ingen post hittades för föregående dag.",
-  "dashboard_quick_log_copy_previous_done": "Kopierat från föregående dag."
+  "dashboard_quick_log_copy_previous_done": "Kopierat från föregående dag.",
+  "dashboard_prefs_synced": "Inställningar synkroniserade från en annan enhet."
 }

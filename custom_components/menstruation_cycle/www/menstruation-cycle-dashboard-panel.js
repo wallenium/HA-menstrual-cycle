@@ -1360,15 +1360,48 @@
           return_response: true,
         });
         const remote = result?.response?.prefs;
-        if (!remote || typeof remote !== 'object') return;
         if (this._activeProfile !== profile || this._activeMode !== mode) return;
-        this._prefs = this._normalizePrefs(remote, profile, mode);
+
+        if (remote && typeof remote === 'object') {
+          let previousLocalJson = null;
+          try {
+            previousLocalJson = localStorage.getItem(this._storageKey(profile));
+          } catch (_error) {
+            // localStorage may be unavailable (e.g. Safari private mode)
+          }
+          const remoteJson = JSON.stringify(remote);
+          this._prefs = this._normalizePrefs(remote, profile, mode);
+          try {
+            localStorage.setItem(this._storageKey(profile), remoteJson);
+          } catch (_error) {
+            // localStorage may be unavailable (e.g. Safari private mode)
+          }
+          // Wunsch 01.10.2026 (Idee 4, "weitere Verbesserungen?"): only hint
+          // when something actually arrived from elsewhere, not on every
+          // normal load where the fetched copy just matches what this
+          // browser already had cached — that would be a message on every
+          // single app open.
+          if (previousLocalJson !== remoteJson) {
+            this._message = this._t('dashboard_prefs_synced') || 'Einstellungen von einem anderen Gerät übernommen.';
+          }
+          this.render();
+          return;
+        }
+
+        // Wunsch 01.10.2026 (Idee 1, "weitere Verbesserungen?"): nothing
+        // saved server-side yet for this profile. If this browser already
+        // has prefs from before server-sync existed, push them now instead
+        // of waiting for the next edit — otherwise a second device would
+        // see "nothing" until this one's settings happen to get re-saved.
+        let localRaw = null;
         try {
-          localStorage.setItem(this._storageKey(profile), JSON.stringify(remote));
+          localRaw = safeJsonParse(localStorage.getItem(this._storageKey(profile)));
         } catch (_error) {
           // localStorage may be unavailable (e.g. Safari private mode)
         }
-        this.render();
+        if (localRaw && typeof localRaw === 'object') {
+          this._pushPrefsToBackend(profile, localRaw);
+        }
       } catch (err) {
         console.warn('[menstruation-cycle-dashboard-panel] get_dashboard_prefs failed:', err);
       } finally {

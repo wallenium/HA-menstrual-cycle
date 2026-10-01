@@ -1013,5 +1013,6 @@
   "dashboard_move_category_down_aria": "Kategorie {category} nach unten verschieben",
   "dashboard_quick_log_copy_previous": "Wie gestern",
   "dashboard_quick_log_copy_previous_empty": "Kein Eintrag für den Vortag gefunden.",
-  "dashboard_quick_log_copy_previous_done": "Vortag übernommen."
+  "dashboard_quick_log_copy_previous_done": "Vortag übernommen.",
+  "dashboard_prefs_synced": "Einstellungen von einem anderen Gerät übernommen."
 }

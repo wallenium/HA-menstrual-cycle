@@ -224,8 +224,9 @@ export_full_backup:
     Writes a single JSON file with the complete stored data (history, symptoms,
     product usage, pregnancy/menarche/menopause/postpartum data, ...) for EVERY
     configured profile — a real backup, not just one profile's cycle-start
-    dates like export_history. The calendar-feed (ICS) token is intentionally
-    left out for security. Files are written to
+    dates like export_history. Also includes each signed-in person's saved
+    dashboard widget/category settings. The calendar-feed (ICS) token is
+    intentionally left out for security. Files are written to
     `<config>/menstruation_cycle_exports/`. See import_full_backup to restore.
   fields:
     filename:
@@ -243,8 +244,10 @@ import_full_backup:
     the backup with no current match are skipped and reported back.
     mode "merge" (default) only fills in gaps and never overwrites data you
     already have; mode "overwrite" fully replaces a matched profile's data
-    with the backup's contents. Requires confirm: true. The file is read
-    from `<config>/menstruation_cycle_exports/` by filename only.
+    with the backup's contents. Dashboard widget/category settings are always
+    overwritten for restored profiles, regardless of mode (there's no
+    gap-filling concept for a settings blob). Requires confirm: true. The file
+    is read from `<config>/menstruation_cycle_exports/` by filename only.
   fields:
     filename:
       required: true

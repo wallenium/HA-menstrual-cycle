@@ -985,6 +985,39 @@ class MenstruationStatisticsCard extends HTMLElement {
     return selected ? selected.label : this._t('custom');
   }
 
+
+  // Wunsch 01.10.2026 ("weitere Verbesserungen?", Idee 3): the dashboard
+  // panel's category visibility prefs (synced server-side via
+  // save_dashboard_prefs) now also apply here, so hiding a category there
+  // keeps it out of the symptom correlation insights below too — matches
+  // the calendar/gauge card's own _dashboardPrefsForProfile. Order isn't
+  // used here (insights are ranked by statistical ratio, not category
+  // order), only visibility.
+  _dashboardPrefsForProfile(profile) {
+    this._dashboardPrefsCache = this._dashboardPrefsCache || {};
+    if (profile in this._dashboardPrefsCache) return this._dashboardPrefsCache[profile];
+    this._dashboardPrefsFetching = this._dashboardPrefsFetching || new Set();
+    if (!this._dashboardPrefsFetching.has(profile) && this._hass?.connection?.sendMessagePromise) {
+      this._dashboardPrefsFetching.add(profile);
+      this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'get_dashboard_prefs',
+        service_data: { profile },
+        return_response: true,
+      }).then((result) => {
+        this._dashboardPrefsCache[profile] = result?.response?.prefs || null;
+        this._dashboardPrefsFetching.delete(profile);
+        this._render();
+      }).catch((err) => {
+        console.warn('[menstruation-statistics-card] get_dashboard_prefs failed:', err);
+        this._dashboardPrefsCache[profile] = null;
+        this._dashboardPrefsFetching.delete(profile);
+      });
+    }
+    return null;
+  }
+
   _computeStats(attrs) {
     if (!attrs) return null;
     const today = new Date();
@@ -1088,8 +1121,11 @@ class MenstruationStatisticsCard extends HTMLElement {
     const anomalies = this._computeAnomalies(attrs, {
       cycleLengths, avg, stdDev, avgBleed, minBleed, maxBleed, durations, bsDist, painTrend,
     });
+    const dashboardCategoryVisibility = this._dashboardPrefsForProfile(attrs.profile || 'default')?.categoryVisibility || {};
     const symptomCorrelationInsights = Array.isArray(attrs.symptom_correlation_insights)
-      ? attrs.symptom_correlation_insights.slice(0, 3)
+      ? attrs.symptom_correlation_insights
+          .filter((insight) => dashboardCategoryVisibility[String(insight?.symptom_key || '').split(':')[0]] !== false)
+          .slice(0, 3)
       : [];
 
     return {

@@ -2974,11 +2974,25 @@ async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | Non
             **stored,
         }
 
+    # Wunsch 01.10.2026 (Idee 2, "weitere Verbesserungen?"): dashboard
+    # widget/category prefs live in their own store (see
+    # _async_ensure_dashboard_prefs_loaded), keyed by "<user_id>:<profile>" -
+    # not part of any runtime.storage above. Included here, filtered to the
+    # profiles in this backup, so export/import_full_backup also carries
+    # them instead of leaving them out of disaster-recovery entirely.
+    dashboard_prefs_data = await _async_ensure_dashboard_prefs_loaded(hass)
+    dashboard_prefs = {
+        key: value
+        for key, value in dashboard_prefs_data.items()
+        if key.partition(":")[2] in profiles
+    }
+
     backup = {
         "backup_version": BACKUP_FORMAT_VERSION,
         "exported_at": dt_util.utcnow().isoformat(),
         "integration": DOMAIN,
         "profiles": profiles,
+        "dashboard_prefs": dashboard_prefs,
     }
 
     if stem:
@@ -3175,12 +3189,34 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
                 for gap in implausible_gaps
             ]
 
+    # Wunsch 01.10.2026 (Idee 2, "weitere Verbesserungen?"): same
+    # already-configured restriction as the profile restore loop above -
+    # only overwrite dashboard prefs for profiles actually restored this
+    # round, never for a profile_slug that was skipped as not configured.
+    dashboard_prefs_restored = 0
+    backup_dashboard_prefs = backup.get("dashboard_prefs")
+    if isinstance(backup_dashboard_prefs, dict) and restored:
+        restored_set = set(restored)
+        dashboard_prefs_data = await _async_ensure_dashboard_prefs_loaded(hass)
+        for key, value in backup_dashboard_prefs.items():
+            if not isinstance(key, str) or not isinstance(value, dict):
+                continue
+            if key.partition(":")[2] not in restored_set:
+                continue
+            dashboard_prefs_data[key] = value
+            dashboard_prefs_restored += 1
+        if dashboard_prefs_restored:
+            store = Store(hass, STORAGE_VERSION, DASHBOARD_PREFS_STORE_KEY)
+            await store.async_save(dashboard_prefs_data)
+
     _LOGGER.info(
-        "Imported full backup '%s' (mode=%s): restored %d profile(s), skipped %d not-configured.",
+        "Imported full backup '%s' (mode=%s): restored %d profile(s), skipped %d not-configured, "
+        "%d dashboard prefs entry(ies) restored.",
         target_path.name,
         mode,
         len(restored),
         len(skipped_not_configured),
+        dashboard_prefs_restored,
     )
 
     result: dict[str, Any] = {
@@ -3188,6 +3224,7 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
         "backup_version": backup_version,
         "restored": restored,
         "skipped_not_configured": skipped_not_configured,
+        "dashboard_prefs_restored": dashboard_prefs_restored,
     }
     if mode == "merge":
         result["warnings"] = warnings
