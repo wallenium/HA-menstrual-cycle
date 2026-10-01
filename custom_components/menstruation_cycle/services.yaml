@@ -1134,3 +1134,35 @@ get_household_summary:
     Respects each profile's visibility_level — a profile set to "private"
     contributes only to the total profile count, with its own entry showing
     no more than that it exists.
+
+get_dashboard_prefs:
+  name: Get dashboard prefs
+  description: >-
+    Internal: read back the signed-in person's saved dashboard widget/category
+    settings (visibility, order) for a profile, so the Lovelace dashboard panel
+    stays in sync across browsers/devices instead of being stuck to one
+    browser's localStorage. Not meant to be called from automations.
+  fields:
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+
+save_dashboard_prefs:
+  name: Save dashboard prefs
+  description: >-
+    Internal: persist the signed-in person's dashboard widget/category
+    settings (visibility, order) for a profile. Not meant to be called from
+    automations.
+  fields:
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    prefs:
+      required: true
+      example: '{"widgetOrder": ["kpi_strip"], "widgetVisibility": {"kpi_strip": true}}'
+      selector:
+        object:

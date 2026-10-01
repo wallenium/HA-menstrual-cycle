@@ -812,6 +812,11 @@
       // Keyed by profile so multiple profiles' data doesn't collide.
       this._fullHistoryCache = {};
       this._fullHistoryFetching = new Set();
+      // Wunsch 01.10.2026: dashboard prefs (widgets + categories) now sync
+      // through the backend (get/save_dashboard_prefs) instead of being stuck
+      // to one browser's localStorage - this just dedupes in-flight fetches,
+      // same pattern as _fullHistoryFetching above.
+      this._prefsSyncFetching = new Set();
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
       // get_household_summary service and shown as a compact bar above the
@@ -1037,6 +1042,7 @@
         this._activeMode = newMode;
         this._prefs = this._loadPrefs(newProfile, newMode);
         this._prefsVersion++;
+        this._syncPrefsFromBackend(newProfile, newMode);
       }
 
       // 5. Compute canonical render signature and gate rendering.
@@ -1322,6 +1328,52 @@
         // localStorage may be unavailable (e.g. Safari private mode)
       }
       this._prefsVersion++;
+      this._pushPrefsToBackend(this._activeProfile, persisted);
+    }
+
+    // Wunsch 01.10.2026 ("auch in HA speichern?"): fire-and-forget write to
+    // the save_dashboard_prefs service, so other browsers/devices signed in
+    // as this HA user see the same widget/category settings. localStorage
+    // above stays the instant-paint cache; this is the cross-device copy.
+    _pushPrefsToBackend(profile, prefs) {
+      if (!this._hass?.callService) return;
+      this._hass.callService('menstruation_cycle', 'save_dashboard_prefs', { profile, prefs }).catch((err) => {
+        console.warn('[menstruation-cycle-dashboard-panel] save_dashboard_prefs failed:', err);
+      });
+    }
+
+    // Counterpart to _pushPrefsToBackend: called after _loadPrefs (which only
+    // reads the local cache) to reconcile with whatever's saved server-side.
+    // ponytail: last-fetch-wins, no merge/version check against a concurrent
+    // local edit - narrow race (editing again within this round-trip, right
+    // after a profile switch), not worth more than this comment.
+    async _syncPrefsFromBackend(profile, mode) {
+      if (!this._hass?.connection?.sendMessagePromise) return;
+      if (this._prefsSyncFetching.has(profile)) return;
+      this._prefsSyncFetching.add(profile);
+      try {
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'get_dashboard_prefs',
+          service_data: { profile },
+          return_response: true,
+        });
+        const remote = result?.response?.prefs;
+        if (!remote || typeof remote !== 'object') return;
+        if (this._activeProfile !== profile || this._activeMode !== mode) return;
+        this._prefs = this._normalizePrefs(remote, profile, mode);
+        try {
+          localStorage.setItem(this._storageKey(profile), JSON.stringify(remote));
+        } catch (_error) {
+          // localStorage may be unavailable (e.g. Safari private mode)
+        }
+        this.render();
+      } catch (err) {
+        console.warn('[menstruation-cycle-dashboard-panel] get_dashboard_prefs failed:', err);
+      } finally {
+        this._prefsSyncFetching.delete(profile);
+      }
     }
 
     // Wunsch 30.09.2026: recently used symptom categories pinned to the top of
@@ -1545,6 +1597,7 @@
       this._activeMode = this._resolveMode(stateObj);
       this._prefs = this._loadPrefs(this._activeProfile, this._activeMode);
       this._prefsVersion++;
+      this._syncPrefsFromBackend(this._activeProfile, this._activeMode);
       // Force render regardless of sig — entity was explicitly changed by user
       this._lastRenderSig = null;
       this.render();

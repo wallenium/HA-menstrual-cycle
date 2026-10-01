@@ -709,6 +709,53 @@ class MenstruationGaugeCard extends HTMLElement {
     return [];
   }
 
+  // Wunsch 01.10.2026 ("Kategorie-Einstellungen auch hier wirksam machen"):
+  // applies the dashboard panel's category visibility/order prefs (synced
+  // server-side via save_dashboard_prefs) to this card's own symptom modal,
+  // so hiding/reordering a category there is respected here too, not only
+  // in the dashboard's quick-log modal. Unchanged list until the fetch below
+  // resolves (graceful first-render fallback, same list as before this
+  // existed).
+  _applyDashboardCategoryPrefs(symptomConfig, profile) {
+    const prefs = this._dashboardPrefsForProfile(profile);
+    const categoryVisibility = prefs?.categoryVisibility || {};
+    const categoryOrder = prefs?.categoryOrder || [];
+    let ordered = symptomConfig.filter((cat) => categoryVisibility[cat.key] !== false);
+    if (categoryOrder.length) {
+      const byKey = new Map(ordered.map((cat) => [cat.key, cat]));
+      const pinned = categoryOrder.map((key) => byKey.get(key)).filter(Boolean);
+      const rest = ordered.filter((cat) => !categoryOrder.includes(cat.key));
+      ordered = [...pinned, ...rest];
+    }
+    return ordered;
+  }
+
+  _dashboardPrefsForProfile(profile) {
+    this._dashboardPrefsCache = this._dashboardPrefsCache || {};
+    if (profile in this._dashboardPrefsCache) return this._dashboardPrefsCache[profile];
+    this._dashboardPrefsFetching = this._dashboardPrefsFetching || new Set();
+    if (!this._dashboardPrefsFetching.has(profile) && this._hass?.connection?.sendMessagePromise) {
+      this._dashboardPrefsFetching.add(profile);
+      this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'get_dashboard_prefs',
+        service_data: { profile },
+        return_response: true,
+      }).then((result) => {
+        this._dashboardPrefsCache[profile] = result?.response?.prefs || null;
+        this._dashboardPrefsFetching.delete(profile);
+        this._render();
+      }).catch((err) => {
+        console.warn('[menstruation-gauge-card] get_dashboard_prefs failed:', err);
+        this._dashboardPrefsCache[profile] = null;
+        this._dashboardPrefsFetching.delete(profile);
+      });
+    }
+    return null;
+  }
+
+
   _stateBg(state) {
     if (state === 'period') return 'linear-gradient(135deg, rgba(252,231,243,.97), rgba(255,241,246,.95))';
     if (state === 'fertile') return 'linear-gradient(135deg, rgba(254,252,232,.97), rgba(255,255,255,.95))';
@@ -1836,8 +1883,9 @@ class MenstruationGaugeCard extends HTMLElement {
     const isPregnant = Boolean(model.pregnancyInfo?.isPregnant);
     const periodModalContext = this._periodModalContext(iso, model);
     const symptomConfig = this._symptomConfig(model.state, isPregnant);
+    const orderedSymptomConfig = this._applyDashboardCategoryPrefs(symptomConfig, model.stateObj?.attributes?.profile || 'default');
 
-    const categoryRows = symptomConfig.map((cat) => {
+    const categoryRows = orderedSymptomConfig.map((cat) => {
       if (cat.hiddenInModal) {
         return '';
       }

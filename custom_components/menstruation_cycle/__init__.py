@@ -138,6 +138,9 @@ from .const import (
     SERVICE_SET_PREGNANCY_MODE,
     SERVICE_SET_PROFILE_VISIBILITY,
     SERVICE_FIELD_VISIBILITY_LEVEL,
+    SERVICE_GET_DASHBOARD_PREFS,
+    SERVICE_SAVE_DASHBOARD_PREFS,
+    SERVICE_FIELD_PREFS,
     SERVICE_SAVE_TIMER_STATE,
     SERVICE_EXPORT_DOCTOR_REPORT,
     SERVICE_FIELD_DAYS_BACK,
@@ -278,6 +281,10 @@ VALID_PRODUCT_USAGE_ACTIONS = {"used", "emptied"}
 HOUSEHOLD_INVENTORY_STATE_ENTITY_ID = "sensor.household_product_stock"
 HOUSEHOLD_INVENTORY_DATA_KEY = f"{DOMAIN}_household_inventory"
 HOUSEHOLD_INVENTORY_STORE_KEY = f"{STORAGE_KEY}.household_inventory"
+# Wunsch 01.10.2026: dashboard widget/category prefs, synced server-side
+# instead of being stuck to one browser's localStorage.
+DASHBOARD_PREFS_DATA_KEY = f"{DOMAIN}_dashboard_prefs"
+DASHBOARD_PREFS_STORE_KEY = f"{STORAGE_KEY}.dashboard_prefs"
 HOUSEHOLD_CONSUMPTION_LOG_LIMIT = 50
 HOUSEHOLD_PRODUCTS = ("tampon", "pad", "cup", "liner", "underwear")
 
@@ -637,6 +644,45 @@ async def _async_ensure_household_inventory_loaded(hass: HomeAssistant) -> None:
     loaded = await store.async_load()
     hass.data[HOUSEHOLD_INVENTORY_DATA_KEY] = _normalize_household_inventory_data(loaded)
     await _async_update_household_inventory_state(hass)
+
+
+async def _async_ensure_dashboard_prefs_loaded(hass: HomeAssistant) -> dict[str, Any]:
+    """Lazily loads the {"<user_id>:<profile>": {...prefs}} map backing
+    get/save_dashboard_prefs below, mirroring the household inventory
+    load-on-first-use pattern above.
+    """
+    data = hass.data.get(DASHBOARD_PREFS_DATA_KEY)
+    if isinstance(data, dict):
+        return data
+    store = Store(hass, STORAGE_VERSION, DASHBOARD_PREFS_STORE_KEY)
+    loaded = await store.async_load()
+    data = loaded if isinstance(loaded, dict) else {}
+    hass.data[DASHBOARD_PREFS_DATA_KEY] = data
+    return data
+
+
+def _dashboard_prefs_key(call: ServiceCall, profile: str) -> str:
+    # ponytail: no auth/merge beyond this - last writer for a given
+    # user+profile wins, same as the localStorage cache it replaces.
+    user_id = call.context.user_id or "anon"
+    return f"{user_id}:{profile}"
+
+
+async def _async_handle_get_dashboard_prefs(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    data = await _async_ensure_dashboard_prefs_loaded(hass)
+    profile = str(call.data.get(SERVICE_FIELD_PROFILE) or "default").strip() or "default"
+    return {"prefs": data.get(_dashboard_prefs_key(call, profile))}
+
+
+async def _async_handle_save_dashboard_prefs(hass: HomeAssistant, call: ServiceCall) -> None:
+    prefs = call.data.get(SERVICE_FIELD_PREFS)
+    if not isinstance(prefs, dict):
+        return
+    data = await _async_ensure_dashboard_prefs_loaded(hass)
+    profile = str(call.data.get(SERVICE_FIELD_PROFILE) or "default").strip() or "default"
+    data[_dashboard_prefs_key(call, profile)] = prefs
+    store = Store(hass, STORAGE_VERSION, DASHBOARD_PREFS_STORE_KEY)
+    await store.async_save(data)
 
 
 async def _async_register_consumption(
@@ -1393,6 +1439,12 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_set_profile_visibility(call: ServiceCall) -> None:
         await _async_handle_set_profile_visibility(hass, call)
 
+    async def async_get_dashboard_prefs(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_get_dashboard_prefs(hass, call)
+
+    async def async_save_dashboard_prefs(call: ServiceCall) -> None:
+        await _async_handle_save_dashboard_prefs(hass, call)
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_ADD_CYCLE_START,
@@ -1740,6 +1792,23 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({
             **common_profile_field,
             vol.Required(SERVICE_FIELD_VISIBILITY_LEVEL): vol.In(VISIBILITY_LEVELS),
+        }),
+    )
+
+    _dashboard_prefs_get_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({vol.Optional(SERVICE_FIELD_PROFILE, default="default"): cv.string}),
+    }
+    if SupportsResponse is not None:
+        _dashboard_prefs_get_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(DOMAIN, SERVICE_GET_DASHBOARD_PREFS, async_get_dashboard_prefs, **_dashboard_prefs_get_kwargs)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SAVE_DASHBOARD_PREFS,
+        async_save_dashboard_prefs,
+        schema=vol.Schema({
+            vol.Optional(SERVICE_FIELD_PROFILE, default="default"): cv.string,
+            vol.Required(SERVICE_FIELD_PREFS): dict,
         }),
     )
 

@@ -312,6 +312,11 @@ SERVICE_UPDATE_MENOPAUSE_DATE = "update_menopause_date"
 SERVICE_SAVE_TIMER_STATE = "save_timer_state"
 SERVICE_EXPORT_DOCTOR_REPORT = "export_doctor_report"
 SERVICE_SET_PROFILE_VISIBILITY = "set_profile_visibility"
+# Wunsch 01.10.2026: server-side counterpart to the dashboard panel's
+# localStorage prefs cache, so widget/category settings sync across devices
+# instead of being stuck to one browser.
+SERVICE_GET_DASHBOARD_PREFS = "get_dashboard_prefs"
+SERVICE_SAVE_DASHBOARD_PREFS = "save_dashboard_prefs"
 
 SERVICE_FIELD_DATE = "date"
 SERVICE_FIELD_DATES = "dates"
@@ -323,6 +328,7 @@ SERVICE_FIELD_PROFILE = "profile"
 SERVICE_FIELD_ENTRY_ID = "entry_id"
 SERVICE_FIELD_ENTITY_ID = "entity_id"
 SERVICE_FIELD_SYMPTOM_DATA = "symptom_data"
+SERVICE_FIELD_PREFS = "prefs"
 SERVICE_FIELD_PRODUCT = "product"
 SERVICE_FIELD_QUANTITY = "quantity"
 SERVICE_FIELD_ACTION = "action"
