@@ -1008,5 +1008,8 @@
   "dashboard_category_order_label": "Category order and visibility",
   "dashboard_toggle_category_aria": "Toggle {category} category visibility",
   "dashboard_move_category_up_aria": "Move {category} category up",
-  "dashboard_move_category_down_aria": "Move {category} category down"
+  "dashboard_move_category_down_aria": "Move {category} category down",
+  "dashboard_quick_log_copy_previous": "Same as yesterday",
+  "dashboard_quick_log_copy_previous_empty": "No entry found for the previous day.",
+  "dashboard_quick_log_copy_previous_done": "Copied from the previous day."
 }

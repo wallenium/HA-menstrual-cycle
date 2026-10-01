@@ -972,5 +972,8 @@
   "dashboard_category_order_label": "Ordre et visibilité des catégories",
   "dashboard_toggle_category_aria": "Basculer la visibilité de la catégorie {category}",
   "dashboard_move_category_up_aria": "Déplacer la catégorie {category} vers le haut",
-  "dashboard_move_category_down_aria": "Déplacer la catégorie {category} vers le bas"
+  "dashboard_move_category_down_aria": "Déplacer la catégorie {category} vers le bas",
+  "dashboard_quick_log_copy_previous": "Comme hier",
+  "dashboard_quick_log_copy_previous_empty": "Aucune entrée trouvée pour le jour précédent.",
+  "dashboard_quick_log_copy_previous_done": "Copié depuis le jour précédent."
 }

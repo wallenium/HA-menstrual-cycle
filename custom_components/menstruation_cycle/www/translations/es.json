@@ -972,5 +972,8 @@
   "dashboard_category_order_label": "Orden y visibilidad de categorías",
   "dashboard_toggle_category_aria": "Alternar visibilidad de la categoría {category}",
   "dashboard_move_category_up_aria": "Mover la categoría {category} hacia arriba",
-  "dashboard_move_category_down_aria": "Mover la categoría {category} hacia abajo"
+  "dashboard_move_category_down_aria": "Mover la categoría {category} hacia abajo",
+  "dashboard_quick_log_copy_previous": "Como ayer",
+  "dashboard_quick_log_copy_previous_empty": "No se encontró ningún registro del día anterior.",
+  "dashboard_quick_log_copy_previous_done": "Copiado del día anterior."
 }

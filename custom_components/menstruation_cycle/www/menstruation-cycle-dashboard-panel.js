@@ -3082,7 +3082,9 @@
       const searchTerm = (this._quickLogCategorySearch || '').trim().toLowerCase();
       if (searchTerm) {
         orderedFields = orderedFields.filter((cat) =>
-          tCategory(cat.key).toLowerCase().includes(searchTerm) || cat.key.toLowerCase().includes(searchTerm));
+          tCategory(cat.key).toLowerCase().includes(searchTerm) ||
+          cat.key.toLowerCase().includes(searchTerm) ||
+          (cat.options || []).some((opt) => tOption(opt).toLowerCase().includes(searchTerm) || String(opt).toLowerCase().includes(searchTerm)));
       }
 
       const rows = orderedFields
@@ -3120,9 +3122,10 @@
             </div>
             <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;">${this._t('dashboard_quick_log_date') || 'Datum'}
               <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
+              <button type="button" data-action="quick-log-copy-previous" style="margin-left:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:999px;background:var(--card-background-color,#fff);color:inherit;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;">${this._t('dashboard_quick_log_copy_previous') || 'Wie gestern'}</button>
             </label>
             <input type="text" data-action="quick-log-category-search" value="${escapeHtml(this._quickLogCategorySearch || '')}" placeholder="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" aria-label="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" style="width:100%;box-sizing:border-box;margin:0 0 14px;padding:7px 10px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;font-size:.85rem;" />
-            <div style="max-height:60vh;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(470px,1fr));gap:10px 16px;align-content:start;">
+            <div style="flex:1;min-height:0;overflow-y:auto;padding-right:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(470px,1fr));gap:10px 16px;align-content:start;">
               ${rowsOrFallback}
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--divider-color,#e5e7eb);">
@@ -3209,6 +3212,32 @@
         console.error('[menstruation-cycle] Quick-log undo failed:', err);
         this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
       }
+      this.render();
+    }
+
+    // Wunsch 01.10.2026 ("Wie gestern"-Button): pre-fills the quick-log form
+    // from the day before the currently selected date, reusing the same
+    // fetch helper the undo snapshot above already relies on.
+    async _handleQuickLogCopyPrevious() {
+      if (!this._selectedEntityId || !window.MenstruationFunctions) return;
+      const date = this._quickLogDate || this._todayIso();
+      const previousDate = new Date(new Date(date).getTime() - 86400000).toISOString().slice(0, 10);
+      const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
+        this._hass, this._selectedEntityId, previousDate, '[menstruation-cycle-dashboard-panel]');
+      if (!data) {
+        this._message = this._t('dashboard_quick_log_copy_previous_empty') || 'Kein Eintrag für den Vortag gefunden.';
+        this.render();
+        return;
+      }
+      const selections = {};
+      Object.entries(data).forEach(([key, val]) => {
+        if (key === 'date' || key === 'found') return;
+        if (val === undefined || val === null || val === '') return;
+        if (Array.isArray(val) && val.length === 0) return;
+        selections[key] = val;
+      });
+      this._quickLogSelections = selections;
+      this._message = this._t('dashboard_quick_log_copy_previous_done') || 'Vortag übernommen.';
       this.render();
     }
 
@@ -3358,6 +3387,11 @@
 
       if (action === 'quick-log-undo') {
         this._handleQuickLogUndo();
+        return;
+      }
+
+      if (action === 'quick-log-copy-previous') {
+        this._handleQuickLogCopyPrevious();
         return;
       }
 
@@ -6508,6 +6542,7 @@
             max-height: 85vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
             box-shadow: 0 12px 40px rgba(0,0,0,0.25);
           }
           .mc-modal button[data-action="quick-log-close"]:not(.mode-btn) {

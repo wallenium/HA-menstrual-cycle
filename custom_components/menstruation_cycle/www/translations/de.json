@@ -1010,5 +1010,8 @@
   "dashboard_category_order_label": "Reihenfolge und Sichtbarkeit der Symptom-Kategorien",
   "dashboard_toggle_category_aria": "Sichtbarkeit der Kategorie {category} umschalten",
   "dashboard_move_category_up_aria": "Kategorie {category} nach oben verschieben",
-  "dashboard_move_category_down_aria": "Kategorie {category} nach unten verschieben"
+  "dashboard_move_category_down_aria": "Kategorie {category} nach unten verschieben",
+  "dashboard_quick_log_copy_previous": "Wie gestern",
+  "dashboard_quick_log_copy_previous_empty": "Kein Eintrag für den Vortag gefunden.",
+  "dashboard_quick_log_copy_previous_done": "Vortag übernommen."
 }

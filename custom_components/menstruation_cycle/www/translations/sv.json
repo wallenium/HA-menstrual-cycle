@@ -972,5 +972,8 @@
   "dashboard_category_order_label": "Kategoriordning och synlighet",
   "dashboard_toggle_category_aria": "Växla synlighet för kategori {category}",
   "dashboard_move_category_up_aria": "Flytta kategori {category} uppåt",
-  "dashboard_move_category_down_aria": "Flytta kategori {category} nedåt"
+  "dashboard_move_category_down_aria": "Flytta kategori {category} nedåt",
+  "dashboard_quick_log_copy_previous": "Som igår",
+  "dashboard_quick_log_copy_previous_empty": "Ingen post hittades för föregående dag.",
+  "dashboard_quick_log_copy_previous_done": "Kopierat från föregående dag."
 }
