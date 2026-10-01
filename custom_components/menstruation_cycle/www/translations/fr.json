@@ -976,5 +976,14 @@
   "dashboard_quick_log_copy_previous": "Comme hier",
   "dashboard_quick_log_copy_previous_empty": "Aucune entrée trouvée pour le jour précédent.",
   "dashboard_quick_log_copy_previous_done": "Copié depuis le jour précédent.",
-  "dashboard_prefs_synced": "Paramètres synchronisés depuis un autre appareil."
+  "dashboard_prefs_synced": "Paramètres synchronisés depuis un autre appareil.",
+  "dashboard_copy_prefs_label": "Copier les paramètres vers un autre profil",
+  "dashboard_copy_prefs_target_aria": "Sélectionner le profil cible",
+  "dashboard_copy_prefs_aria": "Copier les paramètres",
+  "dashboard_copy_prefs_button": "Copier",
+  "dashboard_prefs_copied": "Paramètres copiés vers {profile}.",
+  "dashboard_category_unused_hint": "Non utilisé depuis 60 jours",
+  "dashboard_quick_log_end_date": "au",
+  "dashboard_quick_log_end_date_hint": "Facultatif : enregistrer les mêmes données sur plusieurs jours",
+  "dashboard_quick_log_multi_saved": "Enregistré pour {count} jours."
 }

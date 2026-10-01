@@ -976,5 +976,14 @@
   "dashboard_quick_log_copy_previous": "Como ayer",
   "dashboard_quick_log_copy_previous_empty": "No se encontró ningún registro del día anterior.",
   "dashboard_quick_log_copy_previous_done": "Copiado del día anterior.",
-  "dashboard_prefs_synced": "Configuración sincronizada desde otro dispositivo."
+  "dashboard_prefs_synced": "Configuración sincronizada desde otro dispositivo.",
+  "dashboard_copy_prefs_label": "Copiar la configuración a otro perfil",
+  "dashboard_copy_prefs_target_aria": "Seleccionar perfil de destino",
+  "dashboard_copy_prefs_aria": "Copiar configuración",
+  "dashboard_copy_prefs_button": "Copiar",
+  "dashboard_prefs_copied": "Configuración copiada a {profile}.",
+  "dashboard_category_unused_hint": "Sin usar en los últimos 60 días",
+  "dashboard_quick_log_end_date": "hasta",
+  "dashboard_quick_log_end_date_hint": "Opcional: guardar los mismos datos durante varios días",
+  "dashboard_quick_log_multi_saved": "Guardado para {count} días."
 }

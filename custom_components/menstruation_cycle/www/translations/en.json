@@ -1012,5 +1012,14 @@
   "dashboard_quick_log_copy_previous": "Same as yesterday",
   "dashboard_quick_log_copy_previous_empty": "No entry found for the previous day.",
   "dashboard_quick_log_copy_previous_done": "Copied from the previous day.",
-  "dashboard_prefs_synced": "Settings synced from another device."
+  "dashboard_prefs_synced": "Settings synced from another device.",
+  "dashboard_copy_prefs_label": "Copy settings to another profile",
+  "dashboard_copy_prefs_target_aria": "Select target profile",
+  "dashboard_copy_prefs_aria": "Copy settings",
+  "dashboard_copy_prefs_button": "Copy",
+  "dashboard_prefs_copied": "Settings copied to {profile}.",
+  "dashboard_category_unused_hint": "Not used in the last 60 days",
+  "dashboard_quick_log_end_date": "to",
+  "dashboard_quick_log_end_date_hint": "Optional: save the same entries across several days",
+  "dashboard_quick_log_multi_saved": "Saved for {count} days."
 }

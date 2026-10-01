@@ -1014,5 +1014,14 @@
   "dashboard_quick_log_copy_previous": "Wie gestern",
   "dashboard_quick_log_copy_previous_empty": "Kein Eintrag für den Vortag gefunden.",
   "dashboard_quick_log_copy_previous_done": "Vortag übernommen.",
-  "dashboard_prefs_synced": "Einstellungen von einem anderen Gerät übernommen."
+  "dashboard_prefs_synced": "Einstellungen von einem anderen Gerät übernommen.",
+  "dashboard_copy_prefs_label": "Einstellungen an ein anderes Profil übertragen",
+  "dashboard_copy_prefs_target_aria": "Zielprofil wählen",
+  "dashboard_copy_prefs_aria": "Einstellungen übertragen",
+  "dashboard_copy_prefs_button": "Übertragen",
+  "dashboard_prefs_copied": "Einstellungen an {profile} übertragen.",
+  "dashboard_category_unused_hint": "Seit 60 Tagen nicht genutzt",
+  "dashboard_quick_log_end_date": "bis",
+  "dashboard_quick_log_end_date_hint": "Optional: gleiche Angaben über mehrere Tage speichern",
+  "dashboard_quick_log_multi_saved": "Für {count} Tage gespeichert."
 }

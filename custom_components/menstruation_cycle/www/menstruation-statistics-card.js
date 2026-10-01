@@ -1020,6 +1020,10 @@ class MenstruationStatisticsCard extends HTMLElement {
 
   _computeStats(attrs) {
     if (!attrs) return null;
+    // Wunsch 01.10.2026 ("weitere Ideen?", Idee 2): same dashboard category
+    // visibility used below for symptomCorrelationInsights, hoisted here so
+    // the "Top Symptome" bars respect it too instead of only the insights.
+    const dashboardCategoryVisibility = this._dashboardPrefsForProfile(attrs.profile || 'default')?.categoryVisibility || {};
     const today = new Date();
     const cutoffDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - this._daysBack);
     const cutoffIso = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}-${String(cutoffDate.getDate()).padStart(2, '0')}`;
@@ -1102,6 +1106,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       }
     }
     const topSymptoms = Object.entries(symCount)
+      .filter(([k]) => dashboardCategoryVisibility[k.split(':')[0]] !== false)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([k, v]) => ({ key: k, count: v, pct: Math.round(v / numCycles * 100) }));
@@ -1121,7 +1126,6 @@ class MenstruationStatisticsCard extends HTMLElement {
     const anomalies = this._computeAnomalies(attrs, {
       cycleLengths, avg, stdDev, avgBleed, minBleed, maxBleed, durations, bsDist, painTrend,
     });
-    const dashboardCategoryVisibility = this._dashboardPrefsForProfile(attrs.profile || 'default')?.categoryVisibility || {};
     const symptomCorrelationInsights = Array.isArray(attrs.symptom_correlation_insights)
       ? attrs.symptom_correlation_insights
           .filter((insight) => dashboardCategoryVisibility[String(insight?.symptom_key || '').split(':')[0]] !== false)

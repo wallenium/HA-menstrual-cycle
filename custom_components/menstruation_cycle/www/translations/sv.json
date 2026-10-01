@@ -976,5 +976,14 @@
   "dashboard_quick_log_copy_previous": "Som igår",
   "dashboard_quick_log_copy_previous_empty": "Ingen post hittades för föregående dag.",
   "dashboard_quick_log_copy_previous_done": "Kopierat från föregående dag.",
-  "dashboard_prefs_synced": "Inställningar synkroniserade från en annan enhet."
+  "dashboard_prefs_synced": "Inställningar synkroniserade från en annan enhet.",
+  "dashboard_copy_prefs_label": "Kopiera inställningar till en annan profil",
+  "dashboard_copy_prefs_target_aria": "Välj målprofil",
+  "dashboard_copy_prefs_aria": "Kopiera inställningar",
+  "dashboard_copy_prefs_button": "Kopiera",
+  "dashboard_prefs_copied": "Inställningar kopierade till {profile}.",
+  "dashboard_category_unused_hint": "Inte använd på 60 dagar",
+  "dashboard_quick_log_end_date": "till",
+  "dashboard_quick_log_end_date_hint": "Valfritt: spara samma uppgifter för flera dagar",
+  "dashboard_quick_log_multi_saved": "Sparat för {count} dagar."
 }

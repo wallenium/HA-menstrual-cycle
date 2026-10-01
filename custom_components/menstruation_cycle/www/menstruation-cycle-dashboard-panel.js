@@ -769,6 +769,9 @@
       this._quickLogOpen = false;
       this._quickLogSelections = {};
       this._quickLogDate = this._todayIso();
+      // Wunsch 01.10.2026 ("weitere Ideen?", Idee 5): optional end date to log
+      // the same selection across several days at once. null = single-day.
+      this._quickLogEndDate = null;
       this._quickLogCategorySearch = '';
       this._quickLogUndo = null;
       this._quickLogUndoTimer = null;
@@ -3206,8 +3209,10 @@
               <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
               <button type="button" data-action="quick-log-close" aria-label="${this._t('dashboard_close') || 'Schließen'}" style="border:none;background:none;font-size:1.3rem;cursor:pointer;line-height:1;color:var(--secondary-text-color);">✕</button>
             </div>
-            <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;">${this._t('dashboard_quick_log_date') || 'Datum'}
+            <label class="helper" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap;">${this._t('dashboard_quick_log_date') || 'Datum'}
               <input type="date" data-action="quick-log-date-change" value="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" />
+              <span style="opacity:.6;">${this._t('dashboard_quick_log_end_date') || 'bis'}</span>
+              <input type="date" data-action="quick-log-end-date-change" value="${escapeHtml(this._quickLogEndDate || '')}" min="${escapeHtml(this._quickLogDate || this._todayIso())}" max="${this._todayIso()}" title="${escapeHtml(this._t('dashboard_quick_log_end_date_hint') || 'Optional: gleiche Angaben über mehrere Tage speichern')}" />
               <button type="button" data-action="quick-log-copy-previous" style="margin-left:auto;border:1px solid var(--divider-color,#d1d5db);border-radius:999px;background:var(--card-background-color,#fff);color:inherit;padding:5px 12px;font-size:.75rem;font-weight:600;cursor:pointer;">${this._t('dashboard_quick_log_copy_previous') || 'Wie gestern'}</button>
             </label>
             <input type="text" data-action="quick-log-category-search" value="${escapeHtml(this._quickLogCategorySearch || '')}" placeholder="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" aria-label="${escapeHtml(this._t('dashboard_quick_log_search') || 'Kategorie suchen…')}" style="width:100%;box-sizing:border-box;margin:0 0 14px;padding:7px 10px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;font-size:.85rem;" />
@@ -3243,42 +3248,83 @@
 
       const entityId = this._selectedEntityId;
       const date = this._quickLogDate || this._todayIso();
+      // Wunsch 01.10.2026 ("weitere Ideen?", Idee 5): optional "bis" field logs
+      // the same selection across several days at once (e.g. a sick week) —
+      // ponytail: capped at 31 days so a typo in the end date can't fire
+      // hundreds of service calls; raise the cap if that's ever too tight.
+      const endDateInput = this._quickLogEndDate;
+      const dates = [date];
+      if (endDateInput && endDateInput > date) {
+        const cursor = new Date(date);
+        const end = new Date(endDateInput);
+        while (cursor < end && dates.length < 31) {
+          cursor.setDate(cursor.getDate() + 1);
+          dates.push(cursor.toISOString().slice(0, 10));
+        }
+      }
       this._quickLogOpen = false;
       this._quickLogSelections = {};
+      this._quickLogEndDate = null;
       this.render();
 
       if (Object.keys(symptomData).length === 0) return;
 
-      // Wunsch 30.09.2026: undo toast for a mistap. add_symptom only merges/
-      // overwrites keys, it can't delete one, so a key with no previous value
-      // is restored to an empty string/array rather than truly removed —
-      // ponytail: good enough to fix a mistap, not a full history revert.
-      const previous = {};
-      if (window.MenstruationFunctions) {
-        const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
-          this._hass, entityId, date, '[menstruation-cycle-dashboard-panel]');
-        Object.keys(symptomData).forEach((key) => {
-          previous[key] = data && key in data ? data[key] : (Array.isArray(symptomData[key]) ? [] : '');
-        });
+      if (dates.length === 1) {
+        // Wunsch 30.09.2026: undo toast for a mistap. add_symptom only merges/
+        // overwrites keys, it can't delete one, so a key with no previous value
+        // is restored to an empty string/array rather than truly removed —
+        // ponytail: good enough to fix a mistap, not a full history revert.
+        const previous = {};
+        if (window.MenstruationFunctions) {
+          const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
+            this._hass, entityId, date, '[menstruation-cycle-dashboard-panel]');
+          Object.keys(symptomData).forEach((key) => {
+            previous[key] = data && key in data ? data[key] : (Array.isArray(symptomData[key]) ? [] : '');
+          });
+        }
+
+        try {
+          await this._hass.callService('menstruation_cycle', 'add_symptom', {
+            entity_id: entityId,
+            date,
+            symptom_data: symptomData,
+          });
+          this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
+          clearTimeout(this._quickLogUndoTimer);
+          this._quickLogUndo = { entityId, date, previous };
+          this._quickLogUndoTimer = setTimeout(() => {
+            this._quickLogUndo = null;
+            this.render();
+          }, 8000);
+        } catch (err) {
+          console.error('[menstruation-cycle] Quick-log save failed:', err);
+          this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
+        }
+        this.render();
+        return;
       }
 
-      try {
-        await this._hass.callService('menstruation_cycle', 'add_symptom', {
-          entity_id: entityId,
-          date,
-          symptom_data: symptomData,
-        });
-        this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
-        clearTimeout(this._quickLogUndoTimer);
-        this._quickLogUndo = { entityId, date, previous };
-        this._quickLogUndoTimer = setTimeout(() => {
-          this._quickLogUndo = null;
-          this.render();
-        }, 8000);
-      } catch (err) {
-        console.error('[menstruation-cycle] Quick-log save failed:', err);
-        this._message = this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.';
+      // Multi-day: sequential (not parallel) so the backend isn't hit with
+      // dozens of writes at once, and no per-day undo snapshot — ponytail:
+      // add multi-day undo if someone actually asks for it.
+      let failedCount = 0;
+      for (const d of dates) {
+        try {
+          await this._hass.callService('menstruation_cycle', 'add_symptom', {
+            entity_id: entityId,
+            date: d,
+            symptom_data: symptomData,
+          });
+        } catch (err) {
+          console.error('[menstruation-cycle] Quick-log multi-day save failed for', d, err);
+          failedCount += 1;
+        }
       }
+      this._quickLogUndo = null;
+      const multiSavedTemplate = this._t('dashboard_quick_log_multi_saved') || 'Für {count} Tage gespeichert.';
+      this._message = failedCount > 0
+        ? (this._t('dashboard_quick_log_failed') || 'Speichern fehlgeschlagen.')
+        : multiSavedTemplate.replace('{count}', String(dates.length));
       this.render();
     }
 
@@ -3363,6 +3409,7 @@
     _closeQuickLog() {
       this._quickLogOpen = false;
       this._quickLogSelections = {};
+      this._quickLogEndDate = null;
       this.render();
     }
 
@@ -3428,6 +3475,7 @@
       if (action === 'open-quick-log') {
         this._quickLogSelections = {};
         this._quickLogDate = this._todayIso();
+        this._quickLogEndDate = null;
         this._quickLogOpen = true;
         this.render();
         requestAnimationFrame(() => {
@@ -3533,6 +3581,15 @@
         this._moveOrderItem('categoryOrder', target.dataset.category, 'up');
       } else if (action === 'category-down' && target.dataset.category) {
         this._moveOrderItem('categoryOrder', target.dataset.category, 'down');
+      } else if (action === 'copy-prefs-to-profile') {
+        const targetProfile = this.shadowRoot.getElementById('mc-copy-target-profile')?.value;
+        const source = this._editMode ? this._editDraft : this._prefs;
+        if (targetProfile && source) {
+          const { __profile, __mode, ...toCopy } = source;
+          this._pushPrefsToBackend(targetProfile, toCopy);
+          this._message = (this._t('dashboard_prefs_copied') || 'Einstellungen an {profile} übertragen.').replace('{profile}', targetProfile);
+          this.render();
+        }
       } else if (action === 'reset-preset') {
         const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
         if (this._editMode) {
@@ -3564,6 +3621,11 @@
 
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-date-change') {
         this._quickLogDate = target.value || this._todayIso();
+        return;
+      }
+
+      if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-end-date-change') {
+        this._quickLogEndDate = target.value || null;
         return;
       }
 
@@ -5625,7 +5687,14 @@
 
     _renderSymptomInsights(stateObj) {
       const attrs = stateObj?.attributes || {};
-      const insights = Array.isArray(attrs.symptom_correlation_insights) ? attrs.symptom_correlation_insights : [];
+      // Wunsch 01.10.2026 ("weitere Ideen?", Idee 1): this widget is owned
+      // by the very panel that lets you hide a category, so it should
+      // respect that setting too - the statistics card's equivalent insight
+      // list already does (same categoryVisibility, same symptom_key
+      // "<category>:<value>" format from the backend).
+      const categoryVisibility = this._prefs?.categoryVisibility || {};
+      const insights = (Array.isArray(attrs.symptom_correlation_insights) ? attrs.symptom_correlation_insights : [])
+        .filter((ins) => categoryVisibility[String(ins?.symptom_key || '').split(':')[0]] !== false);
       const reason = attrs.symptom_correlation_insights_reason;
 
       if (!insights.length) {
@@ -6048,6 +6117,22 @@
         const prefixed = this._t(`cat_${key}`);
         return prefixed !== `cat_${key}` ? prefixed : this._t(key);
       };
+      // Wunsch 01.10.2026 ("weitere Ideen?", Idee 4): hint next to categories that
+      // were never logged in the recent history, so a person notices a category
+      // they could just hide. Reuses the same _getFullSymptomHistory cache every
+      // other widget already relies on - no extra fetch. Skipped while there's
+      // under two weeks of history, so a fresh install isn't flagged everywhere.
+      const usageHistory = this._getFullSymptomHistory(stateObj);
+      const usageCutoff = new Date();
+      usageCutoff.setDate(usageCutoff.getDate() - 60);
+      const usageCutoffIso = usageCutoff.toISOString().slice(0, 10);
+      const recentUsageEntries = Array.isArray(usageHistory) ? usageHistory.filter((entry) => entry?.date >= usageCutoffIso) : [];
+      const showUsageHints = Array.isArray(usageHistory) && usageHistory.length >= 14;
+      const isCategoryUnused = (key) => recentUsageEntries.every((entry) => {
+        const v = entry?.[key];
+        return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+      });
+
       const categoryRows = orderedCategoryKeys.map((key) => {
         const visible = draft.categoryVisibility[key] !== false;
         const idx = draft.categoryOrder.indexOf(key);
@@ -6059,6 +6144,7 @@
               <input type="checkbox" data-category-visibility="${key}" ${visible ? 'checked' : ''}
                 aria-label="${(this._t('dashboard_toggle_category_aria') || 'Sichtbarkeit der Kategorie {category} umschalten').replace('{category}', categoryLabel)}"/>
               ${categoryLabel}
+              ${showUsageHints && isCategoryUnused(key) ? `<span class="helper" style="margin-left:6px;font-size:0.7rem;" title="${this._t('dashboard_category_unused_hint') || 'Seit 60 Tagen nicht genutzt'}">○ ${this._t('dashboard_category_unused_hint') || 'Seit 60 Tagen nicht genutzt'}</span>` : ''}
             </label>
             <div class="edit-buttons">
               <button type="button" data-action="category-up" data-category="${key}"
@@ -6072,6 +6158,29 @@
         `;
       }).join('');
 
+      // Wunsch 01.10.2026 ("weitere Ideen?", Idee 3): let a multi-profile household
+      // copy its dashboard layout/visibility settings to another profile instead of
+      // re-clicking through the same checkboxes again - reuses the existing
+      // get_available entities list (already synchronous, no extra fetch) and the
+      // existing save_dashboard_prefs push helper (same one _savePrefs already uses).
+      const otherProfiles = [];
+      const seenProfiles = new Set([this._activeProfile]);
+      this._getAvailableEntities().forEach((entity) => {
+        if (entity?.profile && !seenProfiles.has(entity.profile)) {
+          seenProfiles.add(entity.profile);
+          otherProfiles.push(entity);
+        }
+      });
+      const copyProfileSection = otherProfiles.length ? `
+        <p class="helper">${this._t('dashboard_copy_prefs_label') || 'Einstellungen an ein anderes Profil übertragen'}</p>
+        <div class="edit-actions">
+          <select id="mc-copy-target-profile" aria-label="${this._t('dashboard_copy_prefs_target_aria') || 'Zielprofil wählen'}">
+            ${otherProfiles.map((entity) => `<option value="${escapeHtml(entity.profile)}">${escapeHtml(entity.name)}</option>`).join('')}
+          </select>
+          <button type="button" data-action="copy-prefs-to-profile" aria-label="${this._t('dashboard_copy_prefs_aria') || 'Einstellungen übertragen'}">${this._t('dashboard_copy_prefs_button') || 'Übertragen'}</button>
+        </div>
+      ` : '';
+
       return `
         <section class="edit-mode" aria-label="${this._t('dashboard_edit_mode')}">
           <h2>${this._t('dashboard_edit_mode')}</h2>
@@ -6082,6 +6191,7 @@
           <div class="edit-widget-list" data-drag-group="widget">${rows}</div>
           <p class="helper">${this._t('dashboard_category_order_label') || 'Reihenfolge und Sichtbarkeit der Symptom-Kategorien'}</p>
           <div class="edit-widget-list" data-drag-group="category">${categoryRows}</div>
+          ${copyProfileSection}
           <div class="edit-actions">
             <button type="button" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
             <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
