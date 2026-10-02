@@ -266,6 +266,11 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
   _buildTooltipContent(attrs) {
     const sections = [];
 
+    // Phase tip reuses the same sensor attribute as the dashboard panel's _renderPhaseTip
+    if (attrs.cycle_phase_tip) {
+      sections.push(`<div class="tt-section tt-tip">💡 ${this._escapeHtml(attrs.cycle_phase_tip)}</div>`);
+    }
+
     // --- Product usage section ---
     const productUsage = attrs.product_usage_today;
     if (productUsage && typeof productUsage === 'object') {

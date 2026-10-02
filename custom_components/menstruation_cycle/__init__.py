@@ -2086,6 +2086,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight low-prediction-confidence check failed for %s", entry.entry_id)
         try:
+            # Same daily-recheck reasoning as the checks above.
+            from .repairs import async_check_low_wellness_score
+
+            async_check_low_wellness_score(
+                hass, entry.entry_id, entry.title, cycle_wellness_score(_midnight_model, dt_util.now().date())
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight low-wellness-score check failed for %s", entry.entry_id)
+        try:
             # "weitere Ideen" 24.09.2026: same daily-recheck reasoning as the
             # checks above - the due date gets closer every day, so this
             # needs to re-evaluate daily rather than only on integration
@@ -2198,6 +2207,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
     )
     async_check_low_prediction_confidence(hass, entry.entry_id, entry.title, _setup_model.prediction_gating)
+
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_low_wellness_score
+
+    async_check_low_wellness_score(
+        hass, entry.entry_id, entry.title, cycle_wellness_score(_setup_model, dt_util.now().date())
+    )
 
     # "weitere Ideen" 24.09.2026: same "cheap, safe to run on every load"
     # reasoning as the checks above.

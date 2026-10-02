@@ -311,6 +311,10 @@
     "household_inventory_critical": {
       "title": "Menstruation Cycle: Household supplies running low",
       "description": "The following products are at or below their critical stock level: **{products_list}**. They were already added to the Home Assistant shopping list when they first hit the warning threshold - this additional notice means stock is now critically low. Restock soon, or adjust the critical threshold via the **manage_household_inventory** service if this doesn't match your actual usage. Dismiss this issue once you've restocked."
+    },
+    "low_wellness_score": {
+      "title": "Menstruation Cycle: Wellness score is low",
+      "description": "Profile: **{entry_title}**\n\nThis profile's wellness score is currently {score}/100 - it combines cycle regularity, recent pain days, and how much history backs it. This is purely informational, not medical advice, and no action is taken automatically. If this persists, it may be worth reviewing recent symptom patterns or discussing them with a doctor. Dismiss this issue if you're already aware."
     }
   },
   "selector": {

@@ -20,6 +20,7 @@ from homeassistant.helpers.issue_registry import (
 from .const import (
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
     ICS_TOKEN_STALE_DAYS,
+    WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
 )
 
@@ -487,6 +488,52 @@ def async_check_storage_integrity(
         async_delete_storage_integrity_issue(hass, entry_id)
         return
     async_create_storage_integrity_issue(hass, entry_id, entry_title, len(issues), issues[0])
+
+
+def async_create_low_wellness_score_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    score: int,
+) -> None:
+    """Create a repair issue flagging a sustained low cycle wellness score."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"low_wellness_score_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="low_wellness_score",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "score": str(score),
+        },
+    )
+
+
+def async_delete_low_wellness_score_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the low-wellness-score repair issue."""
+    async_delete_issue(hass, DOMAIN, f"low_wellness_score_{entry_id}")
+
+
+def async_check_low_wellness_score(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    wellness_score: dict[str, Any] | None,
+) -> None:
+    """Raise (or clear) the low-wellness-score issue based on model.py::cycle_wellness_score.
+
+    Checks the current score, not a tracked streak - same approach as the other
+    informational issues in this module (e.g. async_check_low_prediction_confidence),
+    so a score hovering near the threshold may toggle the issue day to day.
+    """
+    score = wellness_score.get("score") if isinstance(wellness_score, dict) else None
+    if score is None or score >= WELLNESS_SCORE_LOW_THRESHOLD:
+        async_delete_low_wellness_score_issue(hass, entry_id)
+        return
+    async_create_low_wellness_score_issue(hass, entry_id, entry_title, score)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

@@ -380,6 +380,9 @@ ICS_TOKEN_STALE_DAYS = 365
 # is the whole point of the reminder.
 HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE = 21
 
+# Score below which repairs.py::async_check_low_wellness_score raises a repair issue
+WELLNESS_SCORE_LOW_THRESHOLD = 40
+
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"
 STATE_PMS = "pms"

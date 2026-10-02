@@ -315,6 +315,10 @@
     "household_inventory_critical": {
       "title": "Menstruation Cycle: Las existencias del hogar están bajas",
       "description": "Los siguientes productos están en o por debajo de su nivel crítico de existencias: **{products_list}**. Ya se añadieron a la lista de compras de Home Assistant al alcanzar el umbral de advertencia - este aviso adicional significa que las existencias son ahora críticamente bajas. Reabastece pronto, o ajusta el umbral crítico mediante el servicio **manage_household_inventory** si esto no coincide con tu uso real. Descarta este aviso una vez que hayas reabastecido."
+    },
+    "low_wellness_score": {
+      "title": "Menstruation Cycle: La puntuación de bienestar es baja",
+      "description": "Perfil: **{entry_title}**\n\nLa puntuación de bienestar de este perfil es actualmente {score}/100 - combina la regularidad del ciclo, los días de dolor recientes y cuánto historial la respalda. Esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si persiste, puede valer la pena revisar los patrones de síntomas recientes o comentarlos con un médico. Descarta este aviso si ya lo sabes."
     }
   },
   "selector": {
