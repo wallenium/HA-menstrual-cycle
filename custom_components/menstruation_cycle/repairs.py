@@ -20,6 +20,7 @@ from homeassistant.helpers.issue_registry import (
 from .const import (
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
     ICS_TOKEN_STALE_DAYS,
+    PROFILE_INACTIVITY_REMINDER_DAYS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
 )
@@ -584,6 +585,62 @@ def async_check_household_inventory_critical(hass: HomeAssistant, product_names:
         async_delete_household_inventory_critical_issue(hass)
         return
     async_create_household_inventory_critical_issue(hass, product_names)
+
+
+def async_create_profile_inactive_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    days_inactive: int,
+) -> None:
+    """Create a repair issue flagging a profile with no new history/symptom entry in a while."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"profile_inactive_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="profile_inactive",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "days_inactive": str(days_inactive),
+        },
+    )
+
+
+def async_delete_profile_inactive_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the profile-inactive repair issue."""
+    async_delete_issue(hass, DOMAIN, f"profile_inactive_{entry_id}")
+
+
+def async_check_profile_inactive(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    last_activity_date: str | None,
+    today: date,
+) -> None:
+    """Raise (or clear) the profile-inactive issue.
+
+    Caller only passes last_activity_date for profiles in a life stage where
+    regular logging is expected (normal cycling/menopause) - a None here means
+    either no history yet (new profile, not "inactive") or a life stage (e.g.
+    pregnancy) where this check doesn't apply, see __init__.py call sites.
+    """
+    if not last_activity_date:
+        async_delete_profile_inactive_issue(hass, entry_id)
+        return
+    try:
+        last_activity = date.fromisoformat(last_activity_date)
+    except ValueError:
+        async_delete_profile_inactive_issue(hass, entry_id)
+        return
+    days_inactive = (today - last_activity).days
+    if days_inactive < PROFILE_INACTIVITY_REMINDER_DAYS:
+        async_delete_profile_inactive_issue(hass, entry_id)
+        return
+    async_create_profile_inactive_issue(hass, entry_id, entry_title, days_inactive)
 
 
 async def async_create_fix_flow(

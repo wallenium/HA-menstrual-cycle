@@ -995,5 +995,6 @@
   "dashboard_chat_q_wellness": "Quel est mon score de bien-être ?",
   "badge_wellness_thriving": "Score de bien-être : élevé",
   "progress_badge_wellness_thriving_title": "En pleine forme",
-  "progress_badge_wellness_thriving_desc": "Ton score de bien-être a atteint un niveau élevé."
+  "progress_badge_wellness_thriving_desc": "Ton score de bien-être a atteint un niveau élevé.",
+  "restock_days_remaining": "environ {n} jours restants"
 }

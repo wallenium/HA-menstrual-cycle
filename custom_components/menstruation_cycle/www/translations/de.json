@@ -1033,5 +1033,6 @@
   "dashboard_chat_q_wellness": "Wie ist mein Wellness-Score?",
   "badge_wellness_thriving": "Wellness-Score: stark",
   "progress_badge_wellness_thriving_title": "Stark unterwegs",
-  "progress_badge_wellness_thriving_desc": "Dein Wellness-Score hat einen hohen Stand erreicht."
+  "progress_badge_wellness_thriving_desc": "Dein Wellness-Score hat einen hohen Stand erreicht.",
+  "restock_days_remaining": "noch ca. {n} Tage"
 }

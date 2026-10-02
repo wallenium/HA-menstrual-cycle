@@ -319,6 +319,10 @@
     "low_wellness_score": {
       "title": "Menstruation Cycle: Wellness-Score ist niedrig",
       "description": "Profil: **{entry_title}**\n\nDer Wellness-Score dieses Profils liegt aktuell bei {score}/100 - er kombiniert Zyklusregelmäßigkeit, jüngste Schmerztage und wie viel Historie dahintersteht. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Falls das anhält, kann es sich lohnen, die jüngsten Symptommuster durchzusehen oder mit einem Arzt zu besprechen. Verwerfe dieses Problem, falls du es bereits kennst."
+    },
+    "profile_inactive": {
+      "title": "Menstruation Cycle: Profil war länger inaktiv",
+      "description": "Profil: **{entry_title}**\n\nFür dieses Profil gibt es seit {days_inactive} Tag(en) keinen neuen Zyklus- oder Symptomeintrag mehr. Das ist rein informativ, es wird keine Aktion automatisch ausgeführt - trage einen neuen Eintrag nach, falls weiterhin verfolgt wird, oder verwirf dieses Problem, falls das Profil absichtlich pausiert."
     }
   },
   "selector": {

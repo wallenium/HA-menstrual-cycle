@@ -319,6 +319,10 @@
     "low_wellness_score": {
       "title": "Menstruation Cycle: Wellness-poängen är låg",
       "description": "Profil: **{entry_title}**\n\nDen här profilens wellness-poäng är för närvarande {score}/100 - den kombinerar cykelregelbundenhet, nyligen inträffade smärtdagar och hur mycket historik som ligger bakom den. Detta är enbart informativt, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Om detta kvarstår kan det vara värt att se över senaste symtommönster eller diskutera dem med en läkare. Avfärda detta problem om du redan känner till det."
+    },
+    "profile_inactive": {
+      "title": "Menstruation Cycle: Profilen har varit inaktiv",
+      "description": "Profil: **{entry_title}**\n\nDen här profilen har inte haft någon ny cykel- eller symtomregistrering på {days_inactive} dag(ar). Detta är enbart informativt och ingen åtgärd vidtas automatiskt - logga en ny post om spårningen fortfarande är aktiv, eller avfärda detta problem om profilen avsiktligt är pausad."
     }
   },
   "selector": {

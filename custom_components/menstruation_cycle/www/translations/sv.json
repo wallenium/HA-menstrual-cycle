@@ -995,5 +995,6 @@
   "dashboard_chat_q_wellness": "Vad är min välmåendepoäng?",
   "badge_wellness_thriving": "Välmåendepoäng: stark",
   "progress_badge_wellness_thriving_title": "I god form",
-  "progress_badge_wellness_thriving_desc": "Din välmåendepoäng nådde en hög nivå."
+  "progress_badge_wellness_thriving_desc": "Din välmåendepoäng nådde en hög nivå.",
+  "restock_days_remaining": "räcker ca {n} dagar"
 }

@@ -319,6 +319,10 @@
     "low_wellness_score": {
       "title": "Menstruation Cycle: La puntuación de bienestar es baja",
       "description": "Perfil: **{entry_title}**\n\nLa puntuación de bienestar de este perfil es actualmente {score}/100 - combina la regularidad del ciclo, los días de dolor recientes y cuánto historial la respalda. Esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si persiste, puede valer la pena revisar los patrones de síntomas recientes o comentarlos con un médico. Descarta este aviso si ya lo sabes."
+    },
+    "profile_inactive": {
+      "title": "Menstruation Cycle: El perfil ha estado inactivo",
+      "description": "Perfil: **{entry_title}**\n\nEste perfil no ha tenido un nuevo registro de ciclo o síntoma en {days_inactive} día(s). Esto es meramente informativo y no se realiza ninguna acción automáticamente - registra una nueva entrada si el seguimiento sigue activo, o descarta este aviso si el perfil está pausado intencionalmente."
     }
   },
   "selector": {

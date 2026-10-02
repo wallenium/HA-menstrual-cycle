@@ -1031,5 +1031,6 @@
   "dashboard_chat_q_wellness": "What's my wellness score?",
   "badge_wellness_thriving": "Wellness score: thriving",
   "progress_badge_wellness_thriving_title": "Thriving",
-  "progress_badge_wellness_thriving_desc": "Your wellness score reached a high level."
+  "progress_badge_wellness_thriving_desc": "Your wellness score reached a high level.",
+  "restock_days_remaining": "about {n} days left"
 }

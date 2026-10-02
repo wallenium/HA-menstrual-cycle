@@ -315,6 +315,10 @@
     "low_wellness_score": {
       "title": "Menstruation Cycle: Wellness score is low",
       "description": "Profile: **{entry_title}**\n\nThis profile's wellness score is currently {score}/100 - it combines cycle regularity, recent pain days, and how much history backs it. This is purely informational, not medical advice, and no action is taken automatically. If this persists, it may be worth reviewing recent symptom patterns or discussing them with a doctor. Dismiss this issue if you're already aware."
+    },
+    "profile_inactive": {
+      "title": "Menstruation Cycle: Profile has been inactive",
+      "description": "Profile: **{entry_title}**\n\nThis profile hasn't had a new cycle entry or symptom log in {days_inactive} day(s). This is purely informational and no action is taken automatically - log a new entry if tracking is still active, or dismiss this issue if the profile is intentionally on pause."
     }
   },
   "selector": {

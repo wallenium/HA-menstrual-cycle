@@ -3953,7 +3953,11 @@
           let stockColor = 'var(--mc-sage)';
           if (stock <= critical) stockColor = 'var(--mc-rose-deep)';
           else if (stock <= warning) stockColor = 'var(--mc-amber)';
-          stockBadge = `<span style="font-family:var(--mc-font-mono);font-size:11px;color:${stockColor};font-weight:600;white-space:nowrap;">${this._t('dashboard_stock') || 'Bestand'}: ${escapeHtml(stock)}</span>`;
+          const restockDays = inventoryState?.attributes?.restock_forecast?.[key]?.days_remaining;
+          const restockHint = (restockDays !== null && restockDays !== undefined)
+            ? ` · ${(this._t('restock_days_remaining') || 'about {n} days left').replace('{n}', Math.round(restockDays))}`
+            : '';
+          stockBadge = `<span style="font-family:var(--mc-font-mono);font-size:11px;color:${stockColor};font-weight:600;white-space:nowrap;">${this._t('dashboard_stock') || 'Bestand'}: ${escapeHtml(stock)}${restockHint}</span>`;
         }
 
         return `

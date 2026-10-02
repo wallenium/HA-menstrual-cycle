@@ -995,5 +995,6 @@
   "dashboard_chat_q_wellness": "¿Cuál es mi puntuación de bienestar?",
   "badge_wellness_thriving": "Puntuación de bienestar: alta",
   "progress_badge_wellness_thriving_title": "En plena forma",
-  "progress_badge_wellness_thriving_desc": "Tu puntuación de bienestar alcanzó un nivel alto."
+  "progress_badge_wellness_thriving_desc": "Tu puntuación de bienestar alcanzó un nivel alto.",
+  "restock_days_remaining": "quedan unos {n} días"
 }

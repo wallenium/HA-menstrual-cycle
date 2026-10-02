@@ -906,30 +906,40 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name}: period is predicted to start on {date}.",
         "fertile_title": "Fertile window reminder",
         "fertile_message": "{name}: the fertile window starts on {date}.",
+        "badge_title": "New badge unlocked",
+        "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
     "de": {
         "period_title": "Perioden-Erinnerung",
         "period_message": "{name}: Die Periode wird voraussichtlich am {date} beginnen.",
         "fertile_title": "Erinnerung: fruchtbares Fenster",
         "fertile_message": "{name}: Das fruchtbare Fenster beginnt am {date}.",
+        "badge_title": "Neues Abzeichen freigeschaltet",
+        "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
     "fr": {
         "period_title": "Rappel de règles",
         "period_message": "{name} : les règles devraient commencer le {date}.",
         "fertile_title": "Rappel : fenêtre de fertilité",
         "fertile_message": "{name} : la fenêtre de fertilité commence le {date}.",
+        "badge_title": "Nouveau badge débloqué",
+        "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
     "es": {
         "period_title": "Recordatorio de menstruación",
         "period_message": "{name}: se prevé que la menstruación comience el {date}.",
         "fertile_title": "Recordatorio: ventana fértil",
         "fertile_message": "{name}: la ventana fértil comienza el {date}.",
+        "badge_title": "Nueva insignia desbloqueada",
+        "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
     "sv": {
         "period_title": "Mens-påminnelse",
         "period_message": "{name}: mensen väntas börja den {date}.",
         "fertile_title": "Påminnelse: fertilt fönster",
         "fertile_message": "{name}: det fertila fönstret börjar den {date}.",
+        "badge_title": "Nytt märke upplåst",
+        "badge_message": "{name} låste upp märket \"{badge}\".",
     },
 }
 
@@ -1045,8 +1055,43 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_fertile_start"] = fertile_start
             notified_something = True
 
+    # Reads the badge already computed by sensor.py (progress_badges_new_this_week)
+    # instead of recomputing evaluate_badges here - avoids a second copy of that logic.
+    entity_reg = er.async_get(hass)
+    sensor_entity_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_menstruation")
+    sensor_state = hass.states.get(sensor_entity_id) if sensor_entity_id else None
+    new_badges = (sensor_state.attributes.get("progress_badges_new_this_week") if sensor_state else None) or []
+    if new_badges:
+        badge_key = str(new_badges[0])
+        if runtime.noncycle_data.get("notified_badge") != badge_key:
+            # ponytail: badge key -> label is a plain "snake_case to Title Case"
+            # conversion, not the real per-badge titles the frontend cards use -
+            # good enough for a notification, upgrade if a nicer label is wanted.
+            badge_label = badge_key.replace("_", " ").title()
+            await _send(
+                strings["badge_title"],
+                strings["badge_message"].format(name=runtime.friendly_name, badge=badge_label),
+            )
+            runtime.noncycle_data["notified_badge"] = badge_key
+            notified_something = True
+
     if notified_something:
         await _async_save_and_notify(hass, runtime)
+
+
+def _profile_last_activity_date(runtime: "MenstruationRuntime") -> str | None:
+    """Most recent history/symptom entry date, or None if nothing logged yet or
+    this profile's life stage doesn't call for regular logging (pregnancy/
+    pre-menarche/postpartum) - see repairs.py::async_check_profile_inactive."""
+    if runtime.pregnancy_data.get("is_pregnant"):
+        return None
+    if runtime.noncycle_data.get("is_postpartum"):
+        return None
+    if runtime.menarche_data.get("tracking_active") and not runtime.menarche_data.get("is_menarche"):
+        return None
+    dates = list(runtime.history)
+    dates.extend(e.get("date") for e in runtime.symptom_history if isinstance(e, dict) and e.get("date"))
+    return max(dates) if dates else None
 
 
 async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
@@ -2123,6 +2168,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight storage-integrity check failed for %s", entry.entry_id)
         try:
+            # Same daily-recheck reasoning as the checks above.
+            from .repairs import async_check_profile_inactive
+
+            async_check_profile_inactive(
+                hass, entry.entry_id, entry.title, _profile_last_activity_date(runtime), dt_util.now().date()
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight profile-inactive check failed for %s", entry.entry_id)
+        try:
             # HA-Idee 2 ("weitere Ideen?" 27.09.2026): household inventory is
             # shared, not per-profile, so this is a safety net for thresholds
             # changed (or stock aged) without a fresh consumption event to
@@ -2237,6 +2291,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _setup_storage_issues = await _async_diagnose_profile_storage(runtime)
     async_check_storage_integrity(hass, entry.entry_id, entry.title, _setup_storage_issues)
+
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_profile_inactive
+
+    async_check_profile_inactive(
+        hass, entry.entry_id, entry.title, _profile_last_activity_date(runtime), dt_util.now().date()
+    )
 
     # HA-Idee 2 ("weitere Ideen?" 27.09.2026): same safety net as the
     # midnight refresh above, also run once on load so a critical stock
