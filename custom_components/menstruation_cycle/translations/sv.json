@@ -323,6 +323,10 @@
     "profile_inactive": {
       "title": "Menstruation Cycle: Profilen har varit inaktiv",
       "description": "Profil: **{entry_title}**\n\nDen här profilen har inte haft någon ny cykel- eller symtomregistrering på {days_inactive} dag(ar). Detta är enbart informativt och ingen åtgärd vidtas automatiskt - logga en ny post om spårningen fortfarande är aktiv, eller avfärda detta problem om profilen avsiktligt är pausad."
+    },
+    "cycle_pattern_risk": {
+      "title": "Menstruation Cycle: Cykelmönster värt att diskutera med läkare",
+      "description": "Profil: **{entry_title}**\n\nDen här profilens registrerade data visar oregelbundna cykler (cykellängden varierar med ca {cycle_std_days} dagar) och/eller frekventa smärtdagar (i genomsnitt ca {avg_pain_days_per_cycle} smärtdagar per cykel). Det här är mönster som ibland förknippas med tillstånd som PCOS eller endometrios - detta är INTE en diagnos, bara en informativ mönstermatchning, och ingen åtgärd vidtas automatiskt. Om det kvarstår kan det vara värt att nämna det för en läkare. Avfärda detta problem om du redan känner till det."
     }
   },
   "selector": {

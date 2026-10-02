@@ -323,6 +323,10 @@
     "profile_inactive": {
       "title": "Menstruation Cycle: Profil war länger inaktiv",
       "description": "Profil: **{entry_title}**\n\nFür dieses Profil gibt es seit {days_inactive} Tag(en) keinen neuen Zyklus- oder Symptomeintrag mehr. Das ist rein informativ, es wird keine Aktion automatisch ausgeführt - trage einen neuen Eintrag nach, falls weiterhin verfolgt wird, oder verwirf dieses Problem, falls das Profil absichtlich pausiert."
+    },
+    "cycle_pattern_risk": {
+      "title": "Menstruation Cycle: Zyklusmuster - evtl. mit Arzt besprechen",
+      "description": "Profil: **{entry_title}**\n\nDie erfassten Daten dieses Profils zeigen unregelmäßige Zyklen (Zykluslänge schwankt um ca. {cycle_std_days} Tage) und/oder häufige Schmerztage (durchschnittlich ca. {avg_pain_days_per_cycle} Schmerztage pro Zyklus). Das sind Muster, die manchmal mit Erkrankungen wie PCOS oder Endometriose in Verbindung gebracht werden - das ist KEINE Diagnose, nur ein informativer Musterabgleich, es wird keine Aktion automatisch ausgeführt. Falls das anhält, kann es sich lohnen, das mit einem Arzt zu besprechen. Verwerfe dieses Problem, falls du es bereits kennst."
     }
   },
   "selector": {

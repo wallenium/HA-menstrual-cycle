@@ -654,6 +654,43 @@ def cycle_wellness_score(model: "CycleModel", today: date) -> dict[str, Any] | N
     }
 
 
+def cycle_pattern_signals(model: "CycleModel", today: date) -> dict[str, Any] | None:
+    """Raw cycle-irregularity/pain-burden signals for repairs.py::
+    async_check_cycle_pattern_risk (Wettbewerbs-Recherche "weitere ideen?"
+    02.10.2026, inspired by Clue's PCOS-risk screening).
+
+    Deliberately purely descriptive - just the two raw numbers, no
+    diagnosis, no threshold applied here. The threshold that decides
+    whether to actually surface a hint lives in repairs.py, same split as
+    cycle_wellness_score's score vs. WELLNESS_SCORE_LOW_THRESHOLD. Reuses
+    the exact same building blocks as cycle_wellness_score (see its
+    docstring) rather than a separate analysis path.
+
+    Returns None when there isn't at least one recent cycle to analyze.
+    """
+    if len(model.grouped_starts) < 2:
+        return None
+    lengths = _recent_cycle_lengths(model.grouped_starts)
+    valid_cycles = len(lengths)
+    if valid_cycles < 1:
+        return None
+
+    cycle_std_days = _cycle_regularity_std(model.grouped_starts) or 0.0
+
+    window_start_iso = model.grouped_starts[-min(len(model.grouped_starts), 8)]
+    try:
+        window_start = date.fromisoformat(window_start_iso)
+    except ValueError:
+        window_start = today
+    pain_days = _count_pain_days(model.symptom_history, window_start, today + timedelta(days=1))
+    avg_pain_days_per_cycle = pain_days / valid_cycles
+
+    return {
+        "cycle_std_days": round(cycle_std_days, 1),
+        "avg_pain_days_per_cycle": round(avg_pain_days_per_cycle, 1),
+    }
+
+
 def compute_symptom_correlation_insights(
     history: list[str],
     grouped_starts: list[str],
@@ -1715,6 +1752,8 @@ def compute_period_forecast(
     Returns a dict with:
         predicted_start: ISO date string of the next expected period start.
         predicted_end: ISO date string of the expected period end.
+        window_start: ISO date string of the earliest likely start (predicted_start - std days).
+        window_end: ISO date string of the latest likely start (predicted_start + std days).
         cycle_std_days: Standard deviation of recent cycle lengths (int).
         confidence: 'high' (std ≤ 2), 'medium' (std ≤ 5), or 'low'.
 
@@ -1743,9 +1782,18 @@ def compute_period_forecast(
         date.fromisoformat(next_predicted_start) + timedelta(days=period_duration_days - 1)
     ).isoformat()
 
+    # Window spread rounds std to whole days; 0 collapses to a 1-day window either side so the
+    # frontend's start->end range always shows some uncertainty rather than a single-day range.
+    window_half_days = max(1, round(std))
+    predicted_start_date = date.fromisoformat(next_predicted_start)
+    window_start = (predicted_start_date - timedelta(days=window_half_days)).isoformat()
+    window_end = (predicted_start_date + timedelta(days=window_half_days)).isoformat()
+
     return {
         "predicted_start": next_predicted_start,
         "predicted_end": predicted_end,
+        "window_start": window_start,
+        "window_end": window_end,
         "cycle_std_days": round(std, 1),
         "confidence": confidence,
     }

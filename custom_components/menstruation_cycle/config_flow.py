@@ -18,6 +18,7 @@ from .const import (
     CONF_FRIENDLY_NAME,
     CONF_ICON,
     CONF_LINKED_PERSON_ENTITY_ID,
+    CONF_BASAL_TEMP_SENSOR_ENTITY_ID,
     CONF_MENOPAUSE_ENABLED,
     CONF_MENOPAUSE_START_DATE,
     CONF_NFP_ANALYSIS_MODE,
@@ -442,6 +443,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             ),
             "notify_service": str(self._entry.options.get(CONF_NOTIFY_SERVICE, "") or ""),
             "linked_person_entity_id": str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID, "") or ""),
+            "basal_temp_sensor_entity_id": str(self._entry.options.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "") or ""),
             # HA-9: per-event notification granularity, see const.py.
             "notify_period_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED)
@@ -631,6 +633,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_LINKED_PERSON_ENTITY_ID] = str(
                     user_input.get(CONF_LINKED_PERSON_ENTITY_ID, "")
                 ).strip()
+                self._data[CONF_BASAL_TEMP_SENSOR_ENTITY_ID] = str(
+                    user_input.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "")
+                ).strip()
                 self._data[CONF_NOTIFY_PERIOD_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED)
                 )
@@ -733,6 +738,14 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
                 ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
+                # Wettbewerbs-Recherche ("weitere ideen?", 02.10.2026): siehe
+                # const.py::CONF_BASAL_TEMP_SENSOR_ENTITY_ID. device_class
+                # Filter ist nur eine UI-Hilfe fuer die Auswahlliste, die
+                # eigentliche Plausibilitaetspruefung des Werts passiert in
+                # _async_import_basal_temp_from_linked_sensor.
+                vol.Optional(
+                    CONF_BASAL_TEMP_SENSOR_ENTITY_ID, default=c["basal_temp_sensor_entity_id"]
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="temperature")),
                 # HA-9 (M-Cycle_HA-Component-Roadmap.md): per-event granularity
                 # instead of one global on/off switch. CONF_NOTIFICATIONS_ENABLED
                 # above remains the master switch for both.
@@ -1050,6 +1063,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
                 CONF_LINKED_PERSON_ENTITY_ID: d[CONF_LINKED_PERSON_ENTITY_ID],
+                CONF_BASAL_TEMP_SENSOR_ENTITY_ID: d[CONF_BASAL_TEMP_SENSOR_ENTITY_ID],
                 CONF_NOTIFY_PERIOD_ENABLED: d[CONF_NOTIFY_PERIOD_ENABLED],
                 CONF_NOTIFY_PERIOD_LEAD_DAYS: d[CONF_NOTIFY_PERIOD_LEAD_DAYS],
                 CONF_NOTIFY_FERTILE_ENABLED: d[CONF_NOTIFY_FERTILE_ENABLED],

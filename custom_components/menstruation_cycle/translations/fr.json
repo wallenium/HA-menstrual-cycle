@@ -323,6 +323,10 @@
     "profile_inactive": {
       "title": "Menstruation Cycle : le profil est inactif",
       "description": "Profil : **{entry_title}**\n\nCe profil n'a eu aucune nouvelle entrée de cycle ou de symptôme depuis {days_inactive} jour(s). Ceci est purement informatif et aucune action n'est effectuée automatiquement - enregistrez une nouvelle entrée si le suivi est toujours actif, ou ignorez cet avis si le profil est volontairement en pause."
+    },
+    "cycle_pattern_risk": {
+      "title": "Menstruation Cycle : schéma de cycle à évoquer avec un médecin",
+      "description": "Profil : **{entry_title}**\n\nLes données enregistrées pour ce profil montrent des cycles irréguliers (la durée du cycle varie d'environ {cycle_std_days} jours) et/ou des jours de douleur fréquents (en moyenne environ {avg_pain_days_per_cycle} jours de douleur par cycle). Ce sont des schémas parfois associés à des affections comme le SOPK ou l'endométriose - ceci n'est PAS un diagnostic, juste une correspondance de schéma informative, et aucune action n'est effectuée automatiquement. Si cela persiste, il peut être utile d'en parler à un médecin. Ignorez cet avis si vous en êtes déjà conscient(e)."
     }
   },
   "selector": {

@@ -226,6 +226,14 @@ ATTR_VISIBILITY_LEVEL = "visibility_level"
 # siehe CONF_LINKED_PERSON_ENTITY_ID oben.
 ATTR_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
 ATTR_PROFILE_PICTURE = "profile_picture"
+# Wettbewerbs-Recherche ("weitere ideen?", 02.10.2026, u.a. Natural Cycles/
+# Oura-Wearable-Integration): optionale Verknuepfung mit einem bestehenden
+# HA-Temperatursensor (z.B. ein smartes Thermometer), damit basal_temp nicht
+# jeden Morgen manuell per Service eingetragen werden muss. Wie
+# CONF_LINKED_PERSON_ENTITY_ID nur in entry.options gespeichert, kein
+# eigener Runtime-/Storage-Wert - siehe __init__.py::
+# _async_import_basal_temp_from_linked_sensor fuer die taegliche Abfrage.
+CONF_BASAL_TEMP_SENSOR_ENTITY_ID = "basal_temp_sensor_entity_id"
 # HA-Idee 5/6 ("weitere Ideen?", 27.09.2026): aktuelle Zyklusphase samt
 # generischem Tipp sowie ein zusammenfassender Wellness-Score, siehe
 # model.py::current_cycle_phase()/cycle_wellness_score() und die
@@ -385,6 +393,12 @@ WELLNESS_SCORE_LOW_THRESHOLD = 40
 
 # Days without a new history/symptom entry before repairs.py::async_check_profile_inactive raises a repair issue
 PROFILE_INACTIVITY_REMINDER_DAYS = 60
+
+CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS = 9
+# Average logged pain days per cycle above this suggests pain extending
+# beyond the period itself - a pattern sometimes associated with
+# endometriosis, again purely informational.
+CYCLE_PATTERN_PAIN_DAYS_THRESHOLD = 8
 
 STATE_PERIOD = "period"
 STATE_FERTILE = "fertile"

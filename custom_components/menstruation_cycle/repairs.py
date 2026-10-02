@@ -18,6 +18,8 @@ from homeassistant.helpers.issue_registry import (
 )
 
 from .const import (
+    CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS,
+    CYCLE_PATTERN_PAIN_DAYS_THRESHOLD,
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
     ICS_TOKEN_STALE_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
@@ -535,6 +537,59 @@ def async_check_low_wellness_score(
         async_delete_low_wellness_score_issue(hass, entry_id)
         return
     async_create_low_wellness_score_issue(hass, entry_id, entry_title, score)
+
+
+def async_create_cycle_pattern_risk_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    cycle_std_days: float,
+    avg_pain_days_per_cycle: float,
+) -> None:
+    """Create a repair issue flagging irregular cycles and/or frequent pain
+    days in the logged data - patterns sometimes associated with PCOS/
+    endometriosis. Purely informational, not a diagnosis - see
+    model.py::cycle_pattern_signals and its translation string."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"cycle_pattern_risk_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="cycle_pattern_risk",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "cycle_std_days": str(cycle_std_days),
+            "avg_pain_days_per_cycle": str(avg_pain_days_per_cycle),
+        },
+    )
+
+
+def async_delete_cycle_pattern_risk_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the cycle-pattern-risk repair issue."""
+    async_delete_issue(hass, DOMAIN, f"cycle_pattern_risk_{entry_id}")
+
+
+def async_check_cycle_pattern_risk(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    pattern_signals: dict[str, Any] | None,
+) -> None:
+    """Raise (or clear) the cycle-pattern-risk issue based on model.py::cycle_pattern_signals.
+
+    Checks the current signals, not a tracked streak - same approach as the other
+    informational issues in this module.
+    """
+    cycle_std_days = pattern_signals.get("cycle_std_days") if isinstance(pattern_signals, dict) else None
+    avg_pain_days_per_cycle = pattern_signals.get("avg_pain_days_per_cycle") if isinstance(pattern_signals, dict) else None
+    irregular_cycles = cycle_std_days is not None and cycle_std_days > CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS
+    frequent_pain = avg_pain_days_per_cycle is not None and avg_pain_days_per_cycle > CYCLE_PATTERN_PAIN_DAYS_THRESHOLD
+    if not irregular_cycles and not frequent_pain:
+        async_delete_cycle_pattern_risk_issue(hass, entry_id)
+        return
+    async_create_cycle_pattern_risk_issue(hass, entry_id, entry_title, cycle_std_days, avg_pain_days_per_cycle)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

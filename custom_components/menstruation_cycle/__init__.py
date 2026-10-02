@@ -18,7 +18,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries as ce
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TYPE, Platform, UnitOfTime
+from homeassistant.const import CONF_TYPE, STATE_UNAVAILABLE, STATE_UNKNOWN, Platform, UnitOfTime
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
@@ -44,6 +44,7 @@ from .const import (
     ATTR_SYMPTOM_HISTORY,
     ATTR_VISIBILITY_LEVEL,
     CONF_LINKED_PERSON_ENTITY_ID,
+    CONF_BASAL_TEMP_SENSOR_ENTITY_ID,
     STATE_PERIOD,
     STATE_FERTILE,
     STATE_PMS,
@@ -193,6 +194,7 @@ from .model import (
     _count_pain_days,
     build_cycle_model,
     build_cycle_predictions,
+    cycle_pattern_signals,
     cycle_wellness_score,
     current_cycle_phase,
     find_implausible_cycle_gaps,
@@ -1092,6 +1094,51 @@ def _profile_last_activity_date(runtime: "MenstruationRuntime") -> str | None:
     dates = list(runtime.history)
     dates.extend(e.get("date") for e in runtime.symptom_history if isinstance(e, dict) and e.get("date"))
     return max(dates) if dates else None
+
+
+async def _async_import_basal_temp_from_linked_sensor(
+    hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", today: date
+) -> None:
+    """Auto-fill today's basal_temp from a linked HA sensor (e.g. a smart
+    thermometer), see const.py::CONF_BASAL_TEMP_SENSOR_ENTITY_ID. Competitor
+    research ("weitere ideen?", 02.10.2026) found several trackers can pull a
+    BBT reading from a paired device instead of manual entry every morning.
+
+    Never overwrites a value already present for today - a manual
+    add_symptom entry (or a previous import) always wins.
+    """
+    entity_id = str(entry.options.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "") or "").strip()
+    if not entity_id:
+        return
+
+    state = hass.states.get(entity_id)
+    if state is None or state.state in (None, "", STATE_UNKNOWN, STATE_UNAVAILABLE):
+        return
+
+    try:
+        temp_value = float(state.state)
+    except (TypeError, ValueError):
+        return
+
+    unit = str(state.attributes.get("unit_of_measurement", "") or "")
+    celsius = (temp_value - 32.0) * 5.0 / 9.0 if unit in ("°F", "F") else temp_value
+    # Same plausibility range as the manual basal_temp entry path
+    # (_async_handle_add_symptom) - a sensor glitch (0, out-of-range default
+    # value, etc.) should be silently ignored rather than corrupting NFP data.
+    if not 30.0 <= celsius <= 45.0:
+        return
+
+    today_iso = today.isoformat()
+    existing = next((e for e in runtime.symptom_history if e.get("date") == today_iso), None)
+    if existing is not None:
+        if existing.get(SYMPTOM_BASAL_TEMP) is not None:
+            return
+        existing[SYMPTOM_BASAL_TEMP] = round(celsius, 2)
+    else:
+        runtime.symptom_history.append({"date": today_iso, SYMPTOM_BASAL_TEMP: round(celsius, 2)})
+        runtime.symptom_history.sort(key=lambda x: x.get("date", ""))
+
+    await _async_save_and_notify(hass, runtime)
 
 
 async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
@@ -2140,6 +2187,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight low-wellness-score check failed for %s", entry.entry_id)
         try:
+            # Same daily-recheck reasoning as the checks above.
+            from .repairs import async_check_cycle_pattern_risk
+
+            async_check_cycle_pattern_risk(
+                hass, entry.entry_id, entry.title, cycle_pattern_signals(_midnight_model, dt_util.now().date())
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight cycle-pattern-risk check failed for %s", entry.entry_id)
+        try:
             # "weitere Ideen" 24.09.2026: same daily-recheck reasoning as the
             # checks above - the due date gets closer every day, so this
             # needs to re-evaluate daily rather than only on integration
@@ -2176,6 +2232,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight profile-inactive check failed for %s", entry.entry_id)
+        try:
+            # Wettbewerbs-Recherche ("weitere ideen?" 02.10.2026): daily
+            # re-check, same reasoning as the checks above - a new reading
+            # can land on the linked sensor any day.
+            await _async_import_basal_temp_from_linked_sensor(hass, entry, runtime, dt_util.now().date())
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight basal-temp import failed for %s", entry.entry_id)
         try:
             # HA-Idee 2 ("weitere Ideen?" 27.09.2026): household inventory is
             # shared, not per-profile, so this is a safety net for thresholds
@@ -2298,6 +2361,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_check_profile_inactive(
         hass, entry.entry_id, entry.title, _profile_last_activity_date(runtime), dt_util.now().date()
     )
+
+    # Wettbewerbs-Recherche ("weitere ideen?" 02.10.2026): also run once on
+    # load, same reasoning as the checks above - picks up today's reading
+    # right away instead of waiting for the next midnight refresh.
+    await _async_import_basal_temp_from_linked_sensor(hass, entry, runtime, dt_util.now().date())
 
     # HA-Idee 2 ("weitere Ideen?" 27.09.2026): same safety net as the
     # midnight refresh above, also run once on load so a critical stock

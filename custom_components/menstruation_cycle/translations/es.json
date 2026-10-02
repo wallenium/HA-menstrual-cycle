@@ -323,6 +323,10 @@
     "profile_inactive": {
       "title": "Menstruation Cycle: El perfil ha estado inactivo",
       "description": "Perfil: **{entry_title}**\n\nEste perfil no ha tenido un nuevo registro de ciclo o síntoma en {days_inactive} día(s). Esto es meramente informativo y no se realiza ninguna acción automáticamente - registra una nueva entrada si el seguimiento sigue activo, o descarta este aviso si el perfil está pausado intencionalmente."
+    },
+    "cycle_pattern_risk": {
+      "title": "Menstruation Cycle: Patrón de ciclo que podría comentar con un médico",
+      "description": "Perfil: **{entry_title}**\n\nLos datos registrados de este perfil muestran ciclos irregulares (la duración del ciclo varía unos {cycle_std_days} días) y/o días de dolor frecuentes (una media de unos {avg_pain_days_per_cycle} días de dolor por ciclo). Estos son patrones que a veces se asocian con afecciones como el SOP o la endometriosis - esto NO es un diagnóstico, solo una coincidencia de patrón informativa, y no se realiza ninguna acción automáticamente. Si persiste, puede valer la pena comentarlo con un médico. Descarta este aviso si ya lo sabes."
     }
   },
   "selector": {

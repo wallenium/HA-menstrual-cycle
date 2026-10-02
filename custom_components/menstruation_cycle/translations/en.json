@@ -323,6 +323,10 @@
     "profile_inactive": {
       "title": "Menstruation Cycle: Profile has been inactive",
       "description": "Profile: **{entry_title}**\n\nThis profile hasn't had a new cycle entry or symptom log in {days_inactive} day(s). This is purely informational and no action is taken automatically - log a new entry if tracking is still active, or dismiss this issue if the profile is intentionally on pause."
+    },
+    "cycle_pattern_risk": {
+      "title": "Menstruation Cycle: Cycle pattern worth discussing with a doctor",
+      "description": "Profile: **{entry_title}**\n\nThis profile's logged data shows irregular cycles (cycle length varies by about {cycle_std_days} days) and/or frequent pain days (about {avg_pain_days_per_cycle} pain days per cycle on average). These are patterns sometimes associated with conditions like PCOS or endometriosis - this is NOT a diagnosis, just an informational pattern match, and no action is taken automatically. If this persists, it may be worth mentioning to a doctor. Dismiss this issue if you're already aware."
     }
   },
   "selector": {
