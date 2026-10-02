@@ -41,6 +41,14 @@ _V2_BADGE_KEYS = [
     "signs_explored",
 ]
 
+# weitere Ideen?, 02.10.2026, Idee 10: wellness_score (HA-Idee 6, 27.09.2026)
+# finally got a UI home this round (Zyklus-Insights widget) - pairs well with
+# one calm, positive badge instead of only the companion low-score repair
+# hint proposed alongside it.
+_V3_BADGE_KEYS = [
+    "wellness_thriving",
+]
+
 # All category keys that count toward "symptom_variety" — mirrors the same
 # categories used by compute_symptom_correlation_insights in model.py, minus
 # bleeding_strength (that's just period logging, not a distinct symptom).
@@ -58,6 +66,11 @@ _PRE_MENARCHE_SIGN_KEYS = (
 
 _BASAL_TEMP_TRACKER_MIN_DAYS = 10
 _CYCLES_LOGGED_EXTENDED = 12
+
+# Minimum wellness_score (see model.py::cycle_wellness_score) to count as
+# "thriving" - a deliberately high bar, since the score already blends
+# regularity + pain + history-depth into one number.
+_WELLNESS_THRIVING_MIN_SCORE = 75
 
 
 def _parse_iso(value: Any) -> date | None:
@@ -125,8 +138,9 @@ def evaluate_badges(
     family_menarche_age: int | float | None = None,
     pre_menarche_signs: dict[str, Any] | None = None,
     doctor_report_exported: bool = False,
+    wellness_score: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Evaluate v1 + v2 progress badges from cycle data.
+    """Evaluate v1 + v2 + v3 progress badges from cycle data.
 
     Deterministic and idempotent: already-earned badges keep their original
     earned_at timestamp.  New badges are stamped with today's ISO date.
@@ -287,6 +301,15 @@ def evaluate_badges(
     badges.append(_make_badge(
         "profile_personalized", profile_personalized_now or "profile_personalized" in prev_earned,
     ))
+
+    # --- v3 badges -----------------------------------------------------
+
+    # wellness_thriving — sticky, same reasoning as nfp_confirmed_ovulation/
+    # insights_unlocked above: the score fluctuates cycle to cycle (and is
+    # simply unavailable outside normal cycling, e.g. during pregnancy), so
+    # reaching the bar once is the milestone, not staying above it forever.
+    wellness_now = isinstance(wellness_score, dict) and (wellness_score.get("score") or 0) >= _WELLNESS_THRIVING_MIN_SCORE
+    badges.append(_make_badge("wellness_thriving", wellness_now or "wellness_thriving" in prev_earned))
 
     # Pre-menarche body-sign badges (only meaningful in pre-menarche mode, but
     # harmless/locked elsewhere since pre_menarche_signs will simply be empty).

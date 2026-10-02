@@ -940,7 +940,7 @@
   "ygs_gloss_pms_def": "PMS bezeichnet körperliche und emotionale Beschwerden, die typischerweise in den letzten Tagen vor der Periode auftreten und mit deren Beginn meist nachlassen.",
   "ygs_gloss_pms_more": "Häufige Anzeichen sind u. a. Stimmungsschwankungen, Brustspannen, Blähungen oder Kopfschmerzen — Ausprägung und Dauer sind individuell sehr unterschiedlich.",
   "dashboard_chat_q_help": "Was kannst du noch beantworten?",
-  "dashboard_chat_help": "Ich kann z. B. zu diesen Themen etwas sagen:\n\n📅 Periode: nächste/letzte, warum spät, Dauer, Vergleich zur letzten\n🔄 Zyklus: Länge, Zyklustag, Regelmäßigkeit, kürzester/längster\n🌸 Fruchtbarkeit: Fenster, Eisprung, Temperaturkurve, Schleim/Muttermund-Deutung\n📋 Symptome: Suche nach Kopfschmerzen, Krämpfen, Ausfluss, Zwischenblutungen u.a.\n🤰 Lebensphasen: Schwangerschaft, Wechseljahre, Wochenbett, Vor-der-Menarche, Verhütung\n📖 Allgemeines: Begriffs-Erklärungen, Aufklärungsfragen\n\nEinfach drauflos fragen — bei unklaren Formulierungen frag ich lieber nochmal nach, statt zu raten.",
+  "dashboard_chat_help": "Ich kann z. B. zu diesen Themen etwas sagen:\n\n📅 Periode: nächste/letzte, warum spät, Dauer, Vergleich zur letzten\n🔄 Zyklus: Länge, Zyklustag, Regelmäßigkeit, kürzester/längster, Wellness-Score, Vergleich zum Durchschnitt\n🌸 Fruchtbarkeit: Fenster, Eisprung, Temperaturkurve, Schleim/Muttermund-Deutung\n📋 Symptome: Suche nach Kopfschmerzen, Krämpfen, Ausfluss, Zwischenblutungen u.a.\n🤰 Lebensphasen: Schwangerschaft, Wechseljahre, Wochenbett, Vor-der-Menarche, Verhütung\n📖 Allgemeines: Begriffs-Erklärungen, Aufklärungsfragen\n\nEinfach drauflos fragen — bei unklaren Formulierungen frag ich lieber nochmal nach, statt zu raten.",
   "dashboard_widget_long_term_trend": "Langzeit-Trend",
   "dashboard_trend_stable": "Stabil über den erfassten Zeitraum.",
   "dashboard_trend_lengthening": "Tendenziell länger werdend über den erfassten Zeitraum.",
@@ -1023,5 +1023,15 @@
   "dashboard_category_unused_hint": "Seit 60 Tagen nicht genutzt",
   "dashboard_quick_log_end_date": "bis",
   "dashboard_quick_log_end_date_hint": "Optional: gleiche Angaben über mehrere Tage speichern",
-  "dashboard_quick_log_multi_saved": "Für {count} Tage gespeichert."
+  "dashboard_quick_log_multi_saved": "Für {count} Tage gespeichert.",
+  "dashboard_widget_cycle_insights": "Zyklus-Insights",
+  "dashboard_wellness_score_tag": "Wellness-Score",
+  "dashboard_cycle_comparison_tag": "Im Vergleich zum Durchschnitt",
+  "dashboard_cycle_comparison_pain_tag": "Schmerztage in diesem Zyklus",
+  "dashboard_chat_wellness_score": "Dein Wellness-Score liegt bei {score}/100 ({regularity}% Regelmäßigkeit, {pain}% Schmerzkomponente, {history}% Datenbasis).",
+  "dashboard_chat_pain_days_comparison": "Schmerztage bisher: {current} (Ø {avg} pro Zyklus).",
+  "dashboard_chat_q_wellness": "Wie ist mein Wellness-Score?",
+  "badge_wellness_thriving": "Wellness-Score: stark",
+  "progress_badge_wellness_thriving_title": "Stark unterwegs",
+  "progress_badge_wellness_thriving_desc": "Dein Wellness-Score hat einen hohen Stand erreicht."
 }

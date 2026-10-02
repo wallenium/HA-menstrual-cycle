@@ -907,7 +907,7 @@
   "ygs_gloss_pms_def": "Le SPM désigne des symptômes physiques et émotionnels qui apparaissent généralement dans les jours précédant les règles et s'atténuent généralement dès leur début.",
   "ygs_gloss_pms_more": "Les signes courants incluent des sautes d'humeur, une sensibilité des seins, des ballonnements ou des maux de tête — l'intensité et la durée varient beaucoup d'une personne à l'autre.",
   "dashboard_chat_q_help": "Que peux-tu encore répondre ?",
-  "dashboard_chat_help": "Voici ce à quoi je peux répondre :\n\n📅 Règles : prochaines/dernières, pourquoi en retard, durée, comparaison avec les précédentes\n🔄 Cycle : durée, jour du cycle, régularité, le plus court/long\n🌸 Fertilité : fenêtre, ovulation, courbe de température, interprétation de la glaire/du col\n📋 Symptômes : recherche de maux de tête, crampes, pertes, saignements et plus\n🤰 Étapes de vie : grossesse, ménopause, post-partum, pré-ménarche, contraception\n📖 Général : explications de termes, questions informatives\n\nPosez simplement vos questions — en cas d'ambiguïté, je le dirai plutôt que de deviner.",
+  "dashboard_chat_help": "Voici ce à quoi je peux répondre :\n\n📅 Règles : prochaines/dernières, pourquoi en retard, durée, comparaison avec les précédentes\n🔄 Cycle : durée, jour du cycle, régularité, le plus court/long, score de bien-être, comparaison à la moyenne\n🌸 Fertilité : fenêtre, ovulation, courbe de température, interprétation de la glaire/du col\n📋 Symptômes : recherche de maux de tête, crampes, pertes, saignements et plus\n🤰 Étapes de vie : grossesse, ménopause, post-partum, pré-ménarche, contraception\n📖 Général : explications de termes, questions informatives\n\nPosez simplement vos questions — en cas d'ambiguïté, je le dirai plutôt que de deviner.",
   "dashboard_widget_long_term_trend": "Tendance à long terme",
   "dashboard_trend_stable": "Stable sur la période suivie.",
   "dashboard_trend_lengthening": "Tendance à l'allongement sur la période suivie.",
@@ -985,5 +985,15 @@
   "dashboard_category_unused_hint": "Non utilisé depuis 60 jours",
   "dashboard_quick_log_end_date": "au",
   "dashboard_quick_log_end_date_hint": "Facultatif : enregistrer les mêmes données sur plusieurs jours",
-  "dashboard_quick_log_multi_saved": "Enregistré pour {count} jours."
+  "dashboard_quick_log_multi_saved": "Enregistré pour {count} jours.",
+  "dashboard_widget_cycle_insights": "Aperçus du cycle",
+  "dashboard_wellness_score_tag": "Score de bien-être",
+  "dashboard_cycle_comparison_tag": "Par rapport à votre moyenne",
+  "dashboard_cycle_comparison_pain_tag": "Jours de douleur ce cycle",
+  "dashboard_chat_wellness_score": "Ton score de bien-être est de {score}/100 ({regularity}% régularité, {pain}% composante douleur, {history}% base de données).",
+  "dashboard_chat_pain_days_comparison": "Jours de douleur jusqu'ici : {current} (moy. {avg} par cycle).",
+  "dashboard_chat_q_wellness": "Quel est mon score de bien-être ?",
+  "badge_wellness_thriving": "Score de bien-être : élevé",
+  "progress_badge_wellness_thriving_title": "En pleine forme",
+  "progress_badge_wellness_thriving_desc": "Ton score de bien-être a atteint un niveau élevé."
 }

@@ -940,7 +940,7 @@
   "ygs_gloss_pms_def": "PMS refers to physical and emotional symptoms that typically occur in the days just before the period and usually ease once it starts.",
   "ygs_gloss_pms_more": "Common signs include mood swings, breast tenderness, bloating, or headaches — how strongly and how long they show up varies a lot from person to person.",
   "dashboard_chat_q_help": "What else can you answer?",
-  "dashboard_chat_help": "Here are some things I can help with:\n\n📅 Period: next/last, why late, duration, comparison to last one\n🔄 Cycle: length, cycle day, regularity, shortest/longest\n🌸 Fertility: window, ovulation, temperature curve, mucus/cervix interpretation\n📋 Symptoms: search for headaches, cramps, discharge, spotting, and more\n🤰 Life stages: pregnancy, menopause, postpartum, pre-menarche, contraception\n📖 General: term explanations, informational questions\n\nJust ask away — if something's unclear, I'll say so rather than guess.",
+  "dashboard_chat_help": "Here are some things I can help with:\n\n📅 Period: next/last, why late, duration, comparison to last one\n🔄 Cycle: length, cycle day, regularity, shortest/longest, wellness score, vs. average\n🌸 Fertility: window, ovulation, temperature curve, mucus/cervix interpretation\n📋 Symptoms: search for headaches, cramps, discharge, spotting, and more\n🤰 Life stages: pregnancy, menopause, postpartum, pre-menarche, contraception\n📖 General: term explanations, informational questions\n\nJust ask away — if something's unclear, I'll say so rather than guess.",
   "dashboard_widget_long_term_trend": "Long-Term Trend",
   "dashboard_trend_stable": "Stable over the tracked period.",
   "dashboard_trend_lengthening": "Trending longer over the tracked period.",
@@ -1021,5 +1021,15 @@
   "dashboard_category_unused_hint": "Not used in the last 60 days",
   "dashboard_quick_log_end_date": "to",
   "dashboard_quick_log_end_date_hint": "Optional: save the same entries across several days",
-  "dashboard_quick_log_multi_saved": "Saved for {count} days."
+  "dashboard_quick_log_multi_saved": "Saved for {count} days.",
+  "dashboard_widget_cycle_insights": "Cycle insights",
+  "dashboard_wellness_score_tag": "Wellness score",
+  "dashboard_cycle_comparison_tag": "Compared to your average",
+  "dashboard_cycle_comparison_pain_tag": "Pain days this cycle",
+  "dashboard_chat_wellness_score": "Your wellness score is {score}/100 ({regularity}% regularity, {pain}% pain component, {history}% data basis).",
+  "dashboard_chat_pain_days_comparison": "Pain days so far: {current} (avg {avg} per cycle).",
+  "dashboard_chat_q_wellness": "What's my wellness score?",
+  "badge_wellness_thriving": "Wellness score: thriving",
+  "progress_badge_wellness_thriving_title": "Thriving",
+  "progress_badge_wellness_thriving_desc": "Your wellness score reached a high level."
 }

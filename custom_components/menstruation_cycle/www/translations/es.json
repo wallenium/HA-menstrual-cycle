@@ -907,7 +907,7 @@
   "ygs_gloss_pms_def": "El SPM se refiere a síntomas físicos y emocionales que suelen aparecer en los días previos a la menstruación y generalmente disminuyen al comenzar esta.",
   "ygs_gloss_pms_more": "Los signos comunes incluyen cambios de humor, sensibilidad en los senos, hinchazón o dolores de cabeza — la intensidad y duración varían mucho de una persona a otra.",
   "dashboard_chat_q_help": "¿Qué más puedes responder?",
-  "dashboard_chat_help": "Esto es lo que puedo responder:\n\n📅 Menstruación: próxima/última, por qué tarde, duración, comparación con la anterior\n🔄 Ciclo: duración, día del ciclo, regularidad, más corto/largo\n🌸 Fertilidad: ventana, ovulación, curva de temperatura, interpretación de moco/cérvix\n📋 Síntomas: búsqueda de dolores de cabeza, calambres, flujo, manchado y más\n🤰 Etapas de vida: embarazo, menopausia, posparto, pre-menarquia, anticoncepción\n📖 General: explicaciones de términos, preguntas informativas\n\nSimplemente pregunta — si algo no está claro, lo diré en vez de adivinar.",
+  "dashboard_chat_help": "Esto es lo que puedo responder:\n\n📅 Menstruación: próxima/última, por qué tarde, duración, comparación con la anterior\n🔄 Ciclo: duración, día del ciclo, regularidad, más corto/largo, puntuación de bienestar, comparación con el promedio\n🌸 Fertilidad: ventana, ovulación, curva de temperatura, interpretación de moco/cérvix\n📋 Síntomas: búsqueda de dolores de cabeza, calambres, flujo, manchado y más\n🤰 Etapas de vida: embarazo, menopausia, posparto, pre-menarquia, anticoncepción\n📖 General: explicaciones de términos, preguntas informativas\n\nSimplemente pregunta — si algo no está claro, lo diré en vez de adivinar.",
   "dashboard_widget_long_term_trend": "Tendencia a largo plazo",
   "dashboard_trend_stable": "Estable durante el período registrado.",
   "dashboard_trend_lengthening": "Tendencia a alargarse durante el período registrado.",
@@ -985,5 +985,15 @@
   "dashboard_category_unused_hint": "Sin usar en los últimos 60 días",
   "dashboard_quick_log_end_date": "hasta",
   "dashboard_quick_log_end_date_hint": "Opcional: guardar los mismos datos durante varios días",
-  "dashboard_quick_log_multi_saved": "Guardado para {count} días."
+  "dashboard_quick_log_multi_saved": "Guardado para {count} días.",
+  "dashboard_widget_cycle_insights": "Perspectivas del ciclo",
+  "dashboard_wellness_score_tag": "Puntuación de bienestar",
+  "dashboard_cycle_comparison_tag": "Comparado con tu promedio",
+  "dashboard_cycle_comparison_pain_tag": "Días de dolor en este ciclo",
+  "dashboard_chat_wellness_score": "Tu puntuación de bienestar es {score}/100 ({regularity}% regularidad, {pain}% componente de dolor, {history}% base de datos).",
+  "dashboard_chat_pain_days_comparison": "Días de dolor hasta ahora: {current} (promedio {avg} por ciclo).",
+  "dashboard_chat_q_wellness": "¿Cuál es mi puntuación de bienestar?",
+  "badge_wellness_thriving": "Puntuación de bienestar: alta",
+  "progress_badge_wellness_thriving_title": "En plena forma",
+  "progress_badge_wellness_thriving_desc": "Tu puntuación de bienestar alcanzó un nivel alto."
 }

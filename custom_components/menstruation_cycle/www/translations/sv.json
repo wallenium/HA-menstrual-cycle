@@ -907,7 +907,7 @@
   "ygs_gloss_pms_def": "PMS syftar på fysiska och känslomässiga symtom som vanligtvis uppstår dagarna innan mensen och oftast avtar när den börjar.",
   "ygs_gloss_pms_more": "Vanliga tecken inkluderar humörsvängningar, ömma bröst, uppblåsthet eller huvudvärk — intensitet och varaktighet varierar mycket mellan olika personer.",
   "dashboard_chat_q_help": "Vad mer kan du svara på?",
-  "dashboard_chat_help": "Här är sådant jag kan hjälpa till med:\n\n📅 Mens: nästa/senaste, varför försenad, varaktighet, jämförelse med föregående\n🔄 Cykel: längd, cykeldag, regelbundenhet, kortaste/längsta\n🌸 Fertilitet: fönster, ägglossning, temperaturkurva, slem-/livmoderhalstolkning\n📋 Symtom: sök efter huvudvärk, kramper, flytningar, spotting med mera\n🤰 Livsfaser: graviditet, klimakteriet, tiden efter förlossning, förmenarche, preventivmedel\n📖 Allmänt: termförklaringar, informationsfrågor\n\nFråga bara på — om något är otydligt säger jag det istället för att gissa.",
+  "dashboard_chat_help": "Här är sådant jag kan hjälpa till med:\n\n📅 Mens: nästa/senaste, varför försenad, varaktighet, jämförelse med föregående\n🔄 Cykel: längd, cykeldag, regelbundenhet, kortaste/längsta, välmåendepoäng, jämförelse med snittet\n🌸 Fertilitet: fönster, ägglossning, temperaturkurva, slem-/livmoderhalstolkning\n📋 Symtom: sök efter huvudvärk, kramper, flytningar, spotting med mera\n🤰 Livsfaser: graviditet, klimakteriet, tiden efter förlossning, förmenarche, preventivmedel\n📖 Allmänt: termförklaringar, informationsfrågor\n\nFråga bara på — om något är otydligt säger jag det istället för att gissa.",
   "dashboard_widget_long_term_trend": "Långsiktig trend",
   "dashboard_trend_stable": "Stabil under den registrerade perioden.",
   "dashboard_trend_lengthening": "Tenderar att bli längre under den registrerade perioden.",
@@ -985,5 +985,15 @@
   "dashboard_category_unused_hint": "Inte använd på 60 dagar",
   "dashboard_quick_log_end_date": "till",
   "dashboard_quick_log_end_date_hint": "Valfritt: spara samma uppgifter för flera dagar",
-  "dashboard_quick_log_multi_saved": "Sparat för {count} dagar."
+  "dashboard_quick_log_multi_saved": "Sparat för {count} dagar.",
+  "dashboard_widget_cycle_insights": "Cykelinsikter",
+  "dashboard_wellness_score_tag": "Välmåendepoäng",
+  "dashboard_cycle_comparison_tag": "Jämfört med ditt genomsnitt",
+  "dashboard_cycle_comparison_pain_tag": "Smärtdagar denna cykel",
+  "dashboard_chat_wellness_score": "Din välmåendepoäng är {score}/100 ({regularity}% regelbundenhet, {pain}% smärtkomponent, {history}% databas).",
+  "dashboard_chat_pain_days_comparison": "Smärtdagar hittills: {current} (snitt {avg} per cykel).",
+  "dashboard_chat_q_wellness": "Vad är min välmåendepoäng?",
+  "badge_wellness_thriving": "Välmåendepoäng: stark",
+  "progress_badge_wellness_thriving_title": "I god form",
+  "progress_badge_wellness_thriving_desc": "Din välmåendepoäng nådde en hög nivå."
 }

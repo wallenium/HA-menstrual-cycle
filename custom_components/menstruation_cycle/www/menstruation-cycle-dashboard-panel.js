@@ -508,6 +508,7 @@
     { id: 'long_term_trend', title: 'dashboard_widget_long_term_trend', sensitive: false, span: 12 },
     { id: 'symptom_heatmap', title: 'dashboard_widget_symptom_heatmap', sensitive: false, span: 4 },
     { id: 'anomaly_insights', title: 'dashboard_widget_anomaly_insights', sensitive: false, span: 4 },
+    { id: 'cycle_insights', title: 'dashboard_widget_cycle_insights', sensitive: false, span: 4 },
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
     { id: 'progress_badges', title: 'dashboard_widget_progress_badges', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
@@ -579,6 +580,7 @@
         support_card: true,
         symptom_heatmap: false,
         anomaly_insights: false,
+        cycle_insights: false,
         symptom_insights: false,
         progress_badges: true,
         pain_mood_trend: false,
@@ -609,6 +611,7 @@
         support_card: false,
         symptom_heatmap: true,
         anomaly_insights: true,
+        cycle_insights: true,
         symptom_insights: true,
         progress_badges: true,
         pain_mood_trend: true,
@@ -2024,6 +2027,7 @@
         this._t('dashboard_chat_q_cycle_length') || 'Wie lang ist mein Zyklus im Schnitt?',
         this._t('dashboard_chat_q_fertile') || 'Wann ist mein fruchtbares Fenster?',
         this._t('dashboard_chat_q_phase') || 'In welcher Phase bin ich gerade?',
+        this._t('dashboard_chat_q_wellness') || 'Wie ist mein Wellness-Score?',
         this._t('dashboard_chat_q_help') || 'Was kannst du noch beantworten?',
       ];
       const chips = quickQuestions.map((q) =>
@@ -2468,6 +2472,58 @@
             if (Math.abs(diff) < 1) return this._t('dashboard_chat_cycle_about_same') || 'Etwa wie gewohnt — kein nennenswerter Unterschied zum Durchschnitt.';
             if (diff > 0) return (this._t('dashboard_chat_cycle_longer') || 'Länger als sonst — etwa {days} Tage mehr als im Durchschnitt.').replace('{days}', diff);
             return (this._t('dashboard_chat_cycle_shorter') || 'Kürzer als sonst — etwa {days} Tage weniger als im Durchschnitt.').replace('{days}', Math.abs(diff));
+          },
+        },
+        {
+          // Wunsch 02.10.2026 ("weitere Ideen?", Idee 3): the dashboard's new
+          // Zyklus-Insights widget surfaces wellness_score and
+          // compare_current_cycle, but the chat never learned about either -
+          // same data, just a spoken-question entry point to it.
+          id: 'wellness_score',
+          specificity: 2,
+          test: (q) => has(q, 'wellness', 'wohlbefinden'),
+          answer: (q, attrs) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const wellness = attrs.wellness_score && typeof attrs.wellness_score === 'object' ? attrs.wellness_score : null;
+            if (!wellness || !Number.isFinite(wellness.score)) return notAvailable;
+            return (this._t('dashboard_chat_wellness_score') || 'Dein Wellness-Score liegt bei {score}/100 ({regularity}% Regelmäßigkeit, {pain}% Schmerzkomponente, {history}% Datenbasis).')
+              .replace('{score}', wellness.score)
+              .replace('{regularity}', wellness.regularity_component)
+              .replace('{pain}', wellness.pain_component)
+              .replace('{history}', wellness.history_component);
+          },
+        },
+        {
+          // Deliberately requires an "aktuell/laufend/diesen" concept alongside
+          // the comparison concept, so it doesn't steal matches from
+          // cycle_length ("zyklus durchschnitt") or cycle_compare ("letzter
+          // zyklus laenger") above - this one is specifically about the
+          // still-ongoing cycle, via compare_current_cycle (async, cached per
+          // profile like _fetchHouseholdSummary - first ask may say "not
+          // enough data" while it loads, a second ask then has it).
+          id: 'cycle_comparison_current',
+          specificity: 3,
+          test: (q) => grp(q, ['aktuell', 'gerade', 'laufend', 'diesen zyklus', 'diesem zyklus', 'this cycle', 'current cycle'], ['durchschnitt', 'vergleich', 'verglichen', 'average', 'compar']),
+          answer: (q, attrs, stateObj) => {
+            const notAvailable = this._t('dashboard_chat_no_data') || 'Dazu hab ich aktuell nicht genug Daten.';
+            const comparison = this._compareCurrentCycle(stateObj);
+            if (!comparison) return notAvailable;
+            const diff = comparison.days_relative_to_average;
+            let dayPart;
+            if (diff === null || diff === undefined || Math.abs(diff) < 1) {
+              dayPart = (this._t('dashboard_chat_cycle_day') || 'Heute ist Zyklustag {day}.').replace('{day}', comparison.current_cycle_day);
+            } else if (diff > 0) {
+              dayPart = (this._t('dashboard_chat_cycle_longer') || 'Länger als sonst — etwa {days} Tage mehr als im Durchschnitt.').replace('{days}', diff);
+            } else {
+              dayPart = (this._t('dashboard_chat_cycle_shorter') || 'Kürzer als sonst — etwa {days} Tage weniger als im Durchschnitt.').replace('{days}', Math.abs(diff));
+            }
+            if (comparison.average_pain_days_per_cycle === null || comparison.average_pain_days_per_cycle === undefined) {
+              return dayPart;
+            }
+            const painPart = (this._t('dashboard_chat_pain_days_comparison') || 'Schmerztage bisher: {current} (Ø {avg} pro Zyklus).')
+              .replace('{current}', comparison.current_pain_days)
+              .replace('{avg}', comparison.average_pain_days_per_cycle);
+            return `${dayPart} ${painPart}`;
           },
         },
         {
@@ -4783,7 +4839,17 @@
       if (mode === 'pregnancy') return this._renderPregnancyMilestones(stateObj);
       if (mode === 'menarche') return this._renderMenarcheChecklist(stateObj);
       if (mode === 'menopause') return this._renderMenopauseTimeline(stateObj);
-      return this._renderCyclePhaseOverview(stateObj, discreetMode);
+      return this._renderCyclePhaseOverview(stateObj, discreetMode) + this._renderPhaseTip(stateObj);
+    }
+
+    // Wunsch 02.10.2026 ("weitere Ideen?", Idee 2): sensor.py already computes
+    // a short, localized per-phase tip (cycle_phase_tip attribute, backend's
+    // own translation table) but nothing ever rendered it. Generic energy-level
+    // advice, not identifying info, so no discreet-mode gating needed.
+    _renderPhaseTip(stateObj) {
+      const tip = stateObj?.attributes?.cycle_phase_tip;
+      if (!tip) return '';
+      return `<p class="helper" style="margin:8px 0 0;">💡 ${escapeHtml(tip)}</p>`;
     }
 
     _renderMenopauseTimeline(stateObj) {
@@ -5313,6 +5379,15 @@
         } else if (p.weeks_pregnant) {
           detailLines.push(`${this._t('week') || 'Woche'} ${Math.floor(p.weeks_pregnant)}`);
         }
+        // Wunsch 02.10.2026 ("weitere Ideen?", Idee 9): same wellness_score
+        // the per-profile Zyklus-Insights widget shows, now also in the
+        // household hover popover - score only, detail-popover only (not the
+        // always-visible bubble text), same "full visibility only" cutoff
+        // get_household_summary already applies before this field even
+        // arrives on the wire.
+        if (p.wellness_score !== null && p.wellness_score !== undefined) {
+          detailLines.push(`${this._t('dashboard_wellness_score_tag') || 'Wellness-Score'}: ${p.wellness_score}/100`);
+        }
         const detail = state === 'private' ? '' : `
           <span class="household-member-detail household-member-detail--${stateTint(state)}">
             ${this._statusIconHtml(state, 112, p)}
@@ -5621,6 +5696,112 @@
       return `<div class="kpi-strip" style="margin-bottom:10px;">${tiles.join('')}</div>`;
     }
 
+    /**
+     * Fetches compare_current_cycle (current cycle day/pain-days-so-far vs the
+     * recent average) via the backend service - fully implemented since
+     * 25.09.2026 but never wired into any widget until now (Wunsch 02.10.2026,
+     * "weitere Ideen?", Idee 3). Same cache-plus-dedup-fetch shape as
+     * _fetchHouseholdSummary above; caches per profile, including the "no
+     * history yet" error case, so a profile with no cycles doesn't retry every
+     * render.
+     */
+    async _fetchCycleComparison(profile) {
+      this._cycleComparisonCache = this._cycleComparisonCache || {};
+      this._cycleComparisonFetching = this._cycleComparisonFetching || new Set();
+      if (this._cycleComparisonCache[profile] !== undefined || this._cycleComparisonFetching.has(profile)) return;
+      if (!this._hass?.connection?.sendMessagePromise) return;
+      this._cycleComparisonFetching.add(profile);
+      try {
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'compare_current_cycle',
+          service_data: { profile },
+          return_response: true,
+        });
+        this._cycleComparisonCache[profile] = result?.response || null;
+      } catch (err) {
+        console.warn('[menstruation-cycle-dashboard-panel] compare_current_cycle failed:', err);
+        this._cycleComparisonCache[profile] = null; // no history yet - avoid retry-looping
+      } finally {
+        this._cycleComparisonFetching.delete(profile);
+      }
+      this.render();
+    }
+
+    _compareCurrentCycle(stateObj) {
+      const profile = stateObj?.attributes?.profile || this._activeProfile || 'default';
+      this._cycleComparisonCache = this._cycleComparisonCache || {};
+      const cached = this._cycleComparisonCache[profile];
+      if (cached !== undefined) return cached;
+      this._fetchCycleComparison(profile); // fire-and-forget, re-renders on completion
+      return null;
+    }
+
+    /**
+     * Combines two backend features that were already fully computed but had
+     * no UI home: wellness_score (regularity/pain/history blended into one
+     * 0-100 number, HA-Idee 6 27.09.2026) sits directly on the sensor so it
+     * needs no fetch, and compare_current_cycle (see above) needs the async
+     * fetch/cache helper. Reuses the anomaly-list markup/CSS from
+     * _renderAnomalyInsights below instead of inventing a second insight-card
+     * look (Wunsch 02.10.2026, "weitere Ideen?", Ideen 1+3).
+     */
+    _renderCycleInsights(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const wellness = attrs.wellness_score && typeof attrs.wellness_score === 'object' ? attrs.wellness_score : null;
+      const comparison = this._compareCurrentCycle(stateObj);
+      const items = [];
+
+      if (wellness && Number.isFinite(wellness.score)) {
+        items.push({
+          severity: wellness.score >= 50 ? 'info' : 'alert',
+          tag: this._t('dashboard_wellness_score_tag') || 'Wellness-Score',
+          label: `${wellness.score}/100 · ${this._t('dashboard_anomaly_consistency')} ${wellness.regularity_component}% · ${this._t('pain')} ${wellness.pain_component}% · ${this._t('dashboard_widget_cycle_history')} ${wellness.history_component}%`,
+        });
+      }
+
+      if (comparison) {
+        const diff = comparison.days_relative_to_average;
+        const diffLabel = diff === null || diff === undefined ? '' : (diff > 0 ? ` (+${diff})` : (diff < 0 ? ` (${diff})` : ''));
+        // Wunsch 02.10.2026 ("weitere Ideen?", Idee 8): compare_current_cycle
+        // already returns cycles_compared (how many recent cycles the average
+        // pain-days figure is based on) - surface it so the comparison doesn't
+        // read as more statistically solid than it is on a new profile.
+        const basisLabel = comparison.cycles_compared
+          ? ` · ${(this._t('dashboard_cycle_comparison_basis') || 'basierend auf {count} Zyklen').replace('{count}', String(comparison.cycles_compared))}`
+          : '';
+        items.push({
+          severity: 'info',
+          tag: this._t('dashboard_cycle_comparison_tag') || 'Im Vergleich zum Durchschnitt',
+          label: `${this._t('cycle_day')} ${comparison.current_cycle_day} / Ø ${comparison.average_cycle_length ?? '–'}${diffLabel}${basisLabel}`,
+        });
+        if (comparison.average_pain_days_per_cycle !== null && comparison.average_pain_days_per_cycle !== undefined) {
+          items.push({
+            severity: 'info',
+            tag: this._t('dashboard_cycle_comparison_pain_tag') || 'Schmerztage in diesem Zyklus',
+            label: `${comparison.current_pain_days} (Ø ${comparison.average_pain_days_per_cycle})`,
+          });
+        }
+      }
+
+      if (!items.length) {
+        return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
+      }
+
+      return `<div class="anomaly-list">
+        ${items.map((ins) => `
+          <div class="anomaly-item ${ins.severity}">
+            <span class="anomaly-dot" aria-hidden="true"></span>
+            <div class="anomaly-body">
+              <span class="anomaly-tag">${escapeHtml(ins.tag)}</span>
+              <p class="anomaly-text">${escapeHtml(ins.label)}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
     _renderAnomalyInsights(stateObj) {
       const attrs = stateObj?.attributes || {};
       const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
@@ -5774,6 +5955,10 @@
         profile_personalized: 'badge_profile_personalized',
         first_sign_logged: 'badge_first_sign_logged',
         signs_explored: 'badge_signs_explored',
+        // Wunsch 02.10.2026 ("weitere Ideen?", Idee 10): v3 badge, same
+        // badgeLabels pattern as every badge above - nothing else in this
+        // function needs to change for a new badge to show up.
+        wellness_thriving: 'badge_wellness_thriving',
       };
       const byKey = {};
       badges.forEach((b) => { if (b && b.key) byKey[b.key] = b; });
@@ -6229,6 +6414,7 @@
       if (widgetId === 'basal_temp') body = this._renderBasalTempChart(stateObj);
       if (widgetId === 'symptom_heatmap') body = this._renderSymptomHeatmap(stateObj);
       if (widgetId === 'anomaly_insights') body = this._renderAnomalyInsights(stateObj);
+      if (widgetId === 'cycle_insights') body = this._renderCycleInsights(stateObj);
       if (widgetId === 'symptom_insights') body = this._renderSymptomInsights(stateObj);
       if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);

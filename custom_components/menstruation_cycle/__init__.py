@@ -2895,6 +2895,15 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
                 profile_entry["fertile_window_start"] = model.fertile_window_start
             if model.fertile_window_end:
                 profile_entry["fertile_window_end"] = model.fertile_window_end
+            # Wunsch 02.10.2026 ("weitere Ideen?", Idee 9): same wellness_score
+            # the main sensor already exposes (HA-Idee 6, 27.09.2026), reused
+            # here so the household overview can show it too - same "full"
+            # visibility cutoff as the other fields in this block, score only
+            # (not the regularity/pain/history sub-components - this is a
+            # glance-level bubble, not the per-profile insights widget).
+            wellness = cycle_wellness_score(model, today)
+            if wellness:
+                profile_entry["wellness_score"] = wellness["score"]
         if model.state in state_counts:
             state_counts[model.state] += 1
         profiles.append(profile_entry)
