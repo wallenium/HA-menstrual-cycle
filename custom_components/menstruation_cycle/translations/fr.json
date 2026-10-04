@@ -53,6 +53,7 @@
           "postpartum_enabled": "Activer le mode post-partum",
           "notifications_enabled": "Activer les notifications",
           "notify_service": "Service de notification (optionnel)",
+          "notify_partner_service": "Service de notification partenaire (facultatif)",
           "linked_person_entity_id": "Personne Home Assistant liée (optionnel)",
           "visibility_level": "Niveau de visibilité",
           "notify_period_enabled": "Notifier avant le début des règles",
@@ -78,6 +79,7 @@
           "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite.",
           "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
           "notify_service": "Cible de notification Home Assistant à utiliser. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut.",
+          "notify_partner_service": "Seconde cible de notification facultative (p. ex. le téléphone d'un partenaire) qui ne reçoit que les rappels de dates - règles, fenêtre de fertilité et ovulation - jamais les badges, symptômes ni autres données de santé. Rien n'est envoyé au niveau de visibilité « Privé » ; fenêtre de fertilité et ovulation uniquement au niveau « Complet ». Laisser vide pour désactiver.",
           "linked_person_entity_id": "Lier ce profil à une personne existante (Paramètres → Personnes). Si cette personne a une photo enregistrée, l'application compagnon peut l'afficher comme photo de profil.",
           "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel.",
           "notify_period_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu des règles. Nécessite « Activer les notifications » ci-dessus.",
@@ -351,6 +353,10 @@
     "period_overdue": {
       "title": "Menstruation Cycle : règles en retard",
       "description": "Profil : **{entry_title}**\n\nLe début de règles prévu pour ce profil est dépassé de {days_overdue} jour(s) et aucun nouveau début de cycle n'a été enregistré. Un cycle peut être en retard pour de nombreuses raisons (stress, voyage, maladie, changements hormonaux, grossesse) et les prévisions ne sont que des estimations. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Si une grossesse est possible, un test peut apporter de la clarté, et si cela se répète il peut être utile d'en parler à un médecin. Enregistrez le début dès que vos règles commencent, ou ignorez cet avis si vous en êtes déjà conscient(e)."
+    },
+    "period_prolonged": {
+      "title": "Menstruation Cycle : les règles durent anormalement longtemps",
+      "description": "Profil : **{entry_title}**\n\nDes saignements ont été enregistrés {days} jours de suite, ce qui est plus long que d'habitude pour ce profil. Des règles de plus d'une semaine environ peuvent avoir de nombreuses causes ; ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Si les saignements sont très abondants ou persistent, il peut être utile d'en parler à un médecin. Ignorez cet avis si vous en êtes déjà conscient(e)."
     }
   },
   "selector": {

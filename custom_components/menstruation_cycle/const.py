@@ -118,6 +118,15 @@ DEFAULT_NOTIFY_TIME = "08:00:00"
 # Tage ueber dem vorhergesagten Periodenstart, ab denen repairs.py::
 # async_check_period_overdue einen rein informativen Hinweis erzeugt.
 PERIOD_OVERDUE_DAYS = 7
+# Zweites, optionales Benachrichtigungsziel (z.B. Partner-Handy), bekommt nur
+# Termin-Meldungen (Periode/fruchtbares Fenster/Eisprung), nie Symptome oder
+# Gesundheitsdaten - siehe __init__.py::_async_check_and_send_notifications.
+# Wie CONF_NOTIFY_SERVICE nur in entry.options, bewusst NICHT in den
+# kopierbaren Optionen (personenbezogen wie CONF_LINKED_PERSON_ENTITY_ID).
+CONF_NOTIFY_PARTNER_SERVICE = "notify_partner_service"
+# Aufeinanderfolgende Blutungstage ab denen repairs.py::async_check_period_prolonged
+# einen rein informativen Hinweis erzeugt (>7 Tage gilt allgemein als auffaellig lang).
+PERIOD_PROLONGED_DAYS = 8
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 

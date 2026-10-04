@@ -23,6 +23,7 @@ from .const import (
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
     ICS_TOKEN_STALE_DAYS,
     PERIOD_OVERDUE_DAYS,
+    PERIOD_PROLONGED_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
@@ -645,6 +646,66 @@ def async_check_period_overdue(
         async_delete_period_overdue_issue(hass, entry_id)
         return
     async_create_period_overdue_issue(hass, entry_id, entry_title, -days_until_next_start)
+
+
+def async_create_period_prolonged_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    days: int,
+) -> None:
+    """Create a repair issue flagging an unusually long ongoing bleed."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"period_prolonged_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="period_prolonged",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "days": str(days),
+        },
+    )
+
+
+def async_delete_period_prolonged_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the period-prolonged repair issue."""
+    async_delete_issue(hass, DOMAIN, f"period_prolonged_{entry_id}")
+
+
+def async_check_period_prolonged(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    current_period: dict[str, Any] | None,
+    today: date,
+) -> None:
+    """Raise (or clear) the period-prolonged issue from CycleModel.current_period.
+
+    Flags a bleed that is still ongoing (last logged day is today or yesterday)
+    and has lasted at least PERIOD_PROLONGED_DAYS consecutive days AND longer
+    than the profile's own configured/learned period duration, so a profile
+    whose normal period is long isn't flagged for behaving normally. Clears
+    itself once the bleeding stops or no period data exists (pregnancy,
+    postpartum, ... have current_period None).
+    """
+    if not isinstance(current_period, dict):
+        async_delete_period_prolonged_issue(hass, entry_id)
+        return
+    length = int(current_period.get("length") or 0)
+    effective_duration = int(current_period.get("effective_duration") or 0)
+    try:
+        last_day = date.fromisoformat(str(current_period.get("last_confirmed_day")))
+    except ValueError:
+        async_delete_period_prolonged_issue(hass, entry_id)
+        return
+    ongoing = (today - last_day).days <= 1
+    if not ongoing or length < PERIOD_PROLONGED_DAYS or length <= effective_duration:
+        async_delete_period_prolonged_issue(hass, entry_id)
+        return
+    async_create_period_prolonged_issue(hass, entry_id, entry_title, length)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

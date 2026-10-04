@@ -53,6 +53,7 @@
           "postpartum_enabled": "Wochenbett-Modus aktivieren",
           "notifications_enabled": "Benachrichtigungen aktivieren",
           "notify_service": "Benachrichtigungsziel (optional)",
+          "notify_partner_service": "Partner-Benachrichtigungsdienst (optional)",
           "linked_person_entity_id": "Verknüpfte Home-Assistant-Person (optional)",
           "visibility_level": "Sichtbarkeitsstufe",
           "notify_period_enabled": "Vor Periodenbeginn benachrichtigen",
@@ -78,6 +79,7 @@
           "postpartum_enabled": "Aktiviert den Wochenbett-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
           "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
           "notify_service": "Zu verwendendes Home-Assistant-Benachrichtigungsziel. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden.",
+          "notify_partner_service": "Optionales zweites Benachrichtigungsziel (z. B. das Handy des Partners), das nur die Termin-Erinnerungen erhält - Periode, fruchtbares Fenster und Eisprung - nie Badges, Symptome oder andere Gesundheitsdaten. Bei Sichtbarkeitsstufe 'Privat' wird nichts gesendet; fruchtbares Fenster und Eisprung nur bei 'Voll'. Leer lassen zum Ausschalten.",
           "linked_person_entity_id": "Dieses Profil mit einer bestehenden Person verknüpfen (Einstellungen → Personen). Hat diese Person ein Bild hinterlegt, kann die Companion-App es als Profilbild anzeigen.",
           "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft.",
           "notify_period_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor die Periode voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
@@ -351,6 +353,10 @@
     "period_overdue": {
       "title": "Menstruation Cycle: Periode überfällig",
       "description": "Profil: **{entry_title}**\n\nDer vorhergesagte Periodenstart dieses Profils liegt {days_overdue} Tag(e) zurück und es wurde noch kein neuer Zyklusstart eingetragen. Zyklen können aus vielen Gründen später kommen (Stress, Reisen, Krankheit, hormonelle Veränderungen, Schwangerschaft), und Vorhersagen sind nur Schätzungen. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Falls eine Schwangerschaft möglich ist, kann ein Test Klarheit bringen, und wenn das öfter vorkommt, kann es sich lohnen, es mit einem Arzt zu besprechen. Trage den Start ein, sobald die Periode beginnt, oder verwirf dieses Problem, falls du es bereits kennst."
+    },
+    "period_prolonged": {
+      "title": "Menstruation Cycle: Periode dauert ungewöhnlich lange",
+      "description": "Profil: **{entry_title}**\n\nEs wurde {days} Tage in Folge eine Blutung eingetragen, das ist länger als für dieses Profil üblich. Eine Periode, die länger als etwa eine Woche dauert, kann viele Ursachen haben, und das ist rein informativ, keine medizinische Beratung - es wird keine Aktion automatisch ausgeführt. Wenn die Blutung sehr stark ist oder anhält, kann es sich lohnen, das mit einem Arzt zu besprechen. Verwirf dieses Problem, falls du es bereits kennst."
     }
   },
   "selector": {

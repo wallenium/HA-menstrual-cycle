@@ -47,6 +47,7 @@ from .const import (
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
+    CONF_NOTIFY_PARTNER_SERVICE,
     CONF_NOTIFY_TIME,
     CONF_VISIBILITY_LEVEL,
     CONF_TEMPERATURE_UNIT,
@@ -451,6 +452,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
             ),
             "notify_service": str(self._entry.options.get(CONF_NOTIFY_SERVICE, "") or ""),
+            "notify_partner_service": str(self._entry.options.get(CONF_NOTIFY_PARTNER_SERVICE, "") or ""),
             "linked_person_entity_id": str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID, "") or ""),
             "basal_temp_sensor_entity_id": str(self._entry.options.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "") or ""),
             # HA-9: per-event notification granularity, see const.py.
@@ -571,6 +573,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             lines.append(f"  - Fertile window reminder: {fertile_bit}")
             lines.append(f"  - Ovulation reminder: {ovulation_bit}")
             lines.append(f"  - Sent at: {d.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME)}")
+            if d.get(CONF_NOTIFY_PARTNER_SERVICE):
+                lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
                 lines.append(f"  - Target: {d.get(CONF_NOTIFY_SERVICE)}")
         else:
@@ -653,6 +657,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_CALENDAR_ENABLED] = bool(user_input.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED))
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
+                self._data[CONF_NOTIFY_PARTNER_SERVICE] = str(user_input.get(CONF_NOTIFY_PARTNER_SERVICE, "")).strip()
                 self._data[CONF_LINKED_PERSON_ENTITY_ID] = str(
                     user_input.get(CONF_LINKED_PERSON_ENTITY_ID, "")
                 ).strip()
@@ -717,6 +722,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         notify_service_default = c["notify_service"]
         if notify_service_default and "." not in notify_service_default:
             notify_service_default = f"notify.{notify_service_default}"
+        notify_partner_default = c["notify_partner_service"]
+        if notify_partner_default and "." not in notify_partner_default:
+            notify_partner_default = f"notify.{notify_partner_default}"
         schema = vol.Schema(
             {
                 vol.Required(CONF_FRIENDLY_NAME, default=c["friendly_name"]): str,
@@ -769,6 +777,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 # den ersten ".") unveraendert weiterverarbeitet.
                 vol.Optional(
                     CONF_NOTIFY_SERVICE, default=notify_service_default
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
+                vol.Optional(
+                    CONF_NOTIFY_PARTNER_SERVICE, default=notify_partner_default
                 ): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
                 vol.Optional(
                     CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
@@ -1104,6 +1115,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_CALENDAR_ENABLED: d[CONF_CALENDAR_ENABLED],
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
+                CONF_NOTIFY_PARTNER_SERVICE: d[CONF_NOTIFY_PARTNER_SERVICE],
                 CONF_LINKED_PERSON_ENTITY_ID: d[CONF_LINKED_PERSON_ENTITY_ID],
                 CONF_BASAL_TEMP_SENSOR_ENTITY_ID: d[CONF_BASAL_TEMP_SENSOR_ENTITY_ID],
                 CONF_NOTIFY_PERIOD_ENABLED: d[CONF_NOTIFY_PERIOD_ENABLED],

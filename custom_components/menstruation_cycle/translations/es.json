@@ -53,6 +53,7 @@
           "postpartum_enabled": "Activar modo posparto",
           "notifications_enabled": "Activar notificaciones",
           "notify_service": "Servicio de notificación (opcional)",
+          "notify_partner_service": "Servicio de notificación para la pareja (opcional)",
           "linked_person_entity_id": "Persona vinculada de Home Assistant (opcional)",
           "visibility_level": "Nivel de visibilidad",
           "notify_period_enabled": "Avisar antes de que comience la menstruación",
@@ -78,6 +79,7 @@
           "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles.",
           "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
           "notify_service": "Objetivo de notificación de Home Assistant a usar. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto.",
+          "notify_partner_service": "Segundo destino de notificación opcional (p. ej. el móvil de la pareja) que recibe solo los recordatorios de fechas - regla, ventana fértil y ovulación - nunca insignias, síntomas ni otros datos de salud. No se envía nada con el nivel de visibilidad «Privado»; ventana fértil y ovulación solo con «Completo». Déjalo vacío para desactivarlo.",
           "linked_person_entity_id": "Vincula este perfil con una persona existente (Ajustes → Personas). Si esa persona tiene una foto guardada, la app complementaria puede mostrarla como imagen de perfil.",
           "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada.",
           "notify_period_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la menstruación. Requiere 'Activar notificaciones' más arriba.",
@@ -351,6 +353,10 @@
     "period_overdue": {
       "title": "Menstruation Cycle: La regla se ha retrasado",
       "description": "Perfil: **{entry_title}**\n\nEl inicio previsto de la regla de este perfil pasó hace {days_overdue} día(s) y no se ha registrado un nuevo inicio de ciclo. Los ciclos pueden retrasarse por muchos motivos (estrés, viajes, enfermedad, cambios hormonales, embarazo) y las predicciones son solo estimaciones. Esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si un embarazo es posible, una prueba puede aclararlo, y si ocurre con frecuencia puede valer la pena comentarlo con un médico. Registra el inicio cuando empiece la regla, o descarta este aviso si ya lo sabes."
+    },
+    "period_prolonged": {
+      "title": "Menstruation Cycle: La regla dura más de lo habitual",
+      "description": "Perfil: **{entry_title}**\n\nSe ha registrado sangrado durante {days} días seguidos, más de lo habitual para este perfil. Una regla de más de una semana aproximadamente puede tener muchas causas; esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si el sangrado es muy abundante o continúa, puede valer la pena comentarlo con un médico. Descarta este aviso si ya lo sabes."
     }
   },
   "selector": {

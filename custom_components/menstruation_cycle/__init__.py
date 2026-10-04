@@ -66,6 +66,7 @@ from .const import (
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
+    CONF_NOTIFY_PARTNER_SERVICE,
     CONF_NOTIFY_TIME,
     NOTIFY_LEAD_DAYS_MAX,
     CONF_NFP_ANALYSIS_MODE,
@@ -1057,6 +1058,23 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             # shouldn't ever crash the midnight refresh cycle for everyone else.
             _LOGGER.warning("Could not send notification via %s.%s: %s", notify_domain, notify_service, ex)
 
+    # Optional second target (e.g. a partner's phone) that only gets the date
+    # reminders below, never badges or any health detail. Respects the profile's
+    # visibility level: nothing at "private", fertile window/ovulation only at "full"
+    # (status_only deliberately hides those, same as the sensor attributes).
+    partner_raw = str(entry.options.get(CONF_NOTIFY_PARTNER_SERVICE, "") or "").strip()
+    partner_target = (
+        tuple(partner_raw.split(".", 1)) if "." in partner_raw else ("notify", partner_raw)
+    ) if partner_raw and runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE else None
+
+    async def _send_partner(title: str, message: str, *, full_only: bool = False) -> None:
+        if partner_target is None or (full_only and runtime.visibility_level != VISIBILITY_LEVEL_FULL):
+            return
+        try:
+            await hass.services.async_call(partner_target[0], partner_target[1], {"title": title, "message": message})
+        except Exception as ex:  # noqa: BLE001 - a bad partner target must never block the user's own notification
+            _LOGGER.warning("Could not send partner notification via %s.%s: %s", partner_target[0], partner_target[1], ex)
+
     period_start = (model.period_forecast or {}).get("predicted_start")
     fertile_start = (model.fertility_forecast or {}).get("fertile_window_start")
     ovulation_day = (model.fertility_forecast or {}).get("ovulation_estimate")
@@ -1066,6 +1084,10 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         period_target_iso = (today + timedelta(days=period_lead_days)).isoformat()
         if period_start == period_target_iso and runtime.noncycle_data.get("notified_period_start") != period_start:
             await _send(
+                strings["period_title"],
+                strings["period_message"].format(name=runtime.friendly_name, date=period_start),
+            )
+            await _send_partner(
                 strings["period_title"],
                 strings["period_message"].format(name=runtime.friendly_name, date=period_start),
             )
@@ -1079,6 +1101,11 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 strings["fertile_title"],
                 strings["fertile_message"].format(name=runtime.friendly_name, date=fertile_start),
             )
+            await _send_partner(
+                strings["fertile_title"],
+                strings["fertile_message"].format(name=runtime.friendly_name, date=fertile_start),
+                full_only=True,
+            )
             runtime.noncycle_data["notified_fertile_start"] = fertile_start
             notified_something = True
 
@@ -1088,6 +1115,11 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             await _send(
                 strings["ovulation_title"],
                 strings["ovulation_message"].format(name=runtime.friendly_name, date=ovulation_day),
+            )
+            await _send_partner(
+                strings["ovulation_title"],
+                strings["ovulation_message"].format(name=runtime.friendly_name, date=ovulation_day),
+                full_only=True,
             )
             runtime.noncycle_data["notified_ovulation_day"] = ovulation_day
             notified_something = True
@@ -2247,6 +2279,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight cycle-pattern-risk check failed for %s", entry.entry_id)
         try:
+            # Same daily-recheck reasoning as the checks above - a bleed can cross the threshold on any day.
+            from .repairs import async_check_period_prolonged
+
+            async_check_period_prolonged(
+                hass, entry.entry_id, entry.title, _midnight_model.current_period, dt_util.now().date()
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight period-prolonged check failed for %s", entry.entry_id)
+        try:
             # Same daily-recheck reasoning as the checks above - days overdue grows by one every day.
             from .repairs import async_check_period_overdue
 
@@ -2405,6 +2446,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_check_cycle_pattern_risk(
         hass, entry.entry_id, entry.title, cycle_pattern_signals(_setup_model, dt_util.now().date())
     )
+
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_period_prolonged
+
+    async_check_period_prolonged(hass, entry.entry_id, entry.title, _setup_model.current_period, dt_util.now().date())
 
     # Same "cheap, safe to run on every load" reasoning as the checks above.
     from .repairs import async_check_period_overdue

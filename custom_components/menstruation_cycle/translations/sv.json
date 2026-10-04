@@ -53,6 +53,7 @@
           "postpartum_enabled": "Aktivera läge efter förlossning",
           "notifications_enabled": "Aktivera aviseringar",
           "notify_service": "Aviseringstjänst (valfritt)",
+          "notify_partner_service": "Aviseringstjänst för partner (valfritt)",
           "linked_person_entity_id": "Länkad Home Assistant-person (valfritt)",
           "visibility_level": "Synlighetsnivå",
           "notify_period_enabled": "Avisera innan mensen börjar",
@@ -78,6 +79,7 @@
           "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst.",
           "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
           "notify_service": "Home Assistant-aviseringsmål att använda. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet).",
+          "notify_partner_service": "Valfritt andra aviseringsmål (t.ex. partnerns telefon) som bara får datumpåminnelserna - mens, fertilt fönster och ägglossning - aldrig märken, symtom eller andra hälsouppgifter. Inget skickas vid synlighetsnivå 'Privat'; fertilt fönster och ägglossning bara vid 'Full'. Lämna tomt för att stänga av.",
           "linked_person_entity_id": "Länka den här profilen till en befintlig person (Inställningar → Personer). Om den personen har en bild inställd kan följeslagarappen visa den som profilbild.",
           "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar.",
           "notify_period_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan mensen väntas börja. Kräver 'Aktivera aviseringar' ovan.",
@@ -351,6 +353,10 @@
     "period_overdue": {
       "title": "Menstruation Cycle: Mensen är försenad",
       "description": "Profil: **{entry_title}**\n\nDen förväntade mensstarten för den här profilen passerade för {days_overdue} dag(ar) sedan och ingen ny cykelstart har registrerats. Cykler kan vara sena av många skäl (stress, resor, sjukdom, hormonella förändringar, graviditet) och prognoser är bara uppskattningar. Detta är enbart informativt, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Om graviditet är möjlig kan ett test ge klarhet, och om det händer ofta kan det vara värt att diskutera med en läkare. Registrera starten när mensen börjar, eller avfärda detta problem om du redan känner till det."
+    },
+    "period_prolonged": {
+      "title": "Menstruation Cycle: Mensen varar ovanligt länge",
+      "description": "Profil: **{entry_title}**\n\nBlödning har registrerats {days} dagar i följd, vilket är längre än vanligt för den här profilen. En mens som varar längre än ungefär en vecka kan ha många orsaker; detta är enbart informativt, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Om blödningen är mycket kraftig eller fortsätter kan det vara värt att diskutera med en läkare. Avfärda detta problem om du redan känner till det."
     }
   },
   "selector": {
