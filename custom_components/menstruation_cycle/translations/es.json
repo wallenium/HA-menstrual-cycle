@@ -59,6 +59,8 @@
           "notify_period_lead_days": "Antelación de aviso de menstruación (días)",
           "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
           "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)",
+          "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
+          "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
           "temperature_unit": "Unidad de entrada de temperatura basal"
         },
         "data_description": {
@@ -81,6 +83,8 @@
           "notify_period_lead_days": "Con cuántos días de antelación al inicio previsto de la menstruación avisar (0–7). 1 (predeterminado) significa el día anterior, 0 significa el mismo día.",
           "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
           "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día.",
+          "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+          "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
           "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA."
         }
       },
@@ -261,6 +265,20 @@
         "date_format": {
           "name": "Formato de fecha",
           "description": "Cómo interpretar fechas con barras: 'auto' (por defecto) solo acepta fechas ISO/con puntos, 'dmy' trata DD/MM/AAAA como día primero, 'mdy' trata MM/DD/AAAA como mes primero."
+        }
+      }
+    },
+    "import_symptom_history": {
+      "name": "Importar historial de síntomas (desde otra app)",
+      "description": "Importa en bloque entradas de síntomas de forma aditiva — los valores existentes de una fecha nunca se sobrescriben, solo se rellenan huecos, y todo se guarda una sola vez. Cada entrada es un objeto con una fecha y los mismos campos que add_symptom; basal_temp se lee en la unidad de temperatura configurada del perfil. Las entradas que no superan la validación se omiten y se informan en lugar de interrumpir la importación.",
+      "fields": {
+        "entries": {
+          "name": "Entradas",
+          "description": "Lista de objetos, cada uno con 'date' y campos de add_symptom (p. ej. pain, mood, basal_temp)."
+        },
+        "date_format": {
+          "name": "Formato de fecha",
+          "description": "Cómo interpretar fechas con barras: 'auto' (predeterminado) solo acepta fechas ISO/con puntos, 'dmy' trata DD/MM/AAAA como día primero, 'mdy' trata MM/DD/AAAA como mes primero."
         }
       }
     },

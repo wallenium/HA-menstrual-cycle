@@ -59,6 +59,8 @@
           "notify_period_lead_days": "Förvarningstid mens (dagar)",
           "notify_fertile_enabled": "Avisera när fertilt fönster börjar",
           "notify_fertile_lead_days": "Förvarningstid fertilt fönster (dagar)",
+          "notify_ovulation_enabled": "Avisera när ägglossning beräknas",
+          "notify_ovulation_lead_days": "Förvarningstid ägglossning (dagar)",
           "temperature_unit": "Inmatningsenhet för basaltemperatur"
         },
         "data_description": {
@@ -81,6 +83,8 @@
           "notify_period_lead_days": "Hur många dagar innan den förväntade mensstarten som avisering ska ske (0–7). 1 (standard) betyder dagen innan, 0 betyder samma dag.",
           "notify_fertile_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan det fertila fönstret väntas börja. Kräver 'Aktivera aviseringar' ovan.",
           "notify_fertile_lead_days": "Hur många dagar innan den förväntade starten av det fertila fönstret som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
+          "notify_ovulation_enabled": "Skickar en avisering ett inställbart antal dagar före den beräknade ägglossningsdagen. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
+          "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
           "temperature_unit": "Vilken enhet basal_temp-värden tolkas i när de loggas via tjänsten log_symptoms/add_symptom. Lagring sker alltid i Celsius — Home Assistant visar automatiskt värdet i den enhet som din HA-instans är konfigurerad för."
         }
       },
@@ -261,6 +265,20 @@
         "date_format": {
           "name": "Datumformat",
           "description": "Hur snedstreck-datum tolkas: 'auto' (standard) accepterar endast ISO-/punktdatum, 'dmy' tolkar DD/MM/ÅÅÅÅ som dag först, 'mdy' tolkar MM/DD/ÅÅÅÅ som månad först."
+        }
+      }
+    },
+    "import_symptom_history": {
+      "name": "Importera symtomhistorik (från annan app)",
+      "description": "Importerar symtomposter additivt i bulk — befintliga värden för ett datum skrivs aldrig över, bara luckor fylls, och allt sparas en gång. Varje post är ett objekt med ett datum plus samma fält som add_symptom; basal_temp läses i profilens inställda temperaturenhet. Poster som inte klarar valideringen hoppas över och rapporteras i stället för att avbryta importen.",
+      "fields": {
+        "entries": {
+          "name": "Poster",
+          "description": "Lista med objekt, vart och ett med 'date' plus add_symptom-fält (t.ex. pain, mood, basal_temp)."
+        },
+        "date_format": {
+          "name": "Datumformat",
+          "description": "Hur datum med snedstreck tolkas: 'auto' (standard) accepterar bara ISO-/punktdatum, 'dmy' tolkar DD/MM/ÅÅÅÅ som dag först, 'mdy' tolkar MM/DD/ÅÅÅÅ som månad först."
         }
       }
     },

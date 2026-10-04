@@ -121,6 +121,54 @@ import_cycle_history:
             - "dmy"
             - "mdy"
 
+import_symptom_history:
+  name: Import symptom history (from another app)
+  description: |
+    Additively bulk-imports symptom entries - unlike calling add_symptom once
+    per day, existing values for a date are never overwritten, only gaps are
+    filled, and everything is saved once. Each entry is an object with a
+    `date` plus the same fields/values as add_symptom (map another app's
+    columns to those names yourself); basal_temp is read in the profile's
+    configured temperature unit. Entries that fail validation are skipped and
+    reported back rather than aborting the import. Date parsing works like
+    import_cycle_history.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna_zyklus"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    entries:
+      required: true
+      example:
+        - date: "2026-01-14"
+          pain: ["cramps"]
+          mood: "tired"
+        - date: "15.01.2026"
+          basal_temp: 36.4
+      selector:
+        object:
+    date_format:
+      required: false
+      example: "auto"
+      selector:
+        select:
+          options:
+            - "auto"
+            - "dmy"
+            - "mdy"
+
 set_period_duration:
   name: Set period duration days
   description: Set forecasted period duration (used for card markers).

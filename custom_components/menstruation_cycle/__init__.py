@@ -11,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
@@ -63,6 +64,8 @@ from .const import (
     CONF_NOTIFY_PERIOD_LEAD_DAYS,
     CONF_NOTIFY_FERTILE_ENABLED,
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
+    CONF_NOTIFY_OVULATION_ENABLED,
+    CONF_NOTIFY_OVULATION_LEAD_DAYS,
     NOTIFY_LEAD_DAYS_MAX,
     CONF_NFP_ANALYSIS_MODE,
     DEFAULT_NOTIFICATIONS_ENABLED,
@@ -70,6 +73,8 @@ from .const import (
     DEFAULT_NOTIFY_PERIOD_LEAD_DAYS,
     DEFAULT_NOTIFY_FERTILE_ENABLED,
     DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
+    DEFAULT_NOTIFY_OVULATION_ENABLED,
+    DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
     DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -94,6 +99,7 @@ from .const import (
     SERVICE_EXPORT_HISTORY,
     SERVICE_FIELD_DATE,
     SERVICE_FIELD_DATES,
+    SERVICE_FIELD_ENTRIES,
     SERVICE_FIELD_DAYS,
     SERVICE_FIELD_ENTITY_ID,
     SERVICE_FIELD_ENTRY_ID,
@@ -184,6 +190,7 @@ from .const import (
     IMPORT_FULL_BACKUP_MODES,
     DEFAULT_IMPORT_FULL_BACKUP_MODE,
     SERVICE_IMPORT_CYCLE_HISTORY,
+    SERVICE_IMPORT_SYMPTOM_HISTORY,
     SERVICE_FIELD_DATE_FORMAT,
     IMPORT_DATE_FORMATS,
     DEFAULT_IMPORT_DATE_FORMAT,
@@ -908,6 +915,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name}: period is predicted to start on {date}.",
         "fertile_title": "Fertile window reminder",
         "fertile_message": "{name}: the fertile window starts on {date}.",
+        "ovulation_title": "Ovulation reminder",
+        "ovulation_message": "{name}: ovulation is estimated for {date}.",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
@@ -916,6 +925,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name}: Die Periode wird voraussichtlich am {date} beginnen.",
         "fertile_title": "Erinnerung: fruchtbares Fenster",
         "fertile_message": "{name}: Das fruchtbare Fenster beginnt am {date}.",
+        "ovulation_title": "Erinnerung: Eisprung",
+        "ovulation_message": "{name}: Der Eisprung wird für den {date} geschätzt.",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
@@ -924,6 +935,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name} : les règles devraient commencer le {date}.",
         "fertile_title": "Rappel : fenêtre de fertilité",
         "fertile_message": "{name} : la fenêtre de fertilité commence le {date}.",
+        "ovulation_title": "Rappel : ovulation",
+        "ovulation_message": "{name} : l'ovulation est estimée au {date}.",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
@@ -932,6 +945,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name}: se prevé que la menstruación comience el {date}.",
         "fertile_title": "Recordatorio: ventana fértil",
         "fertile_message": "{name}: la ventana fértil comienza el {date}.",
+        "ovulation_title": "Recordatorio: ovulación",
+        "ovulation_message": "{name}: la ovulación se estima para el {date}.",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
@@ -940,6 +955,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "period_message": "{name}: mensen väntas börja den {date}.",
         "fertile_title": "Påminnelse: fertilt fönster",
         "fertile_message": "{name}: det fertila fönstret börjar den {date}.",
+        "ovulation_title": "Påminnelse: ägglossning",
+        "ovulation_message": "{name}: ägglossning beräknas den {date}.",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
     },
@@ -982,13 +999,17 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
 
     period_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED))
     fertile_notify_enabled = bool(entry.options.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED))
-    if not period_notify_enabled and not fertile_notify_enabled:
+    ovulation_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED))
+    if not period_notify_enabled and not fertile_notify_enabled and not ovulation_notify_enabled:
         return
     period_lead_days = max(
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)))
     )
     fertile_lead_days = max(
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)))
+    )
+    ovulation_lead_days = max(
+        0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_OVULATION_LEAD_DAYS, DEFAULT_NOTIFY_OVULATION_LEAD_DAYS)))
     )
 
     from .model import build_cycle_model
@@ -1035,6 +1056,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
 
     period_start = (model.period_forecast or {}).get("predicted_start")
     fertile_start = (model.fertility_forecast or {}).get("fertile_window_start")
+    ovulation_day = (model.fertility_forecast or {}).get("ovulation_estimate")
     notified_something = False
 
     if period_start and period_notify_enabled:
@@ -1055,6 +1077,16 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 strings["fertile_message"].format(name=runtime.friendly_name, date=fertile_start),
             )
             runtime.noncycle_data["notified_fertile_start"] = fertile_start
+            notified_something = True
+
+    if ovulation_day and ovulation_notify_enabled:
+        ovulation_target_iso = (today + timedelta(days=ovulation_lead_days)).isoformat()
+        if ovulation_day == ovulation_target_iso and runtime.noncycle_data.get("notified_ovulation_day") != ovulation_day:
+            await _send(
+                strings["ovulation_title"],
+                strings["ovulation_message"].format(name=runtime.friendly_name, date=ovulation_day),
+            )
+            runtime.noncycle_data["notified_ovulation_day"] = ovulation_day
             notified_something = True
 
     # Reads the badge already computed by sensor.py (progress_badges_new_this_week)
@@ -1444,6 +1476,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_import_cycle_history(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_import_cycle_history(hass, call)
 
+    async def async_import_symptom_history(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_import_symptom_history(hass, call)
+
     async def async_set_period_duration(call: ServiceCall) -> None:
         await _async_handle_set_period_duration(hass, call)
 
@@ -1573,6 +1608,23 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _import_history_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_IMPORT_CYCLE_HISTORY, async_import_cycle_history, **_import_history_register_kwargs
+    )
+
+    _import_symptoms_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema(
+            {
+                **common_profile_field,
+                vol.Required(SERVICE_FIELD_ENTRIES): [dict],
+                vol.Optional(SERVICE_FIELD_DATE_FORMAT, default=DEFAULT_IMPORT_DATE_FORMAT): vol.In(
+                    IMPORT_DATE_FORMATS
+                ),
+            }
+        ),
+    }
+    if SupportsResponse is not None:
+        _import_symptoms_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_IMPORT_SYMPTOM_HISTORY, async_import_symptom_history, **_import_symptoms_register_kwargs
     )
 
     hass.services.async_register(
@@ -2405,6 +2457,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_REMOVE_CYCLE_START,
             SERVICE_SET_CYCLE_HISTORY,
             SERVICE_IMPORT_CYCLE_HISTORY,
+            SERVICE_IMPORT_SYMPTOM_HISTORY,
             SERVICE_SET_PERIOD_DURATION,
             SERVICE_ERASE_ALL_HISTORY,
             SERVICE_EXPORT_HISTORY,
@@ -2745,6 +2798,56 @@ async def _async_handle_import_cycle_history(hass: HomeAssistant, call: ServiceC
         "skipped_invalid": skipped_invalid,
         "warnings": warnings,
         "total_history_count": len(runtime.history),
+    }
+
+
+async def _async_handle_import_symptom_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    runtime = _runtime_for_call(hass, call)
+    date_format = str(call.data.get(SERVICE_FIELD_DATE_FORMAT, DEFAULT_IMPORT_DATE_FORMAT))
+    if date_format not in IMPORT_DATE_FORMATS:
+        date_format = DEFAULT_IMPORT_DATE_FORMAT
+    profile_fields = {
+        k: call.data[k] for k in (SERVICE_FIELD_PROFILE, SERVICE_FIELD_ENTITY_ID, SERVICE_FIELD_ENTRY_ID) if k in call.data
+    }
+
+    imported: list[str] = []
+    already_present: list[str] = []
+    skipped_invalid: list[str] = []
+
+    for raw in call.data[SERVICE_FIELD_ENTRIES]:
+        parsed = _parse_import_date(raw.get("date", ""), date_format)
+        if parsed is None:
+            skipped_invalid.append(str(raw.get("date", raw)))
+            continue
+        existing = next((e for e in runtime.symptom_history if e.get("date") == parsed), None)
+        new_fields = {
+            k: v for k, v in raw.items()
+            if k != "date" and (existing is None or existing.get(k) in (None, "", []))
+        }
+        if not new_fields:
+            already_present.append(parsed)
+            continue
+        try:
+            # ponytail: SimpleNamespace stands in for a ServiceCall (the handler only reads .data) -
+            # swap for a real ServiceCall if the handler ever needs context/hass from it.
+            await _async_handle_add_symptom(
+                hass,
+                SimpleNamespace(data={**profile_fields, SERVICE_FIELD_DATE: parsed, SERVICE_FIELD_SYMPTOM_DATA: new_fields}),
+                save=False,
+            )
+        except HomeAssistantError as err:
+            skipped_invalid.append(f"{parsed}: {err}")
+        else:
+            imported.append(parsed)
+
+    if imported:
+        await _async_save_and_notify(hass, runtime)
+
+    return {
+        "imported": sorted(imported),
+        "already_present": sorted(already_present),
+        "skipped_invalid": skipped_invalid,
+        "total_symptom_days": len(runtime.symptom_history),
     }
 
 
@@ -3580,8 +3683,8 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         async_check_household_inventory_critical(hass, _household_inventory_critical_products(household_data))
 
 
-async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Add or update symptom data for a date."""
+async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, save: bool = True) -> None:
+    """Add or update symptom data for a date. save=False lets a bulk caller (import_symptom_history) save once at the end."""
     runtime = _runtime_for_call(hass, call)
     date_iso = _normalize_date_or_raise(call.data[SERVICE_FIELD_DATE])
     symptom_data = call.data.get(SERVICE_FIELD_SYMPTOM_DATA, {})
@@ -3710,7 +3813,8 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall) -> N
             if history_date not in runtime.history:
                 runtime.history.append(history_date)
 
-    await _async_save_and_notify(hass, runtime)
+    if save:
+        await _async_save_and_notify(hass, runtime)
 
 
 async def _async_handle_remove_symptom(hass: HomeAssistant, call: ServiceCall) -> None:

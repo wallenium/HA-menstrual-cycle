@@ -106,6 +106,10 @@ DEFAULT_NOTIFY_FERTILE_ENABLED = True
 # fertile window: same day) so existing setups keep working unchanged.
 DEFAULT_NOTIFY_PERIOD_LEAD_DAYS = 1
 DEFAULT_NOTIFY_FERTILE_LEAD_DAYS = 0
+CONF_NOTIFY_OVULATION_ENABLED = "notify_ovulation_enabled"
+CONF_NOTIFY_OVULATION_LEAD_DAYS = "notify_ovulation_lead_days"
+DEFAULT_NOTIFY_OVULATION_ENABLED = False
+DEFAULT_NOTIFY_OVULATION_LEAD_DAYS = 0
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 
@@ -320,6 +324,7 @@ SERVICE_UPDATE_MENOPAUSE_DATE = "update_menopause_date"
 SERVICE_SAVE_TIMER_STATE = "save_timer_state"
 SERVICE_EXPORT_DOCTOR_REPORT = "export_doctor_report"
 SERVICE_SET_PROFILE_VISIBILITY = "set_profile_visibility"
+SERVICE_IMPORT_SYMPTOM_HISTORY = "import_symptom_history"
 # Wunsch 01.10.2026: server-side counterpart to the dashboard panel's
 # localStorage prefs cache, so widget/category settings sync across devices
 # instead of being stuck to one browser.
@@ -328,6 +333,7 @@ SERVICE_SAVE_DASHBOARD_PREFS = "save_dashboard_prefs"
 
 SERVICE_FIELD_DATE = "date"
 SERVICE_FIELD_DATES = "dates"
+SERVICE_FIELD_ENTRIES = "entries"
 SERVICE_FIELD_DAYS = "days"
 SERVICE_FIELD_ERASE_ALL = "erase_all"
 SERVICE_FIELD_FORMAT = "format"

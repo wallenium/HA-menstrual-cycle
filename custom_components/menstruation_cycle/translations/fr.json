@@ -59,6 +59,8 @@
           "notify_period_lead_days": "Préavis règles (jours)",
           "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
           "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)",
+          "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
+          "notify_ovulation_lead_days": "Préavis ovulation (jours)",
           "temperature_unit": "Unité de saisie de la température basale"
         },
         "data_description": {
@@ -81,6 +83,8 @@
           "notify_period_lead_days": "Combien de jours avant le début prévu des règles notifier (0–7). 1 (par défaut) signifie la veille, 0 signifie le jour même.",
           "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
           "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même.",
+          "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+          "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
           "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA."
         }
       },
@@ -261,6 +265,20 @@
         "date_format": {
           "name": "Format de date",
           "description": "Comment interpréter les dates à barres obliques : 'auto' (défaut) n'accepte que les dates ISO/à points, 'dmy' traite JJ/MM/AAAA comme jour en premier, 'mdy' traite MM/JJ/AAAA comme mois en premier."
+        }
+      }
+    },
+    "import_symptom_history": {
+      "name": "Importer l'historique des symptômes (depuis une autre appli)",
+      "description": "Importe en masse les entrées de symptômes de façon additive — les valeurs existantes d'une date ne sont jamais écrasées, seules les lacunes sont comblées, et tout est enregistré en une seule fois. Chaque entrée est un objet avec une date et les mêmes champs que add_symptom ; basal_temp est lu dans l'unité de température configurée pour le profil. Les entrées invalides sont ignorées et signalées plutôt que d'interrompre l'import.",
+      "fields": {
+        "entries": {
+          "name": "Entrées",
+          "description": "Liste d'objets, chacun avec 'date' et des champs add_symptom (p. ex. pain, mood, basal_temp)."
+        },
+        "date_format": {
+          "name": "Format de date",
+          "description": "Comment interpréter les dates avec barres obliques : 'auto' (défaut) n'accepte que les dates ISO/à points, 'dmy' traite JJ/MM/AAAA comme jour en premier, 'mdy' traite MM/JJ/AAAA comme mois en premier."
         }
       }
     },

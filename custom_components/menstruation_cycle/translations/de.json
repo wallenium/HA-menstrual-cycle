@@ -59,6 +59,8 @@
           "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
           "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
           "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
+          "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
+          "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
           "temperature_unit": "Eingabeeinheit Basaltemperatur"
         },
         "data_description": {
@@ -81,6 +83,8 @@
           "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
           "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
           "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
+          "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+          "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
           "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
         }
       },
@@ -257,6 +261,20 @@
         "dates": {
           "name": "Daten",
           "description": "Liste von Datums-Strings zum Importieren, im ISO-, Punkt- oder (mit gesetztem date_format) Schrägstrich-Format."
+        },
+        "date_format": {
+          "name": "Datumsformat",
+          "description": "Wie Schrägstrich-Daten interpretiert werden: 'auto' (Standard) akzeptiert nur ISO-/Punkt-Daten, 'dmy' interpretiert TT/MM/JJJJ als Tag zuerst, 'mdy' interpretiert MM/TT/JJJJ als Monat zuerst."
+        }
+      }
+    },
+    "import_symptom_history": {
+      "name": "Symptomhistorie importieren (aus anderer App)",
+      "description": "Importiert Symptomeinträge additiv in einem Rutsch — vorhandene Werte eines Tages werden nie überschrieben, es werden nur Lücken gefüllt, und alles wird nur einmal gespeichert. Jeder Eintrag ist ein Objekt mit einem Datum plus denselben Feldern wie bei add_symptom; basal_temp wird in der für das Profil eingestellten Temperatureinheit gelesen. Einträge, die die Prüfung nicht bestehen, werden übersprungen und zurückgemeldet statt den Import abzubrechen.",
+      "fields": {
+        "entries": {
+          "name": "Einträge",
+          "description": "Liste von Objekten, jeweils mit 'date' plus add_symptom-Feldern (z. B. pain, mood, basal_temp)."
         },
         "date_format": {
           "name": "Datumsformat",
