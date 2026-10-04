@@ -22,6 +22,7 @@ from .const import (
     CYCLE_PATTERN_PAIN_DAYS_THRESHOLD,
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
     ICS_TOKEN_STALE_DAYS,
+    PERIOD_OVERDUE_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
@@ -590,6 +591,60 @@ def async_check_cycle_pattern_risk(
         async_delete_cycle_pattern_risk_issue(hass, entry_id)
         return
     async_create_cycle_pattern_risk_issue(hass, entry_id, entry_title, cycle_std_days, avg_pain_days_per_cycle)
+
+
+def async_create_period_overdue_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    days_overdue: int,
+) -> None:
+    """Create a repair issue flagging a period well past its predicted start."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"period_overdue_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="period_overdue",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "days_overdue": str(days_overdue),
+        },
+    )
+
+
+def async_delete_period_overdue_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the period-overdue repair issue."""
+    async_delete_issue(hass, DOMAIN, f"period_overdue_{entry_id}")
+
+
+def async_check_period_overdue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    days_until_next_start: int | None,
+    period_active: bool,
+    precision_allowed: bool,
+) -> None:
+    """Raise (or clear) the period-overdue issue from CycleModel.days_until_next_start.
+
+    days_until_next_start goes negative once the predicted start has passed and
+    no new cycle start was logged. Skipped while the prediction is still
+    low-confidence (learning phase), where a late period is not a meaningful
+    signal; life stages without a predicted start (pregnancy, postpartum,
+    menopause, ...) have days_until_next_start None and clear the issue.
+    """
+    if (
+        days_until_next_start is None
+        or period_active
+        or not precision_allowed
+        or days_until_next_start > -PERIOD_OVERDUE_DAYS
+    ):
+        async_delete_period_overdue_issue(hass, entry_id)
+        return
+    async_create_period_overdue_issue(hass, entry_id, entry_title, -days_until_next_start)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

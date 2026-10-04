@@ -59,6 +59,7 @@
           "notify_period_lead_days": "Antelación de aviso de menstruación (días)",
           "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
           "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)",
+          "notify_time": "Hora de las notificaciones",
           "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
           "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
           "temperature_unit": "Unidad de entrada de temperatura basal"
@@ -83,6 +84,7 @@
           "notify_period_lead_days": "Con cuántos días de antelación al inicio previsto de la menstruación avisar (0–7). 1 (predeterminado) significa el día anterior, 0 significa el mismo día.",
           "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
           "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día.",
+          "notify_time": "Hora del día a la que se envían las notificaciones de regla, ventana fértil, ovulación e insignias (08:00 por defecto). Antes se enviaban justo después de medianoche. Surte efecto al guardar.",
           "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
           "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
           "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA."
@@ -345,6 +347,10 @@
     "cycle_pattern_risk": {
       "title": "Menstruation Cycle: Patrón de ciclo que podría comentar con un médico",
       "description": "Perfil: **{entry_title}**\n\nLos datos registrados de este perfil muestran ciclos irregulares (la duración del ciclo varía unos {cycle_std_days} días) y/o días de dolor frecuentes (una media de unos {avg_pain_days_per_cycle} días de dolor por ciclo). Estos son patrones que a veces se asocian con afecciones como el SOP o la endometriosis - esto NO es un diagnóstico, solo una coincidencia de patrón informativa, y no se realiza ninguna acción automáticamente. Si persiste, puede valer la pena comentarlo con un médico. Descarta este aviso si ya lo sabes."
+    },
+    "period_overdue": {
+      "title": "Menstruation Cycle: La regla se ha retrasado",
+      "description": "Perfil: **{entry_title}**\n\nEl inicio previsto de la regla de este perfil pasó hace {days_overdue} día(s) y no se ha registrado un nuevo inicio de ciclo. Los ciclos pueden retrasarse por muchos motivos (estrés, viajes, enfermedad, cambios hormonales, embarazo) y las predicciones son solo estimaciones. Esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si un embarazo es posible, una prueba puede aclararlo, y si ocurre con frecuencia puede valer la pena comentarlo con un médico. Registra el inicio cuando empiece la regla, o descarta este aviso si ya lo sabes."
     }
   },
   "selector": {

@@ -59,6 +59,7 @@
           "notify_period_lead_days": "Förvarningstid mens (dagar)",
           "notify_fertile_enabled": "Avisera när fertilt fönster börjar",
           "notify_fertile_lead_days": "Förvarningstid fertilt fönster (dagar)",
+          "notify_time": "Tid för aviseringar",
           "notify_ovulation_enabled": "Avisera när ägglossning beräknas",
           "notify_ovulation_lead_days": "Förvarningstid ägglossning (dagar)",
           "temperature_unit": "Inmatningsenhet för basaltemperatur"
@@ -83,6 +84,7 @@
           "notify_period_lead_days": "Hur många dagar innan den förväntade mensstarten som avisering ska ske (0–7). 1 (standard) betyder dagen innan, 0 betyder samma dag.",
           "notify_fertile_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan det fertila fönstret väntas börja. Kräver 'Aktivera aviseringar' ovan.",
           "notify_fertile_lead_days": "Hur många dagar innan den förväntade starten av det fertila fönstret som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
+          "notify_time": "Tid på dagen då aviseringar om mens, fertilt fönster, ägglossning och märken skickas (08:00 som standard). Tidigare skickades de strax efter midnatt. Gäller direkt efter att inställningarna sparats.",
           "notify_ovulation_enabled": "Skickar en avisering ett inställbart antal dagar före den beräknade ägglossningsdagen. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
           "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
           "temperature_unit": "Vilken enhet basal_temp-värden tolkas i när de loggas via tjänsten log_symptoms/add_symptom. Lagring sker alltid i Celsius — Home Assistant visar automatiskt värdet i den enhet som din HA-instans är konfigurerad för."
@@ -345,6 +347,10 @@
     "cycle_pattern_risk": {
       "title": "Menstruation Cycle: Cykelmönster värt att diskutera med läkare",
       "description": "Profil: **{entry_title}**\n\nDen här profilens registrerade data visar oregelbundna cykler (cykellängden varierar med ca {cycle_std_days} dagar) och/eller frekventa smärtdagar (i genomsnitt ca {avg_pain_days_per_cycle} smärtdagar per cykel). Det här är mönster som ibland förknippas med tillstånd som PCOS eller endometrios - detta är INTE en diagnos, bara en informativ mönstermatchning, och ingen åtgärd vidtas automatiskt. Om det kvarstår kan det vara värt att nämna det för en läkare. Avfärda detta problem om du redan känner till det."
+    },
+    "period_overdue": {
+      "title": "Menstruation Cycle: Mensen är försenad",
+      "description": "Profil: **{entry_title}**\n\nDen förväntade mensstarten för den här profilen passerade för {days_overdue} dag(ar) sedan och ingen ny cykelstart har registrerats. Cykler kan vara sena av många skäl (stress, resor, sjukdom, hormonella förändringar, graviditet) och prognoser är bara uppskattningar. Detta är enbart informativt, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Om graviditet är möjlig kan ett test ge klarhet, och om det händer ofta kan det vara värt att diskutera med en läkare. Registrera starten när mensen börjar, eller avfärda detta problem om du redan känner till det."
     }
   },
   "selector": {

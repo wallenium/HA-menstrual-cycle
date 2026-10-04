@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import voluptuous as vol
 
@@ -47,6 +47,7 @@ from .const import (
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
+    CONF_NOTIFY_TIME,
     CONF_VISIBILITY_LEVEL,
     CONF_TEMPERATURE_UNIT,
     TEMPERATURE_UNITS,
@@ -62,6 +63,7 @@ from .const import (
     DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
     DEFAULT_NOTIFY_OVULATION_ENABLED,
     DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
+    DEFAULT_NOTIFY_TIME,
     NOTIFY_LEAD_DAYS_MAX,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
@@ -152,6 +154,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_FERTILE_LEAD_DAYS,
             CONF_NOTIFY_OVULATION_ENABLED,
             CONF_NOTIFY_OVULATION_LEAD_DAYS,
+            CONF_NOTIFY_TIME,
             CONF_CALENDAR_ENABLED,
             CONF_NFP_ANALYSIS_MODE,
             CONF_TEMPERATURE_UNIT,
@@ -463,6 +466,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_fertile_lead_days": int(
                 self._entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)
             ),
+            "notify_time": str(self._entry.options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME),
             "notify_ovulation_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
             ),
@@ -566,6 +570,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             lines.append(f"  - Period reminder: {period_bit}")
             lines.append(f"  - Fertile window reminder: {fertile_bit}")
             lines.append(f"  - Ovulation reminder: {ovulation_bit}")
+            lines.append(f"  - Sent at: {d.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME)}")
             if d.get(CONF_NOTIFY_SERVICE):
                 lines.append(f"  - Target: {d.get(CONF_NOTIFY_SERVICE)}")
         else:
@@ -666,6 +671,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_FERTILE_LEAD_DAYS] = max(
                     0, min(NOTIFY_LEAD_DAYS_MAX, int(user_input.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)))
                 )
+                notify_time_raw = str(user_input.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME)).strip()
+                try:
+                    datetime.strptime(notify_time_raw[:8], "%H:%M:%S")
+                except ValueError:
+                    notify_time_raw = DEFAULT_NOTIFY_TIME
+                self._data[CONF_NOTIFY_TIME] = notify_time_raw[:8]
                 self._data[CONF_NOTIFY_OVULATION_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
                 )
@@ -785,6 +796,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NOTIFY_FERTILE_LEAD_DAYS, default=c["notify_fertile_lead_days"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_LEAD_DAYS_MAX)),
+                vol.Optional(CONF_NOTIFY_TIME, default=c["notify_time"]): selector.TimeSelector(),
                 vol.Optional(
                     CONF_NOTIFY_OVULATION_ENABLED, default=c["notify_ovulation_enabled"]
                 ): bool,
@@ -1098,6 +1110,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_PERIOD_LEAD_DAYS: d[CONF_NOTIFY_PERIOD_LEAD_DAYS],
                 CONF_NOTIFY_FERTILE_ENABLED: d[CONF_NOTIFY_FERTILE_ENABLED],
                 CONF_NOTIFY_FERTILE_LEAD_DAYS: d[CONF_NOTIFY_FERTILE_LEAD_DAYS],
+                CONF_NOTIFY_TIME: d[CONF_NOTIFY_TIME],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],
                 CONF_TEMPERATURE_UNIT: d[CONF_TEMPERATURE_UNIT],

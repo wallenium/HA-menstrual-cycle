@@ -59,6 +59,7 @@
           "notify_period_lead_days": "Préavis règles (jours)",
           "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
           "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)",
+          "notify_time": "Heure des notifications",
           "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
           "notify_ovulation_lead_days": "Préavis ovulation (jours)",
           "temperature_unit": "Unité de saisie de la température basale"
@@ -83,6 +84,7 @@
           "notify_period_lead_days": "Combien de jours avant le début prévu des règles notifier (0–7). 1 (par défaut) signifie la veille, 0 signifie le jour même.",
           "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
           "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même.",
+          "notify_time": "Heure à laquelle les notifications de règles, de fenêtre de fertilité, d'ovulation et de badges sont envoyées (08:00 par défaut). Elles étaient auparavant envoyées juste après minuit. Prend effet dès l'enregistrement.",
           "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
           "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
           "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA."
@@ -345,6 +347,10 @@
     "cycle_pattern_risk": {
       "title": "Menstruation Cycle : schéma de cycle à évoquer avec un médecin",
       "description": "Profil : **{entry_title}**\n\nLes données enregistrées pour ce profil montrent des cycles irréguliers (la durée du cycle varie d'environ {cycle_std_days} jours) et/ou des jours de douleur fréquents (en moyenne environ {avg_pain_days_per_cycle} jours de douleur par cycle). Ce sont des schémas parfois associés à des affections comme le SOPK ou l'endométriose - ceci n'est PAS un diagnostic, juste une correspondance de schéma informative, et aucune action n'est effectuée automatiquement. Si cela persiste, il peut être utile d'en parler à un médecin. Ignorez cet avis si vous en êtes déjà conscient(e)."
+    },
+    "period_overdue": {
+      "title": "Menstruation Cycle : règles en retard",
+      "description": "Profil : **{entry_title}**\n\nLe début de règles prévu pour ce profil est dépassé de {days_overdue} jour(s) et aucun nouveau début de cycle n'a été enregistré. Un cycle peut être en retard pour de nombreuses raisons (stress, voyage, maladie, changements hormonaux, grossesse) et les prévisions ne sont que des estimations. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Si une grossesse est possible, un test peut apporter de la clarté, et si cela se répète il peut être utile d'en parler à un médecin. Enregistrez le début dès que vos règles commencent, ou ignorez cet avis si vous en êtes déjà conscient(e)."
     }
   },
   "selector": {

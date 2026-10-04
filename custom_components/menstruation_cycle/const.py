@@ -110,6 +110,14 @@ CONF_NOTIFY_OVULATION_ENABLED = "notify_ovulation_enabled"
 CONF_NOTIFY_OVULATION_LEAD_DAYS = "notify_ovulation_lead_days"
 DEFAULT_NOTIFY_OVULATION_ENABLED = False
 DEFAULT_NOTIFY_OVULATION_LEAD_DAYS = 0
+# Uhrzeit der Benachrichtigungen: lief bislang implizit im Mitternachts-Refresh
+# (00:00:05), die Meldungen kamen also nachts aufs Handy. Eigener Zeit-Trigger,
+# siehe __init__.py::_register_notification_timer. Format "HH:MM:SS" (TimeSelector).
+CONF_NOTIFY_TIME = "notify_time"
+DEFAULT_NOTIFY_TIME = "08:00:00"
+# Tage ueber dem vorhergesagten Periodenstart, ab denen repairs.py::
+# async_check_period_overdue einen rein informativen Hinweis erzeugt.
+PERIOD_OVERDUE_DAYS = 7
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 

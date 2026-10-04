@@ -59,6 +59,7 @@
           "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
           "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
           "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
+          "notify_time": "Uhrzeit der Benachrichtigungen",
           "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
           "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
           "temperature_unit": "Eingabeeinheit Basaltemperatur"
@@ -83,6 +84,7 @@
           "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
           "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
           "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
+          "notify_time": "Uhrzeit, zu der Perioden-, Fruchtbarkeits-, Eisprung- und Badge-Benachrichtigungen gesendet werden (Standard 08:00). Bisher wurden sie direkt nach Mitternacht gesendet. Wirkt sofort nach dem Speichern.",
           "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
           "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
           "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
@@ -345,6 +347,10 @@
     "cycle_pattern_risk": {
       "title": "Menstruation Cycle: Zyklusmuster - evtl. mit Arzt besprechen",
       "description": "Profil: **{entry_title}**\n\nDie erfassten Daten dieses Profils zeigen unregelmäßige Zyklen (Zykluslänge schwankt um ca. {cycle_std_days} Tage) und/oder häufige Schmerztage (durchschnittlich ca. {avg_pain_days_per_cycle} Schmerztage pro Zyklus). Das sind Muster, die manchmal mit Erkrankungen wie PCOS oder Endometriose in Verbindung gebracht werden - das ist KEINE Diagnose, nur ein informativer Musterabgleich, es wird keine Aktion automatisch ausgeführt. Falls das anhält, kann es sich lohnen, das mit einem Arzt zu besprechen. Verwerfe dieses Problem, falls du es bereits kennst."
+    },
+    "period_overdue": {
+      "title": "Menstruation Cycle: Periode überfällig",
+      "description": "Profil: **{entry_title}**\n\nDer vorhergesagte Periodenstart dieses Profils liegt {days_overdue} Tag(e) zurück und es wurde noch kein neuer Zyklusstart eingetragen. Zyklen können aus vielen Gründen später kommen (Stress, Reisen, Krankheit, hormonelle Veränderungen, Schwangerschaft), und Vorhersagen sind nur Schätzungen. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Falls eine Schwangerschaft möglich ist, kann ein Test Klarheit bringen, und wenn das öfter vorkommt, kann es sich lohnen, es mit einem Arzt zu besprechen. Trage den Start ein, sobald die Periode beginnt, oder verwirf dieses Problem, falls du es bereits kennst."
     }
   },
   "selector": {

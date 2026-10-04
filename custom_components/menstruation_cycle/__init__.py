@@ -66,6 +66,7 @@ from .const import (
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
+    CONF_NOTIFY_TIME,
     NOTIFY_LEAD_DAYS_MAX,
     CONF_NFP_ANALYSIS_MODE,
     DEFAULT_NOTIFICATIONS_ENABLED,
@@ -75,6 +76,7 @@ from .const import (
     DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
     DEFAULT_NOTIFY_OVULATION_ENABLED,
     DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
+    DEFAULT_NOTIFY_TIME,
     DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -349,6 +351,7 @@ class MenstruationRuntime:
     # const.py::CONF_VISIBILITY_LEVEL.
     visibility_level: str = DEFAULT_VISIBILITY_LEVEL
     unregister_midnight_listener: Callable[[], None] | None = None
+    unregister_notify_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
     # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
@@ -2190,10 +2193,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight contraception renewal check failed for %s", entry.entry_id)
         try:
-            await _async_check_and_send_notifications(hass, entry, runtime)
-        except Exception:  # noqa: BLE001
-            _LOGGER.exception("Midnight notification check failed for %s", entry.entry_id)
-        try:
             # HA-Idee 6 (weitere Ideen, 15.09.2026): re-check daily rather
             # than only on integration load/restart, so the repair issue
             # appears promptly once the token crosses the staleness
@@ -2247,6 +2246,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight cycle-pattern-risk check failed for %s", entry.entry_id)
+        try:
+            # Same daily-recheck reasoning as the checks above - days overdue grows by one every day.
+            from .repairs import async_check_period_overdue
+
+            async_check_period_overdue(
+                hass,
+                entry.entry_id,
+                entry.title,
+                _midnight_model.days_until_next_start,
+                _midnight_model.state == STATE_PERIOD,
+                bool((_midnight_model.prediction_gating or {}).get("precision_allowed")),
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight period-overdue check failed for %s", entry.entry_id)
         try:
             # "weitere Ideen" 24.09.2026: same daily-recheck reasoning as the
             # checks above - the due date gets closer every day, so this
@@ -2317,6 +2330,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         second=5,
     )
 
+    _register_notification_timer(hass, entry, runtime)
+
     hass.data[DOMAIN][entry.entry_id] = runtime
 
     # Register a lightweight options update listener that re-syncs the dashboard
@@ -2384,6 +2399,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, entry.entry_id, entry.title, cycle_wellness_score(_setup_model, dt_util.now().date())
     )
 
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_cycle_pattern_risk
+
+    async_check_cycle_pattern_risk(
+        hass, entry.entry_id, entry.title, cycle_pattern_signals(_setup_model, dt_util.now().date())
+    )
+
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_period_overdue
+
+    async_check_period_overdue(
+        hass,
+        entry.entry_id,
+        entry.title,
+        _setup_model.days_until_next_start,
+        _setup_model.state == STATE_PERIOD,
+        bool((_setup_model.prediction_gating or {}).get("precision_allowed")),
+    )
+
     # "weitere Ideen" 24.09.2026: same "cheap, safe to run on every load"
     # reasoning as the checks above.
     from .repairs import async_check_hospital_bag_incomplete
@@ -2435,6 +2469,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def _register_notification_timer(hass: HomeAssistant, entry: ConfigEntry, runtime: MenstruationRuntime) -> None:
+    """(Re-)register the daily notification trigger at CONF_NOTIFY_TIME.
+
+    Notifications used to run inside the midnight refresh (00:00:05) and so
+    arrived at night; this gives them their own, user-configurable time.
+    Safe to call again after an options change - drops the previous listener first.
+    """
+    if runtime.unregister_notify_listener:
+        runtime.unregister_notify_listener()
+    raw_time = str(entry.options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME)
+    try:
+        parsed = datetime.strptime(raw_time[:8], "%H:%M:%S")
+    except ValueError:
+        parsed = datetime.strptime(DEFAULT_NOTIFY_TIME, "%H:%M:%S")
+
+    async def _async_handle_notification_time(_now: datetime) -> None:
+        try:
+            await _async_check_and_send_notifications(hass, entry, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Scheduled notification check failed for %s", entry.entry_id)
+
+    runtime.unregister_notify_listener = async_track_time_change(
+        hass, _async_handle_notification_time, hour=parsed.hour, minute=parsed.minute, second=0
+    )
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -2442,6 +2502,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if runtime:
         if runtime.unregister_midnight_listener:
             runtime.unregister_midnight_listener()
+        if runtime.unregister_notify_listener:
+            runtime.unregister_notify_listener()
         if runtime.options_update_unsub:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
@@ -2498,6 +2560,9 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options updates: sync dashboard panel non-fatally without a full reload."""
+    _updated_runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if _updated_runtime is not None:
+        _register_notification_timer(hass, entry, _updated_runtime)
     try:
         await _async_sync_dashboard_sidebar_panel(hass)
     except Exception as err:  # noqa: BLE001
