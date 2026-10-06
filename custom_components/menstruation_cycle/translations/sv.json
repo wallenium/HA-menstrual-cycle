@@ -237,6 +237,10 @@
         "date": {
           "name": "Datum",
           "description": "Valfritt ISO-datum för efterregistrering. Standard är idag."
+        },
+        "area_id": {
+          "name": "Område",
+          "description": "Home Assistant-område som lagret eller användningen hör till."
         }
       }
     },
@@ -327,6 +331,18 @@
         "date_format": {
           "name": "Datumformat",
           "description": "Hur snedstreck-datum tolkas: 'auto' (standard) accepterar endast ISO-/punktdatum, 'dmy' tolkar DD/MM/ÅÅÅÅ som dag först, 'mdy' tolkar MM/DD/ÅÅÅÅ som månad först."
+        },
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
         }
       }
     },
@@ -341,6 +357,18 @@
         "date_format": {
           "name": "Datumformat",
           "description": "Hur datum med snedstreck tolkas: 'auto' (standard) accepterar bara ISO-/punktdatum, 'dmy' tolkar DD/MM/ÅÅÅÅ som dag först, 'mdy' tolkar MM/DD/ÅÅÅÅ som månad först."
+        },
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
         }
       }
     },
@@ -381,6 +409,648 @@
         "entry_id": {
           "name": "Post-ID",
           "description": "Konfigurationspostens identifierare."
+        }
+      }
+    },
+    "add_cycle_start": {
+      "name": "Lägg till cykelstart",
+      "description": "Lägger till en bekräftad blödningsdag i formatet ÅÅÅÅ-MM-DD.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "remove_cycle_start": {
+      "name": "Ta bort cykelstart",
+      "description": "Tar bort en bekräftad blödningsdag i formatet ÅÅÅÅ-MM-DD.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "set_cycle_history": {
+      "name": "Ersätt hela cykelhistoriken",
+      "description": "Ersätter hela den bekräftade blödningshistoriken med en lista över datum.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "dates": {
+          "name": "Datum",
+          "description": "Lista över blödningsdagar i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "set_period_duration": {
+      "name": "Ställ in mensens längd",
+      "description": "Ställer in den beräknade längden på mensen (används för markeringarna i korten).",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "days": {
+          "name": "Dagar",
+          "description": "Mensens längd i dagar (1-14)."
+        }
+      }
+    },
+    "erase_all_history": {
+      "name": "Radera hela cykelhistoriken",
+      "description": "Destruktiv åtgärd. Raderar hela den lagrade historiken. Säkerhetskontroller: fungerar bara när `erase_all` är exakt `true` och kräver ett uttryckligt `entity_id` (sensor-id). Det förhindrar oavsiktliga anrop (t.ex. ett shell-kommando utan mål).",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "erase_all": {
+          "name": "Radera allt",
+          "description": "Måste vara exakt true för att bekräfta raderingen."
+        }
+      }
+    },
+    "export_history": {
+      "name": "Exportera cykelhistoriken",
+      "description": "Exporterar den aktuella historiken till en lokal fil. Filerna skrivs till `<config>/menstruation_cycle_exports/`. Format som stöds: `csv`, `txt`.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "format": {
+          "name": "Format",
+          "description": "Exportfilens format: csv eller txt."
+        },
+        "filename": {
+          "name": "Filnamn",
+          "description": "Valfritt filnamn utan filändelse."
+        }
+      }
+    },
+    "refresh_cycle_model": {
+      "name": "Uppdatera cykelmodellen",
+      "description": "Beräknar om alla datumbaserade sensorvärden, inklusive dagar till nästa beräknade start.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        }
+      }
+    },
+    "manage_household_inventory": {
+      "name": "Hantera hushållets lager",
+      "description": "Hanterar hushållets gemensamma lager av tamponger, bindor, koppar, trosskydd och mensunderkläder.",
+      "fields": {
+        "inventory_action": {
+          "name": "Lageråtgärd",
+          "description": "Vad som ska göras med lagret: set, add, consume, set_thresholds, add_to_shopping_list, reset, set_area_tracking."
+        },
+        "product": {
+          "name": "Produkt",
+          "description": "Produkttyp."
+        },
+        "quantity": {
+          "name": "Antal",
+          "description": "Antal enheter."
+        },
+        "warning_threshold": {
+          "name": "Varningsgräns",
+          "description": "Lagernivå där en varning visas."
+        },
+        "critical_threshold": {
+          "name": "Kritisk gräns",
+          "description": "Lagernivå där lagret räknas som kritiskt."
+        },
+        "member": {
+          "name": "Medlem",
+          "description": "Hushållsmedlem som lagret tillhör."
+        },
+        "underwear_total_owned": {
+          "name": "Antal mensunderkläder",
+          "description": "Totalt antal mensunderkläder som finns."
+        },
+        "area_id": {
+          "name": "Område",
+          "description": "Home Assistant-område som lagret eller användningen hör till."
+        },
+        "enabled": {
+          "name": "Aktiverad",
+          "description": "Slå på eller av spårningen av hushållets lager."
+        }
+      }
+    },
+    "add_symptom": {
+      "name": "Lägg till eller uppdatera symtomdata för ett datum",
+      "description": "Lägger till eller uppdaterar symtomdata för ett visst datum. Data slås ihop med befintliga poster.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        },
+        "symptom_data": {
+          "name": "Symtomdata",
+          "description": "Symtomvärden som sparas för datumet."
+        }
+      }
+    },
+    "remove_symptom": {
+      "name": "Ta bort symtomdata för ett datum",
+      "description": "Tar bort alla symtomdata för ett visst datum.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "get_symptom": {
+      "name": "Hämta symtomdata för ett datum",
+      "description": "Hämtar symtomdata för ett visst datum.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "compare_current_cycle": {
+      "name": "Jämför aktuell cykel",
+      "description": "Jämför den aktuella, pågående cykeln med det senaste genomsnittet (upp till 7 avslutade cykler): hur många dagar den pågått jämfört med genomsnittlig cykellängd och hur många smärtdagar som loggats hittills jämfört med genomsnittligt antal smärtdagar per avslutad cykel. Endast läsning, ändrar ingenting.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        }
+      }
+    },
+    "set_pregnancy_mode": {
+      "name": "Ställ in graviditetsläge",
+      "description": "Aktiverar eller inaktiverar graviditetsläget. När det är aktivt rapporterar sensorn graviditetsstatus med graviditetsvecka och beräknat förlossningsdatum.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "is_pregnant": {
+          "name": "Gravid",
+          "description": "Slå på eller av graviditetsläget."
+        },
+        "pregnancy_start_date": {
+          "name": "Graviditetens startdatum",
+          "description": "Första dagen i senaste mens."
+        }
+      }
+    },
+    "update_pregnancy_date": {
+      "name": "Uppdatera graviditetens startdatum",
+      "description": "Uppdaterar första dagen i senaste mens som används för graviditetsberäkningarna.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "pregnancy_start_date": {
+          "name": "Graviditetens startdatum",
+          "description": "Första dagen i senaste mens."
+        }
+      }
+    },
+    "set_menarche_mode": {
+      "name": "Ställ in menarkeläge",
+      "description": "Aktiverar spårning före menarke eller bekräftar att menarke har inträffat. Används för att följa pubertetstecken före första mens.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "is_menarche": {
+          "name": "Menarke har inträffat",
+          "description": "Om första mensen redan har inträffat."
+        },
+        "estimated_menarche_date": {
+          "name": "Beräknat datum för menarke",
+          "description": "Förväntat datum för första mensen."
+        },
+        "family_menarche_age": {
+          "name": "Familjens ålder vid menarke",
+          "description": "Ålder då nära släktingar fick sin första mens."
+        }
+      }
+    },
+    "update_menarche_date": {
+      "name": "Uppdatera datum för menarke",
+      "description": "Registrerar det faktiska datumet då menarke (första mens) inträffade.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "log_first_period": {
+      "name": "Logga första mens",
+      "description": "Registrerar atomärt menarkedatumet och lägger till den första cykelstarten. Används för att flytta en profil ur läget före menarke när första mens börjar.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum i formatet ÅÅÅÅ-MM-DD."
+        }
+      }
+    },
+    "get_menarche_info": {
+      "name": "Hämta information om menarke",
+      "description": "Hämtar spårningsdata för menarke och tiden före menarke för en profil.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        }
+      }
+    },
+    "add_pre_menarche_sign": {
+      "name": "Lägg till kroppstecken före menarke",
+      "description": "Registrerar eller uppdaterar ett kroppstecken för puberteten för spårning före menarke (Tanner-klassificering).",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "pre_menarche_sign": {
+          "name": "Kroppstecken",
+          "description": "Pubertetstecken som registreras."
+        },
+        "tanner_stage": {
+          "name": "Tanner-stadium",
+          "description": "Tanner-stadium för tecknet, till exempel stage_2."
+        }
+      }
+    },
+    "remove_pre_menarche_sign": {
+      "name": "Ta bort kroppstecken före menarke",
+      "description": "Tar bort ett registrerat kroppstecken för puberteten från spårningen före menarke.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "pre_menarche_sign": {
+          "name": "Kroppstecken",
+          "description": "Pubertetstecken som registreras."
+        }
+      }
+    },
+    "set_menopause_mode": {
+      "name": "Ställ in klimakterieläge",
+      "description": "Aktiverar eller inaktiverar läget för spårning av klimakteriet.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "is_menopause": {
+          "name": "Klimakteriet",
+          "description": "Slå på eller av läget för spårning av klimakteriet."
+        },
+        "menopause_start_date": {
+          "name": "Klimakteriets startdatum",
+          "description": "Datum då klimakteriet började."
+        }
+      }
+    },
+    "update_menopause_date": {
+      "name": "Uppdatera datum för klimakteriet",
+      "description": "Uppdaterar startdatumet för klimakteriet.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "menopause_start_date": {
+          "name": "Klimakteriets startdatum",
+          "description": "Datum då klimakteriet började."
+        }
+      }
+    },
+    "save_timer_state": {
+      "name": "Spara timerns tillstånd",
+      "description": "Sparar nedräkningstimerns aktuella tillstånd (återstående tid, vald produkt, igång/pausad) så att det överlever sidomladdningar och finns tillgängligt på andra enheter. Anropas automatiskt av kortet för mensnedräkning.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "remaining_seconds": {
+          "name": "Återstående sekunder",
+          "description": "Sekunder kvar på timern."
+        },
+        "total_seconds": {
+          "name": "Totalt antal sekunder",
+          "description": "Timerns totala längd i sekunder."
+        },
+        "selected_product": {
+          "name": "Vald produkt",
+          "description": "Produkt som timern används för."
+        },
+        "is_running": {
+          "name": "Igång",
+          "description": "Om timern är igång (true) eller pausad (false)."
+        },
+        "saved_at": {
+          "name": "Sparad",
+          "description": "Tidpunkt för sparandet som tidsstämpel i millisekunder."
+        }
+      }
+    },
+    "export_doctor_report": {
+      "name": "Exportera läkarrapport (HTML)",
+      "description": "Skapar en professionell medicinsk HTML-rapport från cykelhistoriken och symtomdata. Filen sparas i `<config>/menstruation_cycle_exports/`. Öppna den i en webbläsare och använd ”Skriv ut till PDF” för att skapa en PDF.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "days_back": {
+          "name": "Dagar bakåt",
+          "description": "Hur många dagar bakåt rapporten omfattar."
+        },
+        "patient_name": {
+          "name": "Patientens namn",
+          "description": "Namn som visas på rapporten."
+        },
+        "patient_birthdate": {
+          "name": "Patientens födelsedatum",
+          "description": "Födelsedatum som visas på rapporten."
+        },
+        "language": {
+          "name": "Språk",
+          "description": "Rapportens språk."
+        }
+      }
+    },
+    "set_profile_visibility": {
+      "name": "Ställ in profilens synlighet",
+      "description": "Anger hur mycket av profilens cykel-/symtomdata som visas i sensorns attribut (instrumentpanelens kort och översikten i companion-appar). ”full” visar allt som tidigare. ”status_only” begränsar till prognosvärden (nästa beräknade start, genomsnittlig cykellängd, mensens längd) utan symtom-, humör-, preventivmedels-, graviditets- eller menarkedetaljer. ”private” döljer allt utom att profilen finns. Obs: detta påverkar bara sensorns passiva attribut, inte tjänster som get_full_history/get_cycle_predictions som anropas medvetet av den som har åtkomst till integrationen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "level": {
+          "name": "Synlighetsnivå",
+          "description": "full, status_only eller private."
+        }
+      }
+    },
+    "get_household_summary": {
+      "name": "Hämta hushållsöversikt",
+      "description": "Skrivskyddad översikt över alla inlästa profiler (t.ex. hur många som just nu har mens eller är fertila). Respekterar varje profils synlighetsnivå – en profil som är ”private” räknas bara in i det totala antalet profiler och dess post visar inte mer än att den finns."
+    },
+    "get_dashboard_prefs": {
+      "name": "Hämta instrumentpanelens inställningar",
+      "description": "Internt: läser tillbaka den inloggade personens sparade inställningar för instrumentpanelens widgetar/kategorier (synlighet, ordning) för en profil, så att Lovelace-panelen hålls synkroniserad mellan webbläsare och enheter i stället för att hänga på en enskild webbläsares localStorage. Inte avsedd för automationer.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        }
+      }
+    },
+    "save_dashboard_prefs": {
+      "name": "Spara instrumentpanelens inställningar",
+      "description": "Internt: sparar den inloggade personens inställningar för instrumentpanelens widgetar/kategorier (synlighet, ordning) för en profil. Inte avsedd för automationer.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "prefs": {
+          "name": "Inställningar",
+          "description": "Instrumentpanelens inställningar (widgetordning och synlighet) som objekt."
         }
       }
     }

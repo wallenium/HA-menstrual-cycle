@@ -237,6 +237,10 @@
         "date": {
           "name": "Fecha",
           "description": "Fecha ISO opcional para registro retroactivo. Por defecto, hoy."
+        },
+        "area_id": {
+          "name": "Área",
+          "description": "Área de Home Assistant a la que pertenecen las existencias o el uso."
         }
       }
     },
@@ -327,6 +331,18 @@
         "date_format": {
           "name": "Formato de fecha",
           "description": "Cómo interpretar fechas con barras: 'auto' (por defecto) solo acepta fechas ISO/con puntos, 'dmy' trata DD/MM/AAAA como día primero, 'mdy' trata MM/DD/AAAA como mes primero."
+        },
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
         }
       }
     },
@@ -341,6 +357,18 @@
         "date_format": {
           "name": "Formato de fecha",
           "description": "Cómo interpretar fechas con barras: 'auto' (predeterminado) solo acepta fechas ISO/con puntos, 'dmy' trata DD/MM/AAAA como día primero, 'mdy' trata MM/DD/AAAA como mes primero."
+        },
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
         }
       }
     },
@@ -381,6 +409,648 @@
         "entry_id": {
           "name": "ID de entrada",
           "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "add_cycle_start": {
+      "name": "Añadir inicio de ciclo",
+      "description": "Añade un día de sangrado confirmado en formato AAAA-MM-DD.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "remove_cycle_start": {
+      "name": "Eliminar inicio de ciclo",
+      "description": "Elimina un día de sangrado confirmado en formato AAAA-MM-DD.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "set_cycle_history": {
+      "name": "Reemplazar todo el historial de ciclos",
+      "description": "Reemplaza todo el historial confirmado de sangrado por una lista de fechas.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "dates": {
+          "name": "Fechas",
+          "description": "Lista de días de sangrado en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "set_period_duration": {
+      "name": "Establecer la duración del período",
+      "description": "Establece la duración prevista del período (usada para las marcas de las tarjetas).",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "days": {
+          "name": "Días",
+          "description": "Duración del período en días (1-14)."
+        }
+      }
+    },
+    "erase_all_history": {
+      "name": "Borrar todo el historial de ciclos",
+      "description": "Acción destructiva. Elimina todo el historial almacenado. Comprobaciones de seguridad: solo funciona cuando `erase_all` es exactamente `true` y requiere un `entity_id` explícito (id del sensor). Así se evitan llamadas accidentales (p. ej. un comando de shell sin destino).",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "erase_all": {
+          "name": "Borrar todo",
+          "description": "Debe ser exactamente true para confirmar el borrado."
+        }
+      }
+    },
+    "export_history": {
+      "name": "Exportar el historial de ciclos",
+      "description": "Exporta el historial actual a un archivo local. Los archivos se guardan en `<config>/menstruation_cycle_exports/`. Formatos admitidos: `csv`, `txt`.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "format": {
+          "name": "Formato",
+          "description": "Formato del archivo de exportación: csv o txt."
+        },
+        "filename": {
+          "name": "Nombre de archivo",
+          "description": "Nombre de archivo opcional sin extensión."
+        }
+      }
+    },
+    "refresh_cycle_model": {
+      "name": "Actualizar el modelo del ciclo",
+      "description": "Recalcula todos los valores de sensores basados en fechas, incluidos los días hasta el próximo inicio previsto.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "manage_household_inventory": {
+      "name": "Gestionar el inventario del hogar",
+      "description": "Gestiona las existencias compartidas del hogar de tampones, compresas, copas, protegeslips y ropa interior menstrual.",
+      "fields": {
+        "inventory_action": {
+          "name": "Acción de inventario",
+          "description": "Qué hacer con las existencias: set, add, consume, set_thresholds, add_to_shopping_list, reset, set_area_tracking."
+        },
+        "product": {
+          "name": "Producto",
+          "description": "Tipo de producto."
+        },
+        "quantity": {
+          "name": "Cantidad",
+          "description": "Número de unidades."
+        },
+        "warning_threshold": {
+          "name": "Umbral de aviso",
+          "description": "Nivel de existencias a partir del cual se muestra un aviso."
+        },
+        "critical_threshold": {
+          "name": "Umbral crítico",
+          "description": "Nivel de existencias a partir del cual se considera crítico."
+        },
+        "member": {
+          "name": "Miembro",
+          "description": "Miembro del hogar al que pertenecen las existencias."
+        },
+        "underwear_total_owned": {
+          "name": "Prendas disponibles",
+          "description": "Número total de prendas de ropa interior menstrual que se poseen."
+        },
+        "area_id": {
+          "name": "Área",
+          "description": "Área de Home Assistant a la que pertenecen las existencias o el uso."
+        },
+        "enabled": {
+          "name": "Activado",
+          "description": "Activa o desactiva el seguimiento del inventario del hogar."
+        }
+      }
+    },
+    "add_symptom": {
+      "name": "Añadir o actualizar datos de síntomas de una fecha",
+      "description": "Añade o actualiza datos de síntomas de una fecha concreta. Los datos se combinan con las entradas existentes.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        },
+        "symptom_data": {
+          "name": "Datos de síntomas",
+          "description": "Valores de síntomas que se guardan para la fecha."
+        }
+      }
+    },
+    "remove_symptom": {
+      "name": "Eliminar datos de síntomas de una fecha",
+      "description": "Elimina todos los datos de síntomas de una fecha concreta.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "get_symptom": {
+      "name": "Obtener datos de síntomas de una fecha",
+      "description": "Obtiene los datos de síntomas de una fecha concreta.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "compare_current_cycle": {
+      "name": "Comparar el ciclo actual",
+      "description": "Compara el ciclo actual, aún en curso, con el promedio reciente (hasta 7 ciclos completados): cuántos días lleva en relación con la duración media del ciclo y cuántos días de dolor se han registrado hasta ahora frente a la media de días de dolor por ciclo completado. Solo lectura, no cambia nada.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "set_pregnancy_mode": {
+      "name": "Establecer el modo de embarazo",
+      "description": "Activa o desactiva el modo de embarazo. Al activarlo, el sensor indica el estado de embarazo con las semanas y la fecha prevista de parto.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "is_pregnant": {
+          "name": "Embarazada",
+          "description": "Activa o desactiva el modo de embarazo."
+        },
+        "pregnancy_start_date": {
+          "name": "Inicio del embarazo",
+          "description": "Primer día de la última menstruación."
+        }
+      }
+    },
+    "update_pregnancy_date": {
+      "name": "Actualizar el inicio del embarazo",
+      "description": "Actualiza el primer día de la última menstruación usado para los cálculos del embarazo.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "pregnancy_start_date": {
+          "name": "Inicio del embarazo",
+          "description": "Primer día de la última menstruación."
+        }
+      }
+    },
+    "set_menarche_mode": {
+      "name": "Establecer el modo de menarquia",
+      "description": "Activa el seguimiento previo a la menarquia o confirma que ya ha ocurrido la menarquia. Sirve para seguir los signos de la pubertad antes del primer período.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "is_menarche": {
+          "name": "Menarquia ocurrida",
+          "description": "Indica si el primer período ya ha ocurrido."
+        },
+        "estimated_menarche_date": {
+          "name": "Fecha estimada de menarquia",
+          "description": "Fecha prevista del primer período."
+        },
+        "family_menarche_age": {
+          "name": "Edad de menarquia en la familia",
+          "description": "Edad a la que familiares cercanas tuvieron su primer período."
+        }
+      }
+    },
+    "update_menarche_date": {
+      "name": "Actualizar la fecha de menarquia",
+      "description": "Registra la fecha real en la que ocurrió la menarquia (primer período).",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "log_first_period": {
+      "name": "Registrar el primer período",
+      "description": "Registra de forma atómica la fecha de menarquia y añade el primer inicio de ciclo. Úsalo para sacar un perfil del modo previo a la menarquia cuando empieza el primer período.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Fecha en formato AAAA-MM-DD."
+        }
+      }
+    },
+    "get_menarche_info": {
+      "name": "Obtener información de la menarquia",
+      "description": "Obtiene los datos de seguimiento de menarquia y premenarquia de un perfil.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "add_pre_menarche_sign": {
+      "name": "Añadir un signo corporal premenárquico",
+      "description": "Registra o actualiza un signo corporal de la pubertad para el seguimiento previo a la menarquia (clasificación de Tanner).",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "pre_menarche_sign": {
+          "name": "Signo corporal",
+          "description": "Signo corporal de la pubertad que se registra."
+        },
+        "tanner_stage": {
+          "name": "Estadio de Tanner",
+          "description": "Estadio de Tanner del signo, por ejemplo stage_2."
+        }
+      }
+    },
+    "remove_pre_menarche_sign": {
+      "name": "Eliminar un signo corporal premenárquico",
+      "description": "Elimina un signo corporal de la pubertad registrado del seguimiento previo a la menarquia.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "pre_menarche_sign": {
+          "name": "Signo corporal",
+          "description": "Signo corporal de la pubertad que se registra."
+        }
+      }
+    },
+    "set_menopause_mode": {
+      "name": "Establecer el modo de menopausia",
+      "description": "Activa o desactiva el modo de seguimiento de la menopausia.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "is_menopause": {
+          "name": "Menopausia",
+          "description": "Activa o desactiva el modo de seguimiento de la menopausia."
+        },
+        "menopause_start_date": {
+          "name": "Inicio de la menopausia",
+          "description": "Fecha en que comenzó la menopausia."
+        }
+      }
+    },
+    "update_menopause_date": {
+      "name": "Actualizar la fecha de menopausia",
+      "description": "Actualiza la fecha de inicio de la menopausia.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "menopause_start_date": {
+          "name": "Inicio de la menopausia",
+          "description": "Fecha en que comenzó la menopausia."
+        }
+      }
+    },
+    "save_timer_state": {
+      "name": "Guardar el estado del temporizador",
+      "description": "Guarda el estado actual de la cuenta atrás (tiempo restante, producto elegido, en marcha/en pausa) para que sobreviva a las recargas de página y esté disponible en otros dispositivos. Lo llama automáticamente la tarjeta del temporizador de cuenta atrás del período.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "remaining_seconds": {
+          "name": "Segundos restantes",
+          "description": "Segundos que quedan en el temporizador."
+        },
+        "total_seconds": {
+          "name": "Segundos totales",
+          "description": "Duración total del temporizador en segundos."
+        },
+        "selected_product": {
+          "name": "Producto seleccionado",
+          "description": "Producto para el que se usa el temporizador."
+        },
+        "is_running": {
+          "name": "En marcha",
+          "description": "Indica si el temporizador está en marcha (true) o en pausa (false)."
+        },
+        "saved_at": {
+          "name": "Guardado a las",
+          "description": "Momento del guardado como marca de tiempo en milisegundos."
+        }
+      }
+    },
+    "export_doctor_report": {
+      "name": "Exportar informe médico (HTML)",
+      "description": "Genera un informe médico profesional en HTML a partir del historial de ciclos y los datos de síntomas. El archivo se guarda en `<config>/menstruation_cycle_exports/`. Ábrelo en un navegador y usa «Imprimir en PDF» para crear un PDF.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "days_back": {
+          "name": "Días atrás",
+          "description": "Cuántos días hacia atrás cubre el informe."
+        },
+        "patient_name": {
+          "name": "Nombre de la paciente",
+          "description": "Nombre que aparece en el informe."
+        },
+        "patient_birthdate": {
+          "name": "Fecha de nacimiento de la paciente",
+          "description": "Fecha de nacimiento que aparece en el informe."
+        },
+        "language": {
+          "name": "Idioma",
+          "description": "Idioma del informe."
+        }
+      }
+    },
+    "set_profile_visibility": {
+      "name": "Establecer la visibilidad del perfil",
+      "description": "Define cuántos datos de ciclo/síntomas de este perfil aparecen en los atributos del sensor (tarjetas del panel y la vista rápida de las aplicaciones complementarias). «full» lo muestra todo como hasta ahora. «status_only» lo reduce a valores de previsión (próximo inicio previsto, duración media del ciclo, duración del período), sin detalles de síntomas, estado de ánimo, anticoncepción, embarazo ni menarquia. «private» oculta todo salvo que el perfil existe. Nota: solo afecta a los atributos pasivos del sensor, no a servicios como get_full_history/get_cycle_predictions, que llama deliberadamente quien tiene acceso a esta integración.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "level": {
+          "name": "Nivel de visibilidad",
+          "description": "full, status_only o private."
+        }
+      }
+    },
+    "get_household_summary": {
+      "name": "Obtener el resumen del hogar",
+      "description": "Resumen de solo lectura de todos los perfiles cargados (p. ej. cuántos perfiles están ahora en su período o en su fase fértil). Respeta el nivel de visibilidad de cada perfil: un perfil en «private» solo cuenta en el total de perfiles y su entrada no muestra más que su existencia."
+    },
+    "get_dashboard_prefs": {
+      "name": "Obtener las preferencias del panel",
+      "description": "Interno: recupera la configuración guardada de widgets y categorías del panel (visibilidad, orden) de la persona conectada para un perfil, de modo que el panel de Lovelace se mantenga sincronizado entre navegadores y dispositivos en lugar de depender del localStorage de un solo navegador. No está pensado para automatizaciones.",
+      "fields": {
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        }
+      }
+    },
+    "save_dashboard_prefs": {
+      "name": "Guardar las preferencias del panel",
+      "description": "Interno: guarda la configuración de widgets y categorías del panel (visibilidad, orden) de la persona conectada para un perfil. No está pensado para automatizaciones.",
+      "fields": {
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "prefs": {
+          "name": "Preferencias",
+          "description": "Preferencias del panel (orden y visibilidad de los widgets) como objeto."
         }
       }
     }

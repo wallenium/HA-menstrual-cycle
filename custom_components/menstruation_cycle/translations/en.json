@@ -237,6 +237,10 @@
         "date": {
           "name": "Date",
           "description": "Optional ISO date to backfill. Defaults to today."
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Home Assistant area the stock or usage belongs to."
         }
       }
     },
@@ -327,6 +331,18 @@
         "date_format": {
           "name": "Date format",
           "description": "How to interpret slash-separated dates: 'auto' (default) only accepts ISO/dotted dates, 'dmy' treats DD/MM/YYYY as day-first, 'mdy' treats MM/DD/YYYY as month-first."
+        },
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
         }
       }
     },
@@ -341,6 +357,18 @@
         "date_format": {
           "name": "Date format",
           "description": "How to interpret slash-separated dates: 'auto' (default) only accepts ISO/dotted dates, 'dmy' treats DD/MM/YYYY as day-first, 'mdy' treats MM/DD/YYYY as month-first."
+        },
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
         }
       }
     },
@@ -381,6 +409,648 @@
         "entry_id": {
           "name": "Entry ID",
           "description": "Config entry identifier."
+        }
+      }
+    },
+    "add_cycle_start": {
+      "name": "Add cycle start day",
+      "description": "Add one confirmed bleeding day in YYYY-MM-DD format.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "remove_cycle_start": {
+      "name": "Remove cycle start day",
+      "description": "Remove one confirmed bleeding day in YYYY-MM-DD format.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "set_cycle_history": {
+      "name": "Replace full cycle history",
+      "description": "Replace complete confirmed bleeding history with a list of dates.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "dates": {
+          "name": "Dates",
+          "description": "List of bleeding-day dates in YYYY-MM-DD format."
+        }
+      }
+    },
+    "set_period_duration": {
+      "name": "Set period duration days",
+      "description": "Set forecasted period duration (used for card markers).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Period duration in days (1-14)."
+        }
+      }
+    },
+    "erase_all_history": {
+      "name": "Erase all cycle history",
+      "description": "Destructive action. Deletes the complete stored history. Safety checks: - works only when `erase_all` is exactly `true` - requires explicit `entity_id` (sensor id) This helps prevent accidental destructive calls (e.g. shell command without target).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "erase_all": {
+          "name": "Erase all",
+          "description": "Must be exactly true to confirm the deletion."
+        }
+      }
+    },
+    "export_history": {
+      "name": "Export cycle history",
+      "description": "Exports the current history to a local file. Files are written to `<config>/menstruation_cycle_exports/`. Supported formats: `csv`, `txt`.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "format": {
+          "name": "Format",
+          "description": "Export file format: csv or txt."
+        },
+        "filename": {
+          "name": "File name",
+          "description": "Optional file name without extension."
+        }
+      }
+    },
+    "refresh_cycle_model": {
+      "name": "Refresh cycle model",
+      "description": "Recalculate all date-based sensor values, including days until next predicted start.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
+    },
+    "manage_household_inventory": {
+      "name": "Manage household inventory",
+      "description": "Manage shared household stock for tampons, pads, cups, liners, and period underwear.",
+      "fields": {
+        "inventory_action": {
+          "name": "Inventory action",
+          "description": "What to do with the stock: set, add, consume, set_thresholds, add_to_shopping_list, reset, set_area_tracking."
+        },
+        "product": {
+          "name": "Product",
+          "description": "Product type."
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "Number of items."
+        },
+        "warning_threshold": {
+          "name": "Warning threshold",
+          "description": "Stock level at which a warning is shown."
+        },
+        "critical_threshold": {
+          "name": "Critical threshold",
+          "description": "Stock level at which the stock counts as critical."
+        },
+        "member": {
+          "name": "Member",
+          "description": "Household member the stock belongs to."
+        },
+        "underwear_total_owned": {
+          "name": "Underwear owned",
+          "description": "Total number of period underwear pieces owned."
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Home Assistant area the stock or usage belongs to."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Turn household inventory tracking on or off."
+        }
+      }
+    },
+    "add_symptom": {
+      "name": "Add or update symptom data for a date",
+      "description": "Add or update symptom data for a specific date. Data is merged with existing entries.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        },
+        "symptom_data": {
+          "name": "Symptom data",
+          "description": "Symptom values to store for the date."
+        }
+      }
+    },
+    "remove_symptom": {
+      "name": "Remove symptom data for a date",
+      "description": "Remove all symptom data for a specific date.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "get_symptom": {
+      "name": "Get symptom data for a date",
+      "description": "Retrieve symptom data for a specific date.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "compare_current_cycle": {
+      "name": "Compare current cycle",
+      "description": "Compares the current, still-ongoing cycle against the recent average (last up to 7 completed cycles): how many days it has run so far relative to the average cycle length, and how many pain days have been logged so far compared to the average pain days per completed cycle. Read-only, changes nothing.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
+    },
+    "set_pregnancy_mode": {
+      "name": "Set pregnancy mode",
+      "description": "Enable or disable pregnancy mode. When enabled, the sensor reports pregnancy state with weeks pregnant and due date.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "is_pregnant": {
+          "name": "Pregnant",
+          "description": "Turn pregnancy mode on or off."
+        },
+        "pregnancy_start_date": {
+          "name": "Pregnancy start date",
+          "description": "First day of the last menstrual period."
+        }
+      }
+    },
+    "update_pregnancy_date": {
+      "name": "Update pregnancy start date",
+      "description": "Update the first day of the last menstrual period used for pregnancy calculations.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "pregnancy_start_date": {
+          "name": "Pregnancy start date",
+          "description": "First day of the last menstrual period."
+        }
+      }
+    },
+    "set_menarche_mode": {
+      "name": "Set menarche mode",
+      "description": "Enable pre-menarche tracking or confirm that menarche has occurred. Use this for tracking puberty signs before the first period.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "is_menarche": {
+          "name": "Menarche occurred",
+          "description": "Whether the first period has already occurred."
+        },
+        "estimated_menarche_date": {
+          "name": "Estimated menarche date",
+          "description": "Expected date of the first period."
+        },
+        "family_menarche_age": {
+          "name": "Family menarche age",
+          "description": "Age at which close family members had their first period."
+        }
+      }
+    },
+    "update_menarche_date": {
+      "name": "Update menarche date",
+      "description": "Record the actual date when menarche (first period) occurred.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "log_first_period": {
+      "name": "Log first period",
+      "description": "Atomically records menarche date and adds the first cycle start. Use this to transition a profile out of Pre-Menarche mode when the first period begins.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date in YYYY-MM-DD format."
+        }
+      }
+    },
+    "get_menarche_info": {
+      "name": "Get menarche information",
+      "description": "Retrieve menarche and pre-menarche tracking data for a profile.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
+    },
+    "add_pre_menarche_sign": {
+      "name": "Add pre-menarche body sign",
+      "description": "Record or update a puberty body sign for pre-menarche tracking (Tanner stage classification).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "pre_menarche_sign": {
+          "name": "Body sign",
+          "description": "Puberty body sign to record."
+        },
+        "tanner_stage": {
+          "name": "Tanner stage",
+          "description": "Tanner stage of the sign, for example stage_2."
+        }
+      }
+    },
+    "remove_pre_menarche_sign": {
+      "name": "Remove pre-menarche body sign",
+      "description": "Remove a recorded puberty body sign from pre-menarche tracking.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "pre_menarche_sign": {
+          "name": "Body sign",
+          "description": "Puberty body sign to record."
+        }
+      }
+    },
+    "set_menopause_mode": {
+      "name": "Set menopause mode",
+      "description": "Enable or disable menopause tracking mode.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "is_menopause": {
+          "name": "Menopause",
+          "description": "Turn menopause tracking mode on or off."
+        },
+        "menopause_start_date": {
+          "name": "Menopause start date",
+          "description": "Date when menopause began."
+        }
+      }
+    },
+    "update_menopause_date": {
+      "name": "Update menopause date",
+      "description": "Update the menopause start date.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "menopause_start_date": {
+          "name": "Menopause start date",
+          "description": "Date when menopause began."
+        }
+      }
+    },
+    "save_timer_state": {
+      "name": "Save timer state",
+      "description": "Persist the current countdown timer state (remaining time, selected product, running/paused) so it survives page reloads and is available on other devices. Called automatically by the Period Countdown Timer card.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "remaining_seconds": {
+          "name": "Remaining seconds",
+          "description": "Seconds left on the timer."
+        },
+        "total_seconds": {
+          "name": "Total seconds",
+          "description": "Total duration of the timer in seconds."
+        },
+        "selected_product": {
+          "name": "Selected product",
+          "description": "Product the timer is used for."
+        },
+        "is_running": {
+          "name": "Running",
+          "description": "Whether the timer is running (true) or paused (false)."
+        },
+        "saved_at": {
+          "name": "Saved at",
+          "description": "Time of saving as a millisecond timestamp."
+        }
+      }
+    },
+    "export_doctor_report": {
+      "name": "Export doctor report (HTML)",
+      "description": "Generates a professional HTML medical report from the cycle history and symptom data. The file is saved to `<config>/menstruation_cycle_exports/`. Open the file in a browser and use \"Print to PDF\" to create a PDF.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "days_back": {
+          "name": "Days back",
+          "description": "How many days back the report covers."
+        },
+        "patient_name": {
+          "name": "Patient name",
+          "description": "Name shown on the report."
+        },
+        "patient_birthdate": {
+          "name": "Patient birth date",
+          "description": "Birth date shown on the report."
+        },
+        "language": {
+          "name": "Language",
+          "description": "Language of the report."
+        }
+      }
+    },
+    "set_profile_visibility": {
+      "name": "Set profile visibility",
+      "description": "Set how much of this profile's cycle/symptom data appears in its sensor attributes (dashboard cards, and the \"at a glance\" overview in companion apps). \"full\" shows everything as before. \"status_only\" reduces it to forecast-only values (next predicted start, average cycle length, period duration) - no symptom, mood, contraception, pregnancy or menarche details. \"private\" hides everything except that the profile exists. Note: this only affects the sensor's passive/at-a-glance attributes, not services like get_full_history/get_cycle_predictions that are called deliberately by whoever has access to this integration.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "level": {
+          "name": "Visibility level",
+          "description": "full, status_only or private."
+        }
+      }
+    },
+    "get_household_summary": {
+      "name": "Get household summary",
+      "description": "Read-only one-glance overview across every currently loaded profile (e.g. how many profiles are currently in their period, or fertile, right now). Respects each profile's visibility_level — a profile set to \"private\" contributes only to the total profile count, with its own entry showing no more than that it exists."
+    },
+    "get_dashboard_prefs": {
+      "name": "Get dashboard prefs",
+      "description": "Internal: read back the signed-in person's saved dashboard widget/category settings (visibility, order) for a profile, so the Lovelace dashboard panel stays in sync across browsers/devices instead of being stuck to one browser's localStorage. Not meant to be called from automations.",
+      "fields": {
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        }
+      }
+    },
+    "save_dashboard_prefs": {
+      "name": "Save dashboard prefs",
+      "description": "Internal: persist the signed-in person's dashboard widget/category settings (visibility, order) for a profile. Not meant to be called from automations.",
+      "fields": {
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "prefs": {
+          "name": "Preferences",
+          "description": "Dashboard preferences (widget order and visibility) as an object."
         }
       }
     }

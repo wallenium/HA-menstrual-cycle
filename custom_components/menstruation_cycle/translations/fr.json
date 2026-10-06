@@ -237,6 +237,10 @@
         "date": {
           "name": "Date",
           "description": "Date ISO facultative pour une saisie rétroactive. Par défaut, aujourd'hui."
+        },
+        "area_id": {
+          "name": "Zone",
+          "description": "Zone Home Assistant à laquelle le stock ou l'usage est associé."
         }
       }
     },
@@ -327,6 +331,18 @@
         "date_format": {
           "name": "Format de date",
           "description": "Comment interpréter les dates à barres obliques : 'auto' (défaut) n'accepte que les dates ISO/à points, 'dmy' traite JJ/MM/AAAA comme jour en premier, 'mdy' traite MM/JJ/AAAA comme mois en premier."
+        },
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
         }
       }
     },
@@ -341,6 +357,18 @@
         "date_format": {
           "name": "Format de date",
           "description": "Comment interpréter les dates avec barres obliques : 'auto' (défaut) n'accepte que les dates ISO/à points, 'dmy' traite JJ/MM/AAAA comme jour en premier, 'mdy' traite MM/JJ/AAAA comme mois en premier."
+        },
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
         }
       }
     },
@@ -381,6 +409,648 @@
         "entry_id": {
           "name": "ID d'entrée",
           "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "add_cycle_start": {
+      "name": "Ajouter un début de cycle",
+      "description": "Ajoute un jour de saignement confirmé au format AAAA-MM-JJ.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "remove_cycle_start": {
+      "name": "Supprimer un début de cycle",
+      "description": "Supprime un jour de saignement confirmé au format AAAA-MM-JJ.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "set_cycle_history": {
+      "name": "Remplacer tout l'historique des cycles",
+      "description": "Remplace tout l'historique confirmé des saignements par une liste de dates.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "dates": {
+          "name": "Dates",
+          "description": "Liste des jours de saignement au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "set_period_duration": {
+      "name": "Définir la durée des règles",
+      "description": "Définit la durée prévue des règles (utilisée pour les repères des cartes).",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Durée des règles en jours (1-14)."
+        }
+      }
+    },
+    "erase_all_history": {
+      "name": "Effacer tout l'historique des cycles",
+      "description": "Action destructrice. Supprime tout l'historique enregistré. Contrôles de sécurité : ne fonctionne que si `erase_all` vaut exactement `true` et exige une `entity_id` explicite (id du capteur). Cela évite les appels accidentels (par ex. une commande shell sans cible).",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "erase_all": {
+          "name": "Tout effacer",
+          "description": "Doit valoir exactement true pour confirmer la suppression."
+        }
+      }
+    },
+    "export_history": {
+      "name": "Exporter l'historique des cycles",
+      "description": "Exporte l'historique actuel vers un fichier local. Les fichiers sont écrits dans `<config>/menstruation_cycle_exports/`. Formats pris en charge : `csv`, `txt`.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "format": {
+          "name": "Format",
+          "description": "Format du fichier d'export : csv ou txt."
+        },
+        "filename": {
+          "name": "Nom du fichier",
+          "description": "Nom de fichier facultatif, sans extension."
+        }
+      }
+    },
+    "refresh_cycle_model": {
+      "name": "Actualiser le modèle de cycle",
+      "description": "Recalcule toutes les valeurs de capteurs basées sur des dates, y compris les jours avant le prochain début prévu.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "manage_household_inventory": {
+      "name": "Gérer le stock du foyer",
+      "description": "Gère le stock partagé du foyer en tampons, serviettes, coupes, protège-slips et culottes menstruelles.",
+      "fields": {
+        "inventory_action": {
+          "name": "Action sur le stock",
+          "description": "Action à effectuer sur le stock : set, add, consume, set_thresholds, add_to_shopping_list, reset, set_area_tracking."
+        },
+        "product": {
+          "name": "Produit",
+          "description": "Type de produit."
+        },
+        "quantity": {
+          "name": "Quantité",
+          "description": "Nombre d'articles."
+        },
+        "warning_threshold": {
+          "name": "Seuil d'avertissement",
+          "description": "Niveau de stock à partir duquel un avertissement s'affiche."
+        },
+        "critical_threshold": {
+          "name": "Seuil critique",
+          "description": "Niveau de stock à partir duquel le stock est considéré comme critique."
+        },
+        "member": {
+          "name": "Membre",
+          "description": "Membre du foyer auquel appartient le stock."
+        },
+        "underwear_total_owned": {
+          "name": "Culottes possédées",
+          "description": "Nombre total de culottes menstruelles possédées."
+        },
+        "area_id": {
+          "name": "Zone",
+          "description": "Zone Home Assistant à laquelle le stock ou l'usage est associé."
+        },
+        "enabled": {
+          "name": "Activé",
+          "description": "Active ou désactive le suivi du stock du foyer."
+        }
+      }
+    },
+    "add_symptom": {
+      "name": "Ajouter ou mettre à jour les symptômes d'une date",
+      "description": "Ajoute ou met à jour les données de symptômes d'une date précise. Les données sont fusionnées avec les entrées existantes.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        },
+        "symptom_data": {
+          "name": "Données de symptômes",
+          "description": "Valeurs de symptômes à enregistrer pour la date."
+        }
+      }
+    },
+    "remove_symptom": {
+      "name": "Supprimer les symptômes d'une date",
+      "description": "Supprime toutes les données de symptômes d'une date précise.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "get_symptom": {
+      "name": "Obtenir les symptômes d'une date",
+      "description": "Récupère les données de symptômes d'une date précise.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "compare_current_cycle": {
+      "name": "Comparer le cycle actuel",
+      "description": "Compare le cycle actuel, encore en cours, à la moyenne récente (jusqu'à 7 cycles terminés) : depuis combien de jours il dure par rapport à la durée moyenne du cycle et combien de jours de douleur ont été saisis jusqu'ici par rapport à la moyenne des jours de douleur par cycle terminé. Lecture seule, ne modifie rien.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "set_pregnancy_mode": {
+      "name": "Définir le mode grossesse",
+      "description": "Active ou désactive le mode grossesse. Une fois activé, le capteur indique l'état de grossesse avec les semaines et la date prévue d'accouchement.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "is_pregnant": {
+          "name": "Enceinte",
+          "description": "Active ou désactive le mode grossesse."
+        },
+        "pregnancy_start_date": {
+          "name": "Début de grossesse",
+          "description": "Premier jour des dernières règles."
+        }
+      }
+    },
+    "update_pregnancy_date": {
+      "name": "Mettre à jour le début de grossesse",
+      "description": "Met à jour le premier jour des dernières règles utilisé pour les calculs de grossesse.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "pregnancy_start_date": {
+          "name": "Début de grossesse",
+          "description": "Premier jour des dernières règles."
+        }
+      }
+    },
+    "set_menarche_mode": {
+      "name": "Définir le mode ménarche",
+      "description": "Active le suivi pré-ménarche ou confirme que la ménarche a eu lieu. À utiliser pour suivre les signes de puberté avant les premières règles.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "is_menarche": {
+          "name": "Ménarche survenue",
+          "description": "Indique si les premières règles ont déjà eu lieu."
+        },
+        "estimated_menarche_date": {
+          "name": "Date estimée de la ménarche",
+          "description": "Date prévue des premières règles."
+        },
+        "family_menarche_age": {
+          "name": "Âge de ménarche dans la famille",
+          "description": "Âge auquel des proches ont eu leurs premières règles."
+        }
+      }
+    },
+    "update_menarche_date": {
+      "name": "Mettre à jour la date de ménarche",
+      "description": "Enregistre la date réelle de la ménarche (premières règles).",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "log_first_period": {
+      "name": "Enregistrer les premières règles",
+      "description": "Enregistre de façon atomique la date de ménarche et ajoute le premier début de cycle. À utiliser pour faire sortir un profil du mode pré-ménarche quand les premières règles commencent.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date au format AAAA-MM-JJ."
+        }
+      }
+    },
+    "get_menarche_info": {
+      "name": "Obtenir les informations de ménarche",
+      "description": "Récupère les données de suivi de la ménarche et de la pré-ménarche d'un profil.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "add_pre_menarche_sign": {
+      "name": "Ajouter un signe corporel pré-ménarche",
+      "description": "Enregistre ou met à jour un signe corporel de la puberté pour le suivi pré-ménarche (classification de Tanner).",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "pre_menarche_sign": {
+          "name": "Signe corporel",
+          "description": "Signe corporel de la puberté à enregistrer."
+        },
+        "tanner_stage": {
+          "name": "Stade de Tanner",
+          "description": "Stade de Tanner du signe, par exemple stage_2."
+        }
+      }
+    },
+    "remove_pre_menarche_sign": {
+      "name": "Supprimer un signe corporel pré-ménarche",
+      "description": "Supprime un signe corporel de la puberté enregistré du suivi pré-ménarche.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "pre_menarche_sign": {
+          "name": "Signe corporel",
+          "description": "Signe corporel de la puberté à enregistrer."
+        }
+      }
+    },
+    "set_menopause_mode": {
+      "name": "Définir le mode ménopause",
+      "description": "Active ou désactive le mode de suivi de la ménopause.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "is_menopause": {
+          "name": "Ménopause",
+          "description": "Active ou désactive le mode de suivi de la ménopause."
+        },
+        "menopause_start_date": {
+          "name": "Début de la ménopause",
+          "description": "Date de début de la ménopause."
+        }
+      }
+    },
+    "update_menopause_date": {
+      "name": "Mettre à jour la date de ménopause",
+      "description": "Met à jour la date de début de la ménopause.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "menopause_start_date": {
+          "name": "Début de la ménopause",
+          "description": "Date de début de la ménopause."
+        }
+      }
+    },
+    "save_timer_state": {
+      "name": "Enregistrer l'état du minuteur",
+      "description": "Enregistre l'état actuel du compte à rebours (temps restant, produit choisi, en cours/en pause) pour qu'il survive aux rechargements de page et soit disponible sur d'autres appareils. Appelé automatiquement par la carte du minuteur de règles.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "remaining_seconds": {
+          "name": "Secondes restantes",
+          "description": "Secondes restantes sur le minuteur."
+        },
+        "total_seconds": {
+          "name": "Secondes totales",
+          "description": "Durée totale du minuteur en secondes."
+        },
+        "selected_product": {
+          "name": "Produit sélectionné",
+          "description": "Produit pour lequel le minuteur est utilisé."
+        },
+        "is_running": {
+          "name": "En cours",
+          "description": "Indique si le minuteur est en cours (true) ou en pause (false)."
+        },
+        "saved_at": {
+          "name": "Enregistré à",
+          "description": "Moment de l'enregistrement sous forme d'horodatage en millisecondes."
+        }
+      }
+    },
+    "export_doctor_report": {
+      "name": "Exporter le rapport médical (HTML)",
+      "description": "Génère un rapport médical professionnel en HTML à partir de l'historique des cycles et des symptômes. Le fichier est enregistré dans `<config>/menstruation_cycle_exports/`. Ouvrez-le dans un navigateur et utilisez « Imprimer en PDF » pour créer un PDF.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "days_back": {
+          "name": "Jours en arrière",
+          "description": "Nombre de jours couverts par le rapport."
+        },
+        "patient_name": {
+          "name": "Nom de la patiente",
+          "description": "Nom affiché sur le rapport."
+        },
+        "patient_birthdate": {
+          "name": "Date de naissance de la patiente",
+          "description": "Date de naissance affichée sur le rapport."
+        },
+        "language": {
+          "name": "Langue",
+          "description": "Langue du rapport."
+        }
+      }
+    },
+    "set_profile_visibility": {
+      "name": "Définir la visibilité du profil",
+      "description": "Définit la quantité de données de cycle/symptômes de ce profil qui apparaît dans les attributs du capteur (cartes du tableau de bord et aperçu rapide des applications compagnons). « full » montre tout comme avant. « status_only » se limite aux valeurs de prévision (prochain début prévu, durée moyenne du cycle, durée des règles), sans détails sur les symptômes, l'humeur, la contraception, la grossesse ou la ménarche. « private » masque tout sauf l'existence du profil. Remarque : cela n'affecte que les attributs passifs du capteur, pas les services comme get_full_history/get_cycle_predictions, appelés délibérément par les personnes ayant accès à cette intégration.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "level": {
+          "name": "Niveau de visibilité",
+          "description": "full, status_only ou private."
+        }
+      }
+    },
+    "get_household_summary": {
+      "name": "Obtenir le résumé du foyer",
+      "description": "Aperçu en lecture seule de tous les profils actuellement chargés (par ex. combien sont en règles ou en période fertile). Respecte le niveau de visibilité de chaque profil : un profil en « private » ne compte que dans le total des profils et son entrée n'indique rien de plus que son existence."
+    },
+    "get_dashboard_prefs": {
+      "name": "Obtenir les préférences du tableau de bord",
+      "description": "Interne : relit les réglages enregistrés des widgets et catégories du tableau de bord (visibilité, ordre) de la personne connectée pour un profil, afin que le tableau de bord Lovelace reste synchronisé entre navigateurs et appareils au lieu de dépendre du localStorage d'un seul navigateur. Non destiné aux automatisations.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        }
+      }
+    },
+    "save_dashboard_prefs": {
+      "name": "Enregistrer les préférences du tableau de bord",
+      "description": "Interne : enregistre les réglages des widgets et catégories du tableau de bord (visibilité, ordre) de la personne connectée pour un profil. Non destiné aux automatisations.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "prefs": {
+          "name": "Préférences",
+          "description": "Préférences du tableau de bord (ordre et visibilité des widgets) sous forme d'objet."
         }
       }
     }

@@ -237,6 +237,10 @@
         "date": {
           "name": "Datum",
           "description": "Optionales ISO-Datum zum Nachtragen. Standardmäßig heute."
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Home-Assistant-Bereich, dem Vorrat oder Verbrauch zugeordnet wird."
         }
       }
     },
@@ -327,6 +331,18 @@
         "date_format": {
           "name": "Datumsformat",
           "description": "Wie Schrägstrich-Daten interpretiert werden: 'auto' (Standard) akzeptiert nur ISO-/Punkt-Daten, 'dmy' interpretiert TT/MM/JJJJ als Tag zuerst, 'mdy' interpretiert MM/TT/JJJJ als Monat zuerst."
+        },
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
         }
       }
     },
@@ -341,6 +357,18 @@
         "date_format": {
           "name": "Datumsformat",
           "description": "Wie Schrägstrich-Daten interpretiert werden: 'auto' (Standard) akzeptiert nur ISO-/Punkt-Daten, 'dmy' interpretiert TT/MM/JJJJ als Tag zuerst, 'mdy' interpretiert MM/TT/JJJJ als Monat zuerst."
+        },
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
         }
       }
     },
@@ -381,6 +409,648 @@
         "entry_id": {
           "name": "Eintrags-ID",
           "description": "Kennung des Konfigurationseintrags."
+        }
+      }
+    },
+    "add_cycle_start": {
+      "name": "Zyklusbeginn hinzufügen",
+      "description": "Fügt einen bestätigten Blutungstag im Format JJJJ-MM-TT hinzu.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "remove_cycle_start": {
+      "name": "Zyklusbeginn entfernen",
+      "description": "Entfernt einen bestätigten Blutungstag im Format JJJJ-MM-TT.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "set_cycle_history": {
+      "name": "Gesamten Zyklusverlauf ersetzen",
+      "description": "Ersetzt den kompletten bestätigten Blutungsverlauf durch eine Liste von Daten.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "dates": {
+          "name": "Daten",
+          "description": "Liste der Blutungstage im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "set_period_duration": {
+      "name": "Perioden-Dauer festlegen",
+      "description": "Legt die prognostizierte Dauer der Periode fest (für die Markierungen in den Karten).",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "days": {
+          "name": "Tage",
+          "description": "Dauer der Periode in Tagen (1-14)."
+        }
+      }
+    },
+    "erase_all_history": {
+      "name": "Gesamten Zyklusverlauf löschen",
+      "description": "Destruktive Aktion. Löscht den kompletten gespeicherten Verlauf. Sicherheitsprüfungen: funktioniert nur, wenn `erase_all` genau `true` ist, und erfordert eine explizite `entity_id` (Sensor-ID). So werden versehentliche Aufrufe verhindert (z. B. ein Shell-Befehl ohne Ziel).",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "erase_all": {
+          "name": "Alles löschen",
+          "description": "Muss genau true sein, um das Löschen zu bestätigen."
+        }
+      }
+    },
+    "export_history": {
+      "name": "Zyklusverlauf exportieren",
+      "description": "Exportiert den aktuellen Verlauf in eine lokale Datei. Die Dateien werden in `<config>/menstruation_cycle_exports/` gespeichert. Unterstützte Formate: `csv`, `txt`.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "format": {
+          "name": "Format",
+          "description": "Dateiformat des Exports: csv oder txt."
+        },
+        "filename": {
+          "name": "Dateiname",
+          "description": "Optionaler Dateiname ohne Endung."
+        }
+      }
+    },
+    "refresh_cycle_model": {
+      "name": "Zyklusmodell aktualisieren",
+      "description": "Berechnet alle datumsbasierten Sensorwerte neu, einschließlich der Tage bis zum nächsten vorhergesagten Beginn.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        }
+      }
+    },
+    "manage_household_inventory": {
+      "name": "Haushaltsvorrat verwalten",
+      "description": "Verwaltet den gemeinsamen Haushaltsvorrat an Tampons, Binden, Tassen, Slipeinlagen und Periodenunterwäsche.",
+      "fields": {
+        "inventory_action": {
+          "name": "Vorrats-Aktion",
+          "description": "Was mit dem Vorrat geschehen soll: set, add, consume, set_thresholds, add_to_shopping_list, reset, set_area_tracking."
+        },
+        "product": {
+          "name": "Produkt",
+          "description": "Produkttyp."
+        },
+        "quantity": {
+          "name": "Menge",
+          "description": "Anzahl der Stück."
+        },
+        "warning_threshold": {
+          "name": "Warnschwelle",
+          "description": "Vorratsmenge, ab der eine Warnung angezeigt wird."
+        },
+        "critical_threshold": {
+          "name": "Kritische Schwelle",
+          "description": "Vorratsmenge, ab der der Vorrat als kritisch gilt."
+        },
+        "member": {
+          "name": "Mitglied",
+          "description": "Haushaltsmitglied, zu dem der Vorrat gehört."
+        },
+        "underwear_total_owned": {
+          "name": "Vorhandene Unterwäsche",
+          "description": "Gesamtzahl der vorhandenen Periodenunterwäsche."
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Home-Assistant-Bereich, dem Vorrat oder Verbrauch zugeordnet wird."
+        },
+        "enabled": {
+          "name": "Aktiviert",
+          "description": "Haushaltsvorrats-Verfolgung ein- oder ausschalten."
+        }
+      }
+    },
+    "add_symptom": {
+      "name": "Symptomdaten für ein Datum hinzufügen oder aktualisieren",
+      "description": "Fügt Symptomdaten für ein bestimmtes Datum hinzu oder aktualisiert sie. Die Daten werden mit vorhandenen Einträgen zusammengeführt.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        },
+        "symptom_data": {
+          "name": "Symptomdaten",
+          "description": "Symptomwerte, die für das Datum gespeichert werden."
+        }
+      }
+    },
+    "remove_symptom": {
+      "name": "Symptomdaten für ein Datum entfernen",
+      "description": "Entfernt alle Symptomdaten für ein bestimmtes Datum.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "get_symptom": {
+      "name": "Symptomdaten für ein Datum abrufen",
+      "description": "Ruft die Symptomdaten für ein bestimmtes Datum ab.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "compare_current_cycle": {
+      "name": "Aktuellen Zyklus vergleichen",
+      "description": "Vergleicht den aktuellen, noch laufenden Zyklus mit dem jüngsten Durchschnitt (bis zu 7 abgeschlossene Zyklen): wie viele Tage er im Verhältnis zur durchschnittlichen Zykluslänge bisher läuft und wie viele Schmerztage bisher erfasst wurden im Vergleich zu den durchschnittlichen Schmerztagen pro abgeschlossenem Zyklus. Nur lesend, ändert nichts.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        }
+      }
+    },
+    "set_pregnancy_mode": {
+      "name": "Schwangerschaftsmodus festlegen",
+      "description": "Aktiviert oder deaktiviert den Schwangerschaftsmodus. Wenn aktiviert, meldet der Sensor den Schwangerschaftsstatus mit Schwangerschaftswoche und Geburtstermin.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "is_pregnant": {
+          "name": "Schwanger",
+          "description": "Schwangerschaftsmodus ein- oder ausschalten."
+        },
+        "pregnancy_start_date": {
+          "name": "Schwangerschaftsbeginn",
+          "description": "Erster Tag der letzten Periode."
+        }
+      }
+    },
+    "update_pregnancy_date": {
+      "name": "Schwangerschaftsbeginn aktualisieren",
+      "description": "Aktualisiert den ersten Tag der letzten Periode, der für die Schwangerschaftsberechnung verwendet wird.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "pregnancy_start_date": {
+          "name": "Schwangerschaftsbeginn",
+          "description": "Erster Tag der letzten Periode."
+        }
+      }
+    },
+    "set_menarche_mode": {
+      "name": "Menarche-Modus festlegen",
+      "description": "Aktiviert die Pre-Menarche-Beobachtung oder bestätigt, dass die Menarche eingetreten ist. Dient zur Beobachtung von Pubertätszeichen vor der ersten Periode.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "is_menarche": {
+          "name": "Menarche eingetreten",
+          "description": "Ob die erste Periode bereits eingetreten ist."
+        },
+        "estimated_menarche_date": {
+          "name": "Geschätztes Menarche-Datum",
+          "description": "Erwartetes Datum der ersten Periode."
+        },
+        "family_menarche_age": {
+          "name": "Menarche-Alter in der Familie",
+          "description": "Alter, in dem nahe Verwandte ihre erste Periode hatten."
+        }
+      }
+    },
+    "update_menarche_date": {
+      "name": "Menarche-Datum aktualisieren",
+      "description": "Erfasst das tatsächliche Datum, an dem die Menarche (erste Periode) eingetreten ist.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "log_first_period": {
+      "name": "Erste Periode erfassen",
+      "description": "Erfasst atomar das Menarche-Datum und fügt den ersten Zyklusbeginn hinzu. Damit wechselt ein Profil aus dem Pre-Menarche-Modus, sobald die erste Periode beginnt.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Datum im Format JJJJ-MM-TT."
+        }
+      }
+    },
+    "get_menarche_info": {
+      "name": "Menarche-Informationen abrufen",
+      "description": "Ruft die Menarche- und Pre-Menarche-Daten eines Profils ab.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        }
+      }
+    },
+    "add_pre_menarche_sign": {
+      "name": "Pre-Menarche-Körperzeichen hinzufügen",
+      "description": "Erfasst oder aktualisiert ein Pubertäts-Körperzeichen für die Pre-Menarche-Beobachtung (Tanner-Stadien).",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "pre_menarche_sign": {
+          "name": "Körperzeichen",
+          "description": "Pubertäts-Körperzeichen, das erfasst wird."
+        },
+        "tanner_stage": {
+          "name": "Tanner-Stadium",
+          "description": "Tanner-Stadium des Zeichens, z. B. stage_2."
+        }
+      }
+    },
+    "remove_pre_menarche_sign": {
+      "name": "Pre-Menarche-Körperzeichen entfernen",
+      "description": "Entfernt ein erfasstes Pubertäts-Körperzeichen aus der Pre-Menarche-Beobachtung.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "pre_menarche_sign": {
+          "name": "Körperzeichen",
+          "description": "Pubertäts-Körperzeichen, das erfasst wird."
+        }
+      }
+    },
+    "set_menopause_mode": {
+      "name": "Menopause-Modus festlegen",
+      "description": "Aktiviert oder deaktiviert den Menopause-Beobachtungsmodus.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "is_menopause": {
+          "name": "Menopause",
+          "description": "Menopause-Beobachtungsmodus ein- oder ausschalten."
+        },
+        "menopause_start_date": {
+          "name": "Menopause-Beginn",
+          "description": "Datum, an dem die Menopause begann."
+        }
+      }
+    },
+    "update_menopause_date": {
+      "name": "Menopause-Datum aktualisieren",
+      "description": "Aktualisiert das Beginn-Datum der Menopause.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "menopause_start_date": {
+          "name": "Menopause-Beginn",
+          "description": "Datum, an dem die Menopause begann."
+        }
+      }
+    },
+    "save_timer_state": {
+      "name": "Timer-Status speichern",
+      "description": "Speichert den aktuellen Zustand des Countdown-Timers (Restzeit, gewähltes Produkt, läuft/pausiert), damit er Seiten-Neuladungen übersteht und auf anderen Geräten verfügbar ist. Wird automatisch von der Perioden-Countdown-Timer-Karte aufgerufen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "remaining_seconds": {
+          "name": "Verbleibende Sekunden",
+          "description": "Verbleibende Sekunden des Timers."
+        },
+        "total_seconds": {
+          "name": "Gesamtsekunden",
+          "description": "Gesamtdauer des Timers in Sekunden."
+        },
+        "selected_product": {
+          "name": "Gewähltes Produkt",
+          "description": "Produkt, für das der Timer verwendet wird."
+        },
+        "is_running": {
+          "name": "Läuft",
+          "description": "Ob der Timer läuft (true) oder pausiert (false)."
+        },
+        "saved_at": {
+          "name": "Gespeichert um",
+          "description": "Zeitpunkt des Speicherns als Zeitstempel in Millisekunden."
+        }
+      }
+    },
+    "export_doctor_report": {
+      "name": "Arztbericht exportieren (HTML)",
+      "description": "Erzeugt aus Zyklusverlauf und Symptomdaten einen professionellen medizinischen HTML-Bericht. Die Datei wird in `<config>/menstruation_cycle_exports/` gespeichert. Öffne sie im Browser und nutze „Als PDF drucken“, um ein PDF zu erstellen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "days_back": {
+          "name": "Tage zurück",
+          "description": "Wie viele Tage rückwirkend der Bericht abdeckt."
+        },
+        "patient_name": {
+          "name": "Name der Patientin",
+          "description": "Name, der im Bericht angezeigt wird."
+        },
+        "patient_birthdate": {
+          "name": "Geburtsdatum der Patientin",
+          "description": "Geburtsdatum, das im Bericht angezeigt wird."
+        },
+        "language": {
+          "name": "Sprache",
+          "description": "Sprache des Berichts."
+        }
+      }
+    },
+    "set_profile_visibility": {
+      "name": "Profilsichtbarkeit festlegen",
+      "description": "Legt fest, wie viel der Zyklus-/Symptomdaten dieses Profils in den Sensor-Attributen erscheint (Dashboard-Karten und die Übersicht „auf einen Blick“ in Companion-Apps). „full“ zeigt alles wie bisher. „status_only“ reduziert auf reine Prognosewerte (nächster vorhergesagter Beginn, durchschnittliche Zykluslänge, Periodendauer) – ohne Symptom-, Stimmungs-, Verhütungs-, Schwangerschafts- oder Menarche-Details. „private“ verbirgt alles außer der Tatsache, dass das Profil existiert. Hinweis: Das betrifft nur die passiven Attribute des Sensors, nicht Services wie get_full_history/get_cycle_predictions, die bewusst von Personen mit Zugriff auf diese Integration aufgerufen werden.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "level": {
+          "name": "Sichtbarkeitsstufe",
+          "description": "full, status_only oder private."
+        }
+      }
+    },
+    "get_household_summary": {
+      "name": "Haushaltsübersicht abrufen",
+      "description": "Nur lesende Übersicht über alle aktuell geladenen Profile (z. B. wie viele Profile gerade ihre Periode haben oder fruchtbar sind). Berücksichtigt die Sichtbarkeitsstufe jedes Profils – ein Profil mit „private“ zählt nur zur Gesamtzahl der Profile, sein Eintrag zeigt nicht mehr als dass es existiert."
+    },
+    "get_dashboard_prefs": {
+      "name": "Dashboard-Einstellungen abrufen",
+      "description": "Intern: Liest die gespeicherten Dashboard-Widget-/Kategorie-Einstellungen (Sichtbarkeit, Reihenfolge) der angemeldeten Person für ein Profil zurück, damit das Lovelace-Dashboard über Browser und Geräte hinweg synchron bleibt, statt am localStorage eines Browsers zu hängen. Nicht für Automationen gedacht.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        }
+      }
+    },
+    "save_dashboard_prefs": {
+      "name": "Dashboard-Einstellungen speichern",
+      "description": "Intern: Speichert die Dashboard-Widget-/Kategorie-Einstellungen (Sichtbarkeit, Reihenfolge) der angemeldeten Person für ein Profil. Nicht für Automationen gedacht.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "prefs": {
+          "name": "Einstellungen",
+          "description": "Dashboard-Einstellungen (Widget-Reihenfolge und Sichtbarkeit) als Objekt."
         }
       }
     }
