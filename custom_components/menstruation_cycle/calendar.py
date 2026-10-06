@@ -48,7 +48,9 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_CALENDAR_ENABLED,
+    CONF_CHECKUP_INTERVAL_MONTHS,
     DEFAULT_CALENDAR_ENABLED,
+    DEFAULT_CHECKUP_INTERVAL_MONTHS,
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
     VISIBILITY_LEVEL_FULL,
@@ -57,7 +59,7 @@ from .const import (
     menstruation_object_ids_for_profile,
 )
 from .ical import _ics_strings
-from .model import build_cycle_model, project_range_windows
+from .model import build_cycle_model, next_checkup_due, project_range_windows
 from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -168,7 +170,11 @@ class MenstruationCycleCalendar(CalendarEntity):
             cycle_model.avg_cycle_length,
         )
         visibility_level = getattr(runtime, "visibility_level", VISIBILITY_LEVEL_FULL)
-        self._events = _build_events(windows, self.hass.config.language, visibility_level)
+        checkup_due = next_checkup_due(
+            runtime.symptom_history,
+            int(self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+        )
+        self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due)
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
@@ -204,6 +210,7 @@ def _build_events(
     windows: dict[str, Any] | None,
     lang: str | None,
     visibility_level: str = VISIBILITY_LEVEL_FULL,
+    checkup_due: date | None = None,
 ) -> list[CalendarEvent]:
     """Turn project_range_windows()'s output into CalendarEvent objects.
 
@@ -220,11 +227,23 @@ def _build_events(
     sensor attributes, so the two surfaces agree on what "private"/
     "status_only" mean instead of silently disagreeing.
     """
-    if not windows or visibility_level == VISIBILITY_LEVEL_PRIVATE:
+    if visibility_level == VISIBILITY_LEVEL_PRIVATE:
         return []
+    windows = windows or {}
 
     strings = _ics_strings(lang)
     events: list[CalendarEvent] = []
+
+    # Routine checkup due date (last logged appointment + interval); health detail, so full visibility only.
+    if checkup_due is not None and visibility_level == VISIBILITY_LEVEL_FULL:
+        events.append(
+            CalendarEvent(
+                start=checkup_due,
+                end=checkup_due + timedelta(days=1),
+                summary=strings["checkup"],
+                uid=f"checkup-{checkup_due.isoformat()}",
+            )
+        )
 
     for window in windows.get("period_windows", []):
         try:

@@ -106,6 +106,7 @@
     dashboard_temperature_rise: 'Temperature rise',
     dashboard_contraception_accuracy_warning: 'Hormonal contraception can suppress ovulation — cycle and fertility predictions are unreliable while active.',
     dashboard_contraception_renewal_due: 'Contraception method may need renewal soon',
+    dashboard_contraception_pill_streak: 'Pill streak: {days} days in a row (last logged: {date})',
     dashboard_log_today: 'Log today',
     dashboard_cancel: 'Cancel',
     dashboard_save: 'Save',
@@ -6478,6 +6479,12 @@
         parts.push(
           `<p style="margin:${status.is_hormonal ? '4px' : '0'} 0 0;">🔔 ${escapeHtml(this._t('dashboard_contraception_renewal_due') || 'Verhütungsmethode könnte bald einen Wechsel benötigen')} (${escapeHtml(dueLabel)})</p>`
         );
+      }
+      if (status.current_method === 'pill' && status.pill_streak_days > 0 && status.pill_last_taken) {
+        const streakText = (this._t('dashboard_contraception_pill_streak') || 'Pillen-Serie: {days} Tage in Folge (zuletzt eingetragen: {date})')
+          .replace('{days}', String(status.pill_streak_days))
+          .replace('{date}', this._formatDate(status.pill_last_taken));
+        parts.push(`<p style="margin:${parts.length ? '4px' : '0'} 0 0;">💊 ${escapeHtml(streakText)}</p>`);
       }
       if (!parts.length) return '';
 

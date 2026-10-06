@@ -812,6 +812,7 @@
   "dashboard_bbt_subtitle_pending": "no 3-over-6 confirmation yet",
   "dashboard_contraception_accuracy_warning": "Hormonal contraception can suppress ovulation — cycle and fertility predictions are unreliable while active.",
   "dashboard_contraception_renewal_due": "Contraception method may need renewal soon",
+  "dashboard_contraception_pill_streak": "Pill streak: {days} days in a row (last logged: {date})",
   "cat_contraception_method": "Contraception method",
   "opt_pill": "Pill",
   "opt_hormonal_iud": "Hormonal IUD",

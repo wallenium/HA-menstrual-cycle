@@ -812,6 +812,7 @@
   "dashboard_bbt_subtitle_pending": "noch keine 3-über-6-Bestätigung",
   "dashboard_contraception_accuracy_warning": "Hormonelle Verhütung kann den Eisprung unterdrücken — Zyklus- und Fruchtbarkeitsvorhersagen sind währenddessen nicht zuverlässig.",
   "dashboard_contraception_renewal_due": "Verhütungsmethode könnte bald einen Wechsel benötigen",
+  "dashboard_contraception_pill_streak": "Pillen-Serie: {days} Tage in Folge (zuletzt eingetragen: {date})",
   "cat_contraception_method": "Verhütungsmethode",
   "opt_pill": "Pille",
   "opt_hormonal_iud": "Hormonspirale",

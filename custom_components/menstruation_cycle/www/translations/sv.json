@@ -779,6 +779,7 @@
   "dashboard_bbt_subtitle_pending": "ingen 3-över-6-bekräftelse ännu",
   "dashboard_contraception_accuracy_warning": "Hormonella preventivmedel kan hämma ägglossningen — cykel- och fertilitetsprognoser är opålitliga så länge det används.",
   "dashboard_contraception_renewal_due": "Preventivmedlet kan snart behöva bytas",
+  "dashboard_contraception_pill_streak": "P-pillerserie: {days} dagar i rad (senast loggat: {date})",
   "cat_contraception_method": "Preventivmedel",
   "opt_pill": "P-piller",
   "opt_hormonal_iud": "Hormonspiral",

@@ -779,6 +779,7 @@
   "dashboard_bbt_subtitle_pending": "pas encore de confirmation 3 sur 6",
   "dashboard_contraception_accuracy_warning": "La contraception hormonale peut supprimer l'ovulation — les prévisions de cycle et de fertilité ne sont pas fiables pendant son utilisation.",
   "dashboard_contraception_renewal_due": "La méthode contraceptive pourrait bientôt nécessiter un renouvellement",
+  "dashboard_contraception_pill_streak": "Série de pilules : {days} jours d'affilée (dernière saisie : {date})",
   "cat_contraception_method": "Méthode contraceptive",
   "opt_pill": "Pilule",
   "opt_hormonal_iud": "Stérilet hormonal",

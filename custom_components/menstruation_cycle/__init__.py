@@ -31,7 +31,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
@@ -86,6 +86,11 @@ from .const import (
     NOTIFY_ACTION_PERIOD_STARTED_PREFIX,
     NOTIFY_ACTION_PILL_TAKEN_PREFIX,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
+    CONF_PILL_PAUSE_DAYS,
+    DEFAULT_PILL_PAUSE_DAYS,
+    NOTIFY_ACTION_PILL_SNOOZE_PREFIX,
+    NOTIFY_ACTION_LOG_SNOOZE_PREFIX,
+    NOTIFY_SNOOZE_SECONDS,
     CONF_NOTIFY_PILL_ENABLED,
     CONF_NOTIFY_PILL_TIME,
     DEFAULT_NOTIFY_PILL_ENABLED,
@@ -949,6 +954,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Pill reminder",
         "pill_message": "{name}: time to take the pill.",
         "action_pill_taken": "Pill taken",
+        "action_snooze": "Remind me in 1 hour",
         "recap_title": "Cycle recap",
         "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
         "badge_title": "New badge unlocked",
@@ -967,6 +973,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Pillen-Erinnerung",
         "pill_message": "{name}: Zeit für die Pille.",
         "action_pill_taken": "Pille genommen",
+        "action_snooze": "In 1 Stunde erinnern",
         "recap_title": "Zyklus-Rückblick",
         "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
         "badge_title": "Neues Abzeichen freigeschaltet",
@@ -985,6 +992,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Rappel de pilule",
         "pill_message": "{name} : c'est l'heure de prendre la pilule.",
         "action_pill_taken": "Pilule prise",
+        "action_snooze": "Me rappeler dans 1 heure",
         "recap_title": "Bilan du cycle",
         "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
         "badge_title": "Nouveau badge débloqué",
@@ -1003,6 +1011,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Recordatorio de la píldora",
         "pill_message": "{name}: es hora de tomar la píldora.",
         "action_pill_taken": "Píldora tomada",
+        "action_snooze": "Recordar en 1 hora",
         "recap_title": "Resumen del ciclo",
         "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
         "badge_title": "Nueva insignia desbloqueada",
@@ -1021,6 +1030,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Påminnelse: p-piller",
         "pill_message": "{name}: dags att ta p-pillret.",
         "action_pill_taken": "P-piller taget",
+        "action_snooze": "Påminn om 1 timme",
         "recap_title": "Cykelsammanfattning",
         "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
         "badge_title": "Nytt märke upplåst",
@@ -1263,7 +1273,11 @@ async def _async_send_log_reminder(hass: HomeAssistant, entry: ConfigEntry, runt
         return
     strings = _notify_strings(hass.config.language)
     await _async_send_notification(
-        hass, entry, strings["log_title"], strings["log_message"].format(name=runtime.friendly_name)
+        hass,
+        entry,
+        strings["log_title"],
+        strings["log_message"].format(name=runtime.friendly_name),
+        [{"action": f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}", "title": strings["action_snooze"]}],
     )
 
 
@@ -1271,10 +1285,14 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
     """Remind to take the pill while pill is the profile's current method and today's intake is not logged yet."""
     if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
         return
-    from .model import compute_contraception_status
+    from .model import compute_contraception_status, pill_break_active
 
-    today_iso = dt_util.now().date().isoformat()
-    if compute_contraception_status(runtime.symptom_history, today=dt_util.now().date())["current_method"] != CONTRACEPTION_METHOD_PILL:
+    today = dt_util.now().date()
+    today_iso = today.isoformat()
+    status = compute_contraception_status(runtime.symptom_history, today=today)
+    if status["current_method"] != CONTRACEPTION_METHOD_PILL:
+        return
+    if pill_break_active(status, today, int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS))):
         return
     # ponytail: intake == today's entry has contraception_method "pill"; no separate per-day intake field
     if any(
@@ -1288,7 +1306,10 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
         entry,
         strings["pill_title"],
         strings["pill_message"].format(name=runtime.friendly_name),
-        [{"action": f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}", "title": strings["action_pill_taken"]}],
+        [
+            {"action": f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}", "title": strings["action_pill_taken"]},
+            {"action": f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}", "title": strings["action_snooze"]},
+        ],
     )
 
 
@@ -2531,8 +2552,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_notification_timer(hass, entry, runtime)
 
+    def _schedule_snooze(send: Any) -> None:
+        # ponytail: in-memory timer, a restart within the hour drops the snoozed reminder
+        async def _async_snoozed(_now: datetime) -> None:
+            try:
+                await send(hass, entry, runtime)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Snoozed reminder failed for %s", entry.entry_id)
+
+        entry.async_on_unload(async_call_later(hass, NOTIFY_SNOOZE_SECONDS, _async_snoozed))
+
     async def _async_handle_mobile_action(event: Any) -> None:
-        # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake.
+        # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake, snooze re-sends the reminder later.
         action = event.data.get("action")
         base = {SERVICE_FIELD_ENTRY_ID: entry.entry_id, SERVICE_FIELD_DATE: dt_util.now().date().isoformat()}
         try:
@@ -2543,6 +2574,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 await _async_handle_add_symptom(
                     hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
                 )
+            elif action == f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}":
+                _schedule_snooze(_async_send_pill_reminder)
+            elif action == f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}":
+                _schedule_snooze(_async_send_log_reminder)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Could not handle notification action %s for %s", action, entry.entry_id)
 

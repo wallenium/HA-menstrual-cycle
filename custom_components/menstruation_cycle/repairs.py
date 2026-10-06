@@ -18,7 +18,6 @@ from homeassistant.helpers.issue_registry import (
 )
 
 from .const import (
-    CHECKUP_APPOINTMENT_TYPES,
     CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS,
     CYCLE_PATTERN_PAIN_DAYS_THRESHOLD,
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
@@ -26,10 +25,10 @@ from .const import (
     PERIOD_OVERDUE_DAYS,
     PERIOD_PROLONGED_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
-    SYMPTOM_APPOINTMENTS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
 )
+from .model import last_checkup_date, next_checkup_due
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -754,24 +753,12 @@ def async_check_checkup_overdue(
     Only profiles that logged at least one gynecologist/pap-smear appointment are
     considered, so nobody who never tracks appointments gets nagged. interval_months 0 turns it off.
     """
-    if interval_months <= 0:
+    last = last_checkup_date(symptom_history)
+    due = next_checkup_due(symptom_history, interval_months)
+    if last is None or due is None or today < due:
         async_delete_checkup_overdue_issue(hass, entry_id)
         return
-    last_iso: str | None = None
-    for entry in symptom_history:
-        if not isinstance(entry, dict) or not entry.get("date"):
-            continue
-        value = entry.get(SYMPTOM_APPOINTMENTS)
-        if CHECKUP_APPOINTMENT_TYPES.intersection(value if isinstance(value, list) else [value]):
-            last_iso = max(last_iso or "", str(entry["date"]))
-    try:
-        days = (today - date.fromisoformat(last_iso)).days if last_iso else 0
-    except ValueError:
-        days = 0
-    if not last_iso or days < round(interval_months * 365 / 12):
-        async_delete_checkup_overdue_issue(hass, entry_id)
-        return
-    async_create_checkup_overdue_issue(hass, entry_id, entry_title, last_iso, days // 30, interval_months)
+    async_create_checkup_overdue_issue(hass, entry_id, entry_title, last.isoformat(), (today - last).days // 30, interval_months)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

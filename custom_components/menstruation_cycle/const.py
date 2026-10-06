@@ -135,6 +135,15 @@ NOTIFY_PILL_FOLLOWUP_HOURS_MAX = 12
 # Short recap notification after a new cycle start is logged, see __init__.py::_async_check_and_send_notifications.
 CONF_NOTIFY_RECAP_ENABLED = "notify_recap_enabled"
 DEFAULT_NOTIFY_RECAP_ENABLED = False
+# Pill break: a pill run of at least PILL_ACTIVE_DAYS_MIN days followed by up to CONF_PILL_PAUSE_DAYS days without an intake is treated as the pack break (no reminder), 0 = continuous use.
+CONF_PILL_PAUSE_DAYS = "pill_pause_days"
+DEFAULT_PILL_PAUSE_DAYS = 0
+PILL_PAUSE_DAYS_MAX = 7
+PILL_ACTIVE_DAYS_MIN = 21
+# "Remind me in 1 hour" button on the pill and evening log reminders (in-memory timer).
+NOTIFY_ACTION_PILL_SNOOZE_PREFIX = "MCYCLE_PILL_SNOOZE_"
+NOTIFY_ACTION_LOG_SNOOZE_PREFIX = "MCYCLE_LOG_SNOOZE_"
+NOTIFY_SNOOZE_SECONDS = 3600
 # Aktions-Button "Periode hat begonnen" in der Perioden-Erinnerung (nur
 # mobile_app-Ziele): Action-ID = Prefix + entry_id, Event siehe Home-Assistant-
 # Companion-App-Doku.

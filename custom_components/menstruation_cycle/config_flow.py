@@ -51,6 +51,7 @@ from .const import (
     CONF_NOTIFY_PILL_ENABLED,
     CONF_NOTIFY_PILL_TIME,
     CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+    CONF_PILL_PAUSE_DAYS,
     CONF_NOTIFY_RECAP_ENABLED,
     CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
@@ -75,6 +76,8 @@ from .const import (
     DEFAULT_NOTIFY_PILL_ENABLED,
     DEFAULT_NOTIFY_PILL_TIME,
     DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS,
+    DEFAULT_PILL_PAUSE_DAYS,
+    PILL_PAUSE_DAYS_MAX,
     DEFAULT_NOTIFY_RECAP_ENABLED,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CHECKUP_INTERVAL_MONTHS_MAX,
@@ -177,6 +180,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_PILL_ENABLED,
             CONF_NOTIFY_PILL_TIME,
             CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+            CONF_PILL_PAUSE_DAYS,
             CONF_NOTIFY_RECAP_ENABLED,
             CONF_CHECKUP_INTERVAL_MONTHS,
             CONF_CALENDAR_ENABLED,
@@ -507,6 +511,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_pill_followup_hours": int(
                 self._entry.options.get(CONF_NOTIFY_PILL_FOLLOWUP_HOURS, DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS)
             ),
+            "pill_pause_days": int(self._entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)),
             "notify_recap_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
             ),
@@ -624,6 +629,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
             if d.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED):
                 lines.append(f"  - Pill reminder at: {d.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME)}")
+            if d.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS):
+                lines.append(f"  - Pill break: {d.get(CONF_PILL_PAUSE_DAYS)} day(s) per pack")
             if d.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED):
                 lines.append("  - Cycle recap after each new cycle start")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
@@ -761,6 +768,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                         NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
                         int(user_input.get(CONF_NOTIFY_PILL_FOLLOWUP_HOURS, DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS)),
                     ),
+                )
+                self._data[CONF_PILL_PAUSE_DAYS] = max(
+                    0, min(PILL_PAUSE_DAYS_MAX, int(user_input.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
                 )
                 self._data[CONF_NOTIFY_RECAP_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
@@ -909,6 +919,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_NOTIFY_PILL_FOLLOWUP_HOURS, default=c["notify_pill_followup_hours"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_PILL_FOLLOWUP_HOURS_MAX)),
+                vol.Optional(CONF_PILL_PAUSE_DAYS, default=c["pill_pause_days"]): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=PILL_PAUSE_DAYS_MAX)
+                ),
                 vol.Optional(CONF_NOTIFY_RECAP_ENABLED, default=c["notify_recap_enabled"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
@@ -1233,6 +1246,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_PILL_ENABLED: d[CONF_NOTIFY_PILL_ENABLED],
                 CONF_NOTIFY_PILL_TIME: d[CONF_NOTIFY_PILL_TIME],
                 CONF_NOTIFY_PILL_FOLLOWUP_HOURS: d[CONF_NOTIFY_PILL_FOLLOWUP_HOURS],
+                CONF_PILL_PAUSE_DAYS: d[CONF_PILL_PAUSE_DAYS],
                 CONF_NOTIFY_RECAP_ENABLED: d[CONF_NOTIFY_RECAP_ENABLED],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],

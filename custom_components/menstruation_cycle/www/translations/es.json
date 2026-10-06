@@ -779,6 +779,7 @@
   "dashboard_bbt_subtitle_pending": "aún sin confirmación 3 sobre 6",
   "dashboard_contraception_accuracy_warning": "La anticoncepción hormonal puede suprimir la ovulación — las predicciones de ciclo y fertilidad no son fiables mientras esté activa.",
   "dashboard_contraception_renewal_due": "El método anticonceptivo podría necesitar renovación pronto",
+  "dashboard_contraception_pill_streak": "Racha de píldoras: {days} días seguidos (último registro: {date})",
   "cat_contraception_method": "Método anticonceptivo",
   "opt_pill": "Píldora",
   "opt_hormonal_iud": "DIU hormonal",

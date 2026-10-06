@@ -9,6 +9,9 @@ from typing import Any
 from .const import (
     CONTRACEPTION_HORMONAL_METHODS,
     CONTRACEPTION_METHOD_PILL,
+    PILL_ACTIVE_DAYS_MIN,
+    CHECKUP_APPOINTMENT_TYPES,
+    SYMPTOM_APPOINTMENTS,
     CONTRACEPTION_RENEWAL_MONTHS,
     CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS,
     CYCLE_LENGTH_OVERRIDE_MAX,
@@ -3022,6 +3025,31 @@ def build_cycle_model(
     )
 
 
+def last_checkup_date(symptom_history: list[dict[str, Any]]) -> date | None:
+    """Date of the most recent logged gynecologist/pap-smear appointment, or None."""
+    last: date | None = None
+    for entry in symptom_history:
+        if not isinstance(entry, dict) or not entry.get("date"):
+            continue
+        value = entry.get(SYMPTOM_APPOINTMENTS)
+        if not CHECKUP_APPOINTMENT_TYPES.intersection(value if isinstance(value, list) else [value]):
+            continue
+        try:
+            day = date.fromisoformat(str(entry["date"]))
+        except ValueError:
+            continue
+        last = day if last is None else max(last, day)
+    return last
+
+
+def next_checkup_due(symptom_history: list[dict[str, Any]], interval_months: int) -> date | None:
+    """Last logged checkup plus interval_months, or None (interval 0 = off, or no checkup logged yet)."""
+    last = last_checkup_date(symptom_history)
+    if last is None or interval_months <= 0:
+        return None
+    return last + timedelta(days=round(interval_months * 365 / 12))
+
+
 def compute_contraception_status(
     symptom_history: list[dict[str, Any]],
     *,
@@ -3049,6 +3077,8 @@ def compute_contraception_status(
             CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS of today.
         pill_streak_days: int — consecutive days with a logged "pill" entry,
             ending today (or yesterday while today's intake is not logged yet).
+        pill_last_run_days: int — length of the most recent run of consecutive
+            "pill" days, even if it ended days ago (used to recognise the pack break).
         pill_last_taken: str | None — most recent date with a logged "pill" entry.
     """
     today = today or date.today()
@@ -3059,6 +3089,7 @@ def compute_contraception_status(
         "renewal_due_date": None,
         "renewal_reminder_due": False,
         "pill_streak_days": 0,
+        "pill_last_run_days": 0,
         "pill_last_taken": None,
     }
     if not symptom_history:
@@ -3110,20 +3141,37 @@ def compute_contraception_status(
         renewal_reminder_due = (due_date_obj - today).days <= CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS
 
     pill_dates = {
-        entry_date for entry_date, method in dated_entries if method == CONTRACEPTION_METHOD_PILL
+        entry_date
+        for entry_date, method in dated_entries
+        if method == CONTRACEPTION_METHOD_PILL and entry_date <= today.isoformat()
     }
-    pill_day = today if today.isoformat() in pill_dates else today - timedelta(days=1)
-    pill_streak = 0
-    while pill_day.isoformat() in pill_dates:
-        pill_streak += 1
-        pill_day -= timedelta(days=1)
+    pill_last_taken = max(pill_dates) if pill_dates else None
+    pill_run = 0
+    if pill_last_taken:
+        pill_day = date.fromisoformat(pill_last_taken)
+        while pill_day.isoformat() in pill_dates:
+            pill_run += 1
+            pill_day -= timedelta(days=1)
+    still_running = pill_last_taken is not None and (today - date.fromisoformat(pill_last_taken)).days <= 1
 
     return {
-        "pill_streak_days": pill_streak,
-        "pill_last_taken": max(pill_dates) if pill_dates else None,
+        "pill_streak_days": pill_run if still_running else 0,
+        "pill_last_run_days": pill_run,
+        "pill_last_taken": pill_last_taken,
         "current_method": current_method,
         "method_since": method_since,
         "is_hormonal": is_hormonal,
         "renewal_due_date": renewal_due_date,
         "renewal_reminder_due": renewal_reminder_due,
     }
+
+
+def pill_break_active(status: dict[str, Any], today: date, pause_days: int) -> bool:
+    """True while the pack break is running: a full pill run (PILL_ACTIVE_DAYS_MIN+) ended 1..pause_days days ago.
+
+    ponytail: a profile that started logging mid-pack has no full run yet and is reminded through its first break.
+    """
+    last = status.get("pill_last_taken")
+    if not pause_days or not last or status.get("pill_last_run_days", 0) < PILL_ACTIVE_DAYS_MIN:
+        return False
+    return 0 < (today - date.fromisoformat(last)).days <= pause_days
