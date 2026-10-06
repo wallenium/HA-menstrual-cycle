@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import html
+import logging
 from collections import Counter
 from datetime import date, timedelta
 from statistics import mean, stdev
 from typing import Any
 
 from .model import analyze_nfp_cycle, bleeding_blocks, grouped_cycle_starts, normalize_history
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +252,7 @@ def _compute_nfp_confirmation_stats(
             result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
         except Exception:  # noqa: BLE001 — one malformed cycle's analysis
             # failing shouldn't break the whole report.
+            _LOGGER.debug("Skipping cycle starting %s in the temperature summary", start_iso, exc_info=True)
             continue
         if result.get("temperature_rise_detected"):
             confirmed_count += 1

@@ -3890,8 +3890,8 @@ def _apply_backup_to_runtime(
     symptom_history restores entries only for dates not already logged
     locally. Life-stage dicts (pregnancy/menarche/pre_menarche/menopause/
     noncycle) are restored only if not currently active/tracking locally.
-    product_usage and cycle_length_override are restored only if currently
-    empty/unset. Settings that aren't "data" (onboarding_stage,
+    product_usage, cycle_length_override and the hospital-bag checklist are
+    restored only if currently empty/unset. Settings that aren't "data" (onboarding_stage,
     visibility_level, period_duration_days) are deliberately left untouched
     in merge mode - only overwrite mode touches those, so merge mode's
     promise stays simple: "fills in missing data, never touches your
@@ -4034,6 +4034,12 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
             continue
         implausible_gaps = _apply_backup_to_runtime(runtime, backup_profile, mode)
         await _async_save_and_notify(hass, runtime)
+        # The hospital-bag checklist lives only in storage, not on the runtime. Merge keeps an existing list.
+        bag_items = backup_profile.get("hospital_bag_items")
+        if isinstance(bag_items, list) and (
+            mode == "overwrite" or not await runtime.storage.async_load_hospital_bag_items()
+        ):
+            await runtime.storage.async_save_hospital_bag_items(bag_items)
         restored.append(profile_slug)
         if implausible_gaps:
             warnings[profile_slug] = [
@@ -5086,7 +5092,7 @@ def _build_lovelace_resource_payloads(resource_url: str) -> list[dict[str, str]]
         seen_type_keys.add(CONF_RESOURCE_TYPE_WS)
         payloads.append({"url": resource_url, CONF_RESOURCE_TYPE_WS: CARD_RESOURCE_TYPE})
     except Exception:
-        pass
+        _LOGGER.debug("Lovelace resource type key unavailable; using fallback payload keys")
 
     for type_key in ("res_type", CONF_TYPE):
         if type_key in seen_type_keys:
@@ -5102,6 +5108,7 @@ async def _async_get_lovelace_resource_collection(hass: HomeAssistant) -> tuple[
     try:
         from homeassistant.components.lovelace.resources import async_get_resource_collection
     except Exception:
+        _LOGGER.debug("Lovelace resource collection helper not importable", exc_info=True)
         async_get_resource_collection = None
 
     if async_get_resource_collection is not None:

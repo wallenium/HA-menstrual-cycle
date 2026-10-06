@@ -23,4 +23,5 @@
 - "Day of the week" off-by-one bug (#255).
 - Stale translation cache in the household summary.
 - Backup import robustness (warning on implausibly close cycle-start dates).
+- `import_full_backup` did not restore the hospital-bag checklist, although `export_full_backup` wrote it.
 - Services `compare_current_cycle`, `export_doctor_report`, `get_cycle_predictions`, dashboard-preference, household-summary, profile-visibility and basal-temperature reimport services stayed registered after the last entry was removed.
