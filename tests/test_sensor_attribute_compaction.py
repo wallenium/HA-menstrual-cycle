@@ -7,70 +7,51 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
 
 
-def _install_homeassistant_stubs() -> None:
-    homeassistant = types.ModuleType("homeassistant")
-    homeassistant.__path__ = []
-    sys.modules.setdefault("homeassistant", homeassistant)
+class _Anything(type):
+    """Metaclass so enum-like stubs (SensorDeviceClass.DATE etc.) resolve any attribute."""
 
-    components = types.ModuleType("homeassistant.components")
-    components.__path__ = []
-    sys.modules.setdefault("homeassistant.components", components)
+    def __getattr__(cls, name):
+        return name
 
-    sensor_mod = types.ModuleType("homeassistant.components.sensor")
-    sensor_mod.SensorEntity = type("SensorEntity", (), {})
-    sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
 
-    config_entries = types.ModuleType("homeassistant.config_entries")
-    config_entries.ConfigEntry = type("ConfigEntry", (), {})
-    sys.modules.setdefault("homeassistant.config_entries", config_entries)
+def _stub_module(name: str, **attrs) -> types.ModuleType:
+    """Module stub whose unknown attributes are empty placeholder classes."""
+    module = types.ModuleType(name)
+    module.__path__ = []
+    module.__getattr__ = lambda attr: _Anything(attr, (), {})
+    for key, value in attrs.items():
+        setattr(module, key, value)
+    return module
 
-    const_mod = types.ModuleType("homeassistant.const")
-    const_mod.CONF_TYPE = "type"
-    const_mod.Platform = type("Platform", (), {"SENSOR": "sensor"})
-    sys.modules.setdefault("homeassistant.const", const_mod)
 
-    core = types.ModuleType("homeassistant.core")
-    core.HomeAssistant = type("HomeAssistant", (), {})
-    core.ServiceCall = type("ServiceCall", (), {})
-    sys.modules.setdefault("homeassistant.core", core)
+_HA_MODULES = (
+    "homeassistant", "homeassistant.components", "homeassistant.components.sensor",
+    "homeassistant.config_entries", "homeassistant.const", "homeassistant.core",
+    "homeassistant.helpers", "homeassistant.helpers.device_registry",
+    "homeassistant.helpers.dispatcher", "homeassistant.helpers.entity",
+    "homeassistant.helpers.entity_platform", "homeassistant.helpers.event",
+    "homeassistant.helpers.typing", "homeassistant.util", "homeassistant.util.dt",
+)
 
-    helpers = types.ModuleType("homeassistant.helpers")
-    helpers.__path__ = []
-    sys.modules.setdefault("homeassistant.helpers", helpers)
 
-    dispatcher = types.ModuleType("homeassistant.helpers.dispatcher")
-    dispatcher.async_dispatcher_connect = lambda *args, **kwargs: None
-    dispatcher.async_dispatcher_send = lambda *args, **kwargs: None
-    sys.modules.setdefault("homeassistant.helpers.dispatcher", dispatcher)
-
-    entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-    entity_platform.AddEntitiesCallback = type("AddEntitiesCallback", (), {})
-    sys.modules.setdefault("homeassistant.helpers.entity_platform", entity_platform)
-
-    event = types.ModuleType("homeassistant.helpers.event")
-    event.async_track_time_change = lambda *args, **kwargs: None
-    sys.modules.setdefault("homeassistant.helpers.event", event)
-
-    typing_mod = types.ModuleType("homeassistant.helpers.typing")
-    typing_mod.StateType = object
-    sys.modules.setdefault("homeassistant.helpers.typing", typing_mod)
-
-    util = types.ModuleType("homeassistant.util")
-    util.__path__ = []
-    util.slugify = lambda value: str(value).strip().lower().replace(" ", "_")
-    sys.modules.setdefault("homeassistant.util", util)
-
-    dt_mod = types.ModuleType("homeassistant.util.dt")
+def _ha_stubs() -> dict[str, types.ModuleType]:
     from datetime import datetime
 
-    dt_mod.now = lambda: datetime(2026, 8, 1, 8, 0, 0)
-    sys.modules.setdefault("homeassistant.util.dt", dt_mod)
+    stubs = {name: _stub_module(name) for name in _HA_MODULES}
+    stubs["homeassistant.helpers.dispatcher"].async_dispatcher_connect = lambda *a, **k: None
+    stubs["homeassistant.helpers.dispatcher"].async_dispatcher_send = lambda *a, **k: None
+    stubs["homeassistant.helpers.event"].async_track_time_change = lambda *a, **k: None
+    stubs["homeassistant.util"].slugify = lambda value: str(value).strip().lower().replace(" ", "_")
+    stubs["homeassistant.util"].dt = stubs["homeassistant.util.dt"]
+    stubs["homeassistant.util.dt"].now = lambda: datetime(2026, 8, 1, 8, 0, 0)
+    return stubs
 
 
 def _load_module(module_name: str, file_name: str):
@@ -82,14 +63,16 @@ def _load_module(module_name: str, file_name: str):
     return module
 
 
-_install_homeassistant_stubs()
 _pkg = "tstest_compact_attrs"
 package = types.ModuleType(_pkg)
 package.__path__ = [str(COMPONENT_ROOT)]
-sys.modules.setdefault(_pkg, package)
-const = _load_module(f"{_pkg}.const", "const.py")
-_load_module(f"{_pkg}.model", "model.py")
-sensor_module = _load_module(f"{_pkg}.sensor", "sensor.py")
+sys.modules[_pkg] = package
+# stubs are active only while loading, so other test modules keep their own
+with patch.dict(sys.modules, _ha_stubs()):
+    const = _load_module(f"{_pkg}.const", "const.py")
+    _load_module(f"{_pkg}.model", "model.py")
+    _load_module(f"{_pkg}.badges", "badges.py")
+    sensor_module = _load_module(f"{_pkg}.sensor", "sensor.py")
 
 
 class TestSensorAttributeCompaction(unittest.TestCase):

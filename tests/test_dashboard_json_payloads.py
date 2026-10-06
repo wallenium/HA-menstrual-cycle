@@ -31,6 +31,8 @@ def _install_homeassistant_stubs() -> None:
 
     sensor_mod = types.ModuleType("homeassistant.components.sensor")
     sensor_mod.SensorEntity = type("SensorEntity", (), {})
+    sensor_mod.SensorDeviceClass = type("SensorDeviceClass", (), {"TEMPERATURE": "temperature", "DATE": "date"})
+    sensor_mod.SensorStateClass = type("SensorStateClass", (), {"MEASUREMENT": "measurement"})
     sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
 
     config_entries = types.ModuleType("homeassistant.config_entries")
@@ -94,13 +96,31 @@ def _load_module(module_name: str, file_name: str):
     return module
 
 
+class _Placeholder(type):
+    """Metaclass so enum-like stubs (SensorDeviceClass.DATE etc.) resolve any attribute."""
+
+    def __getattr__(cls, name):
+        return name
+
+
+def _make_stubs_permissive() -> None:
+    """Let sensor.py import newer HA names: unknown attributes become placeholder classes."""
+    for name in ("homeassistant.helpers.device_registry", "homeassistant.helpers.entity"):
+        sys.modules.setdefault(name, types.ModuleType(name))
+    for name, module in list(sys.modules.items()):
+        if name.startswith("homeassistant"):
+            module.__getattr__ = lambda attr: _Placeholder(attr, (), {})
+
+
 _install_homeassistant_stubs()
+_make_stubs_permissive()
 _PKG = "tstest_dashboard_json_payloads"
 _package = types.ModuleType(_PKG)
 _package.__path__ = [str(COMPONENT_ROOT)]
 sys.modules.setdefault(_PKG, _package)
 _load_module(f"{_PKG}.const", "const.py")
 _load_module(f"{_PKG}.model", "model.py")
+_load_module(f"{_PKG}.badges", "badges.py")
 sensor_module = _load_module(f"{_PKG}.sensor", "sensor.py")
 
 

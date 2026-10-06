@@ -28,6 +28,8 @@ global.HTMLElement = class HTMLElement {
     this.shadowRoot = {
       innerHTML: '',
       addEventListener: () => {},
+      querySelector: () => null,
+      querySelectorAll: () => [],
     };
     return this.shadowRoot;
   }
@@ -200,6 +202,11 @@ class ClickTarget extends HTMLElement {
     this.dataset = dataset;
     this.checked = false;
     this.value = '';
+    this.classList = { contains: () => false };
+  }
+
+  closest() {
+    return this;
   }
 }
 
@@ -257,24 +264,28 @@ const makeHass = (stateObj) => ({
 
   const panelGeneral = await assignHass(new Panel(), makeHass(makeState()));
   assert.ok(panelGeneral.shadowRoot.innerHTML.includes('Cycle Dashboard'));
-  assert.strictEqual(panelGeneral._prefs.widgetVisibility.progress, true, 'general preset should show progress card');
+  assert.strictEqual(panelGeneral._prefs.widgetVisibility.progress_badges, true, 'general preset should show the progress & badges card');
   assert.strictEqual(panelGeneral._prefs.discreetMode, false, 'general preset should default to non-discreet');
 
   const panelYoung = await assignHass(new Panel(), makeHass(makeState({ onboarding_stage_effective: 'early_menarche' })));
-  assert.strictEqual(panelYoung._prefs.widgetVisibility.progress, false, 'young preset should hide progress card by default');
+  assert.strictEqual(panelYoung._prefs.widgetVisibility.pregnancy_prediction, false, 'young preset should hide the pregnancy prediction by default');
   assert.strictEqual(panelYoung._prefs.discreetMode, true, 'young preset should default to discreet mode');
 
-  panelYoung._prefs.widgetVisibility.quick_log = false;
-  panelYoung._moveWidget('quick_log', 'down');
+  const movedId = panelYoung._prefs.widgetOrder[0];
+  panelYoung._prefs.widgetVisibility[movedId] = false;
+  panelYoung._moveOrderItem('widgetOrder', movedId, 'down');
   panelYoung._savePrefs();
 
   const panelReload = await assignHass(new Panel(), makeHass(makeState({ onboarding_stage_effective: 'early_menarche' })));
-  assert.strictEqual(panelReload._prefs.widgetVisibility.quick_log, false, 'widget visibility should persist');
-  assert.notStrictEqual(panelReload._prefs.widgetOrder[0], 'quick_log', 'widget order should persist');
+  assert.strictEqual(panelReload._prefs.widgetVisibility[movedId], false, 'widget visibility should persist');
+  assert.notStrictEqual(panelReload._prefs.widgetOrder[0], movedId, 'widget order should persist');
 
+  panelReload._prefs.discreetMode = false;
+  panelReload.render();
+  assert.ok(panelReload.shadowRoot.innerHTML.includes('Turn on discreet mode'), 'normal mode should offer the discreet-mode toggle');
   panelReload._prefs.discreetMode = true;
   panelReload.render();
-  assert.ok(panelReload.shadowRoot.innerHTML.includes('Current status'), 'discreet mode should use neutral status labels');
+  assert.ok(panelReload.shadowRoot.innerHTML.includes('Turn off discreet mode'), 'discreet mode should offer turning it off');
 
   console.log('Cycle dashboard panel tests passed.');
 
@@ -287,15 +298,15 @@ const makeHass = (stateObj) => ({
   assert.ok(panelEdit._editDraft, 'entering edit mode should create a draft');
   assert.ok(!panelEdit.shadowRoot.innerHTML.includes('data-action="toggle-edit"') || panelEdit.shadowRoot.innerHTML.includes('data-action="save-edit"'), 'edit panel should show save button');
 
-  panelEdit._editDraft.widgetVisibility.quick_log = false;
+  panelEdit._editDraft.widgetVisibility.kpi_strip = false;
   panelEdit._handleClick({ target: makeClick('cancel-edit') });
   assert.ok(!panelEdit._editMode, 'cancel-edit should exit edit mode');
-  assert.strictEqual(panelEdit._prefs.widgetVisibility.quick_log, true, 'cancel should discard unsaved visibility change');
+  assert.strictEqual(panelEdit._prefs.widgetVisibility.kpi_strip, true, 'cancel should discard unsaved visibility change');
   assert.strictEqual(panelEdit._editDraft, null, 'cancel should clear draft');
 
   const panelSave = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-save-1' } });
   panelSave._handleClick({ target: makeClick('toggle-edit') });
-  panelSave._editDraft.widgetVisibility.reminders = false;
+  panelSave._editDraft.widgetVisibility.statistics_card = false;
   const draftOrder = [...panelSave._editDraft.widgetOrder];
   const temp = draftOrder[0];
   draftOrder[0] = draftOrder[1];
@@ -303,22 +314,23 @@ const makeHass = (stateObj) => ({
   panelSave._editDraft.widgetOrder = draftOrder;
   panelSave._handleClick({ target: makeClick('save-edit') });
   assert.ok(!panelSave._editMode, 'save-edit should exit edit mode');
-  assert.strictEqual(panelSave._prefs.widgetVisibility.reminders, false, 'save should persist visibility change');
+  assert.strictEqual(panelSave._prefs.widgetVisibility.statistics_card, false, 'save should persist visibility change');
   assert.strictEqual(panelSave._prefs.widgetOrder[0], draftOrder[0], 'save should persist order change');
   assert.ok(panelSave.shadowRoot.innerHTML.includes('Dashboard layout saved.'), 'save should show confirmation message');
 
   const panelReload2 = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-save-1' } });
-  assert.strictEqual(panelReload2._prefs.widgetVisibility.reminders, false, 'reloaded panel should see persisted visibility');
+  assert.strictEqual(panelReload2._prefs.widgetVisibility.statistics_card, false, 'reloaded panel should see persisted visibility');
 
   const panelReset = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-reset-1' } });
   panelReset._handleClick({ target: makeClick('toggle-edit') });
-  panelReset._editDraft.widgetVisibility.today_status = false;
+  panelReset._editDraft.widgetVisibility.phase_timeline = false;
   panelReset._handleClick({ target: makeClick('reset-preset') });
   assert.ok(panelReset._editMode, 'reset in edit mode should stay in edit mode');
-  assert.strictEqual(panelReset._editDraft.widgetVisibility.today_status, true, 'reset should restore default visibility in draft');
+  assert.strictEqual(panelReset._editDraft.widgetVisibility.phase_timeline, true, 'reset should restore default visibility in draft');
 
   const panelEmpty = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-empty-1' } });
-  for (const key of Object.keys(panelEmpty._prefs.widgetVisibility)) {
+  // Widgets missing from the preset's visibility map (e.g. long_term_trend) default to visible, so hide every known id.
+  for (const key of [...Object.keys(panelEmpty._prefs.widgetVisibility), ...panelEmpty._prefs.widgetOrder]) {
     panelEmpty._prefs.widgetVisibility[key] = false;
   }
   panelEmpty.render();
@@ -330,25 +342,25 @@ const makeHass = (stateObj) => ({
   assert.ok(panelCorrupt._prefs, 'corrupt storage should not crash');
   assert.ok(Array.isArray(panelCorrupt._prefs.widgetOrder), 'corrupt storage should produce valid widgetOrder');
 
-  const badLayout = { widgetOrder: ['unknown_widget', 'today_status'], widgetVisibility: {} };
+  const badLayout = { widgetOrder: ['unknown_widget', 'statistics_card'], widgetVisibility: {} };
   storage.set('menstruation_cycle.dashboard_prefs.user-bad.alice', JSON.stringify(badLayout));
   const panelBad = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-bad' } });
   assert.ok(!panelBad._prefs.widgetOrder.includes('unknown_widget'), 'unknown keys should be removed');
-  assert.ok(panelBad._prefs.widgetOrder.includes('quick_log'), 'missing known keys should be appended');
+  assert.ok(panelBad._prefs.widgetOrder.includes('kpi_strip'), 'missing known keys should be appended');
 
   const panelReorder = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-reorder-1' } });
   const origFirst = panelReorder._prefs.widgetOrder[0];
   panelReorder._handleClick({ target: makeClick('toggle-edit') });
-  panelReorder._moveWidget(origFirst, 'down');
+  panelReorder._moveOrderItem('widgetOrder', origFirst, 'down');
   assert.notStrictEqual(panelReorder._editDraft.widgetOrder[0], origFirst, 'reorder should update draft');
   assert.strictEqual(panelReorder._prefs.widgetOrder[0], origFirst, 'reorder in edit mode should not yet update prefs');
 
   const panelToggle = await assignHass(new Panel(), { ...makeHass(makeState()), user: { id: 'user-toggle-1' } });
   panelToggle._handleClick({ target: makeClick('toggle-edit') });
-  const fakeCheckbox = Object.assign(new ClickTarget({ widgetVisibility: 'progress' }), { checked: false });
+  const fakeCheckbox = Object.assign(new ClickTarget({ widgetVisibility: 'progress_badges' }), { checked: false });
   panelToggle._handleChange({ target: fakeCheckbox });
-  assert.strictEqual(panelToggle._editDraft.widgetVisibility.progress, false, 'toggle in edit mode updates draft');
-  assert.strictEqual(panelToggle._prefs.widgetVisibility.progress, true, 'toggle in edit mode does not affect prefs immediately');
+  assert.strictEqual(panelToggle._editDraft.widgetVisibility.progress_badges, false, 'toggle in edit mode updates draft');
+  assert.strictEqual(panelToggle._prefs.widgetVisibility.progress_badges, true, 'toggle in edit mode does not affect prefs immediately');
 
   const panelNoState = await assignHass(new Panel(), { locale: { language: 'en' }, user: { id: 'user-ns' }, states: {}, callService: async () => {} });
   assert.ok(panelNoState.shadowRoot.innerHTML.includes('Cycle Dashboard'), 'panel renders even with no sensor state');
@@ -411,7 +423,8 @@ const makeHass = (stateObj) => ({
   });
   const availableEntityIds = panelEntityFilter._getAvailableEntities().map((entity) => entity.entityId);
   assert.deepStrictEqual(availableEntityIds, ['sensor.menstruation_anna'], 'period-products helpers should be excluded from entity picker');
-  assert.ok(panelEntityFilter.shadowRoot.innerHTML.includes('class="entity-picker"'), 'entity picker should remain visible with one entity');
+  // Up to five profiles render as a button group, a dropdown (class="entity-picker") only beyond that.
+  assert.ok(panelEntityFilter.shadowRoot.innerHTML.includes('data-action="select-entity" data-entity-id="sensor.menstruation_anna"'), 'entity picker should remain visible with one entity');
 
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {

@@ -191,8 +191,16 @@ function testTimerProductConfigIconSize() {
 
 function testDischargeTranslations() {
   const timer = new PeriodCountdownTimer();
+  // Non-English strings come from the shared i18n cache (filled from www/translations/*.json at runtime), not from the card.
+  const deTranslations = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/www/translations/de.json'), 'utf8'),
+  );
+  const i18n = global.window.menstruationCycleI18n;
+  const prevDe = i18n.cache.de;
+  i18n.cache.de = deTranslations;
   timer._hass = { locale: { language: 'de' } };
   assert.strictEqual(timer._t('discharge'), 'Ausfluss', 'German discharge translation should exist');
+  i18n.cache.de = prevDe;
 
   timer._hass = { locale: { language: 'en' } };
   assert.strictEqual(timer._t('discharge'), 'Discharge', 'English discharge translation should exist');

@@ -2,52 +2,34 @@
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 import types
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Minimal HomeAssistant stubs so badges.py can be imported stand-alone
-# ---------------------------------------------------------------------------
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
 
 
-def _install_stubs() -> None:
-    for mod_name in [
-        "homeassistant",
-        "homeassistant.components",
-        "homeassistant.components.sensor",
-        "homeassistant.config_entries",
-        "homeassistant.const",
-        "homeassistant.core",
-        "homeassistant.exceptions",
-        "homeassistant.helpers",
-        "homeassistant.helpers.config_validation",
-        "homeassistant.helpers.entity_registry",
-        "homeassistant.helpers.dispatcher",
-        "homeassistant.helpers.entity_platform",
-        "homeassistant.helpers.event",
-        "homeassistant.helpers.typing",
-        "homeassistant.util",
-        "homeassistant.util.dt",
-    ]:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
+def _load(pkg: str, name: str):
+    """Load a component module under a fake package so relative imports resolve."""
+    if pkg not in sys.modules:
+        package = types.ModuleType(pkg)
+        package.__path__ = [str(COMPONENT_ROOT)]
+        sys.modules[pkg] = package
+    spec = importlib.util.spec_from_file_location(f"{pkg}.{name}", COMPONENT_ROOT / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[f"{pkg}.{name}"] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
-_install_stubs()
-
-import importlib.util
-
-_spec = importlib.util.spec_from_file_location(
-    "badges",
-    REPO_ROOT / "custom_components" / "menstruation_cycle" / "badges.py",
-)
-_badges_mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
-_spec.loader.exec_module(_badges_mod)  # type: ignore[union-attr]
+# badges.py only needs model.py, which has no Home Assistant imports
+_pkg = "tstest_badges"
+_load(_pkg, "model")
+_badges_mod = _load(_pkg, "badges")
 
 evaluate_badges = _badges_mod.evaluate_badges
 new_badges_this_week = _badges_mod.new_badges_this_week
@@ -287,13 +269,14 @@ class TestNewBadgesThisWeek(unittest.TestCase):
 
 
 class TestEvaluateBadgesReturnShape(unittest.TestCase):
-    def test_returns_all_five_v1_keys(self):
+    def test_returns_all_v1_keys(self):
         expected_keys = {
             "first_entry", "cycles_3_logged", "cycles_6_logged",
             "consistent_logging_30d", "pattern_emerging",
         }
         badges = evaluate_badges([], [], [])
-        self.assertEqual({b["key"] for b in badges}, expected_keys)
+        # more badges were added after v1, so only require the original five
+        self.assertLessEqual(expected_keys, {b["key"] for b in badges})
 
     def test_each_badge_has_required_fields(self):
         badges = evaluate_badges([], [], [])

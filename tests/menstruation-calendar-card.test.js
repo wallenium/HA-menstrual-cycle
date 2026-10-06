@@ -44,6 +44,13 @@ global.HTMLElement = class HTMLElement {
   dispatchEvent() {}
 };
 
+// The card normalizes option keys through window.MenstruationFunctions (shared module), so load it first.
+// eslint-disable-next-line no-eval
+eval(fs.readFileSync(
+  path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-functions.js'),
+  'utf8',
+));
+
 const cardSrc = fs.readFileSync(
   path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-calendar-card.js'),
   'utf8',
