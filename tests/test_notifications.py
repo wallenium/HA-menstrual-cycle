@@ -7,6 +7,7 @@ import importlib.util
 import sys
 import types
 import unittest
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -66,7 +67,13 @@ def _ha_stubs() -> dict[str, types.ModuleType]:
     dt_mod = stubs["homeassistant.util.dt"]
     dt_mod.now = lambda: NOW[0]
     dt_mod.utcnow = lambda: NOW[0]
-    dt_mod.parse_datetime = datetime.fromisoformat
+    def _parse(value):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None  # like the real dt_util.parse_datetime
+
+    dt_mod.parse_datetime = _parse
     stubs["homeassistant.util"].dt = dt_mod
     stubs["homeassistant.util"].slugify = lambda value: str(value)
     stubs["homeassistant.helpers"].config_validation = stubs["homeassistant.helpers.config_validation"]
@@ -142,6 +149,18 @@ def _hass():
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+@contextmanager
+def _issue_recorder():
+    """Home Assistant stubs for the lazy `from .repairs import ...`; yields the recorded issue calls."""
+    calls: list[tuple] = []
+    stubs = _ha_stubs()
+    registry = stubs["homeassistant.helpers.issue_registry"]
+    registry.async_create_issue = lambda hass, domain, issue_id, **kwargs: calls.append(("create", issue_id, kwargs))
+    registry.async_delete_issue = lambda hass, domain, issue_id: calls.append(("delete", issue_id))
+    with patch.dict(sys.modules, stubs):
+        yield calls
 
 
 class _Sent:
@@ -336,6 +355,95 @@ class MobileActionTests(unittest.TestCase):
         ), self.assertLogs(level="ERROR"):
             _run(later[0][1](NOW[0]))
         self.assertNotIn("log", runtime.noncycle_data["snooze_due"])
+
+
+class NotifyTargetTests(unittest.TestCase):
+    def _send(self, service_exists: bool, call=None, **options):
+        entry = _entry(**{const.CONF_NOTIFY_SERVICE: "notify.mobile_app_phone", **options})
+        hass = SimpleNamespace(
+            services=SimpleNamespace(
+                has_service=lambda domain, service: service_exists,
+                async_call=call or AsyncMock(),
+            )
+        )
+        entry.title = "Sarah"
+        with _issue_recorder() as issues:
+            _run(integration._async_send_notification(hass, entry, "T", "M", [{"action": "A", "title": "x"}]))
+        return hass.services.async_call, issues
+
+    def test_missing_service_raises_issue_and_sends_nothing(self) -> None:
+        call, issues = self._send(False)
+        self.assertEqual(call.await_count, 0)
+        self.assertEqual([(i[0], i[1]) for i in issues], [("create", "notify_target_unavailable_e1")])
+        self.assertEqual(issues[0][2]["translation_placeholders"], {"entry_title": "Sarah", "target": "notify.mobile_app_phone"})
+
+    def test_success_sends_with_actions_and_clears_issue(self) -> None:
+        call, issues = self._send(True)
+        domain, service, payload = call.await_args.args
+        self.assertEqual((domain, service), ("notify", "mobile_app_phone"))
+        self.assertEqual(payload["data"], {"actions": [{"action": "A", "title": "x"}]})
+        self.assertEqual(issues, [("delete", "notify_target_unavailable_e1")])
+
+    def test_failing_call_raises_issue_without_raising(self) -> None:
+        call, issues = self._send(True, call=AsyncMock(side_effect=RuntimeError("boom")))
+        self.assertEqual([(i[0], i[1]) for i in issues], [("create", "notify_target_unavailable_e1")])
+
+
+class SnoozeRearmTests(unittest.TestCase):
+    def _rearm(self, snooze_due: dict):
+        entry, runtime = _entry(), _runtime(noncycle_data={"snooze_due": snooze_due})
+        armed: list[tuple[str, float]] = []
+        with patch.object(integration, "_arm_snooze", lambda hass, e, r, kind, delay: armed.append((kind, delay))):
+            integration._rearm_snoozes(_hass(), entry, runtime)
+        return armed, runtime.noncycle_data["snooze_due"]
+
+    def _due(self, seconds_from_now: float) -> str:
+        return (NOW[0] + timedelta(seconds=seconds_from_now)).isoformat()
+
+    def test_pending_snooze_is_rearmed_with_remaining_time(self) -> None:
+        armed, left = self._rearm({"pill": self._due(1800)})
+        self.assertEqual(armed, [("pill", 1800)])
+        self.assertIn("pill", left)
+
+    def test_slightly_overdue_snooze_fires_right_away(self) -> None:
+        armed, _ = self._rearm({"log": self._due(-600)})
+        self.assertEqual(armed, [("log", 1)])
+
+    def test_snooze_overdue_by_more_than_its_length_is_dropped(self) -> None:
+        armed, left = self._rearm({"pill": self._due(-(const.NOTIFY_SNOOZE_SECONDS + 60))})
+        self.assertEqual((armed, left), ([], {}))
+
+    def test_unknown_kind_and_garbage_are_dropped(self) -> None:
+        armed, left = self._rearm({"other": self._due(600), "pill": "not a date"})
+        self.assertEqual((armed, left), ([], {}))
+
+    def test_missing_or_broken_storage_is_ignored(self) -> None:
+        entry = _entry()
+        for data in ({}, {"snooze_due": None}, {"snooze_due": "x"}):
+            integration._rearm_snoozes(_hass(), entry, _runtime(noncycle_data=data))
+
+
+class PillRefillTodoTests(unittest.TestCase):
+    def _run(self, runtime, **options):
+        entry = _entry(**options)
+        add = AsyncMock()
+        with patch.object(integration, "_async_add_todo_item_if_missing", add), patch.object(
+            integration.dt_util, "now", lambda: NOW[0]
+        ):
+            _run(integration._async_check_pill_refill_todo(_hass(), entry, runtime))
+        return add
+
+    def test_item_added_shortly_before_the_pack_ends(self) -> None:
+        add = self._run(_runtime(symptom_history=_pill_entries(*range(-17, 1))), **{const.CONF_PILL_PAUSE_DAYS: 7})
+        add.assert_awaited_once()
+        self.assertEqual(add.await_args.args[1], f"Test: order a new pill pack (current one ends {_iso(3)})")
+
+    def test_nothing_when_pack_end_is_far_or_unknown_or_not_on_the_pill(self) -> None:
+        pause = {const.CONF_PILL_PAUSE_DAYS: 7}
+        self.assertEqual(self._run(_runtime(symptom_history=_pill_entries(*range(-5, 1))), **pause).await_count, 0)
+        self.assertEqual(self._run(_runtime(symptom_history=_pill_entries(*range(-17, 1)))).await_count, 0)
+        self.assertEqual(self._run(_runtime(symptom_history=_pill_entries(*range(-24, 1))), **pause).await_count, 0)
+        self.assertEqual(self._run(_runtime(), **pause).await_count, 0)
 
 
 if __name__ == "__main__":
