@@ -89,7 +89,7 @@ const _mcCountdownTimerI18n = window.menstruationCycleI18n || (window.menstruati
 });
 
 if (typeof _mcCountdownTimerI18n.normalizeLang !== "function") {
-  _mcCountdownTimerI18n.normalizeLang = (language) => String(language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+  _mcCountdownTimerI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 

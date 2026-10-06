@@ -5,7 +5,7 @@ const _mcHistoryCardI18n = window.menstruationCycleI18n || (window.menstruationC
 });
 
 if (typeof _mcHistoryCardI18n.normalizeLang !== 'function') {
-  _mcHistoryCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+  _mcHistoryCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 

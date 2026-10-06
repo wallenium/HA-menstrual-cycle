@@ -96,8 +96,7 @@ function mergeConfig(config) {
 }
 
 function getLang(hass) {
-  const language = String(hass?.locale?.language || hass?.language || 'en').toLowerCase();
-  return language.startsWith('de') ? 'de' : 'en';
+  return _mcStatisticsCardI18n.normalizeLang(hass?.locale?.language || hass?.language || 'en');
 }
 
 function translate(hass, key, placeholders = {}) {
@@ -684,7 +683,7 @@ const _mcStatisticsCardI18n = window.menstruationCycleI18n || (window.menstruati
 });
 
 if (typeof _mcStatisticsCardI18n.normalizeLang !== 'function') {
-  _mcStatisticsCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+  _mcStatisticsCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 

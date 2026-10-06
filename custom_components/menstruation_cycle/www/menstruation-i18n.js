@@ -24,10 +24,9 @@
   i18n.fallback = i18n.fallback || { en: fallbackEn };
   i18n.fallback.en = { ...fallbackEn, ...(i18n.fallback.en || {}) };
 
-  i18n.normalizeLang = i18n.normalizeLang || ((language) => {
-    const normalized = String(language || 'en').toLowerCase();
-    return normalized.startsWith('de') ? 'de' : 'en';
-  });
+  // Any language code that has a translation file is used as is; a language without one falls back to English in load().
+  i18n.normalizeLang = i18n.normalizeLang || ((language) =>
+    String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en'));
 
   i18n.detectLang = i18n.detectLang || ((language) => i18n.normalizeLang(language || navigator.language || 'en'));
 
@@ -98,7 +97,8 @@
         }
       }
 
-      i18n.cache[lang] = lang === 'en' ? { ...(i18n.fallback?.en || {}) } : {};
+      // No translation file for this language: use English instead of showing empty texts.
+      i18n.cache[lang] = lang === 'en' ? { ...(i18n.fallback?.en || {}) } : await i18n.load('en');
       return i18n.cache[lang];
     })().finally(() => {
       delete i18n.loading[lang];

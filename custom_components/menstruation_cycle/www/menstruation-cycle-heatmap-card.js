@@ -5,7 +5,7 @@ const _mcHeatmapCardI18n = window.menstruationCycleI18n || (window.menstruationC
 });
 
 if (typeof _mcHeatmapCardI18n.normalizeLang !== 'function') {
-  _mcHeatmapCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+  _mcHeatmapCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 /**

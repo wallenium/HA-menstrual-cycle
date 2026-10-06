@@ -458,10 +458,8 @@
     return i18n;
   };
 
-  const normalizeLang = (language) => {
-    const normalized = String(language || 'en').toLowerCase();
-    return normalized.startsWith('de') ? 'de' : 'en';
-  };
+  const normalizeLang = (language) =>
+    String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 
   const listDocumentScripts = () => {
     if (typeof document === 'undefined') return [];
@@ -1658,10 +1656,10 @@
       return `${y}-${m}-${d}`;
     }
 
-    // Maps our 5 supported language codes to full locale codes for date formatting.
+    // Maps the languages we ship to full locale codes for date formatting; any other code is used as is.
     _localeCode() {
       const map = { de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', sv: 'sv-SE' };
-      return map[this._lang] || 'en-US';
+      return map[this._lang] || (this._lang === 'en' ? 'en-US' : this._lang);
     }
 
     /**

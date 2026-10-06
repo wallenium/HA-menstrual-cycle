@@ -31,7 +31,7 @@ const _ygsI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n =
 
 if (typeof _ygsI18n.normalizeLang !== 'function') {
   _ygsI18n.normalizeLang = (language) =>
-    String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 // ---------------------------------------------------------------------------

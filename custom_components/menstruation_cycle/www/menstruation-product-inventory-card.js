@@ -5,7 +5,7 @@ const _mcInventoryCardI18n = window.menstruationCycleI18n || (window.menstruatio
 });
 
 if (typeof _mcInventoryCardI18n.normalizeLang !== "function") {
-  _mcInventoryCardI18n.normalizeLang = (language) => String(language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+  _mcInventoryCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 

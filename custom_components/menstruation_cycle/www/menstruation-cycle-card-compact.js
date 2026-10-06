@@ -5,7 +5,7 @@ const _mcCompactCardI18n = window.menstruationCycleI18n || (window.menstruationC
 });
 
 if (typeof _mcCompactCardI18n.normalizeLang !== 'function') {
-  _mcCompactCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+  _mcCompactCardI18n.normalizeLang = (language) => String(language || 'en').toLowerCase().split(/[-_]/)[0].replace(/^(?![a-z]{2,3}$).*/, 'en');
 }
 
 /**
@@ -621,7 +621,7 @@ class MenstruationCycleCardEditor extends HTMLElement {
   }
 
   _t(key) {
-    const lang = String(this._hass?.locale?.language || this._hass?.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+    const lang = _mcCompactCardI18n.normalizeLang(this._hass?.locale?.language || this._hass?.language || 'en');
     const loaded = window.menstruationCycleI18n?.cache?.[lang] || {};
     if (loaded[key] !== undefined) return loaded[key];
     const i18n = { en: { entity: 'Entity' } };
