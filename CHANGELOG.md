@@ -17,6 +17,8 @@
 ### Changed
 - Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
 - Household avatars now get a deterministic per-profile accent color; profiles are grouped by current cycle state.
+- 28 services that were only described in English now have names, descriptions and field labels in DE/EN/ES/FR/SV.
+- Card texts that fell back to English in German (calendar, statistics, support, history, timer cards) are translated; dashboard texts were completed in ES/FR/SV.
 
 ### Fixed
 - Crash in profile label sync (wrong LabelRegistry API).
@@ -24,4 +26,5 @@
 - Stale translation cache in the household summary.
 - Backup import robustness (warning on implausibly close cycle-start dates).
 - `import_full_backup` did not restore the hospital-bag checklist, although `export_full_backup` wrote it.
+- The diagnostics download exposed the partner notify target, the basal-temperature sensor entity and a legacy profile name; they are redacted now.
 - Services `compare_current_cycle`, `export_doctor_report`, `get_cycle_predictions`, dashboard-preference, household-summary, profile-visibility and basal-temperature reimport services stayed registered after the last entry was removed.

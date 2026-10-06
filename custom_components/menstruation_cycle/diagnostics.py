@@ -40,8 +40,11 @@ _REDACT_ENTRY_KEYS = {
     "friendly_name",
     "icon",
     "birth_date",
+    "name",
     "notify_service",
+    "notify_partner_service",
     "linked_person_entity_id",
+    "basal_temp_sensor_entity_id",
     "ics_token",
 }
 
