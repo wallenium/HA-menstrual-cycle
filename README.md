@@ -46,6 +46,30 @@ Detailed guides:
 - [FAQ & Troubleshooting](https://github.com/wallenium/HA-menstrual-cycle/wiki/FAQ-&-Troubleshooting)
 - [Developer Guide](https://github.com/wallenium/HA-menstrual-cycle/wiki/Developer-Guide)
 
+## Notifications
+
+The integration can notify you itself (**Configure → Notifications**), no automation needed. Switch on **Enable notifications** and pick a notify target such as `mobile_app_myphone`; with no target, a persistent notification in the HA UI is used. All settings are per profile.
+
+| Notification | Sent when | Option | Default |
+|---|---|---|---|
+| Period reminder | a set number of days before the predicted start | Notify before period starts (+ days ahead) | on, 1 day |
+| Fertile window | a set number of days before the window starts | Notify when fertile window starts (+ days ahead) | on, same day |
+| Ovulation | a set number of days before the estimated ovulation | Notify when ovulation is estimated (+ days ahead) | off |
+| Cycle recap | a new cycle start was logged (length and period duration of the finished cycle) | Recap after each cycle | off |
+| Period overdue | the period is 7 days past its predicted start and not logged (only with reliable predictions) | Notify when the period is overdue | off |
+| Checkup | 14 days before the next checkup is due, or once if already overdue | Notify before a checkup is due (+ checkup interval, 0 = off) | off, 12 months |
+| Log reminder | nothing was logged for today yet | Evening reminder to log (+ time) | off, 20:00 |
+| Pill reminder | today's pill is not logged yet, plus an optional follow-up after 1-12 hours | Pill reminder (+ time, follow-up) | off, 09:00 |
+| Pill hint | 2 or more days in a row without a logged pill (neutral hint to check the leaflet) | Hint when pill intakes are missing | off |
+| Badges | a new progress badge was unlocked | part of the date reminders | with notifications |
+
+Date reminders, the recap, overdue and checkup notifications are sent at **Notification time** (default 08:00).
+
+- **Pill pack break:** set **Pill break (days per pack)** (for example 7 for a 21+7 pack) so no reminder is sent during the break. It also lets the integration add "order a new pill pack" to the shopping list a few days before the pack ends.
+- **Buttons** (mobile app targets only): *Period started*, *Pill taken* and *Remind me in 1 hour*. A snooze survives a Home Assistant restart.
+- **Partner target:** an optional second notify target that only receives the date reminders (period; fertile window and ovulation only at visibility level "Full"), never health details. Nothing is sent for private profiles.
+- **Check your setup:** call the service `menstruation_cycle.send_test_notification` (Developer tools → Actions). If the target does not exist or fails, a repair issue appears under **Settings → Repairs** and disappears again after the next successful delivery.
+
 ## Blueprints
 
 Ready-made automations for the common cases. Click **Import** to add one to Home Assistant (or paste the file URL under **Settings → Automations & Scenes → Blueprints → Import Blueprint**).
