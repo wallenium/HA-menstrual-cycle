@@ -1670,8 +1670,8 @@ class MenstruationGaugeSensor(SensorEntity):
 
     @property
     def translation_key(self) -> str | None:
-        """Translation key for future localization."""
-        return None
+        """Key into icons.json (state-based icon when the profile has no custom icon)."""
+        return "cycle_status"
 
     @property
     def entity_registry_enabled_default(self) -> bool:

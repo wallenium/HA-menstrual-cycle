@@ -1,0 +1,137 @@
+{
+  "entity": {
+    "sensor": {
+      "cycle_status": {
+        "default": "mdi:calendar-heart",
+        "state": {
+          "period": "mdi:water",
+          "fertile": "mdi:flower",
+          "pms": "mdi:emoticon-confused-outline",
+          "neutral": "mdi:circle-outline",
+          "pregnant": "mdi:baby-carriage",
+          "pre_menarche": "mdi:sprout",
+          "menarche": "mdi:star-circle-outline",
+          "menopause": "mdi:sun-thermometer",
+          "postpartum": "mdi:baby-face-outline",
+          "private": "mdi:eye-off"
+        }
+      }
+    }
+  },
+  "services": {
+    "add_cycle_start": {
+      "service": "mdi:calendar-plus"
+    },
+    "remove_cycle_start": {
+      "service": "mdi:calendar-remove"
+    },
+    "set_cycle_history": {
+      "service": "mdi:calendar-edit"
+    },
+    "import_cycle_history": {
+      "service": "mdi:calendar-import"
+    },
+    "import_symptom_history": {
+      "service": "mdi:file-import"
+    },
+    "set_period_duration": {
+      "service": "mdi:timer-cog"
+    },
+    "erase_all_history": {
+      "service": "mdi:delete-forever"
+    },
+    "export_history": {
+      "service": "mdi:export"
+    },
+    "export_full_backup": {
+      "service": "mdi:database-export"
+    },
+    "import_full_backup": {
+      "service": "mdi:database-import"
+    },
+    "refresh_cycle_model": {
+      "service": "mdi:refresh"
+    },
+    "send_test_notification": {
+      "service": "mdi:bell-ring"
+    },
+    "log_product_usage": {
+      "service": "mdi:package-variant-minus"
+    },
+    "reimport_basal_temp_statistics": {
+      "service": "mdi:thermometer"
+    },
+    "manage_household_inventory": {
+      "service": "mdi:warehouse"
+    },
+    "add_symptom": {
+      "service": "mdi:plus-circle-outline"
+    },
+    "remove_symptom": {
+      "service": "mdi:minus-circle-outline"
+    },
+    "get_symptom": {
+      "service": "mdi:magnify"
+    },
+    "get_full_history": {
+      "service": "mdi:history"
+    },
+    "get_cycle_predictions": {
+      "service": "mdi:crystal-ball"
+    },
+    "compare_current_cycle": {
+      "service": "mdi:compare"
+    },
+    "set_pregnancy_mode": {
+      "service": "mdi:baby-carriage"
+    },
+    "update_pregnancy_date": {
+      "service": "mdi:baby-face-outline"
+    },
+    "set_menarche_mode": {
+      "service": "mdi:flower"
+    },
+    "update_menarche_date": {
+      "service": "mdi:calendar-edit"
+    },
+    "log_first_period": {
+      "service": "mdi:water"
+    },
+    "get_menarche_info": {
+      "service": "mdi:information-outline"
+    },
+    "add_pre_menarche_sign": {
+      "service": "mdi:plus-circle-outline"
+    },
+    "remove_pre_menarche_sign": {
+      "service": "mdi:minus-circle-outline"
+    },
+    "set_menopause_mode": {
+      "service": "mdi:sun-thermometer"
+    },
+    "update_menopause_date": {
+      "service": "mdi:calendar-edit"
+    },
+    "save_timer_state": {
+      "service": "mdi:timer-sand"
+    },
+    "export_doctor_report": {
+      "service": "mdi:stethoscope"
+    },
+    "set_profile_visibility": {
+      "service": "mdi:eye-lock"
+    },
+    "repair_storage": {
+      "service": "mdi:wrench"
+    },
+    "get_household_summary": {
+      "service": "mdi:account-group"
+    },
+    "get_dashboard_prefs": {
+      "service": "mdi:view-dashboard"
+    },
+    "save_dashboard_prefs": {
+      "service": "mdi:view-dashboard-edit"
+    }
+  }
+}
