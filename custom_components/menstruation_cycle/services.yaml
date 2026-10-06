@@ -337,6 +337,27 @@ refresh_cycle_model:
       selector:
         text:
 
+send_test_notification:
+  name: Send test notification
+  description: Send a short test message to the notification target of a profile (or of all profiles) to check that reminders arrive. Works even if notifications are switched off in the options.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna_zyklus"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+
 log_product_usage:
   name: Log product usage
   description: Log tampon, pad, cup, or liner usage for statistics and timer integrations.

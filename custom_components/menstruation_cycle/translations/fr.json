@@ -365,6 +365,24 @@
     "repair_storage": {
       "name": "Vérifier/diagnostiquer le stockage",
       "description": "Diagnostic en lecture seule sur les données stockées de tous les profils configurés. Signale les cas où la normalisation a silencieusement écarté ou réinitialisé une valeur invalide (par ex. un cycle_length_override hors plage, un onboarding_stage ou visibility_level non reconnu, des entrées d'historique/symptômes/usage de produits impossibles à interpréter), ainsi que les incohérences sémantiques (par ex. pregnancy_data marqué actif sans start_date, ou grossesse et ménopause actives en même temps). Ne modifie rien."
+    },
+    "send_test_notification": {
+      "name": "Envoyer une notification de test",
+      "description": "Envoie un court message de test à la cible de notification d'un profil pour vérifier que les rappels arrivent. Fonctionne même si les notifications sont désactivées.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur cible du gauge menstruel."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Slug du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        }
+      }
     }
   },
   "issues": {

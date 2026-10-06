@@ -365,6 +365,24 @@
     "repair_storage": {
       "name": "Kontrollera/diagnostisera lagring",
       "description": "Skrivskyddad diagnostik av den lagrade datan för alla konfigurerade profiler. Rapporterar var normaliseringen tyst kasserade eller återställde ett ogiltigt värde (t.ex. ett cycle_length_override utanför intervallet, ett okänt onboarding_stage eller visibility_level, otolkbara historik-/symtom-/produktanvändningsposter) samt semantiska inkonsekvenser (t.ex. pregnancy_data markerad som aktiv utan start_date, eller graviditet och klimakteriet aktiva samtidigt). Ändrar ingenting."
+    },
+    "send_test_notification": {
+      "name": "Skicka testavisering",
+      "description": "Skickar ett kort testmeddelande till en profils aviseringsmål för att kontrollera att påminnelser kommer fram. Fungerar även om aviseringar är avstängda.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor för menstruationsmätaren."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Konfigurationspostens identifierare."
+        }
+      }
     }
   },
   "issues": {

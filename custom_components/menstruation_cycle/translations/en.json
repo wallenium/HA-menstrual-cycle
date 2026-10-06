@@ -365,6 +365,24 @@
     "repair_storage": {
       "name": "Repair/diagnose storage",
       "description": "Read-only diagnostic across every configured profile's stored data. Reports where normalization silently discarded or reset an invalid value (e.g. an out-of-range cycle_length_override, an unrecognized onboarding_stage or visibility_level, unparsable history/symptom/product-usage entries) as well as semantic inconsistencies (e.g. pregnancy_data marked active without a start_date, or pregnancy and menopause both active at once). Changes nothing."
+    },
+    "send_test_notification": {
+      "name": "Send test notification",
+      "description": "Send a short test message to a profile's notification target to check that reminders arrive. Works even if notifications are switched off.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
     }
   },
   "issues": {

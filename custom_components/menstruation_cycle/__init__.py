@@ -170,6 +170,7 @@ from .const import (
     SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
     SERVICE_FIELD_CRITICAL_THRESHOLD,
     SERVICE_REFRESH_CYCLE_MODEL,
+    SERVICE_SEND_TEST_NOTIFICATION,
     SERVICE_FIELD_INVENTORY_ACTION,
     SERVICE_FIELD_MEMBER,
     SERVICE_FIELD_AREA_ID,
@@ -973,6 +974,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "checkup_title": "Checkup reminder",
         "checkup_message": "{name}: the next checkup is due on {date}. A good time to book an appointment.",
         "pill_gap_message": "{name}: the last logged pill was {days} days ago. If pills were missed, protection may be reduced - see your pill's leaflet or ask a pharmacist. If you only forgot to log it, please add it now.",
+        "test_title": "Test notification",
+        "test_message": "{name}: this is a test notification. Reminders will arrive here.",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
@@ -997,6 +1000,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "checkup_title": "Kontrolltermin-Erinnerung",
         "checkup_message": "{name}: Die nächste Kontrolle ist am {date} fällig. Ein guter Zeitpunkt, einen Termin zu vereinbaren.",
         "pill_gap_message": "{name}: Die letzte eingetragene Pille war vor {days} Tagen. Falls Einnahmen vergessen wurden, kann der Schutz eingeschränkt sein - siehe Beipackzettel oder in der Apotheke nachfragen. Falls es nur nicht eingetragen wurde, bitte jetzt nachtragen.",
+        "test_title": "Testbenachrichtigung",
+        "test_message": "{name}: Das ist eine Testbenachrichtigung. Erinnerungen kommen hier an.",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
@@ -1021,6 +1026,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "checkup_title": "Rappel de contrôle",
         "checkup_message": "{name} : le prochain contrôle est dû le {date}. Bon moment pour prendre rendez-vous.",
         "pill_gap_message": "{name} : la dernière pilule saisie date de {days} jours. Si des prises ont été oubliées, la protection peut être réduite - voir la notice ou demander conseil en pharmacie. Si elle a seulement été oubliée dans la saisie, merci de l'ajouter maintenant.",
+        "test_title": "Notification de test",
+        "test_message": "{name} : ceci est une notification de test. Les rappels arriveront ici.",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
@@ -1045,6 +1052,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "checkup_title": "Recordatorio de revisión",
         "checkup_message": "{name}: la próxima revisión vence el {date}. Buen momento para pedir cita.",
         "pill_gap_message": "{name}: la última píldora registrada fue hace {days} días. Si se olvidaron tomas, la protección puede verse reducida - consulta el prospecto o pregunta en la farmacia. Si solo faltó registrarla, añádela ahora.",
+        "test_title": "Notificación de prueba",
+        "test_message": "{name}: esta es una notificación de prueba. Los recordatorios llegarán aquí.",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
@@ -1069,6 +1078,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "checkup_title": "Påminnelse om kontroll",
         "checkup_message": "{name}: nästa kontroll ska göras den {date}. Bra tillfälle att boka tid.",
         "pill_gap_message": "{name}: det senast loggade p-pillret var för {days} dagar sedan. Om tabletter har glömts kan skyddet vara nedsatt - se bipacksedeln eller fråga på apotek. Om det bara glömdes att logga, lägg till det nu.",
+        "test_title": "Testavisering",
+        "test_message": "{name}: det här är en testavisering. Påminnelser kommer att visas här.",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
     },
@@ -2098,6 +2109,16 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         schema=vol.Schema(common_profile_field),
     )
 
+    async def async_send_test_notification(call: ServiceCall) -> None:
+        await _async_handle_send_test_notification(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SEND_TEST_NOTIFICATION,
+        async_send_test_notification,
+        schema=vol.Schema(common_profile_field),
+    )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_LOG_PRODUCT_USAGE,
@@ -3028,6 +3049,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_IMPORT_FULL_BACKUP,
             SERVICE_REPAIR_STORAGE,
             SERVICE_REFRESH_CYCLE_MODEL,
+            SERVICE_SEND_TEST_NOTIFICATION,
             SERVICE_LOG_PRODUCT_USAGE,
             SERVICE_MANAGE_HOUSEHOLD_INVENTORY,
             SERVICE_ADD_SYMPTOM,
@@ -4052,6 +4074,20 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
     if mode == "merge":
         result["warnings"] = warnings
     return result
+
+
+async def _async_handle_send_test_notification(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Send a harmless test message to the notify target of one profile (or all). Ignores the notification master switch."""
+    strings = _notify_strings(hass.config.language)
+    for entry_id in _target_entry_ids_for_call(hass, call):
+        entry = hass.config_entries.async_get_entry(entry_id)
+        runtime = hass.data.get(DOMAIN, {}).get(entry_id)
+        if entry is None or runtime is None:
+            continue
+        # no action buttons on purpose: a test must never be able to log anything
+        await _async_send_notification(
+            hass, entry, strings["test_title"], strings["test_message"].format(name=runtime.friendly_name)
+        )
 
 
 async def _async_handle_refresh_cycle_model(hass: HomeAssistant, call: ServiceCall) -> None:

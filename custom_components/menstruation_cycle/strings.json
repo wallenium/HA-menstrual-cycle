@@ -361,6 +361,24 @@
           "description": "Must be set to true to confirm this write operation."
         }
       }
+    },
+    "send_test_notification": {
+      "name": "Send test notification",
+      "description": "Send a short test message to a profile's notification target to check that reminders arrive. Works even if notifications are switched off.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
     }
   },
   "issues": {

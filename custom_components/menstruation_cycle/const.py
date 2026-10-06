@@ -363,6 +363,7 @@ SERVICE_FIELD_DATE_FORMAT = "date_format"
 IMPORT_DATE_FORMATS = ["auto", "dmy", "mdy"]
 DEFAULT_IMPORT_DATE_FORMAT = "auto"
 SERVICE_REFRESH_CYCLE_MODEL = "refresh_cycle_model"
+SERVICE_SEND_TEST_NOTIFICATION = "send_test_notification"
 SERVICE_LOG_PRODUCT_USAGE = "log_product_usage"
 SERVICE_REIMPORT_BASAL_TEMP_STATS = "reimport_basal_temp_statistics"
 SERVICE_MANAGE_HOUSEHOLD_INVENTORY = "manage_household_inventory"

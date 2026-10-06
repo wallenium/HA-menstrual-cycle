@@ -365,6 +365,24 @@
     "repair_storage": {
       "name": "Comprobar/diagnosticar almacenamiento",
       "description": "Diagnóstico de solo lectura sobre los datos almacenados de todos los perfiles configurados. Informa cuándo la normalización descartó o restableció silenciosamente un valor no válido (p. ej., un cycle_length_override fuera de rango, un onboarding_stage o visibility_level no reconocido, entradas de historial/síntomas/uso de productos no interpretables), así como inconsistencias semánticas (p. ej., pregnancy_data marcado como activo sin start_date, o embarazo y menopausia activos a la vez). No modifica nada."
+    },
+    "send_test_notification": {
+      "name": "Enviar notificación de prueba",
+      "description": "Envía un breve mensaje de prueba al destino de notificación de un perfil para comprobar que los recordatorios llegan. Funciona aunque las notificaciones estén desactivadas.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor de destino del indicador menstrual."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
     }
   },
   "issues": {

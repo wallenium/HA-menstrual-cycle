@@ -365,6 +365,24 @@
     "repair_storage": {
       "name": "Storage prüfen/diagnostizieren",
       "description": "Rein lesende Diagnose über den gespeicherten Stand aller konfigurierten Profile. Meldet, wo die Normalisierung einen ungültigen Wert still verworfen oder zurückgesetzt hat (z. B. ein cycle_length_override außerhalb des gültigen Bereichs, einen unbekannten onboarding_stage/visibility_level, nicht parsbare Verlaufs-/Symptom-/Produktverbrauch-Einträge) sowie inhaltliche Widersprüche (z. B. pregnancy_data als aktiv markiert ohne start_date, oder Schwangerschaft und Menopause gleichzeitig aktiv). Verändert nichts."
+    },
+    "send_test_notification": {
+      "name": "Testbenachrichtigung senden",
+      "description": "Sendet eine kurze Testnachricht an das Benachrichtigungsziel eines Profils, um zu prüfen, ob Erinnerungen ankommen. Funktioniert auch bei ausgeschalteten Benachrichtigungen.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Sensor des Menstruations-Gauges."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Eintrags-ID",
+          "description": "Kennung des Konfigurationseintrags."
+        }
+      }
     }
   },
   "issues": {
