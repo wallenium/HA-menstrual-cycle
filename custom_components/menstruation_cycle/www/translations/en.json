@@ -1033,5 +1033,7 @@
   "badge_wellness_thriving": "Wellness score: thriving",
   "progress_badge_wellness_thriving_title": "Thriving",
   "progress_badge_wellness_thriving_desc": "Your wellness score reached a high level.",
-  "restock_days_remaining": "about {n} days left"
+  "restock_days_remaining": "about {n} days left",
+  "dashboard_household_synchrony": "Cycle synchrony",
+  "dashboard_household_timeline_title": "Preview (30 days)"
 }

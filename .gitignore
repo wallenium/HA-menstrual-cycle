@@ -44,3 +44,8 @@ yarn-error.log*
 
 # Home Assistant
 .storage/
+
+# Local working folders
+_to_delete/
+_patch_stage/
+.scratch/
