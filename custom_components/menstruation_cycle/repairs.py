@@ -18,6 +18,8 @@ from homeassistant.helpers.issue_registry import (
 )
 
 from .const import (
+    CHECKUP_APPOINTMENT_TYPES,
+    CHECKUP_OVERDUE_DAYS,
     CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS,
     CYCLE_PATTERN_PAIN_DAYS_THRESHOLD,
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
@@ -25,6 +27,7 @@ from .const import (
     PERIOD_OVERDUE_DAYS,
     PERIOD_PROLONGED_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
+    SYMPTOM_APPOINTMENTS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
 )
@@ -706,6 +709,64 @@ def async_check_period_prolonged(
         async_delete_period_prolonged_issue(hass, entry_id)
         return
     async_create_period_prolonged_issue(hass, entry_id, entry_title, length)
+
+
+def async_create_checkup_overdue_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    last_date: str,
+    months: int,
+) -> None:
+    """Create a repair issue hinting that the last logged checkup is long ago."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"checkup_overdue_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="checkup_overdue",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "last_date": last_date,
+            "months": str(months),
+        },
+    )
+
+
+def async_delete_checkup_overdue_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the checkup-overdue repair issue."""
+    async_delete_issue(hass, DOMAIN, f"checkup_overdue_{entry_id}")
+
+
+def async_check_checkup_overdue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    symptom_history: list[dict[str, Any]],
+    today: date,
+) -> None:
+    """Raise (or clear) the checkup-overdue issue from the logged appointments.
+
+    Only profiles that logged at least one gynecologist/pap-smear appointment are
+    considered, so nobody who never tracks appointments gets nagged.
+    """
+    last_iso: str | None = None
+    for entry in symptom_history:
+        if not isinstance(entry, dict) or not entry.get("date"):
+            continue
+        value = entry.get(SYMPTOM_APPOINTMENTS)
+        if CHECKUP_APPOINTMENT_TYPES.intersection(value if isinstance(value, list) else [value]):
+            last_iso = max(last_iso or "", str(entry["date"]))
+    try:
+        days = (today - date.fromisoformat(last_iso)).days if last_iso else 0
+    except ValueError:
+        days = 0
+    if days < CHECKUP_OVERDUE_DAYS:
+        async_delete_checkup_overdue_issue(hass, entry_id)
+        return
+    async_create_checkup_overdue_issue(hass, entry_id, entry_title, last_iso, days // 30)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

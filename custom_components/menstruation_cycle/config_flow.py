@@ -46,6 +46,10 @@ from .const import (
     CONF_NOTIFY_FERTILE_ENABLED,
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
+    CONF_NOTIFY_LOG_REMINDER_ENABLED,
+    CONF_NOTIFY_LOG_REMINDER_TIME,
+    CONF_NOTIFY_PILL_ENABLED,
+    CONF_NOTIFY_PILL_TIME,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
     CONF_NOTIFY_TIME,
@@ -63,6 +67,10 @@ from .const import (
     DEFAULT_NOTIFY_FERTILE_ENABLED,
     DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
     DEFAULT_NOTIFY_OVULATION_ENABLED,
+    DEFAULT_NOTIFY_LOG_REMINDER_ENABLED,
+    DEFAULT_NOTIFY_LOG_REMINDER_TIME,
+    DEFAULT_NOTIFY_PILL_ENABLED,
+    DEFAULT_NOTIFY_PILL_TIME,
     DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
     DEFAULT_NOTIFY_TIME,
     NOTIFY_LEAD_DAYS_MAX,
@@ -156,6 +164,10 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_OVULATION_ENABLED,
             CONF_NOTIFY_OVULATION_LEAD_DAYS,
             CONF_NOTIFY_TIME,
+            CONF_NOTIFY_LOG_REMINDER_ENABLED,
+            CONF_NOTIFY_LOG_REMINDER_TIME,
+            CONF_NOTIFY_PILL_ENABLED,
+            CONF_NOTIFY_PILL_TIME,
             CONF_CALENDAR_ENABLED,
             CONF_NFP_ANALYSIS_MODE,
             CONF_TEMPERATURE_UNIT,
@@ -468,6 +480,19 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_fertile_lead_days": int(
                 self._entry.options.get(CONF_NOTIFY_FERTILE_LEAD_DAYS, DEFAULT_NOTIFY_FERTILE_LEAD_DAYS)
             ),
+            "notify_log_reminder_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_LOG_REMINDER_ENABLED, DEFAULT_NOTIFY_LOG_REMINDER_ENABLED)
+            ),
+            "notify_log_reminder_time": str(
+                self._entry.options.get(CONF_NOTIFY_LOG_REMINDER_TIME, DEFAULT_NOTIFY_LOG_REMINDER_TIME)
+                or DEFAULT_NOTIFY_LOG_REMINDER_TIME
+            ),
+            "notify_pill_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED)
+            ),
+            "notify_pill_time": str(
+                self._entry.options.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME) or DEFAULT_NOTIFY_PILL_TIME
+            ),
             "notify_time": str(self._entry.options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME),
             "notify_ovulation_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
@@ -573,6 +598,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             lines.append(f"  - Fertile window reminder: {fertile_bit}")
             lines.append(f"  - Ovulation reminder: {ovulation_bit}")
             lines.append(f"  - Sent at: {d.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME)}")
+            if d.get(CONF_NOTIFY_LOG_REMINDER_ENABLED, DEFAULT_NOTIFY_LOG_REMINDER_ENABLED):
+                lines.append(
+                    f"  - Evening log reminder at: {d.get(CONF_NOTIFY_LOG_REMINDER_TIME, DEFAULT_NOTIFY_LOG_REMINDER_TIME)}"
+                )
+            if d.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED):
+                lines.append(f"  - Pill reminder at: {d.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME)}")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -682,6 +713,26 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 except ValueError:
                     notify_time_raw = DEFAULT_NOTIFY_TIME
                 self._data[CONF_NOTIFY_TIME] = notify_time_raw[:8]
+                self._data[CONF_NOTIFY_LOG_REMINDER_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_LOG_REMINDER_ENABLED, DEFAULT_NOTIFY_LOG_REMINDER_ENABLED)
+                )
+                log_time_raw = str(
+                    user_input.get(CONF_NOTIFY_LOG_REMINDER_TIME, DEFAULT_NOTIFY_LOG_REMINDER_TIME)
+                ).strip()
+                try:
+                    datetime.strptime(log_time_raw[:8], "%H:%M:%S")
+                except ValueError:
+                    log_time_raw = DEFAULT_NOTIFY_LOG_REMINDER_TIME
+                self._data[CONF_NOTIFY_LOG_REMINDER_TIME] = log_time_raw[:8]
+                self._data[CONF_NOTIFY_PILL_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED)
+                )
+                pill_time_raw = str(user_input.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME)).strip()
+                try:
+                    datetime.strptime(pill_time_raw[:8], "%H:%M:%S")
+                except ValueError:
+                    pill_time_raw = DEFAULT_NOTIFY_PILL_TIME
+                self._data[CONF_NOTIFY_PILL_TIME] = pill_time_raw[:8]
                 self._data[CONF_NOTIFY_OVULATION_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
                 )
@@ -808,6 +859,14 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     CONF_NOTIFY_FERTILE_LEAD_DAYS, default=c["notify_fertile_lead_days"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_LEAD_DAYS_MAX)),
                 vol.Optional(CONF_NOTIFY_TIME, default=c["notify_time"]): selector.TimeSelector(),
+                vol.Optional(
+                    CONF_NOTIFY_LOG_REMINDER_ENABLED, default=c["notify_log_reminder_enabled"]
+                ): bool,
+                vol.Optional(
+                    CONF_NOTIFY_LOG_REMINDER_TIME, default=c["notify_log_reminder_time"]
+                ): selector.TimeSelector(),
+                vol.Optional(CONF_NOTIFY_PILL_ENABLED, default=c["notify_pill_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_PILL_TIME, default=c["notify_pill_time"]): selector.TimeSelector(),
                 vol.Optional(
                     CONF_NOTIFY_OVULATION_ENABLED, default=c["notify_ovulation_enabled"]
                 ): bool,
@@ -1123,6 +1182,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_FERTILE_ENABLED: d[CONF_NOTIFY_FERTILE_ENABLED],
                 CONF_NOTIFY_FERTILE_LEAD_DAYS: d[CONF_NOTIFY_FERTILE_LEAD_DAYS],
                 CONF_NOTIFY_TIME: d[CONF_NOTIFY_TIME],
+                CONF_NOTIFY_LOG_REMINDER_ENABLED: d[CONF_NOTIFY_LOG_REMINDER_ENABLED],
+                CONF_NOTIFY_LOG_REMINDER_TIME: d[CONF_NOTIFY_LOG_REMINDER_TIME],
+                CONF_NOTIFY_PILL_ENABLED: d[CONF_NOTIFY_PILL_ENABLED],
+                CONF_NOTIFY_PILL_TIME: d[CONF_NOTIFY_PILL_TIME],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],
                 CONF_TEMPERATURE_UNIT: d[CONF_TEMPERATURE_UNIT],

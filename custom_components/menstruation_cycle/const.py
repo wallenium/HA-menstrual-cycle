@@ -115,6 +115,24 @@ DEFAULT_NOTIFY_OVULATION_LEAD_DAYS = 0
 # siehe __init__.py::_register_notification_timer. Format "HH:MM:SS" (TimeSelector).
 CONF_NOTIFY_TIME = "notify_time"
 DEFAULT_NOTIFY_TIME = "08:00:00"
+# Optionale Abend-Erinnerung: erinnert, wenn fuer heute noch weder ein
+# Zyklus- noch ein Symptomeintrag existiert. Default aus, siehe
+# __init__.py::_async_send_log_reminder.
+CONF_NOTIFY_LOG_REMINDER_ENABLED = "notify_log_reminder_enabled"
+CONF_NOTIFY_LOG_REMINDER_TIME = "notify_log_reminder_time"
+DEFAULT_NOTIFY_LOG_REMINDER_ENABLED = False
+DEFAULT_NOTIFY_LOG_REMINDER_TIME = "20:00:00"
+# Pill reminder with a "Pill taken" action button; intake is recorded as today's contraception_method "pill", see __init__.py::_async_send_pill_reminder.
+CONF_NOTIFY_PILL_ENABLED = "notify_pill_enabled"
+CONF_NOTIFY_PILL_TIME = "notify_pill_time"
+DEFAULT_NOTIFY_PILL_ENABLED = False
+DEFAULT_NOTIFY_PILL_TIME = "09:00:00"
+NOTIFY_ACTION_PILL_TAKEN_PREFIX = "MCYCLE_PILL_TAKEN_"
+# Aktions-Button "Periode hat begonnen" in der Perioden-Erinnerung (nur
+# mobile_app-Ziele): Action-ID = Prefix + entry_id, Event siehe Home-Assistant-
+# Companion-App-Doku.
+NOTIFY_ACTION_PERIOD_STARTED_PREFIX = "MCYCLE_PERIOD_STARTED_"
+EVENT_MOBILE_APP_NOTIFICATION_ACTION = "mobile_app_notification_action"
 # Tage ueber dem vorhergesagten Periodenstart, ab denen repairs.py::
 # async_check_period_overdue einen rein informativen Hinweis erzeugt.
 PERIOD_OVERDUE_DAYS = 7
@@ -127,6 +145,9 @@ CONF_NOTIFY_PARTNER_SERVICE = "notify_partner_service"
 # Aufeinanderfolgende Blutungstage ab denen repairs.py::async_check_period_prolonged
 # einen rein informativen Hinweis erzeugt (>7 Tage gilt allgemein als auffaellig lang).
 PERIOD_PROLONGED_DAYS = 8
+# Days since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup.
+CHECKUP_OVERDUE_DAYS = 365
+CHECKUP_APPOINTMENT_TYPES = frozenset({"gynecologist", "pap_smear"})
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 

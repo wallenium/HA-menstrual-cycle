@@ -61,6 +61,10 @@
           "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
           "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
           "notify_time": "Uhrzeit der Benachrichtigungen",
+          "notify_log_reminder_enabled": "Abend-Erinnerung zum Eintragen",
+          "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung",
+          "notify_pill_enabled": "Pillen-Erinnerung",
+          "notify_pill_time": "Uhrzeit der Pillen-Erinnerung",
           "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
           "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
           "temperature_unit": "Eingabeeinheit Basaltemperatur"
@@ -87,6 +91,10 @@
           "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
           "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
           "notify_time": "Uhrzeit, zu der Perioden-, Fruchtbarkeits-, Eisprung- und Badge-Benachrichtigungen gesendet werden (Standard 08:00). Bisher wurden sie direkt nach Mitternacht gesendet. Wirkt sofort nach dem Speichern.",
+          "notify_log_reminder_enabled": "Sendet eine Erinnerung, wenn für heute noch nichts (Zyklusstart oder Symptome) eingetragen ist. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+          "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
+          "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+          "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
           "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
           "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
           "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
@@ -357,6 +365,10 @@
     "period_prolonged": {
       "title": "Menstruation Cycle: Periode dauert ungewöhnlich lange",
       "description": "Profil: **{entry_title}**\n\nEs wurde {days} Tage in Folge eine Blutung eingetragen, das ist länger als für dieses Profil üblich. Eine Periode, die länger als etwa eine Woche dauert, kann viele Ursachen haben, und das ist rein informativ, keine medizinische Beratung - es wird keine Aktion automatisch ausgeführt. Wenn die Blutung sehr stark ist oder anhält, kann es sich lohnen, das mit einem Arzt zu besprechen. Verwirf dieses Problem, falls du es bereits kennst."
+    },
+    "checkup_overdue": {
+      "title": "Menstruation Cycle: Routine-Vorsorge könnte fällig sein",
+      "description": "Profil: **{entry_title}**\n\nDie letzte für dieses Profil eingetragene gynäkologische Vorsorge war am {last_date}, vor etwa {months} Monaten. Viele Empfehlungen sehen etwa einmal pro Jahr eine Routine-Vorsorge vor, das passende Intervall hängt aber von Alter, Vorgeschichte und örtlichen Empfehlungen ab. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Trage den nächsten Termin ein, sobald er stattgefunden hat, oder verwirf dieses Problem, falls du es bereits kennst."
     }
   },
   "selector": {

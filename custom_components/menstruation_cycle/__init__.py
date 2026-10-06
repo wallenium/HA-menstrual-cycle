@@ -65,6 +65,8 @@ from .const import (
     CONF_NOTIFY_FERTILE_ENABLED,
     CONF_NOTIFY_FERTILE_LEAD_DAYS,
     CONF_NOTIFY_OVULATION_ENABLED,
+    CONF_NOTIFY_LOG_REMINDER_ENABLED,
+    CONF_NOTIFY_LOG_REMINDER_TIME,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
     CONF_NOTIFY_TIME,
@@ -76,8 +78,19 @@ from .const import (
     DEFAULT_NOTIFY_FERTILE_ENABLED,
     DEFAULT_NOTIFY_FERTILE_LEAD_DAYS,
     DEFAULT_NOTIFY_OVULATION_ENABLED,
+    DEFAULT_NOTIFY_LOG_REMINDER_ENABLED,
+    DEFAULT_NOTIFY_LOG_REMINDER_TIME,
     DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
     DEFAULT_NOTIFY_TIME,
+    EVENT_MOBILE_APP_NOTIFICATION_ACTION,
+    NOTIFY_ACTION_PERIOD_STARTED_PREFIX,
+    NOTIFY_ACTION_PILL_TAKEN_PREFIX,
+    CONF_NOTIFY_PILL_ENABLED,
+    CONF_NOTIFY_PILL_TIME,
+    DEFAULT_NOTIFY_PILL_ENABLED,
+    DEFAULT_NOTIFY_PILL_TIME,
+    CONTRACEPTION_METHOD_PILL,
+    SYMPTOM_CONTRACEPTION_METHOD,
     DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -353,6 +366,8 @@ class MenstruationRuntime:
     visibility_level: str = DEFAULT_VISIBILITY_LEVEL
     unregister_midnight_listener: Callable[[], None] | None = None
     unregister_notify_listener: Callable[[], None] | None = None
+    unregister_log_listener: Callable[[], None] | None = None
+    unregister_pill_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
     # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
@@ -921,6 +936,12 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "fertile_message": "{name}: the fertile window starts on {date}.",
         "ovulation_title": "Ovulation reminder",
         "ovulation_message": "{name}: ovulation is estimated for {date}.",
+        "action_period_started": "Period started",
+        "log_title": "Log reminder",
+        "log_message": "{name}: nothing logged for today yet.",
+        "pill_title": "Pill reminder",
+        "pill_message": "{name}: time to take the pill.",
+        "action_pill_taken": "Pill taken",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
@@ -931,6 +952,12 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "fertile_message": "{name}: Das fruchtbare Fenster beginnt am {date}.",
         "ovulation_title": "Erinnerung: Eisprung",
         "ovulation_message": "{name}: Der Eisprung wird für den {date} geschätzt.",
+        "action_period_started": "Periode hat begonnen",
+        "log_title": "Eintrags-Erinnerung",
+        "log_message": "{name}: Für heute ist noch nichts eingetragen.",
+        "pill_title": "Pillen-Erinnerung",
+        "pill_message": "{name}: Zeit für die Pille.",
+        "action_pill_taken": "Pille genommen",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
@@ -941,6 +968,12 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "fertile_message": "{name} : la fenêtre de fertilité commence le {date}.",
         "ovulation_title": "Rappel : ovulation",
         "ovulation_message": "{name} : l'ovulation est estimée au {date}.",
+        "action_period_started": "Règles commencées",
+        "log_title": "Rappel de saisie",
+        "log_message": "{name} : rien n'est encore enregistré pour aujourd'hui.",
+        "pill_title": "Rappel de pilule",
+        "pill_message": "{name} : c'est l'heure de prendre la pilule.",
+        "action_pill_taken": "Pilule prise",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
@@ -951,6 +984,12 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "fertile_message": "{name}: la ventana fértil comienza el {date}.",
         "ovulation_title": "Recordatorio: ovulación",
         "ovulation_message": "{name}: la ovulación se estima para el {date}.",
+        "action_period_started": "La regla ha empezado",
+        "log_title": "Recordatorio de registro",
+        "log_message": "{name}: todavía no hay nada registrado para hoy.",
+        "pill_title": "Recordatorio de la píldora",
+        "pill_message": "{name}: es hora de tomar la píldora.",
+        "action_pill_taken": "Píldora tomada",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
@@ -961,6 +1000,12 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "fertile_message": "{name}: det fertila fönstret börjar den {date}.",
         "ovulation_title": "Påminnelse: ägglossning",
         "ovulation_message": "{name}: ägglossning beräknas den {date}.",
+        "action_period_started": "Mensen har börjat",
+        "log_title": "Påminnelse att logga",
+        "log_message": "{name}: inget är loggat för idag än.",
+        "pill_title": "Påminnelse: p-piller",
+        "pill_message": "{name}: dags att ta p-pillret.",
+        "action_pill_taken": "P-piller taget",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
     },
@@ -1035,28 +1080,8 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     )
 
     strings = _notify_strings(hass.config.language)
-    raw_service = str(entry.options.get(CONF_NOTIFY_SERVICE, "") or "").strip()
-    if raw_service:
-        if "." in raw_service:
-            notify_domain, notify_service = raw_service.split(".", 1)
-        else:
-            notify_domain, notify_service = "notify", raw_service
-    else:
-        notify_domain, notify_service = "persistent_notification", "create"
-
-    async def _send(title: str, message: str) -> None:
-        try:
-            if notify_domain == "persistent_notification":
-                await hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {"title": title, "message": message, "notification_id": f"menstruation_cycle_{entry.entry_id}_{title}"},
-                )
-            else:
-                await hass.services.async_call(notify_domain, notify_service, {"title": title, "message": message})
-        except Exception as ex:  # noqa: BLE001 — a bad/misconfigured notify target
-            # shouldn't ever crash the midnight refresh cycle for everyone else.
-            _LOGGER.warning("Could not send notification via %s.%s: %s", notify_domain, notify_service, ex)
+    async def _send(title: str, message: str, actions: list[dict[str, str]] | None = None) -> None:
+        await _async_send_notification(hass, entry, title, message, actions)
 
     # Optional second target (e.g. a partner's phone) that only gets the date
     # reminders below, never badges or any health detail. Respects the profile's
@@ -1086,6 +1111,12 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             await _send(
                 strings["period_title"],
                 strings["period_message"].format(name=runtime.friendly_name, date=period_start),
+                actions=[
+                    {
+                        "action": f"{NOTIFY_ACTION_PERIOD_STARTED_PREFIX}{entry.entry_id}",
+                        "title": strings["action_period_started"],
+                    }
+                ],
             )
             await _send_partner(
                 strings["period_title"],
@@ -1146,6 +1177,83 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
 
     if notified_something:
         await _async_save_and_notify(hass, runtime)
+
+
+def _resolve_notify_target(entry: ConfigEntry) -> tuple[str, str]:
+    """(domain, service) of the profile's notify target; falls back to a persistent notification."""
+    raw_service = str(entry.options.get(CONF_NOTIFY_SERVICE, "") or "").strip()
+    if not raw_service:
+        return "persistent_notification", "create"
+    if "." in raw_service:
+        domain, service = raw_service.split(".", 1)
+        return domain, service
+    return "notify", raw_service
+
+
+async def _async_send_notification(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    title: str,
+    message: str,
+    actions: list[dict[str, str]] | None = None,
+) -> None:
+    """Send one notification to the profile's own target. Action buttons are only
+    attached for mobile_app targets (the only ones that understand them)."""
+    notify_domain, notify_service = _resolve_notify_target(entry)
+    try:
+        if notify_domain == "persistent_notification":
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {"title": title, "message": message, "notification_id": f"menstruation_cycle_{entry.entry_id}_{title}"},
+            )
+        else:
+            payload: dict[str, Any] = {"title": title, "message": message}
+            if actions and notify_service.startswith("mobile_app_"):
+                payload["data"] = {"actions": actions}
+            await hass.services.async_call(notify_domain, notify_service, payload)
+    except Exception as ex:  # noqa: BLE001 - a bad/misconfigured notify target must never crash the scheduled run
+        _LOGGER.warning("Could not send notification via %s.%s: %s", notify_domain, notify_service, ex)
+
+
+async def _async_send_log_reminder(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Evening reminder when nothing (cycle start or symptoms) is logged for today yet."""
+    if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+        return
+    today_iso = dt_util.now().date().isoformat()
+    if today_iso in runtime.history or any(
+        isinstance(e, dict) and e.get("date") == today_iso for e in runtime.symptom_history
+    ):
+        return
+    strings = _notify_strings(hass.config.language)
+    await _async_send_notification(
+        hass, entry, strings["log_title"], strings["log_message"].format(name=runtime.friendly_name)
+    )
+
+
+async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Remind to take the pill while pill is the profile's current method and today's intake is not logged yet."""
+    if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+        return
+    from .model import compute_contraception_status
+
+    today_iso = dt_util.now().date().isoformat()
+    if compute_contraception_status(runtime.symptom_history, today=dt_util.now().date())["current_method"] != CONTRACEPTION_METHOD_PILL:
+        return
+    # ponytail: intake == today's entry has contraception_method "pill"; no separate per-day intake field
+    if any(
+        isinstance(e, dict) and e.get("date") == today_iso and e.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
+        for e in runtime.symptom_history
+    ):
+        return
+    strings = _notify_strings(hass.config.language)
+    await _async_send_notification(
+        hass,
+        entry,
+        strings["pill_title"],
+        strings["pill_message"].format(name=runtime.friendly_name),
+        [{"action": f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}", "title": strings["action_pill_taken"]}],
+    )
 
 
 def _profile_last_activity_date(runtime: "MenstruationRuntime") -> str | None:
@@ -2288,6 +2396,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight period-prolonged check failed for %s", entry.entry_id)
         try:
+            # Same daily-recheck reasoning as the checks above - a checkup becomes overdue on a specific day.
+            from .repairs import async_check_checkup_overdue
+
+            async_check_checkup_overdue(hass, entry.entry_id, entry.title, runtime.symptom_history, dt_util.now().date())
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight checkup-overdue check failed for %s", entry.entry_id)
+        try:
             # Same daily-recheck reasoning as the checks above - days overdue grows by one every day.
             from .repairs import async_check_period_overdue
 
@@ -2373,6 +2488,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_notification_timer(hass, entry, runtime)
 
+    async def _async_handle_mobile_action(event: Any) -> None:
+        # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake.
+        action = event.data.get("action")
+        base = {SERVICE_FIELD_ENTRY_ID: entry.entry_id, SERVICE_FIELD_DATE: dt_util.now().date().isoformat()}
+        try:
+            if action == f"{NOTIFY_ACTION_PERIOD_STARTED_PREFIX}{entry.entry_id}":
+                await _async_handle_add(hass, SimpleNamespace(data=base))
+            elif action == f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}":
+                symptom_data = {SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHOD_PILL}
+                await _async_handle_add_symptom(
+                    hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
+                )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Could not handle notification action %s for %s", action, entry.entry_id)
+
+    entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_handle_mobile_action))
+
     hass.data[DOMAIN][entry.entry_id] = runtime
 
     # Register a lightweight options update listener that re-syncs the dashboard
@@ -2453,6 +2585,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_check_period_prolonged(hass, entry.entry_id, entry.title, _setup_model.current_period, dt_util.now().date())
 
     # Same "cheap, safe to run on every load" reasoning as the checks above.
+    from .repairs import async_check_checkup_overdue
+
+    async_check_checkup_overdue(hass, entry.entry_id, entry.title, runtime.symptom_history, dt_util.now().date())
+
+    # Same "cheap, safe to run on every load" reasoning as the checks above.
     from .repairs import async_check_period_overdue
 
     async_check_period_overdue(
@@ -2524,6 +2661,12 @@ def _register_notification_timer(hass: HomeAssistant, entry: ConfigEntry, runtim
     """
     if runtime.unregister_notify_listener:
         runtime.unregister_notify_listener()
+    if runtime.unregister_log_listener:
+        runtime.unregister_log_listener()
+        runtime.unregister_log_listener = None
+    if runtime.unregister_pill_listener:
+        runtime.unregister_pill_listener()
+        runtime.unregister_pill_listener = None
     raw_time = str(entry.options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME)
     try:
         parsed = datetime.strptime(raw_time[:8], "%H:%M:%S")
@@ -2540,6 +2683,43 @@ def _register_notification_timer(hass: HomeAssistant, entry: ConfigEntry, runtim
         hass, _async_handle_notification_time, hour=parsed.hour, minute=parsed.minute, second=0
     )
 
+    if entry.options.get(CONF_NOTIFY_LOG_REMINDER_ENABLED, DEFAULT_NOTIFY_LOG_REMINDER_ENABLED):
+        raw_log_time = str(
+            entry.options.get(CONF_NOTIFY_LOG_REMINDER_TIME, DEFAULT_NOTIFY_LOG_REMINDER_TIME)
+            or DEFAULT_NOTIFY_LOG_REMINDER_TIME
+        )
+        try:
+            log_parsed = datetime.strptime(raw_log_time[:8], "%H:%M:%S")
+        except ValueError:
+            log_parsed = datetime.strptime(DEFAULT_NOTIFY_LOG_REMINDER_TIME, "%H:%M:%S")
+
+        async def _async_handle_log_reminder_time(_now: datetime) -> None:
+            try:
+                await _async_send_log_reminder(hass, entry, runtime)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Scheduled log reminder failed for %s", entry.entry_id)
+
+        runtime.unregister_log_listener = async_track_time_change(
+            hass, _async_handle_log_reminder_time, hour=log_parsed.hour, minute=log_parsed.minute, second=0
+        )
+
+    if entry.options.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED):
+        raw_pill_time = str(entry.options.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME) or DEFAULT_NOTIFY_PILL_TIME)
+        try:
+            pill_parsed = datetime.strptime(raw_pill_time[:8], "%H:%M:%S")
+        except ValueError:
+            pill_parsed = datetime.strptime(DEFAULT_NOTIFY_PILL_TIME, "%H:%M:%S")
+
+        async def _async_handle_pill_reminder_time(_now: datetime) -> None:
+            try:
+                await _async_send_pill_reminder(hass, entry, runtime)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Scheduled pill reminder failed for %s", entry.entry_id)
+
+        runtime.unregister_pill_listener = async_track_time_change(
+            hass, _async_handle_pill_reminder_time, hour=pill_parsed.hour, minute=pill_parsed.minute, second=0
+        )
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry."""
@@ -2550,6 +2730,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             runtime.unregister_midnight_listener()
         if runtime.unregister_notify_listener:
             runtime.unregister_notify_listener()
+        if runtime.unregister_log_listener:
+            runtime.unregister_log_listener()
+        if runtime.unregister_pill_listener:
+            runtime.unregister_pill_listener()
         if runtime.options_update_unsub:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)

@@ -61,6 +61,10 @@
           "notify_fertile_enabled": "Notify when fertile window starts",
           "notify_fertile_lead_days": "Fertile window notice (days ahead)",
           "notify_time": "Notification time",
+          "notify_log_reminder_enabled": "Evening reminder to log",
+          "notify_log_reminder_time": "Evening reminder time",
+          "notify_pill_enabled": "Pill reminder",
+          "notify_pill_time": "Pill reminder time",
           "notify_ovulation_enabled": "Notify when ovulation is estimated",
           "notify_ovulation_lead_days": "Ovulation notice (days ahead)",
           "temperature_unit": "Basal temperature input unit"
@@ -87,6 +91,10 @@
           "notify_fertile_enabled": "Sends a notification a configurable number of days before the fertile window is predicted to start. Requires 'Enable notifications' above.",
           "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day.",
           "notify_time": "Time of day at which period, fertile window, ovulation and badge notifications are sent (default 08:00). Previously these were sent right after midnight. Takes effect as soon as the settings are saved.",
+          "notify_log_reminder_enabled": "Sends a reminder when nothing (cycle start or symptoms) is logged for today yet. Off by default. Requires 'Enable notifications' above.",
+          "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
+          "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. Off by default. Requires 'Enable notifications' above.",
+          "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
           "notify_ovulation_enabled": "Sends a notification a configurable number of days before the estimated ovulation day. Off by default. Requires 'Enable notifications' above.",
           "notify_ovulation_lead_days": "How many days ahead of the estimated ovulation day to notify (0–7). 0 (default) means the same day.",
           "temperature_unit": "Which unit basal_temp values are interpreted in when logged via the log_symptoms/add_symptom service. Storage and the basal-temperature sensor always stay in Celsius — Home Assistant automatically displays it in the unit your HA instance is configured for."
@@ -353,6 +361,10 @@
     "period_prolonged": {
       "title": "Menstruation Cycle: Period is lasting unusually long",
       "description": "Profile: **{entry_title}**\n\nBleeding has been logged for {days} days in a row, which is longer than usual for this profile. A period lasting more than about a week can have many causes, and this is purely informational, not medical advice - no action is taken automatically. If the bleeding is very heavy or keeps going, it may be worth discussing with a doctor. Dismiss this issue if you're already aware."
+    },
+    "checkup_overdue": {
+      "title": "Menstruation Cycle: Routine checkup may be due",
+      "description": "Profile: **{entry_title}**\n\nThe last gynecological checkup logged for this profile was on {last_date}, about {months} months ago. Many guidelines suggest a routine checkup roughly once a year, but the right interval depends on age, history and local recommendations. This is purely informational, not medical advice, and no action is taken automatically. Log your next appointment once it has happened, or dismiss this issue if you're already aware."
     }
   },
   "selector": {

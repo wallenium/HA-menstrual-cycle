@@ -61,6 +61,10 @@
           "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
           "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)",
           "notify_time": "Hora de las notificaciones",
+          "notify_log_reminder_enabled": "Recordatorio nocturno para registrar",
+          "notify_log_reminder_time": "Hora del recordatorio nocturno",
+          "notify_pill_enabled": "Recordatorio de la píldora",
+          "notify_pill_time": "Hora del recordatorio de la píldora",
           "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
           "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
           "temperature_unit": "Unidad de entrada de temperatura basal"
@@ -87,6 +91,10 @@
           "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
           "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día.",
           "notify_time": "Hora del día a la que se envían las notificaciones de regla, ventana fértil, ovulación e insignias (08:00 por defecto). Antes se enviaban justo después de medianoche. Surte efecto al guardar.",
+          "notify_log_reminder_enabled": "Envía un recordatorio si todavía no hay nada (inicio de ciclo o síntomas) registrado para hoy. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+          "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
+          "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+          "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
           "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
           "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
           "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA."
@@ -357,6 +365,10 @@
     "period_prolonged": {
       "title": "Menstruation Cycle: La regla dura más de lo habitual",
       "description": "Perfil: **{entry_title}**\n\nSe ha registrado sangrado durante {days} días seguidos, más de lo habitual para este perfil. Una regla de más de una semana aproximadamente puede tener muchas causas; esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si el sangrado es muy abundante o continúa, puede valer la pena comentarlo con un médico. Descarta este aviso si ya lo sabes."
+    },
+    "checkup_overdue": {
+      "title": "Menstruation Cycle: puede que toque una revisión de rutina",
+      "description": "Perfil: **{entry_title}**\n\nLa última revisión ginecológica registrada para este perfil fue el {last_date}, hace unos {months} meses. Muchas recomendaciones sugieren una revisión de rutina aproximadamente una vez al año, pero el intervalo adecuado depende de la edad, los antecedentes y las recomendaciones locales. Esto es meramente informativo, no un consejo médico, y no se realiza ninguna acción automáticamente. Registra tu próxima cita cuando se haya realizado, o descarta este problema si ya lo sabes."
     }
   },
   "selector": {

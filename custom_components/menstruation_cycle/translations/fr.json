@@ -61,6 +61,10 @@
           "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
           "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)",
           "notify_time": "Heure des notifications",
+          "notify_log_reminder_enabled": "Rappel du soir pour saisir",
+          "notify_log_reminder_time": "Heure du rappel du soir",
+          "notify_pill_enabled": "Rappel de pilule",
+          "notify_pill_time": "Heure du rappel de pilule",
           "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
           "notify_ovulation_lead_days": "Préavis ovulation (jours)",
           "temperature_unit": "Unité de saisie de la température basale"
@@ -87,6 +91,10 @@
           "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
           "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même.",
           "notify_time": "Heure à laquelle les notifications de règles, de fenêtre de fertilité, d'ovulation et de badges sont envoyées (08:00 par défaut). Elles étaient auparavant envoyées juste après minuit. Prend effet dès l'enregistrement.",
+          "notify_log_reminder_enabled": "Envoie un rappel si rien (début de cycle ou symptômes) n'est encore enregistré pour aujourd'hui. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+          "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
+          "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+          "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
           "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
           "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
           "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA."
@@ -357,6 +365,10 @@
     "period_prolonged": {
       "title": "Menstruation Cycle : les règles durent anormalement longtemps",
       "description": "Profil : **{entry_title}**\n\nDes saignements ont été enregistrés {days} jours de suite, ce qui est plus long que d'habitude pour ce profil. Des règles de plus d'une semaine environ peuvent avoir de nombreuses causes ; ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Si les saignements sont très abondants ou persistent, il peut être utile d'en parler à un médecin. Ignorez cet avis si vous en êtes déjà conscient(e)."
+    },
+    "checkup_overdue": {
+      "title": "Menstruation Cycle : un contrôle de routine est peut-être dû",
+      "description": "Profil : **{entry_title}**\n\nLe dernier contrôle gynécologique enregistré pour ce profil date du {last_date}, il y a environ {months} mois. De nombreuses recommandations préconisent un contrôle de routine environ une fois par an, mais l'intervalle adapté dépend de l'âge, des antécédents et des recommandations locales. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Enregistrez votre prochain rendez-vous une fois effectué, ou ignorez ce problème si vous êtes déjà au courant."
     }
   },
   "selector": {
