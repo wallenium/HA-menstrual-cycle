@@ -148,6 +148,15 @@ class HospitalBagTests(RepairCheckCase):
             self._check(**case)
             self.assertCleared("hospital_bag_incomplete_")
 
+    def test_the_given_day_is_used_not_the_system_clock(self) -> None:
+        window = const.HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE
+        due = "2030-03-01"
+        repairs.async_check_hospital_bag_incomplete(None, "e1", "Sarah", True, due, self.ITEMS, date(2030, 3, 1) - timedelta(days=window))
+        self.assertCreated("hospital_bag_incomplete_")
+        CALLS.clear()
+        repairs.async_check_hospital_bag_incomplete(None, "e1", "Sarah", True, due, self.ITEMS, date(2030, 3, 1) - timedelta(days=window + 1))
+        self.assertCleared("hospital_bag_incomplete_")
+
     def test_garbage_due_date_is_ignored(self) -> None:
         repairs.async_check_hospital_bag_incomplete(None, "e1", "Sarah", True, "soon", self.ITEMS)
         self.assertCleared("hospital_bag_incomplete_")

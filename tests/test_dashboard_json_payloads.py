@@ -31,7 +31,7 @@ def _install_homeassistant_stubs() -> None:
 
     sensor_mod = types.ModuleType("homeassistant.components.sensor")
     sensor_mod.SensorEntity = type("SensorEntity", (), {})
-    sensor_mod.SensorDeviceClass = type("SensorDeviceClass", (), {"TEMPERATURE": "temperature", "DATE": "date"})
+    sensor_mod.SensorDeviceClass = type("SensorDeviceClass", (), {"TEMPERATURE": "temperature", "DATE": "date", "DURATION": "duration"})
     sensor_mod.SensorStateClass = type("SensorStateClass", (), {"MEASUREMENT": "measurement"})
     sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
 

@@ -18,6 +18,23 @@ It combines a Home Assistant integration, per-profile sensors, local data storag
 - Automatic frontend resource registration when installed through the integration
 - Local-first storage inside Home Assistant
 
+## Entities
+
+Each profile creates these entities (`<name>` is the slugified profile name):
+
+| Entity | Purpose |
+|--------|---------|
+| `sensor.menstruation_<name>` | Main cycle status (period, fertile, PMS, neutral, pregnant, ...) with all cycle data as attributes. Shows a state-based icon unless you set your own icon. |
+| `sensor.menstruation_<name>_next_ovulation` | Date of the next predicted ovulation. |
+| `sensor.menstruation_<name>_cycle_length` | Length of the last completed cycle in days, with Home Assistant long-term statistics so you can chart it over months. |
+| `sensor.menstruation_<name>_products_today` | Period products used today (usage statistics). |
+| `sensor.menstruation_<name>_basal_temp` | Basal body temperature, when a temperature sensor is linked. |
+| `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. |
+| `image.menstruation_<name>_cycle_phase` | Illustration of the current phase, for picture cards and wall tablets. |
+| `todo.menstruation_<name>_hospital_bag` | Editable hospital-bag checklist, only available during a pregnancy. Pre-filled in the Home Assistant language (German, English, Spanish, French, Swedish; English otherwise). |
+
+Entities follow the profile's visibility level: at "Private" nothing is shown, at "Status only" only period events remain in the calendar. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook, and repair issues point out things like an old calendar feed (ICS) token or an unreachable notify target.
+
 ## Quick Start
 
 1. Open HACS and add the custom repository `git: /wallenium/HA-menstrual-cycle`.
@@ -55,7 +72,7 @@ The integration can notify you itself (**Configure → Notifications**), no auto
 | Period reminder | a set number of days before the predicted start | Notify before period starts (+ days ahead) | on, 1 day |
 | Fertile window | a set number of days before the window starts | Notify when fertile window starts (+ days ahead) | on, same day |
 | Ovulation | a set number of days before the estimated ovulation | Notify when ovulation is estimated (+ days ahead) | off |
-| Cycle recap | a new cycle start was logged (length and period duration of the finished cycle) | Recap after each cycle | off |
+| Cycle recap | a new cycle start was logged (length and period duration of the finished cycle, compared with the average, plus pain days) | Recap after each cycle | off |
 | Period overdue | the period is 7 days past its predicted start and not logged (only with reliable predictions) | Notify when the period is overdue | off |
 | Checkup | 14 days before the next checkup is due, or once if already overdue | Notify before a checkup is due (+ checkup interval, 0 = off) | off, 12 months |
 | Log reminder | nothing was logged for today yet | Evening reminder to log (+ time) | off, 20:00 |
@@ -209,11 +226,11 @@ If the sidebar toggle is disabled, existing cards and views continue to work unc
 |----------|--------|
 | 🇬🇧 English | ✅ 100% |
 | 🇩🇪 German | ✅ 100% |
-| 🇸🇪 Swedish | ✅ 100% |
-| 🇫🇷 French | 🟡 96% – Seeking volunteers |
-| 🇪🇸 Spanish | 🟡 95% – Seeking volunteers |
+| 🇸🇪 Swedish | ✅ Complete – native review welcome |
+| 🇫🇷 French | ✅ Complete – native review welcome |
+| 🇪🇸 Spanish | ✅ Complete – native review welcome |
 
-Template files for Swedish, French, and Spanish are already in place. See [Translation Section](https://github.com/wallenium/HA-menstrual-cycle/wiki/Translation-&-l18n) for instructions on how to contribute a translation.
+Swedish, French and Spanish are fully translated but not yet reviewed by native speakers, so corrections are very welcome. See [Translation Section](https://github.com/wallenium/HA-menstrual-cycle/wiki/Translation-&-l18n) for instructions on how to contribute a translation.
 
 ## Contributing and feedback
 

@@ -25,7 +25,7 @@ def _install_homeassistant_stubs() -> None:
 
     sensor_mod = types.ModuleType("homeassistant.components.sensor")
     sensor_mod.SensorEntity = type("SensorEntity", (), {})
-    sensor_mod.SensorDeviceClass = type("SensorDeviceClass", (), {"TEMPERATURE": "temperature", "DATE": "date"})
+    sensor_mod.SensorDeviceClass = type("SensorDeviceClass", (), {"TEMPERATURE": "temperature", "DATE": "date", "DURATION": "duration"})
     sensor_mod.SensorStateClass = type("SensorStateClass", (), {"MEASUREMENT": "measurement"})
     sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
 
@@ -322,6 +322,62 @@ class TestBackgroundThreadSafety(unittest.TestCase):
         t.join(timeout=2)
         self.assertFalse(errors, f"Unexpected exception from background thread: {errors}")
         entity.hass.loop.call_soon_threadsafe.assert_called_once()
+
+
+class TestCycleLengthSensor(unittest.TestCase):
+    """The cycle-length measurement sensor: value, attributes, visibility and identity."""
+
+    HISTORY = [
+        f"{start[:8]}{int(start[8:]) + offset:02d}"
+        for start in ("2026-05-01", "2026-05-29", "2026-06-26", "2026-07-25")
+        for offset in range(3)
+    ]
+
+    def _sensor(self, history, visibility="full"):
+        runtime = types.SimpleNamespace(
+            friendly_name="Test", history=history, symptom_history=[], visibility_level=visibility
+        )
+        hass = _make_fake_hass()
+        hass.data[const.DOMAIN]["entry-1"] = runtime
+        entry = types.SimpleNamespace(entry_id="entry-1")
+        return sensor_module.MenstruationCycleLengthSensor(hass, entry)
+
+    def _update(self, sensor):
+        import asyncio
+
+        asyncio.run(sensor.async_update())
+        return sensor
+
+    def test_identity_and_measurement_setup(self) -> None:
+        sensor = self._sensor(self.HISTORY)
+        self.assertEqual(sensor._attr_unique_id, "entry-1_cycle_length")
+        self.assertEqual(sensor._attr_suggested_object_id, "menstruation_test_cycle_length")
+        self.assertEqual(sensor._attr_state_class, "measurement")
+        self.assertEqual(sensor._attr_device_class, "duration")
+
+    def test_value_is_the_last_completed_cycle_with_the_average_as_attribute(self) -> None:
+        sensor = self._update(self._sensor(self.HISTORY))
+        self.assertEqual(sensor._attr_native_value, 29)  # 2026-06-26 to 2026-07-25
+        self.assertEqual(
+            sensor._attr_extra_state_attributes,
+            {"cycle_start": "2026-06-26", "cycle_end": "2026-07-24", "average_cycle_length": 28},
+        )
+        self.assertTrue(sensor.available)
+
+    def test_unknown_until_two_cycle_starts_are_logged(self) -> None:
+        sensor = self._update(self._sensor(["2026-07-25", "2026-07-26"]))
+        self.assertIsNone(sensor._attr_native_value)
+        self.assertEqual(sensor._attr_extra_state_attributes, {})
+
+    def test_hidden_below_full_visibility(self) -> None:
+        for level in ("status_only", "private"):
+            sensor = self._update(self._sensor(self.HISTORY, level))
+            self.assertIsNone(sensor._attr_native_value, level)
+            self.assertFalse(sensor.available, level)
+
+    def test_it_is_set_up_with_the_other_sensors(self) -> None:
+        source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")
+        self.assertIn("MenstruationCycleLengthSensor(hass, entry),", source)
 
 
 if __name__ == "__main__":

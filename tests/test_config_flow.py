@@ -9,7 +9,7 @@ import sys
 import types
 import unicodedata
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -103,6 +103,7 @@ def _stubs() -> dict[str, types.ModuleType]:
     dispatcher.async_dispatcher_send = lambda *args, **kwargs: None
     util = _permissive("homeassistant.util")
     util.slugify = slugify
+    util.dt = types.SimpleNamespace(now=lambda: datetime.now())
     selector = _permissive("homeassistant.helpers.selector")
     helpers = _permissive("homeassistant.helpers")
     helpers.selector = selector

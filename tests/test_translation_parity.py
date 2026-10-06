@@ -83,6 +83,19 @@ class TranslationParityTests(unittest.TestCase):
         self.assertGreater(checked, 500)
         self.assertEqual(problems, [])
 
+    def test_every_literal_key_the_dashboard_panel_asks_for_is_translated(self) -> None:
+        """A missing key makes _t() return the raw key, which then shows up in the UI."""
+        folder = ROOT / "www" / "translations"
+        source = (ROOT / "www" / "menstruation-cycle-dashboard-panel.js").read_text(encoding="utf-8")
+        # Keys ending in "_" are prefixes completed at runtime (cat_ + name), not real keys.
+        used = {k for k in re.findall(r"_t\(\s*'([A-Za-z0-9_.]+)'", source) if not k.endswith("_")}
+        self.assertGreater(len(used), 200)
+        problems = []
+        for lang in LANGS:
+            keys = set(json.loads((folder / f"{lang}.json").read_text(encoding="utf-8")))
+            problems += [f"{lang}.json: panel uses {k}" for k in sorted(used - keys)]
+        self.assertEqual(problems, [])
+
     def test_every_service_and_field_in_services_yaml_has_a_name_and_description_in_every_language(self) -> None:
         text = (ROOT / "services.yaml").read_text(encoding="utf-8")
         services: dict[str, list[str]] = {}

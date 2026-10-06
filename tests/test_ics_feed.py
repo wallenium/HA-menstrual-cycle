@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 import types
 import unittest
@@ -102,6 +103,31 @@ def _make_forecasts(
     )
     return period_forecast, fertility_forecast, next_start
 
+
+class TestTodayIsPassedIn(unittest.TestCase):
+    """The reference day comes from the caller (Home Assistant's time zone), not from the system clock."""
+
+    def _dtstarts(self, today: date) -> list[str]:
+        starts = [(date(2030, 1, 1) + timedelta(days=28 * i)).isoformat() for i in range(4)]
+        pf, ff, _ = _make_forecasts(cycle_starts=starts)
+        text = generate_ics("e", pf, ff, today=today).decode("utf-8")
+        return re.findall(r"DTSTART;VALUE=DATE:(\d+)", text)
+
+    def test_feed_starts_at_the_given_day(self) -> None:
+        early = self._dtstarts(date(2030, 1, 1))
+        late = self._dtstarts(date(2030, 6, 1))
+        self.assertTrue(early and late)
+        self.assertLess(min(early), min(late))
+        # events that are still running on the given day may start a few days earlier
+        self.assertGreaterEqual(min(late), "20300520")
+
+    def test_cycle_predictions_cutoff_uses_the_given_day(self) -> None:
+        history = [(date(2020, 1, 1) + timedelta(days=30 * i)).isoformat() for i in range(8)]
+        result = model.build_cycle_predictions(history, 30, future_cycles=0, days_back=60, today=date(2020, 6, 1))
+        starts = [r["cycle_start"] for r in result]
+        self.assertTrue(starts)
+        self.assertTrue(all(start >= "2020-04-02" for start in starts), starts)
+        self.assertIn("2020-05-30", starts)
 
 class TestGenerateIcsStructure(unittest.TestCase):
     """Test that generate_ics returns valid VCALENDAR bytes."""

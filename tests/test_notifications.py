@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import re
 import sys
 import types
 import unittest
@@ -224,6 +225,71 @@ class OverdueNotificationTests(unittest.TestCase):
         entry = _entry(**{const.CONF_NOTIFY_OVERDUE_ENABLED: True})
         self.assertEqual(_run_notifications(entry, self._runtime(const.PERIOD_OVERDUE_DAYS - 1)).calls, [])
         self.assertEqual(_run_notifications(_entry(), self._runtime(10)).calls, [])
+
+
+class RecapNotificationTests(unittest.TestCase):
+    ENTRY = {const.CONF_NOTIFY_RECAP_ENABLED: True}
+
+    def _runtime(self, last_cycle: int = 33, earlier=(28, 28, 28), pain_days: int = 0, latest_offset: int = -2):
+        starts = [latest_offset]
+        for length in (last_cycle, *earlier):
+            starts.append(starts[-1] - length)
+        history = [_iso(o + k) for o in sorted(starts) for k in range(3)]
+        pain = [{"date": _iso(starts[1] + k), "pain": ["cramps"]} for k in range(pain_days)]
+        return _runtime(history=history, symptom_history=pain)
+
+    def _send(self, runtime, language="en", **options):
+        entry = _entry(**{**self.ENTRY, **options})
+        sent = _Sent()
+        hass = _hass()
+        hass.config.language = language
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        return sent
+
+    def test_message_names_length_period_comparison_and_pain_days(self) -> None:
+        sent = self._send(self._runtime(pain_days=2))
+        self.assertEqual(len(sent.calls), 1)
+        title, message, _ = sent.calls[0]
+        self.assertEqual(title, "Cycle recap")
+        self.assertEqual(
+            message,
+            "Test: cycle finished - 33 days long, period lasted 3 days. "
+            "That is 5 days longer than the average (28 days). Pain days: 2.",
+        )
+
+    def test_shorter_and_in_line_wording(self) -> None:
+        self.assertIn("2 days shorter than the average (28 days)", self._send(self._runtime(last_cycle=26)).calls[0][1])
+        for length in (27, 28, 29):
+            self.assertIn("In line with the average (28 days).", self._send(self._runtime(last_cycle=length)).calls[0][1])
+
+    def test_no_pain_sentence_without_pain_and_no_comparison_without_earlier_cycles(self) -> None:
+        message = self._send(self._runtime(earlier=())).calls[0][1]
+        self.assertEqual(message, "Test: cycle finished - 33 days long, period lasted 3 days.")
+
+    def test_follows_the_language(self) -> None:
+        message = self._send(self._runtime(pain_days=1), "de").calls[0][1]
+        self.assertTrue(message.endswith("Das sind 5 Tage mehr als der Durchschnitt (28 Tage). Schmerztage: 1."), message)
+
+    def test_sent_once_per_cycle_and_only_in_the_first_week_and_when_enabled(self) -> None:
+        runtime = self._runtime()
+        self.assertEqual(len(self._send(runtime).calls), 1)
+        self.assertEqual(self._send(runtime).calls, [])
+        self.assertEqual(self._send(self._runtime(latest_offset=-9)).calls, [])
+        self.assertEqual(self._send(self._runtime(), **{const.CONF_NOTIFY_RECAP_ENABLED: False}).calls, [])
+
+    def test_every_language_has_the_same_recap_texts(self) -> None:
+        table = integration._NOTIFY_STRINGS
+        keys = {k for k in table["en"] if k.startswith("recap_")}
+        self.assertEqual(len(keys), 6)
+        for lang, strings in table.items():
+            self.assertEqual({k for k in strings if k.startswith("recap_")}, keys, lang)
+            for key in keys:
+                self.assertEqual(
+                    set(re.findall(r"\{(\w+)\}", strings[key])), set(re.findall(r"\{(\w+)\}", table["en"][key])), f"{lang}.{key}"
+                )
 
 
 class CheckupNotificationTests(unittest.TestCase):

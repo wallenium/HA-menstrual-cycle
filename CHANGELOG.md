@@ -16,7 +16,12 @@
 - Service dropdowns (inventory action, body signs, visibility level, import mode, formats) show translated labels instead of raw values.
 - Blueprints and README now document the notification and blueprint setup.
 - The hospital-bag checklist is pre-filled in the Home Assistant language (German, English, Spanish, French or Swedish; English otherwise). Existing checklists stay unchanged.
+- Shopping-list entries (products, underwear washing, contraception renewal, pill pack) are written in the Home Assistant language; an entry in another language still counts as a duplicate.
 - `icons.json`: every service has its own icon, and the main cycle sensor shows a state-based icon (period, fertile, PMS, pregnancy, ...) unless a custom icon is set for the profile.
+- The cycle recap notification now also compares the finished cycle with the average of the cycles before and names the pain days (DE/EN/ES/FR/SV).
+- New service `get_last_cycle_summary`: summary of the last completed cycle (length compared with the earlier average, period and pain days, logged days, most frequent symptoms, bleeding-strength distribution) as a service response.
+- Dashboard panel: new "Last completed cycle" entry in the cycle insights widget (length vs. average, period days, pain days), based on `get_last_cycle_summary`.
+- New sensor `sensor.menstruation_<name>_cycle_length`: length of the last completed cycle in days as a measurement with long-term statistics (average of the earlier cycles as attribute; only at visibility "Full").
 
 ### Changed
 - Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
@@ -26,6 +31,9 @@
 - Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
+- Several places used the system clock (`date.today()`) instead of Home Assistant's time zone to decide what "today" is (cycle model at the midnight run and on load, calendar, ICS feed, hospital-bag reminder, cycle predictions, date checks in the options form); around midnight they could work with the wrong day. A test now guards against it.
+- The basal-temperature import from a linked sensor only ran at midnight and on load, when the sensor still held yesterday's value: that value was stored under the new day and blocked the real morning reading. The import now runs when the sensor updates (and when the option is saved), stores a reading under the day it was taken, and ignores readings older than yesterday.
+- The cycle insights widget showed the raw text `dashboard_cycle_comparison_basis` instead of "based on N cycles" (translation was missing in all languages). A test now checks that every literal key used by the panel is translated.
 - hassfest rejected the service descriptions of `export_history` and `export_doctor_report` (the text `<config>` looked like HTML); the same placeholder was also removed from the calendar option text in DE/ES/FR/SV.
 - Crash in profile label sync (wrong LabelRegistry API).
 - "Day of the week" off-by-one bug (#255).
