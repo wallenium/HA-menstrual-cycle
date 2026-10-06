@@ -373,6 +373,8 @@ SERVICE_GET_CYCLE_PREDICTIONS = "get_cycle_predictions"
 # still-ongoing cycle against the recent average rather than requiring
 # an external client to pull the full history and recompute that itself.
 SERVICE_COMPARE_CURRENT_CYCLE = "compare_current_cycle"
+# Read-only summary of the last completed cycle (length, period/pain days, top symptoms).
+SERVICE_GET_LAST_CYCLE_SUMMARY = "get_last_cycle_summary"
 # HA-Idee 4 ("weitere Ideen?", 27.09.2026): read-only, household-wide (not
 # per-profile, like repair_storage/export_full_backup above) - one call
 # across every currently loaded profile instead of a client having to call
@@ -781,4 +783,6 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         # HA-Idee ("weitere neue Ideen", 29.09.2026): sensor.py's dedizierte
         # naechster-Eisprung-Entity, gleiches Namensschema.
         "_next_ovulation": f"menstruation_{slug}_next_ovulation",
+        # Length of the last completed cycle as a measurement sensor (long-term statistics).
+        "_cycle_length": f"menstruation_{slug}_cycle_length",
     }

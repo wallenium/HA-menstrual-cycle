@@ -93,7 +93,7 @@
               "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
               "notify_log_reminder_enabled": "Envía un recordatorio si todavía no hay nada (inicio de ciclo o síntomas) registrado para hoy. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
               "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
-              "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+              "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación, comparada con la media, y días con dolor) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
               "notify_overdue_enabled": "Envía un aviso cuando la menstruación lleva 7 días de retraso sobre el inicio previsto y no está registrada (mismo umbral que el aviso de reparación), con un botón «Menstruación iniciada». No mientras la predicción sea poco fiable. Solo al destino de este perfil. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
               "notify_checkup_enabled": "Envía un aviso 14 días antes de la próxima revisión (última revisión registrada más el intervalo de abajo), o una vez si ya está vencida. Requiere un intervalo mayor que 0. Desactivado por defecto. Requiere «Activar notificaciones» arriba."
             }
@@ -681,6 +681,24 @@
     "compare_current_cycle": {
       "name": "Comparar el ciclo actual",
       "description": "Compara el ciclo actual, aún en curso, con el promedio reciente (hasta 7 ciclos completados): cuántos días lleva en relación con la duración media del ciclo y cuántos días de dolor se han registrado hasta ahora frente a la media de días de dolor por ciclo completado. Solo lectura, no cambia nada.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "get_last_cycle_summary": {
+      "name": "Resumen del último ciclo",
+      "description": "Devuelve un resumen del último ciclo completado (entre los dos inicios de ciclo más recientes): duración del ciclo comparada con la media de los ciclos anteriores, días de menstruación, días con dolor, días registrados, los síntomas más frecuentes y la distribución de la intensidad del sangrado. Solo lectura, no cambia nada.",
       "fields": {
         "entity_id": {
           "name": "Entidad",

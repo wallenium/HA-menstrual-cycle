@@ -5742,6 +5742,45 @@
     }
 
     /**
+     * Fetches get_last_cycle_summary (length, period days, pain days of the
+     * last completed cycle) for the "last cycle" tile. Same cache-plus-dedup
+     * shape as _fetchCycleComparison; a profile with fewer than two cycle
+     * starts makes the service raise, which is cached as null (no retry loop).
+     */
+    async _fetchLastCycleSummary(profile) {
+      this._lastCycleCache = this._lastCycleCache || {};
+      this._lastCycleFetching = this._lastCycleFetching || new Set();
+      if (this._lastCycleCache[profile] !== undefined || this._lastCycleFetching.has(profile)) return;
+      if (!this._hass?.connection?.sendMessagePromise) return;
+      this._lastCycleFetching.add(profile);
+      try {
+        const result = await this._hass.connection.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'get_last_cycle_summary',
+          service_data: { profile },
+          return_response: true,
+        });
+        this._lastCycleCache[profile] = result?.response || null;
+      } catch (err) {
+        console.warn('[menstruation-cycle-dashboard-panel] get_last_cycle_summary failed:', err);
+        this._lastCycleCache[profile] = null;
+      } finally {
+        this._lastCycleFetching.delete(profile);
+      }
+      this.render();
+    }
+
+    _lastCycleSummary(stateObj) {
+      const profile = stateObj?.attributes?.profile || this._activeProfile || 'default';
+      this._lastCycleCache = this._lastCycleCache || {};
+      const cached = this._lastCycleCache[profile];
+      if (cached !== undefined) return cached;
+      this._fetchLastCycleSummary(profile); // fire-and-forget, re-renders on completion
+      return null;
+    }
+
+    /**
      * Combines two backend features that were already fully computed but had
      * no UI home: wellness_score (regularity/pain/history blended into one
      * 0-100 number, HA-Idee 6 27.09.2026) sits directly on the sensor so it
@@ -5754,6 +5793,7 @@
       const attrs = stateObj?.attributes || {};
       const wellness = attrs.wellness_score && typeof attrs.wellness_score === 'object' ? attrs.wellness_score : null;
       const comparison = this._compareCurrentCycle(stateObj);
+      const lastCycle = this._lastCycleSummary(stateObj);
       const items = [];
 
       if (wellness && Number.isFinite(wellness.score)) {
@@ -5786,6 +5826,18 @@
             label: `${comparison.current_pain_days} (Ø ${comparison.average_pain_days_per_cycle})`,
           });
         }
+      }
+
+      if (lastCycle && Number.isFinite(lastCycle.cycle_length)) {
+        items.push({
+          severity: 'info',
+          tag: this._t('dashboard_last_cycle_tag'),
+          label: this._t('dashboard_last_cycle_label')
+            .replace('{length}', String(lastCycle.cycle_length))
+            .replace('{average}', String(lastCycle.average_cycle_length ?? '–'))
+            .replace('{period}', String(lastCycle.period_days ?? '–'))
+            .replace('{pain}', String(lastCycle.pain_days ?? '–')),
+        });
       }
 
       if (!items.length) {

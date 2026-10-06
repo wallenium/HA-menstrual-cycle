@@ -237,6 +237,34 @@ def _compute_pain_trend(
     return trend
 
 
+def compute_last_cycle_summary(history: list[str], symptom_history: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Summary of the last completed cycle (between the two newest cycle starts); None before two starts are logged."""
+    starts = [d for d in (_parse_iso(s) for s in grouped_cycle_starts(history)) if d is not None]
+    if len(starts) < 2:
+        return None
+    start, next_start = starts[-2], starts[-1]
+    end = next_start - timedelta(days=1)
+    earlier = [(b - a).days for a, b in list(zip(starts[:-2], starts[1:-1]))[-6:]]
+    earlier = [days for days in earlier if 10 < days < 80]
+    average = round(mean(earlier)) if earlier else None
+    length = (next_start - start).days
+    period_days = sum(1 for day in history if (d := _parse_iso(day)) is not None and start <= d <= end)
+    cycle = [(start, end, start.isoformat())]
+    stats = _compute_symptom_stats(symptom_history, cycle)
+    return {
+        "cycle_start": start.isoformat(),
+        "cycle_end": end.isoformat(),
+        "cycle_length": length,
+        "average_cycle_length": average,
+        "days_relative_to_average": length - average if average is not None else None,
+        "period_days": period_days,
+        "pain_days": _compute_pain_trend(symptom_history, cycle)[0]["pain_days"],
+        "logged_days": len(_symptom_entries_in_range(symptom_history, start, end)),
+        "top_symptoms": [{"key": t["key"], "count": t["count"]} for t in stats["top_symptoms"][:5]],
+        "bleeding_strength_distribution": stats["bleeding_strength_distribution"],
+    }
+
+
 def _compute_nfp_confirmation_stats(
     symptom_history: list[dict[str, Any]],
     periods: list[tuple[date, date, str]],

@@ -7,7 +7,7 @@ import json
 import logging
 import re
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -31,7 +31,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_call_later, async_track_time_change
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
@@ -163,6 +163,7 @@ from .const import (
     SERVICE_GET_FULL_HISTORY,
     SERVICE_GET_CYCLE_PREDICTIONS,
     SERVICE_COMPARE_CURRENT_CYCLE,
+    SERVICE_GET_LAST_CYCLE_SUMMARY,
     SERVICE_GET_HOUSEHOLD_SUMMARY,
     SERVICE_LOG_FIRST_PERIOD,
     SERVICE_LOG_PRODUCT_USAGE,
@@ -249,7 +250,7 @@ from .model import (
     grouped_cycle_starts,
     normalize_history,
 )
-from .statistics import compute_statistics, generate_doctor_report_html
+from .statistics import compute_last_cycle_summary, compute_statistics, generate_doctor_report_html
 from .storage import MenstruationStorage
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
@@ -351,7 +352,6 @@ _SHOPPING_PRODUCT_NAMES: dict[str, str] = {
 }
 
 _TODO_SHOPPING_LIST_ENTITY = "todo.shopping_list"
-_UNDERWEAR_WASH_TODO_ITEM = "Underwear washing needed"
 _DEFAULT_UNDERWEAR_TOTAL_OWNED = 12
 _DEFAULT_UNDERWEAR_WASHING_THRESHOLD = 3
 _SERVICE_FIELD_UNDERWEAR_TOTAL_OWNED = "underwear_total_owned"
@@ -393,6 +393,7 @@ class MenstruationRuntime:
     unregister_notify_listener: Callable[[], None] | None = None
     unregister_log_listener: Callable[[], None] | None = None
     unregister_pill_listener: Callable[[], None] | None = None
+    unregister_basal_temp_listener: Callable[[], None] | None = None
     options_update_unsub: Callable[[], None] | None = None
     cycle_length_override: int | None = None
     # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
@@ -844,9 +845,9 @@ async def _async_check_and_update_todo_list(hass: HomeAssistant, household_data:
     if product in _SKIP_SHOPPING_PRODUCTS:
         return
 
-    display_name = _SHOPPING_PRODUCT_NAMES.get(product)
-    if not display_name:
+    if product not in _SHOPPING_PRODUCT_NAMES:
         return
+    display_name = _todo_strings(hass.config.language)["products"][product]
 
     inventory = household_data.get("inventory", {})
     quantity = max(0, int(inventory.get(product, 0)))
@@ -857,7 +858,9 @@ async def _async_check_and_update_todo_list(hass: HomeAssistant, household_data:
     if quantity > warning:
         return
 
-    added = await _async_add_todo_item_if_missing(hass, display_name)
+    added = await _async_add_todo_item_if_missing(
+        hass, display_name, same_as=_todo_variants(lambda t: t["products"][product])
+    )
     if added:
         _LOGGER.info(
             "Added '%s' to shopping list (stock: %d, warning threshold: %d).",
@@ -891,17 +894,75 @@ def _household_inventory_critical_products(household_data: dict[str, Any]) -> li
     return critical_products
 
 
+# Texts of the shopping-list items this integration adds, per Home Assistant language (English fallback).
+_TODO_STRINGS: dict[str, dict[str, Any]] = {
+    "en": {
+        "products": {"tampon": "Tampons", "pad": "Pads", "liner": "Liners", "underwear": "Period underwear"},
+        "underwear_wash": "Underwear washing needed",
+        "contraception_prefix": "{name}: contraception method ({method})",
+        "contraception_renewal": "{prefix} may need renewal soon ({date})",
+        "pill_refill": "{name}: order a new pill pack (current one ends {date})",
+    },
+    "de": {
+        "products": {"tampon": "Tampons", "pad": "Binden", "liner": "Slipeinlagen", "underwear": "Periodenunterwäsche"},
+        "underwear_wash": "Unterwäsche muss gewaschen werden",
+        "contraception_prefix": "{name}: Verhütungsmethode ({method})",
+        "contraception_renewal": "{prefix} muss bald erneuert werden ({date})",
+        "pill_refill": "{name}: neue Pillenpackung bestellen (aktuelle endet am {date})",
+    },
+    "es": {
+        "products": {"tampon": "Tampones", "pad": "Compresas", "liner": "Protectores diarios", "underwear": "Ropa interior menstrual"},
+        "underwear_wash": "Hay que lavar la ropa interior",
+        "contraception_prefix": "{name}: método anticonceptivo ({method})",
+        "contraception_renewal": "{prefix} puede necesitar renovación pronto ({date})",
+        "pill_refill": "{name}: pedir un nuevo envase de píldoras (el actual termina el {date})",
+    },
+    "fr": {
+        "products": {"tampon": "Tampons", "pad": "Serviettes", "liner": "Protège-slips", "underwear": "Culottes menstruelles"},
+        "underwear_wash": "Culottes à laver",
+        "contraception_prefix": "{name} : méthode contraceptive ({method})",
+        "contraception_renewal": "{prefix} : renouvellement à prévoir bientôt ({date})",
+        "pill_refill": "{name} : commander une nouvelle plaquette de pilules (l'actuelle se termine le {date})",
+    },
+    "sv": {
+        "products": {"tampon": "Tamponger", "pad": "Bindor", "liner": "Trosskydd", "underwear": "Mensunderkläder"},
+        "underwear_wash": "Underkläder behöver tvättas",
+        "contraception_prefix": "{name}: preventivmetod ({method})",
+        "contraception_renewal": "{prefix} kan snart behöva förnyas ({date})",
+        "pill_refill": "{name}: beställ ny p-pillerförpackning (nuvarande tar slut {date})",
+    },
+}
+
+
+def _todo_strings(lang: str | None) -> dict[str, Any]:
+    return _TODO_STRINGS.get(str(lang or "en").strip().lower()[:2], _TODO_STRINGS["en"])
+
+
+def _todo_variants(make: Callable[[dict[str, Any]], str]) -> list[str]:
+    """The same item text in every language, so a duplicate is found after a language change."""
+    return list(dict.fromkeys(make(strings) for strings in _TODO_STRINGS.values()))
+
+
+
 async def _async_add_todo_item_if_missing(
     hass: HomeAssistant,
     item: str,
     *,
-    duplicate_contains: str | None = None,
+    duplicate_contains: Iterable[str] | str | None = None,
+    same_as: Iterable[str] = (),
 ) -> bool:
-    """Add an item to todo.shopping_list unless an equivalent item already exists."""
+    """Add an item to todo.shopping_list unless an equivalent item already exists.
+
+    same_as: other spellings of the item (other languages) that count as an exact duplicate;
+    duplicate_contains: texts that count as a duplicate when part of an existing item.
+    """
     normalized_item = item.strip().lower()
     if not normalized_item:
         return False
 
+    same = {normalized_item, *(text.strip().lower() for text in same_as)}
+    contains = [duplicate_contains] if isinstance(duplicate_contains, str) else list(duplicate_contains or [])
+    contains = [text.strip().lower() for text in contains if text.strip()]
     # Check for duplicate entry before adding.
     already_listed = False
     try:
@@ -916,10 +977,7 @@ async def _async_add_todo_item_if_missing(
             items = response.get(_TODO_SHOPPING_LIST_ENTITY, {}).get("items", [])
             for todo_item in (items if isinstance(items, list) else []):
                 summary = str(todo_item.get("summary", "")).strip().lower()
-                if summary == normalized_item:
-                    already_listed = True
-                    break
-                if duplicate_contains and duplicate_contains.strip().lower() in summary:
+                if summary in same or any(text in summary for text in contains):
                     already_listed = True
                     break
     except Exception as ex:  # noqa: BLE001
@@ -946,13 +1004,16 @@ async def _async_check_underwear_washing_todo(hass: HomeAssistant, household_dat
     settings = _underwear_settings(household_data)
     if _underwear_available(household_data) > settings["washing_threshold"]:
         return
-    await _async_add_todo_item_if_missing(hass, _UNDERWEAR_WASH_TODO_ITEM)
+    await _async_add_todo_item_if_missing(
+        hass,
+        _todo_strings(hass.config.language)["underwear_wash"],
+        same_as=_todo_variants(lambda t: t["underwear_wash"]),
+    )
 
 
 # Small, self-contained translation table for the two notification types,
 # matching the pattern used in ical.py for the same reason: these are sent to
-# the person directly (unlike todo-list items, which follow this integration's
-# existing English-only convention), so they're worth localizing properly.
+# the person directly, so they're worth localizing properly (see _TODO_STRINGS for list items).
 _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
     "en": {
         "period_title": "Period reminder",
@@ -970,6 +1031,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Remind me in 1 hour",
         "recap_title": "Cycle recap",
         "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
+        "recap_longer": "That is {days} days longer than the average ({average} days).",
+        "recap_shorter": "That is {days} days shorter than the average ({average} days).",
+        "recap_in_line": "In line with the average ({average} days).",
+        "recap_pain": "Pain days: {pain_days}.",
         "overdue_title": "Period overdue",
         "overdue_message": "{name}: the period is {days} days past the predicted start ({date}). If it has started, please log it.",
         "checkup_title": "Checkup reminder",
@@ -996,6 +1061,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "In 1 Stunde erinnern",
         "recap_title": "Zyklus-Rückblick",
         "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
+        "recap_longer": "Das sind {days} Tage mehr als der Durchschnitt ({average} Tage).",
+        "recap_shorter": "Das sind {days} Tage weniger als der Durchschnitt ({average} Tage).",
+        "recap_in_line": "Entspricht dem Durchschnitt ({average} Tage).",
+        "recap_pain": "Schmerztage: {pain_days}.",
         "overdue_title": "Periode überfällig",
         "overdue_message": "{name}: Die Periode ist {days} Tage nach dem vorhergesagten Beginn ({date}) noch nicht eingetragen. Falls sie begonnen hat, bitte eintragen.",
         "checkup_title": "Kontrolltermin-Erinnerung",
@@ -1022,6 +1091,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Me rappeler dans 1 heure",
         "recap_title": "Bilan du cycle",
         "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
+        "recap_longer": "C'est {days} jours de plus que la moyenne ({average} jours).",
+        "recap_shorter": "C'est {days} jours de moins que la moyenne ({average} jours).",
+        "recap_in_line": "Conforme à la moyenne ({average} jours).",
+        "recap_pain": "Jours de douleur : {pain_days}.",
         "overdue_title": "Règles en retard",
         "overdue_message": "{name} : les règles ont {days} jours de retard sur le début prévu ({date}). Si elles ont commencé, merci de les saisir.",
         "checkup_title": "Rappel de contrôle",
@@ -1048,6 +1121,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Recordar en 1 hora",
         "recap_title": "Resumen del ciclo",
         "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
+        "recap_longer": "Son {days} días más que la media ({average} días).",
+        "recap_shorter": "Son {days} días menos que la media ({average} días).",
+        "recap_in_line": "En línea con la media ({average} días).",
+        "recap_pain": "Días con dolor: {pain_days}.",
         "overdue_title": "Menstruación retrasada",
         "overdue_message": "{name}: la menstruación lleva {days} días de retraso sobre el inicio previsto ({date}). Si ya empezó, por favor regístrala.",
         "checkup_title": "Recordatorio de revisión",
@@ -1074,6 +1151,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Påminn om 1 timme",
         "recap_title": "Cykelsammanfattning",
         "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
+        "recap_longer": "Det är {days} dagar längre än genomsnittet ({average} dagar).",
+        "recap_shorter": "Det är {days} dagar kortare än genomsnittet ({average} dagar).",
+        "recap_in_line": "I linje med genomsnittet ({average} dagar).",
+        "recap_pain": "Smärtdagar: {pain_days}.",
         "overdue_title": "Mensen är försenad",
         "overdue_message": "{name}: mensen är {days} dagar efter beräknad start ({date}). Om den har börjat, logga den gärna nu.",
         "checkup_title": "Påminnelse om kontroll",
@@ -1242,14 +1323,19 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         if runtime.noncycle_data.get("notified_cycle_recap") != latest and 0 <= days_since_start <= 7:
             block = next((b for b in model.bleeding_blocks if b["start"] == previous), None)
             # ponytail: falls back to the configured duration if no bleeding block starts exactly on the previous start
-            await _send(
-                strings["recap_title"],
-                strings["recap_message"].format(
-                    name=runtime.friendly_name,
-                    cycle_days=(date.fromisoformat(latest) - date.fromisoformat(previous)).days,
-                    period_days=block["length"] if block else model.period_duration_days,
-                ),
+            message = strings["recap_message"].format(
+                name=runtime.friendly_name,
+                cycle_days=(date.fromisoformat(latest) - date.fromisoformat(previous)).days,
+                period_days=block["length"] if block else model.period_duration_days,
             )
+            summary = compute_last_cycle_summary(runtime.history, runtime.symptom_history) or {}
+            average, diff = summary.get("average_cycle_length"), summary.get("days_relative_to_average")
+            if average is not None and diff is not None:
+                key = "recap_in_line" if abs(diff) <= 1 else "recap_longer" if diff > 0 else "recap_shorter"
+                message += " " + strings[key].format(days=abs(diff), average=average)
+            if summary.get("pain_days"):
+                message += " " + strings["recap_pain"].format(pain_days=summary["pain_days"])
+            await _send(strings["recap_title"], message)
             runtime.noncycle_data["notified_cycle_recap"] = latest
             notified_something = True
 
@@ -1505,7 +1591,10 @@ async def _async_import_basal_temp_from_linked_sensor(
     research ("weitere ideen?", 02.10.2026) found several trackers can pull a
     BBT reading from a paired device instead of manual entry every morning.
 
-    Never overwrites a value already present for today - a manual
+    The reading is stored under the day the sensor last updated (today or, for a
+    reading that arrived while HA was down, yesterday); older readings are ignored
+    so a stale sensor value never turns into a fresh data point.
+    Never overwrites a value already present for that day - a manual
     add_symptom entry (or a previous import) always wins.
     """
     entity_id = str(entry.options.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "") or "").strip()
@@ -1529,17 +1618,38 @@ async def _async_import_basal_temp_from_linked_sensor(
     if not 30.0 <= celsius <= 45.0:
         return
 
-    today_iso = today.isoformat()
-    existing = next((e for e in runtime.symptom_history if e.get("date") == today_iso), None)
+    reading_day = dt_util.as_local(state.last_updated).date()
+    if not 0 <= (today - reading_day).days <= 1:
+        return
+    day_iso = reading_day.isoformat()
+    existing = next((e for e in runtime.symptom_history if e.get("date") == day_iso), None)
     if existing is not None:
         if existing.get(SYMPTOM_BASAL_TEMP) is not None:
             return
         existing[SYMPTOM_BASAL_TEMP] = round(celsius, 2)
     else:
-        runtime.symptom_history.append({"date": today_iso, SYMPTOM_BASAL_TEMP: round(celsius, 2)})
+        runtime.symptom_history.append({"date": day_iso, SYMPTOM_BASAL_TEMP: round(celsius, 2)})
         runtime.symptom_history.sort(key=lambda x: x.get("date", ""))
 
     await _async_save_and_notify(hass, runtime)
+
+
+def _register_basal_temp_listener(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Import a new reading of the linked temperature sensor as soon as it arrives."""
+    if runtime.unregister_basal_temp_listener:
+        runtime.unregister_basal_temp_listener()
+        runtime.unregister_basal_temp_listener = None
+    entity_id = str(entry.options.get(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, "") or "").strip()
+    if not entity_id:
+        return
+
+    async def _on_sensor_change(event: Any) -> None:
+        try:
+            await _async_import_basal_temp_from_linked_sensor(hass, entry, runtime, dt_util.now().date())
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Basal-temp import after sensor update failed for %s", entry.entry_id)
+
+    runtime.unregister_basal_temp_listener = async_track_state_change_event(hass, [entity_id], _on_sensor_change)
 
 
 async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
@@ -1565,11 +1675,12 @@ async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: 
     if not method or not due_date:
         return
 
-    # Item text intentionally single-language (English), matching the existing
-    # convention for todo-list items in this integration (e.g. the underwear
-    # washing reminder) — todo-list items aren't currently localized.
-    item_text = f"{runtime.friendly_name}: contraception method ({method}) may need renewal soon ({due_date})"
-    await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=f"{runtime.friendly_name}: contraception method ({method})")
+    def prefix(strings: dict[str, Any]) -> str:
+        return strings["contraception_prefix"].format(name=runtime.friendly_name, method=method)
+
+    strings = _todo_strings(hass.config.language)
+    item_text = strings["contraception_renewal"].format(prefix=prefix(strings), date=due_date)
+    await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=_todo_variants(prefix))
 
 
 async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
@@ -1584,8 +1695,11 @@ async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry,
     if end is None or not 0 <= (end - today).days <= PILL_REFILL_LEAD_DAYS:
         return
     # the end date in the text makes the item unique per pack, so a ticked-off item does not block the next pack
+    def text(strings: dict[str, Any]) -> str:
+        return strings["pill_refill"].format(name=runtime.friendly_name, date=end.isoformat())
+
     await _async_add_todo_item_if_missing(
-        hass, f"{runtime.friendly_name}: order a new pill pack (current one ends {end.isoformat()})"
+        hass, text(_todo_strings(hass.config.language)), same_as=_todo_variants(text)
     )
 
 
@@ -2216,6 +2330,16 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_COMPARE_CURRENT_CYCLE, async_compare_current_cycle, **_compare_current_cycle_register_kwargs
     )
 
+    async def async_get_last_cycle_summary(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_get_last_cycle_summary(hass, call)
+
+    _last_cycle_summary_register_kwargs: dict[str, Any] = {"schema": vol.Schema({**common_profile_field})}
+    if SupportsResponse is not None:
+        _last_cycle_summary_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_GET_LAST_CYCLE_SUMMARY, async_get_last_cycle_summary, **_last_cycle_summary_register_kwargs
+    )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_PREGNANCY_MODE,
@@ -2619,6 +2743,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 cycle_length_override=runtime.cycle_length_override,
                 nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
                 onboarding_stage=getattr(runtime, "onboarding_stage", None),
+                today=dt_util.now().date(),
             )
             async_check_low_prediction_confidence(
                 hass, entry.entry_id, entry.title, _midnight_model.prediction_gating
@@ -2694,6 +2819,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 bool(runtime.pregnancy_data.get("is_pregnant")),
                 _midnight_model.due_date,
                 await runtime.storage.async_load_hospital_bag_items(),
+                dt_util.now().date(),
             )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight hospital-bag-incomplete check failed for %s", entry.entry_id)
@@ -2751,6 +2877,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     _register_notification_timer(hass, entry, runtime)
+    _register_basal_temp_listener(hass, entry, runtime)
 
     async def _async_on_mobile_action(event: Any) -> None:
         await _async_handle_mobile_action(hass, entry, runtime, event)
@@ -2816,6 +2943,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cycle_length_override=runtime.cycle_length_override,
         nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
+        today=dt_util.now().date(),
     )
     async_check_low_prediction_confidence(hass, entry.entry_id, entry.title, _setup_model.prediction_gating)
 
@@ -2873,6 +3001,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bool(runtime.pregnancy_data.get("is_pregnant")),
         _setup_model.due_date,
         await runtime.storage.async_load_hospital_bag_items(),
+        dt_util.now().date(),
     )
 
     # "weitere Ideen?" 25.09.2026: same "cheap, safe to run on every load"
@@ -3022,6 +3151,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             runtime.unregister_log_listener()
         if runtime.unregister_pill_listener:
             runtime.unregister_pill_listener()
+        if runtime.unregister_basal_temp_listener:
+            runtime.unregister_basal_temp_listener()
         if runtime.options_update_unsub:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
@@ -3069,6 +3200,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_UPDATE_MENOPAUSE_DATE,
             SERVICE_SAVE_TIMER_STATE,
             SERVICE_COMPARE_CURRENT_CYCLE,
+            SERVICE_GET_LAST_CYCLE_SUMMARY,
             SERVICE_EXPORT_DOCTOR_REPORT,
             SERVICE_GET_CYCLE_PREDICTIONS,
             SERVICE_GET_DASHBOARD_PREFS,
@@ -3095,6 +3227,11 @@ async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry
     _updated_runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if _updated_runtime is not None:
         _register_notification_timer(hass, entry, _updated_runtime)
+        _register_basal_temp_listener(hass, entry, _updated_runtime)
+        try:
+            await _async_import_basal_temp_from_linked_sensor(hass, entry, _updated_runtime, dt_util.now().date())
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Options update: basal-temp import failed for %s", entry.entry_id)
     try:
         await _async_sync_dashboard_sidebar_panel(hass)
     except Exception as err:  # noqa: BLE001
@@ -3204,7 +3341,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
         current_contraception_method=contraception_status.get("current_method"),
     )
 
-    stem = _sanitize_export_filename(f"doctor_report_{runtime.profile}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    stem = _sanitize_export_filename(f"doctor_report_{runtime.profile}_{dt_util.now().strftime('%Y%m%d_%H%M%S')}")
     target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
     target_path = target_dir / f"{stem}.html"
 
@@ -3503,7 +3640,7 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
     if stem:
         stem = _sanitize_export_filename(str(stem))
     else:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stamp = dt_util.now().strftime("%Y%m%d_%H%M%S")
         stem = f"menstruation_history_{runtime.profile}_{stamp}"
 
     extension = ".csv" if export_format == "csv" else ".txt"
@@ -3852,7 +3989,7 @@ async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | Non
     if stem:
         stem = _sanitize_export_filename(str(stem))
     else:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stamp = dt_util.now().strftime("%Y%m%d_%H%M%S")
         stem = f"menstruation_full_backup_{stamp}"
 
     target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
@@ -4273,9 +4410,10 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         if product == "cup":
             raise HomeAssistantError("Cup is reusable and cannot be added to the shopping list.")
         qty = max(1, int(quantity or 1))
-        display_name = _SHOPPING_PRODUCT_NAMES.get(product) or product.replace("_", " ").title()
+        names = _todo_strings(hass.config.language)["products"]
+        display_name = names.get(product) or product.replace("_", " ").title()
         item_name = f"{display_name} x{qty}" if qty > 1 else display_name
-        duplicate_contains = display_name if product == "underwear" else None
+        duplicate_contains = _todo_variants(lambda t: t["products"][product]) if product == "underwear" else None
         await _async_add_todo_item_if_missing(hass, item_name, duplicate_contains=duplicate_contains)
         return
     elif action == "reset":
@@ -4566,6 +4704,7 @@ async def _async_handle_get_cycle_predictions(hass: HomeAssistant, call: Service
         avg_cycle_length=model.avg_cycle_length,
         future_cycles=future_cycles,
         days_back=days_back,
+        today=dt_util.now().date(),
     )
     return {"cycles": cycles, "days_back": days_back, "future_cycles": future_cycles}
 
@@ -4635,6 +4774,15 @@ async def _async_handle_compare_current_cycle(hass: HomeAssistant, call: Service
         "average_pain_days_per_cycle": avg_pain_days,
         "cycles_compared": len(recent_pairs),
     }
+
+
+async def _async_handle_get_last_cycle_summary(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Summary of the last completed cycle (read-only), see statistics.py::compute_last_cycle_summary."""
+    runtime = _runtime_for_call(hass, call)
+    summary = compute_last_cycle_summary(runtime.history, runtime.symptom_history)
+    if summary is None:
+        raise HomeAssistantError("At least two cycle starts are needed for a completed cycle.")
+    return summary
 
 
 async def _async_handle_set_pregnancy_mode(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -4915,7 +5063,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             matched_runtime.pre_menarche_data,
             matched_runtime.menopause_data,
             matched_runtime.noncycle_data,
-            None,
+            dt_util.now().date(),
             matched_runtime.cycle_length_override,
         )
 
@@ -4955,6 +5103,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             hass.config.language,
             period_alarm_days_before,
             checkup_due,
+            dt_util.now().date(),
         )
 
         return Response(

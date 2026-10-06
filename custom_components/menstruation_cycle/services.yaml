@@ -724,6 +724,32 @@ compare_current_cycle:
       selector:
         text:
 
+
+get_last_cycle_summary:
+  name: Get last cycle summary
+  description: >-
+    Returns a summary of the last completed cycle (between the two newest
+    cycle starts): cycle length compared with the average of the cycles before,
+    period days, pain days, logged days, the most frequent symptoms and the
+    bleeding-strength distribution. Read-only, changes nothing.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+
 set_pregnancy_mode:
   name: Set pregnancy mode
   description: Enable or disable pregnancy mode. When enabled, the sensor reports pregnancy state with weeks pregnant and due date.

@@ -93,7 +93,7 @@
               "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
               "notify_log_reminder_enabled": "Sendet eine Erinnerung, wenn für heute noch nichts (Zyklusstart oder Symptome) eingetragen ist. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
               "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
-              "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer, im Vergleich zum Durchschnitt, dazu Schmerztage), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
               "notify_overdue_enabled": "Sendet einmalig eine Benachrichtigung, sobald die Periode 7 Tage nach dem vorhergesagten Beginn noch nicht eingetragen ist (gleiche Schwelle wie der Reparaturhinweis), mit Schaltfläche „Periode gestartet“. Nicht, solange die Vorhersage noch unsicher ist. Geht nur an das eigene Ziel dieses Profils. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben.",
               "notify_checkup_enabled": "Sendet einmalig eine Benachrichtigung 14 Tage vor der nächsten fälligen Kontrolle (zuletzt eingetragene Kontrolle plus das Kontrollintervall unten) oder einmalig, wenn sie schon überfällig ist. Braucht ein Kontrollintervall über 0. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben."
             }
@@ -681,6 +681,24 @@
     "compare_current_cycle": {
       "name": "Aktuellen Zyklus vergleichen",
       "description": "Vergleicht den aktuellen, noch laufenden Zyklus mit dem jüngsten Durchschnitt (bis zu 7 abgeschlossene Zyklen): wie viele Tage er im Verhältnis zur durchschnittlichen Zykluslänge bisher läuft und wie viele Schmerztage bisher erfasst wurden im Vergleich zu den durchschnittlichen Schmerztagen pro abgeschlossenem Zyklus. Nur lesend, ändert nichts.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        }
+      }
+    },
+    "get_last_cycle_summary": {
+      "name": "Letzten Zyklus zusammenfassen",
+      "description": "Liefert eine Zusammenfassung des zuletzt abgeschlossenen Zyklus (zwischen den beiden neuesten Zyklusanfängen): Zykluslänge im Vergleich zum Durchschnitt der vorherigen Zyklen, Periodentage, Schmerztage, erfasste Tage, die häufigsten Symptome und die Verteilung der Blutungsstärke. Nur lesend, ändert nichts.",
       "fields": {
         "entity_id": {
           "name": "Entität",

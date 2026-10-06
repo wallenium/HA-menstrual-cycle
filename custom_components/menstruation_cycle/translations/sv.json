@@ -93,7 +93,7 @@
               "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
               "notify_log_reminder_enabled": "Skickar en påminnelse om inget (cykelstart eller symtom) är loggat för idag än. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
               "notify_log_reminder_time": "Tid på dagen för kvällspåminnelsen (20:00 som standard).",
-              "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng, jämfört med genomsnittet, samt smärtdagar) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
               "notify_overdue_enabled": "Skickar en avisering när mensen är 7 dagar efter beräknad start och inte loggad (samma tröskel som reparationsvarningen), med knappen ”Mens började”. Inte medan prognosen fortfarande är osäker. Går bara till den här profilens mål. Av som standard. Kräver ”Aktivera aviseringar” ovan.",
               "notify_checkup_enabled": "Skickar en avisering 14 dagar före nästa kontroll (senast loggade kontroll plus intervallet nedan), eller en gång om den redan är försenad. Kräver ett intervall över 0. Av som standard. Kräver ”Aktivera aviseringar” ovan."
             }
@@ -681,6 +681,24 @@
     "compare_current_cycle": {
       "name": "Jämför aktuell cykel",
       "description": "Jämför den aktuella, pågående cykeln med det senaste genomsnittet (upp till 7 avslutade cykler): hur många dagar den pågått jämfört med genomsnittlig cykellängd och hur många smärtdagar som loggats hittills jämfört med genomsnittligt antal smärtdagar per avslutad cykel. Endast läsning, ändrar ingenting.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        }
+      }
+    },
+    "get_last_cycle_summary": {
+      "name": "Sammanfatta senaste cykeln",
+      "description": "Returnerar en sammanfattning av den senast avslutade cykeln (mellan de två senaste cykelstarterna): cykellängd jämfört med genomsnittet för tidigare cykler, mensdagar, smärtdagar, loggade dagar, de vanligaste symtomen och fördelningen av blödningsstyrka. Endast läsning, ändrar ingenting.",
       "fields": {
         "entity_id": {
           "name": "Entitet",

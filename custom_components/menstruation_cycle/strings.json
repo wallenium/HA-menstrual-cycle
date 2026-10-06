@@ -93,7 +93,7 @@
               "notify_ovulation_lead_days": "How many days ahead of the estimated ovulation day to notify (0–7). 0 (default) means the same day.",
               "notify_log_reminder_enabled": "Sends a reminder when nothing (cycle start or symptoms) is logged for today yet. Off by default. Requires 'Enable notifications' above.",
               "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
-              "notify_recap_enabled": "Sends a short recap (cycle length and period duration) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above.",
+              "notify_recap_enabled": "Sends a short recap (cycle length and period duration, compared with the average, plus pain days) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above.",
               "notify_overdue_enabled": "Sends one notification once the period is 7 days past its predicted start and not logged (same threshold as the repair hint), with a 'Period started' button. Not sent while predictions are still low-confidence. Goes only to this profile's own target. Off by default. Requires 'Enable notifications' above.",
               "notify_checkup_enabled": "Sends one notification 14 days before the next checkup is due (last logged checkup plus the checkup interval below), or once if it is already overdue. Needs a checkup interval above 0. Off by default. Requires 'Enable notifications' above."
             }
@@ -681,6 +681,24 @@
     "compare_current_cycle": {
       "name": "Compare current cycle",
       "description": "Compares the current, still-ongoing cycle against the recent average (last up to 7 completed cycles): how many days it has run so far relative to the average cycle length, and how many pain days have been logged so far compared to the average pain days per completed cycle. Read-only, changes nothing.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        }
+      }
+    },
+    "get_last_cycle_summary": {
+      "name": "Get last cycle summary",
+      "description": "Returns a summary of the last completed cycle (between the two newest cycle starts): cycle length compared with the average of the cycles before, period days, pain days, logged days, the most frequent symptoms and the bleeding-strength distribution. Read-only, changes nothing.",
       "fields": {
         "entity_id": {
           "name": "Entity",

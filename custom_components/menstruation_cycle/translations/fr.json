@@ -93,7 +93,7 @@
               "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
               "notify_log_reminder_enabled": "Envoie un rappel si rien (début de cycle ou symptômes) n'est encore enregistré pour aujourd'hui. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
-              "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles, comparée à la moyenne, et jours de douleur) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_overdue_enabled": "Envoie une notification dès que les règles ont 7 jours de retard sur le début prévu et ne sont pas saisies (même seuil que l'alerte de réparation), avec un bouton « Règles commencées ». Pas tant que la prévision reste peu fiable. Uniquement vers la cible de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_checkup_enabled": "Envoie une notification 14 jours avant le prochain contrôle (dernier contrôle saisi plus l'intervalle ci-dessous), ou une fois s'il est déjà en retard. Nécessite un intervalle supérieur à 0. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
             }
@@ -681,6 +681,24 @@
     "compare_current_cycle": {
       "name": "Comparer le cycle actuel",
       "description": "Compare le cycle actuel, encore en cours, à la moyenne récente (jusqu'à 7 cycles terminés) : depuis combien de jours il dure par rapport à la durée moyenne du cycle et combien de jours de douleur ont été saisis jusqu'ici par rapport à la moyenne des jours de douleur par cycle terminé. Lecture seule, ne modifie rien.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "get_last_cycle_summary": {
+      "name": "Résumé du dernier cycle",
+      "description": "Renvoie un résumé du dernier cycle terminé (entre les deux débuts de cycle les plus récents) : durée du cycle par rapport à la moyenne des cycles précédents, jours de règles, jours de douleur, jours enregistrés, symptômes les plus fréquents et répartition de l'intensité des saignements. Lecture seule, ne modifie rien.",
       "fields": {
         "entity_id": {
           "name": "Entité",

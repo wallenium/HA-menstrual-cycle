@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult, section
 from homeassistant.helpers import selector
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from .const import (
@@ -747,7 +748,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             birth_date_parsed = _parse_date_opt(birth_date_raw)
             if birth_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_BIRTH_DATE] = "invalid_date"
-            elif birth_date_parsed and birth_date_parsed > date.today().isoformat():
+            elif birth_date_parsed and birth_date_parsed > dt_util.now().date().isoformat():
                 errors[CONF_BIRTH_DATE] = "invalid_date"
 
             # 0 is the explicit "clear override, use automatic calculation"
@@ -1164,7 +1165,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             postpartum_date_parsed = _parse_date_opt(postpartum_date_raw)
             if postpartum_date_parsed is _INVALID_DATE_SENTINEL:
                 errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
-            elif postpartum_date_parsed and postpartum_date_parsed > date.today().isoformat():
+            elif postpartum_date_parsed and postpartum_date_parsed > dt_util.now().date().isoformat():
                 errors[CONF_POSTPARTUM_START_DATE] = "invalid_date"
 
             if not errors:

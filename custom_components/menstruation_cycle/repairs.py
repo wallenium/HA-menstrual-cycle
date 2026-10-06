@@ -395,6 +395,7 @@ def async_check_hospital_bag_incomplete(
     is_pregnant: bool,
     due_date: str | None,
     hospital_bag_items: list[dict[str, Any]] | None,
+    today: date | None = None,
 ) -> None:
     """Raise (or clear) the hospital-bag-incomplete issue based on the
     pregnancy's due date and the checklist's current completion state.
@@ -404,10 +405,9 @@ def async_check_hospital_bag_incomplete(
     issue) outside of an active pregnancy, before the reminder window (more
     than HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE days out), without a known
     due date yet, or once every item is checked off - only the narrow
-    "getting close and still not done" window raises it. Uses date.today()
-    (local time), matching model.py's own due-date/pregnancy-week
-    calculations, not a UTC "now" - the same distinction that mattered for
-    the timezone bug class fixed elsewhere in this integration.
+    "getting close and still not done" window raises it. Callers pass today
+    in Home Assistant's time zone (dt_util.now().date()); the fallback
+    date.today() uses the system time zone.
     """
     if not is_pregnant or not due_date:
         async_delete_hospital_bag_incomplete_issue(hass, entry_id)
@@ -419,7 +419,7 @@ def async_check_hospital_bag_incomplete(
         async_delete_hospital_bag_incomplete_issue(hass, entry_id)
         return
 
-    days_until_due = (due - date.today()).days
+    days_until_due = (due - (today or date.today())).days
     if days_until_due > HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE:
         async_delete_hospital_bag_incomplete_issue(hass, entry_id)
         return

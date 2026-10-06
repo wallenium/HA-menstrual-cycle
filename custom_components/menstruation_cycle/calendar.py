@@ -140,6 +140,8 @@ class MenstruationCycleCalendar(CalendarEntity):
         self._attr_available = True
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
 
+        today = dt_util.now().date()
+
         # Same call as __init__.py's _serve_ics_feed HTTP view - kept in sync
         # deliberately (both need period_forecast/fertility_forecast/
         # avg_cycle_length from the same cycle model).
@@ -153,11 +155,10 @@ class MenstruationCycleCalendar(CalendarEntity):
             runtime.pre_menarche_data,
             runtime.menopause_data,
             runtime.noncycle_data,
-            None,
+            today,
             runtime.cycle_length_override,
         )
 
-        today = dt_util.now().date()
         range_start = today - timedelta(days=_LOOKBACK_DAYS)
         range_end = today + timedelta(days=_LOOKAHEAD_DAYS)
 

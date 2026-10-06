@@ -2403,6 +2403,7 @@ def build_cycle_predictions(
     avg_cycle_length: float | None,
     future_cycles: int = 3,
     days_back: int = 365,
+    today: date | None = None,
 ) -> list[dict[str, Any]]:
     """Per-cycle fertile window / ovulation estimates for both past and
     future cycles — the "all cycles, not just the current one" data the
@@ -2426,7 +2427,7 @@ def build_cycle_predictions(
     if not valid_starts:
         return []
 
-    cutoff = date.today() - timedelta(days=max(1, days_back))
+    cutoff = (today or date.today()) - timedelta(days=max(1, days_back))
     results: list[dict[str, Any]] = []
 
     for i, start in enumerate(valid_starts):

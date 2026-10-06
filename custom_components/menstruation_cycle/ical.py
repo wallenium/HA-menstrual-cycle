@@ -168,6 +168,7 @@ def generate_ics(
     lang: str | None = None,
     period_alarm_days_before: int | None = None,
     checkup_due: date | None = None,
+    today: date | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -188,7 +189,7 @@ def generate_ics(
     """
     strings = _ics_strings(lang)
     horizon_months = max(1, min(ICS_HORIZON_MONTHS_MAX, int(horizon_months)))
-    today = date.today()
+    today = today or date.today()
     range_end = today + timedelta(days=horizon_months * 31)
 
     dtstamp = _format_dtstamp(datetime.now(tz=timezone.utc))
