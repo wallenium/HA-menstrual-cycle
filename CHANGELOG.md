@@ -19,6 +19,7 @@
 - Household avatars now get a deterministic per-profile accent color; profiles are grouped by current cycle state.
 - 28 services that were only described in English now have names, descriptions and field labels in DE/EN/ES/FR/SV.
 - Card texts that fell back to English in German (calendar, statistics, support, history, timer cards) are translated; dashboard texts were completed in ES/FR/SV.
+- Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
 - Crash in profile label sync (wrong LabelRegistry API).
