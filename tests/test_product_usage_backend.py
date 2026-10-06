@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import copy
+import tempfile
+import importlib.abc
+import importlib.machinery
 import importlib.util
 import json
 import sys
@@ -8,88 +12,129 @@ import types
 import unittest
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
 
 
+# Stubs are only installed while this module's tests run (setUpModule), so they cannot leak into other test files.
+_STUBS: dict[str, types.ModuleType] = {}
+
+
+class _Anything(type):
+    def __getattr__(cls, name):
+        return name
+
+
+def _stub_module(name: str) -> types.ModuleType:
+    module = types.ModuleType(name)
+    module.__getattr__ = lambda attr: _Anything(attr, (), {})
+    return module
+
+
+class _StubFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+    """Serves a permissive stub for every Home Assistant module the test did not define explicitly."""
+
+    blocked: set[str] = set()
+
+    def find_spec(self, name, path=None, target=None):
+        if name in self.blocked:
+            return None
+        if name.split(".")[0] in ("homeassistant", "voluptuous"):
+            return importlib.machinery.ModuleSpec(name, self, is_package=True)
+        return None
+
+    def create_module(self, spec):
+        module = _stub_module(spec.name)
+        module.__path__ = []
+        return module
+
+    def exec_module(self, module) -> None:
+        return None
+
+
+_FINDER = _StubFinder()
+
+
 def _install_homeassistant_stubs() -> None:
-    homeassistant = types.ModuleType("homeassistant")
+    homeassistant = _stub_module("homeassistant")
     homeassistant.__path__ = []
-    sys.modules.setdefault("homeassistant", homeassistant)
+    _STUBS["homeassistant"] = homeassistant
 
-    components = types.ModuleType("homeassistant.components")
+    components = _stub_module("homeassistant.components")
     components.__path__ = []
-    sys.modules.setdefault("homeassistant.components", components)
+    _STUBS["homeassistant.components"] = components
 
-    sensor_mod = types.ModuleType("homeassistant.components.sensor")
+    sensor_mod = _stub_module("homeassistant.components.sensor")
     sensor_mod.SensorEntity = type("SensorEntity", (), {})
-    sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
+    _STUBS["homeassistant.components.sensor"] = sensor_mod
 
-    config_entries = types.ModuleType("homeassistant.config_entries")
+    config_entries = _stub_module("homeassistant.config_entries")
     config_entries.ConfigEntry = type("ConfigEntry", (), {})
-    sys.modules.setdefault("homeassistant.config_entries", config_entries)
+    _STUBS["homeassistant.config_entries"] = config_entries
 
-    const_mod = types.ModuleType("homeassistant.const")
+    const_mod = _stub_module("homeassistant.const")
     const_mod.CONF_TYPE = "type"
-    const_mod.Platform = type("Platform", (), {"SENSOR": "sensor"})
-    sys.modules.setdefault("homeassistant.const", const_mod)
+    const_mod.Platform = _Anything("Platform", (), {"SENSOR": "sensor"})
+    _STUBS["homeassistant.const"] = const_mod
 
-    core = types.ModuleType("homeassistant.core")
+    core = _stub_module("homeassistant.core")
     core.HomeAssistant = type("HomeAssistant", (), {})
     core.ServiceCall = type("ServiceCall", (), {})
-    sys.modules.setdefault("homeassistant.core", core)
+    _STUBS["homeassistant.core"] = core
 
-    exceptions = types.ModuleType("homeassistant.exceptions")
+    exceptions = _stub_module("homeassistant.exceptions")
     exceptions.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
-    sys.modules.setdefault("homeassistant.exceptions", exceptions)
+    _STUBS["homeassistant.exceptions"] = exceptions
 
-    helpers = types.ModuleType("homeassistant.helpers")
+    helpers = _stub_module("homeassistant.helpers")
     helpers.__path__ = []
-    sys.modules.setdefault("homeassistant.helpers", helpers)
+    _STUBS["homeassistant.helpers"] = helpers
 
-    config_validation = types.ModuleType("homeassistant.helpers.config_validation")
+    config_validation = _stub_module("homeassistant.helpers.config_validation")
     config_validation.config_entry_only_config_schema = lambda domain: domain
     config_validation.string = lambda value: value
     config_validation.entity_id = lambda value: value
     config_validation.boolean = lambda value: value
-    sys.modules.setdefault("homeassistant.helpers.config_validation", config_validation)
+    _STUBS["homeassistant.helpers.config_validation"] = config_validation
 
-    entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+    entity_registry = _stub_module("homeassistant.helpers.entity_registry")
     entity_registry.async_get = lambda hass: object()
     entity_registry.async_entries_for_config_entry = lambda registry, entry_id: []
-    sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
+    _STUBS["homeassistant.helpers.entity_registry"] = entity_registry
 
-    dispatcher = types.ModuleType("homeassistant.helpers.dispatcher")
+    dispatcher = _stub_module("homeassistant.helpers.dispatcher")
     dispatcher.async_dispatcher_connect = lambda *args, **kwargs: None
     dispatcher.async_dispatcher_send = lambda *args, **kwargs: None
-    sys.modules.setdefault("homeassistant.helpers.dispatcher", dispatcher)
+    _STUBS["homeassistant.helpers.dispatcher"] = dispatcher
 
-    entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+    entity_platform = _stub_module("homeassistant.helpers.entity_platform")
     entity_platform.AddEntitiesCallback = type("AddEntitiesCallback", (), {})
-    sys.modules.setdefault("homeassistant.helpers.entity_platform", entity_platform)
+    _STUBS["homeassistant.helpers.entity_platform"] = entity_platform
 
-    event = types.ModuleType("homeassistant.helpers.event")
+    event = _stub_module("homeassistant.helpers.event")
     event.async_track_time_change = lambda *args, **kwargs: None
-    sys.modules.setdefault("homeassistant.helpers.event", event)
+    _STUBS["homeassistant.helpers.event"] = event
 
-    storage = types.ModuleType("homeassistant.helpers.storage")
+    storage = _stub_module("homeassistant.helpers.storage")
     storage.Store = type("Store", (), {"__init__": lambda self, *args, **kwargs: None})
-    sys.modules.setdefault("homeassistant.helpers.storage", storage)
+    _STUBS["homeassistant.helpers.storage"] = storage
 
-    typing_mod = types.ModuleType("homeassistant.helpers.typing")
+    typing_mod = _stub_module("homeassistant.helpers.typing")
     typing_mod.StateType = object
-    sys.modules.setdefault("homeassistant.helpers.typing", typing_mod)
+    _STUBS["homeassistant.helpers.typing"] = typing_mod
 
-    util = types.ModuleType("homeassistant.util")
+    util = _stub_module("homeassistant.util")
     util.__path__ = []
     util.slugify = lambda value: str(value).strip().lower().replace(" ", "_")
-    sys.modules.setdefault("homeassistant.util", util)
+    _STUBS["homeassistant.util"] = util
 
-    dt_mod = types.ModuleType("homeassistant.util.dt")
+    dt_mod = _stub_module("homeassistant.util.dt")
     dt_mod.now = lambda: datetime(2026, 7, 20, 8, 0, 0)
-    sys.modules.setdefault("homeassistant.util.dt", dt_mod)
+    dt_mod.utcnow = lambda: datetime(2026, 7, 20, 8, 0, 0)
+    _STUBS["homeassistant.util.dt"] = dt_mod
 
 
 def _load_module(module_name: str, file_name: str):
@@ -101,15 +146,55 @@ def _load_module(module_name: str, file_name: str):
     return module
 
 
-_install_homeassistant_stubs()
-package = types.ModuleType("mgtest")
-package.__path__ = [str(COMPONENT_ROOT)]
-sys.modules.setdefault("mgtest", package)
-const = _load_module("mgtest.const", "const.py")
-model = _load_module("mgtest.model", "model.py")
-sensor = _load_module("mgtest.sensor", "sensor.py")
-storage = _load_module("mgtest.storage", "storage.py")
-integration = _load_module("mgtest.integration", "__init__.py")
+_PATCH = patch.dict(sys.modules)
+
+
+def setUpModule() -> None:
+    global package, const, model, sensor, storage, integration
+    _PATCH.start()
+    sys.meta_path.append(_FINDER)
+    _install_homeassistant_stubs()
+    sys.modules.update(_STUBS)
+    vol = _stub_module("voluptuous")
+    vol.__getattr__ = lambda attr: (lambda *args, **kwargs: object())
+    vol.Invalid = type("Invalid", (Exception,), {})
+    def _marker(required: bool):
+        return type("Marker", (str,), {"required": required, "__new__": lambda cls, key, **_kw: str.__new__(cls, key)})
+
+    vol.Optional = _marker(False)
+    vol.Required = _marker(True)
+
+    def _schema(definition, **_kwargs):
+        def validate(value):
+            if isinstance(definition, dict):
+                for key in definition:
+                    if getattr(key, "required", False) and key not in value:
+                        raise vol.Invalid(f"required key not provided: {key}")
+            return value
+
+        return validate
+
+    vol.Schema = _schema
+    sys.modules["voluptuous"] = vol
+    for name, module in _STUBS.items():
+        if "__path__" in vars(module):
+            del module.__getattr__  # packages resolve submodules through the import system
+        parent, _, child = name.rpartition(".")
+        if parent in _STUBS:
+            setattr(_STUBS[parent], child, module)
+    package = _stub_module("mgtest")
+    package.__path__ = [str(COMPONENT_ROOT)]
+    sys.modules["mgtest"] = package
+    const = _load_module("mgtest.const", "const.py")
+    model = _load_module("mgtest.model", "model.py")
+    sensor = _load_module("mgtest.sensor", "sensor.py")
+    storage = _load_module("mgtest.storage", "storage.py")
+    integration = _load_module("mgtest.integration", "__init__.py")
+
+
+def tearDownModule() -> None:
+    sys.meta_path.remove(_FINDER)
+    _PATCH.stop()
 
 
 class _FakeStorage:
@@ -242,7 +327,7 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertFalse(cycle.current_period["is_active"])
         self.assertEqual(cycle.current_period["ended_by"], "duration")
 
-    def test_build_cycle_model_sets_fertile_window_to_ovulation_plus_minus_five_days_for_28_day_cycle(self) -> None:
+    def test_build_cycle_model_sets_fertile_window_to_five_days_before_to_one_day_after_ovulation_for_28_day_cycle(self) -> None:
         cycle = model.build_cycle_model(
             history=["2026-06-01", "2026-06-29"],
             period_duration_days=5,
@@ -252,9 +337,9 @@ class ProductUsageBackendTests(unittest.TestCase):
 
         self.assertEqual(cycle.ovulation_day, "2026-07-12")
         self.assertEqual(cycle.fertile_window_start, "2026-07-07")
-        self.assertEqual(cycle.fertile_window_end, "2026-07-17")
+        self.assertEqual(cycle.fertile_window_end, "2026-07-13")
 
-    def test_build_cycle_model_sets_fertile_window_to_ovulation_plus_minus_five_days_for_30_day_cycle(self) -> None:
+    def test_build_cycle_model_sets_fertile_window_to_five_days_before_to_one_day_after_ovulation_for_30_day_cycle(self) -> None:
         cycle = model.build_cycle_model(
             history=["2026-05-01", "2026-05-31"],
             period_duration_days=5,
@@ -264,7 +349,7 @@ class ProductUsageBackendTests(unittest.TestCase):
 
         self.assertEqual(cycle.ovulation_day, "2026-06-14")
         self.assertEqual(cycle.fertile_window_start, "2026-06-09")
-        self.assertEqual(cycle.fertile_window_end, "2026-06-19")
+        self.assertEqual(cycle.fertile_window_end, "2026-06-15")
 
     def test_pre_menarche_onboarding_stage_suppresses_deterministic_forecasts(self) -> None:
         cycle = model.build_cycle_model(
@@ -694,7 +779,7 @@ class ProductUsageBackendTests(unittest.TestCase):
         # Formula: next_date - (cycle - cycle//2 + 1) = 2026-07-27 - 15 = 2026-07-12
         self.assertEqual(cycle.ovulation_day, "2026-07-12")
         self.assertEqual(cycle.fertile_window_start, "2026-07-07")
-        self.assertEqual(cycle.fertile_window_end, "2026-07-17")
+        self.assertEqual(cycle.fertile_window_end, "2026-07-13")
 
     def test_build_cycle_model_strict_mode_hides_ovulation_without_confirmed_temperature_rise(self) -> None:
         # Strict mode: no temperature rise logged → ovulation/fertile window must be None.
@@ -1175,11 +1260,131 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertIn(reason, {"insufficient_phase_coverage", "insufficient_logged_days", "insufficient_symptom_occurrences"})
 
 
+class _MemoryStore:
+    def __init__(self) -> None:
+        self.data = None
+
+    async def async_load(self):
+        return copy.deepcopy(self.data)
+
+    async def async_save(self, data) -> None:
+        self.data = copy.deepcopy(data)
+
+
+class FullBackupRoundTripTests(unittest.TestCase):
+    """export_full_backup followed by import_full_backup must bring back every stored field."""
+
+    LOCAL_ONLY = {"ics_token", "ics_token_created_at"}  # deliberately not part of a backup
+
+    def _runtime(self, hass, profile: str = "anna"):
+        memory = storage.MenstruationStorage(hass, f"key_{profile}")
+        memory._store = _MemoryStore()
+        runtime = integration.MenstruationRuntime(
+            storage=memory, profile=profile, friendly_name=profile.title(), icon="mdi:flower",
+            history=[], period_duration_days=5, symptom_history=[], product_usage=[],
+        )
+        hass.data[const.DOMAIN][f"entry-{profile}"] = runtime
+        return runtime
+
+    def _hass(self, folder: str):
+        async def _run(func, *args):
+            return func(*args)
+
+        return types.SimpleNamespace(
+            data={const.DOMAIN: {}},
+            config=types.SimpleNamespace(path=lambda *parts: str(Path(folder, *parts)), language="en"),
+            async_add_executor_job=_run,
+        )
+
+    def _round_trip(self, mode: str, local_bag: list | None = None) -> tuple[dict, dict]:
+        async def _noop(*args, **kwargs):
+            return None
+
+        async def _prefs(_hass):
+            return {"user1:anna": {"widgets": {"quick_log": False}}}
+
+        class _PrefsStore:
+            saved = None
+
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            async def async_save(self, data) -> None:
+                _PrefsStore.saved = data
+
+        originals = {name: getattr(integration, name) for name in (
+            "_async_refresh_cycle_model", "_async_sync_cycle_statistics", "_async_ensure_dashboard_prefs_loaded", "Store"
+        )}
+        integration._async_refresh_cycle_model = _noop
+        integration._async_sync_cycle_statistics = _noop
+        integration._async_ensure_dashboard_prefs_loaded = _prefs
+        integration.Store = _PrefsStore
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                hass = self._hass(folder)
+                source = self._runtime(hass)
+                source.history = ["2026-04-01", "2026-04-29", "2026-05-27"]
+                source.period_duration_days = 6
+                source.symptom_history = [{"date": "2026-05-28", "pain": 3}]
+                source.product_usage = [{"date": "2026-05-28", "product": "tampon", "action": "used", "quantity": 2}]
+                source.pregnancy_data = {"is_pregnant": True, "start_date": "2026-06-01"}
+                source.menopause_data = {"is_menopause": False, "start_date": None}
+                source.cycle_length_override = 31
+                source.onboarding_stage = "adult"
+                source.visibility_level = "private"
+                asyncio.run(integration._async_save_and_notify(hass, source))
+                asyncio.run(source.storage.async_save_hospital_bag_items(
+                    [{"uid": "a", "summary": "Passport", "status": "completed"},
+                     {"uid": "b", "summary": "Charger", "status": "needs_action"}]
+                ))
+                before = asyncio.run(source.storage.async_load())
+
+                asyncio.run(integration._async_write_full_backup_snapshot(hass, "roundtrip"))
+
+                hass.data[const.DOMAIN].clear()
+                target = self._runtime(hass)
+                if local_bag is not None:
+                    asyncio.run(target.storage.async_save_hospital_bag_items(local_bag))
+                asyncio.run(integration._async_handle_import_full_backup(
+                    hass, _FakeCall({"filename": "roundtrip", "confirm": True, "mode": mode})
+                ))
+                after = asyncio.run(target.storage.async_load())
+                self.assertEqual(_PrefsStore.saved, {"user1:anna": {"widgets": {"quick_log": False}}})
+        finally:
+            for name, value in originals.items():
+                setattr(integration, name, value)
+        return before, after
+
+    def _assert_same(self, before: dict, after: dict) -> None:
+        for key in set(before) | set(after):
+            if key in self.LOCAL_ONLY:
+                continue
+            self.assertEqual(after.get(key), before.get(key), f"{key} was not restored")
+
+    def test_overwrite_import_restores_everything_that_was_exported(self) -> None:
+        self._assert_same(*self._round_trip("overwrite"))
+
+    def test_merge_import_into_an_empty_profile_restores_everything(self) -> None:
+        before, after = self._round_trip("merge")
+        # merge never touches settings, so only the data fields must match
+        for key in ("history", "symptom_history", "product_usage", "pregnancy_data", "cycle_length_override", "hospital_bag_items"):
+            self.assertEqual(after.get(key), before.get(key), f"{key} was not restored")
+
+    def test_merge_import_keeps_an_existing_hospital_bag_list(self) -> None:
+        local = [{"uid": "x", "summary": "Own list", "status": "needs_action"}]
+        _, after = self._round_trip("merge", local_bag=local)
+        self.assertEqual(after["hospital_bag_items"], local)
+
+
 class _FakeLovelaceCollection:
     def __init__(self, items: list[dict[str, str]] | None = None) -> None:
         self._items = list(items or [])
         self.create_calls: list[dict[str, str]] = []
+        self.update_calls: list[tuple[str, dict[str, str]]] = []
         self.raise_on_create = False
+
+    async def async_update_item(self, item_id: str, payload: dict[str, str]) -> None:
+        self.update_calls.append((item_id, payload))
 
     async def async_items(self) -> list[dict[str, str]]:
         return list(self._items)
@@ -1211,13 +1416,13 @@ class LovelaceResourceRegistrationTests(unittest.TestCase):
         self.assertIn("menstruation-i18n.js", filenames)
         self.assertIn(f"/{integration.DOMAIN}/menstruation-i18n.js?v={integration.RESOURCE_VERSION}", resource_urls)
 
-    def test_ensure_lovelace_resource_skips_existing_normalized_urls(self) -> None:
+    def test_ensure_lovelace_resource_updates_older_version_in_place(self) -> None:
         resource_url, _, _ = integration.LOVELACE_RESOURCES[0]
         normalized_url = integration._normalize_resource_url(resource_url)
         self.assertIsNotNone(normalized_url)
         assert normalized_url is not None
 
-        collection = _FakeLovelaceCollection([{"url": f"{normalized_url}?v=0.0.1"}])
+        collection = _FakeLovelaceCollection([{"id": "res1", "url": f"{normalized_url}?v=0.0.1"}])
         hass = _FakeHass()
 
         async def _fake_get_collection(_hass):
@@ -1241,6 +1446,7 @@ class LovelaceResourceRegistrationTests(unittest.TestCase):
             integration.LOVELACE_RESOURCES = original_resources
 
         self.assertEqual(collection.create_calls, [])
+        self.assertEqual(collection.update_calls, [("res1", {"url": resource_url})])
 
     def test_ensure_lovelace_resource_stops_fallback_payloads_when_resource_appears(self) -> None:
         resource_url, _, _ = integration.LOVELACE_RESOURCES[0]
@@ -1272,6 +1478,7 @@ class LovelaceResourceRegistrationTests(unittest.TestCase):
         self.assertEqual(collection.create_calls[0]["url"], resource_url)
 
 
+@unittest.skipUnless(importlib.util.find_spec("aiohttp"), "aiohttp is not installed")
 class HttpRouteHandlerTests(unittest.TestCase):
     def _make_hass_with_http(self):
         class _FakeRouter:
@@ -1431,8 +1638,9 @@ class DashboardSidebarPanelTests(unittest.TestCase):
         saved = sys.modules.pop("homeassistant.components.frontend", None)
         # Also remove from homeassistant.components namespace if present
         components_mod = sys.modules.get("homeassistant.components")
-        if components_mod and hasattr(components_mod, "frontend"):
+        if components_mod and "frontend" in vars(components_mod):
             del components_mod.frontend
+        _FINDER.blocked.add("homeassistant.components.frontend")
 
         entry = self._make_entry("e1", show_dashboard=True)
         hass = self._make_hass([entry], registered=False)
@@ -1441,6 +1649,7 @@ class DashboardSidebarPanelTests(unittest.TestCase):
         try:
             asyncio.run(integration._async_sync_dashboard_sidebar_panel(hass))
         finally:
+            _FINDER.blocked.discard("homeassistant.components.frontend")
             if saved is not None:
                 sys.modules["homeassistant.components.frontend"] = saved
 
