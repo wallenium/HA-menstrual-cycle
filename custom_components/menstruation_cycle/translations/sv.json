@@ -76,7 +76,9 @@
               "notify_ovulation_lead_days": "Förvarningstid ägglossning (dagar)",
               "notify_log_reminder_enabled": "Kvällspåminnelse att logga",
               "notify_log_reminder_time": "Tid för kvällspåminnelsen",
-              "notify_recap_enabled": "Sammanfattning efter varje cykel"
+              "notify_recap_enabled": "Sammanfattning efter varje cykel",
+              "notify_overdue_enabled": "Meddela när mensen är försenad",
+              "notify_checkup_enabled": "Meddela före en kontroll"
             },
             "data_description": {
               "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
@@ -91,7 +93,9 @@
               "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
               "notify_log_reminder_enabled": "Skickar en påminnelse om inget (cykelstart eller symtom) är loggat för idag än. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
               "notify_log_reminder_time": "Tid på dagen för kvällspåminnelsen (20:00 som standard).",
-              "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan."
+              "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_overdue_enabled": "Skickar en avisering när mensen är 7 dagar efter beräknad start och inte loggad (samma tröskel som reparationsvarningen), med knappen ”Mens började”. Inte medan prognosen fortfarande är osäker. Går bara till den här profilens mål. Av som standard. Kräver ”Aktivera aviseringar” ovan.",
+              "notify_checkup_enabled": "Skickar en avisering 14 dagar före nästa kontroll (senast loggade kontroll plus intervallet nedan), eller en gång om den redan är försenad. Kräver ett intervall över 0. Av som standard. Kräver ”Aktivera aviseringar” ovan."
             }
           },
           "pill": {
@@ -101,13 +105,15 @@
               "notify_pill_enabled": "Påminnelse: p-piller",
               "notify_pill_time": "Tid för p-pillerpåminnelsen",
               "notify_pill_followup_hours": "Extra p-pillerpåminnelse (timmar)",
-              "pill_pause_days": "P-pillerpaus (dagar per karta)"
+              "pill_pause_days": "P-pillerpaus (dagar per karta)",
+              "notify_pill_gap_enabled": "Tips när p-pilleruttag saknas"
             },
             "data_description": {
               "notify_pill_enabled": "Skickar en daglig påminnelse med knappen 'P-piller taget' (mål i mobilappen) så länge p-piller är profilens nuvarande preventivmetod. Ett tryck på knappen loggar dagens intag, och ingen påminnelse skickas när dagens piller redan är loggat. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
               "notify_pill_time": "Tid på dagen för p-pillerpåminnelsen (standard 09:00).",
               "notify_pill_followup_hours": "Timmar efter p-pillerpåminnelsen för en andra påminnelse om dagens piller fortfarande inte är loggat. 0 = av (standard, max 12; hoppas över om den skulle hamna efter midnatt).",
-              "pill_pause_days": "Dagar utan piller mellan två kartor (t.ex. 7 vid 21/7, 4 vid 24/4). Ingen påminnelse skickas under pausen, som känns igen efter minst 21 loggade pillerdagar i följd. 0 = kontinuerligt intag utan paus (standard, max 7)."
+              "pill_pause_days": "Dagar utan piller mellan två kartor (t.ex. 7 vid 21/7, 4 vid 24/4). Ingen påminnelse skickas under pausen, som känns igen efter minst 21 loggade pillerdagar i följd. 0 = kontinuerligt intag utan paus (standard, max 7).",
+              "notify_pill_gap_enabled": "Lägger till ett neutralt tips i p-pillerpåminnelsen när 2 eller fler dagar i rad saknar loggat intag: skyddet kan vara nedsatt om tabletter glömts, se bipacksedeln. Kräver en inställd p-pillerpaus ovan (eller ett glapp på mer än 7 dagar) så att en vanlig paus inte tolkas som glömska. Av som standard. Kräver p-pillerpåminnelsen."
             }
           },
           "tracking": {

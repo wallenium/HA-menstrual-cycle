@@ -137,6 +137,16 @@ NOTIFY_PILL_FOLLOWUP_HOURS_MAX = 12
 # Short recap notification after a new cycle start is logged, see __init__.py::_async_check_and_send_notifications.
 CONF_NOTIFY_RECAP_ENABLED = "notify_recap_enabled"
 DEFAULT_NOTIFY_RECAP_ENABLED = False
+# Push when the period is overdue (same threshold as the repair issue, PERIOD_OVERDUE_DAYS).
+CONF_NOTIFY_OVERDUE_ENABLED = "notify_overdue_enabled"
+DEFAULT_NOTIFY_OVERDUE_ENABLED = False
+# Push shortly before the next checkup is due (see CONF_CHECKUP_INTERVAL_MONTHS).
+CONF_NOTIFY_CHECKUP_ENABLED = "notify_checkup_enabled"
+DEFAULT_NOTIFY_CHECKUP_ENABLED = False
+CHECKUP_NOTIFY_LEAD_DAYS = 14
+# Neutral hint in the pill reminder once several intakes in a row are not logged.
+CONF_NOTIFY_PILL_GAP_ENABLED = "notify_pill_gap_enabled"
+DEFAULT_NOTIFY_PILL_GAP_ENABLED = False
 # Pill break: a pill run of at least PILL_ACTIVE_DAYS_MIN days followed by up to CONF_PILL_PAUSE_DAYS days without an intake is treated as the pack break (no reminder), 0 = continuous use.
 CONF_PILL_PAUSE_DAYS = "pill_pause_days"
 DEFAULT_PILL_PAUSE_DAYS = 0

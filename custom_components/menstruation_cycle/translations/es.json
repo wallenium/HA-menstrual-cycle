@@ -76,7 +76,9 @@
               "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
               "notify_log_reminder_enabled": "Recordatorio nocturno para registrar",
               "notify_log_reminder_time": "Hora del recordatorio nocturno",
-              "notify_recap_enabled": "Resumen tras cada ciclo"
+              "notify_recap_enabled": "Resumen tras cada ciclo",
+              "notify_overdue_enabled": "Avisar si la menstruación se retrasa",
+              "notify_checkup_enabled": "Avisar antes de una revisión"
             },
             "data_description": {
               "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
@@ -91,7 +93,9 @@
               "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
               "notify_log_reminder_enabled": "Envía un recordatorio si todavía no hay nada (inicio de ciclo o síntomas) registrado para hoy. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
               "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
-              "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba."
+              "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+              "notify_overdue_enabled": "Envía un aviso cuando la menstruación lleva 7 días de retraso sobre el inicio previsto y no está registrada (mismo umbral que el aviso de reparación), con un botón «Menstruación iniciada». No mientras la predicción sea poco fiable. Solo al destino de este perfil. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+              "notify_checkup_enabled": "Envía un aviso 14 días antes de la próxima revisión (última revisión registrada más el intervalo de abajo), o una vez si ya está vencida. Requiere un intervalo mayor que 0. Desactivado por defecto. Requiere «Activar notificaciones» arriba."
             }
           },
           "pill": {
@@ -101,13 +105,15 @@
               "notify_pill_enabled": "Recordatorio de la píldora",
               "notify_pill_time": "Hora del recordatorio de la píldora",
               "notify_pill_followup_hours": "Segundo recordatorio de la píldora (horas)",
-              "pill_pause_days": "Descanso de la píldora (días por envase)"
+              "pill_pause_days": "Descanso de la píldora (días por envase)",
+              "notify_pill_gap_enabled": "Aviso si faltan tomas de la píldora"
             },
             "data_description": {
               "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
               "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
               "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
-              "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7)."
+              "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7).",
+              "notify_pill_gap_enabled": "Añade al recordatorio de la píldora un aviso neutro cuando hay 2 o más días seguidos sin toma registrada: si se olvidaron tomas, la protección puede verse reducida, consulta el prospecto. Requiere una pausa de la píldora configurada arriba (o una interrupción de más de 7 días) para no confundir una pausa normal con un olvido. Desactivado por defecto. Requiere el recordatorio de la píldora."
             }
           },
           "tracking": {

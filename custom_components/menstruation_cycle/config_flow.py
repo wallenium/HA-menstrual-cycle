@@ -53,6 +53,9 @@ from .const import (
     CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
     CONF_PILL_PAUSE_DAYS,
     CONF_NOTIFY_RECAP_ENABLED,
+    CONF_NOTIFY_OVERDUE_ENABLED,
+    CONF_NOTIFY_CHECKUP_ENABLED,
+    CONF_NOTIFY_PILL_GAP_ENABLED,
     CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
@@ -79,6 +82,9 @@ from .const import (
     DEFAULT_PILL_PAUSE_DAYS,
     PILL_PAUSE_DAYS_MAX,
     DEFAULT_NOTIFY_RECAP_ENABLED,
+    DEFAULT_NOTIFY_OVERDUE_ENABLED,
+    DEFAULT_NOTIFY_CHECKUP_ENABLED,
+    DEFAULT_NOTIFY_PILL_GAP_ENABLED,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CHECKUP_INTERVAL_MONTHS_MAX,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
@@ -182,6 +188,9 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
             CONF_PILL_PAUSE_DAYS,
             CONF_NOTIFY_RECAP_ENABLED,
+            CONF_NOTIFY_OVERDUE_ENABLED,
+            CONF_NOTIFY_CHECKUP_ENABLED,
+            CONF_NOTIFY_PILL_GAP_ENABLED,
             CONF_CHECKUP_INTERVAL_MONTHS,
             CONF_CALENDAR_ENABLED,
             CONF_NFP_ANALYSIS_MODE,
@@ -377,12 +386,15 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_LOG_REMINDER_ENABLED,
         CONF_NOTIFY_LOG_REMINDER_TIME,
         CONF_NOTIFY_RECAP_ENABLED,
+        CONF_NOTIFY_OVERDUE_ENABLED,
+        CONF_NOTIFY_CHECKUP_ENABLED,
     ),
     "pill": (
         CONF_NOTIFY_PILL_ENABLED,
         CONF_NOTIFY_PILL_TIME,
         CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
         CONF_PILL_PAUSE_DAYS,
+        CONF_NOTIFY_PILL_GAP_ENABLED,
     ),
     "tracking": (
         CONF_TEMPERATURE_UNIT,
@@ -564,6 +576,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_recap_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
             ),
+            "notify_overdue_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED)
+            ),
+            "notify_checkup_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED)
+            ),
+            "notify_pill_gap_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED)
+            ),
             "checkup_interval_months": int(
                 self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
             ),
@@ -682,6 +703,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append(f"  - Pill break: {d.get(CONF_PILL_PAUSE_DAYS)} day(s) per pack")
             if d.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED):
                 lines.append("  - Cycle recap after each new cycle start")
+            if d.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED):
+                lines.append("  - Notification when the period is overdue")
+            if d.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED):
+                lines.append("  - Checkup reminder")
+            if d.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED):
+                lines.append("  - Pill hint after missing intakes")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -824,6 +851,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
                 self._data[CONF_NOTIFY_RECAP_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
+                )
+                self._data[CONF_NOTIFY_OVERDUE_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED)
+                )
+                self._data[CONF_NOTIFY_CHECKUP_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED)
+                )
+                self._data[CONF_NOTIFY_PILL_GAP_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED)
                 )
                 self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
                     0,
@@ -973,6 +1009,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                     vol.Coerce(int), vol.Range(min=0, max=PILL_PAUSE_DAYS_MAX)
                 ),
                 vol.Optional(CONF_NOTIFY_RECAP_ENABLED, default=c["notify_recap_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_OVERDUE_ENABLED, default=c["notify_overdue_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_CHECKUP_ENABLED, default=c["notify_checkup_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_PILL_GAP_ENABLED, default=c["notify_pill_gap_enabled"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
@@ -1309,6 +1348,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_PILL_FOLLOWUP_HOURS: d[CONF_NOTIFY_PILL_FOLLOWUP_HOURS],
                 CONF_PILL_PAUSE_DAYS: d[CONF_PILL_PAUSE_DAYS],
                 CONF_NOTIFY_RECAP_ENABLED: d[CONF_NOTIFY_RECAP_ENABLED],
+                CONF_NOTIFY_OVERDUE_ENABLED: d[CONF_NOTIFY_OVERDUE_ENABLED],
+                CONF_NOTIFY_CHECKUP_ENABLED: d[CONF_NOTIFY_CHECKUP_ENABLED],
+                CONF_NOTIFY_PILL_GAP_ENABLED: d[CONF_NOTIFY_PILL_GAP_ENABLED],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],

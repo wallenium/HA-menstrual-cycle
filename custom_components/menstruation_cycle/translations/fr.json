@@ -76,7 +76,9 @@
               "notify_ovulation_lead_days": "Préavis ovulation (jours)",
               "notify_log_reminder_enabled": "Rappel du soir pour saisir",
               "notify_log_reminder_time": "Heure du rappel du soir",
-              "notify_recap_enabled": "Bilan après chaque cycle"
+              "notify_recap_enabled": "Bilan après chaque cycle",
+              "notify_overdue_enabled": "Notifier en cas de retard des règles",
+              "notify_checkup_enabled": "Notifier avant un contrôle dû"
             },
             "data_description": {
               "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
@@ -91,7 +93,9 @@
               "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
               "notify_log_reminder_enabled": "Envoie un rappel si rien (début de cycle ou symptômes) n'est encore enregistré pour aujourd'hui. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
-              "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
+              "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_overdue_enabled": "Envoie une notification dès que les règles ont 7 jours de retard sur le début prévu et ne sont pas saisies (même seuil que l'alerte de réparation), avec un bouton « Règles commencées ». Pas tant que la prévision reste peu fiable. Uniquement vers la cible de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_checkup_enabled": "Envoie une notification 14 jours avant le prochain contrôle (dernier contrôle saisi plus l'intervalle ci-dessous), ou une fois s'il est déjà en retard. Nécessite un intervalle supérieur à 0. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
             }
           },
           "pill": {
@@ -101,13 +105,15 @@
               "notify_pill_enabled": "Rappel de pilule",
               "notify_pill_time": "Heure du rappel de pilule",
               "notify_pill_followup_hours": "Rappel de pilule supplémentaire (heures)",
-              "pill_pause_days": "Pause de pilule (jours par plaquette)"
+              "pill_pause_days": "Pause de pilule (jours par plaquette)",
+              "notify_pill_gap_enabled": "Avertissement en cas de prises manquantes"
             },
             "data_description": {
               "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
               "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
-              "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7)."
+              "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7).",
+              "notify_pill_gap_enabled": "Ajoute au rappel de pilule un avertissement neutre dès que 2 jours consécutifs ou plus n'ont aucune prise saisie : la protection peut être réduite en cas d'oubli, voir la notice. Nécessite une pause de pilule définie ci-dessus (ou une interruption de plus de 7 jours) pour ne pas confondre une pause normale avec un oubli. Désactivé par défaut. Nécessite le rappel de pilule."
             }
           },
           "tracking": {

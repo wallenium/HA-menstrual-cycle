@@ -100,6 +100,15 @@ from .const import (
     DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS,
     CONF_NOTIFY_RECAP_ENABLED,
     DEFAULT_NOTIFY_RECAP_ENABLED,
+    CONF_NOTIFY_OVERDUE_ENABLED,
+    CONF_NOTIFY_CHECKUP_ENABLED,
+    CONF_NOTIFY_PILL_GAP_ENABLED,
+    DEFAULT_NOTIFY_OVERDUE_ENABLED,
+    DEFAULT_NOTIFY_CHECKUP_ENABLED,
+    DEFAULT_NOTIFY_PILL_GAP_ENABLED,
+    CHECKUP_NOTIFY_LEAD_DAYS,
+    PERIOD_OVERDUE_DAYS,
+    PILL_PAUSE_DAYS_MAX,
     CONF_CHECKUP_INTERVAL_MONTHS,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CONTRACEPTION_METHOD_PILL,
@@ -958,6 +967,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Remind me in 1 hour",
         "recap_title": "Cycle recap",
         "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
+        "overdue_title": "Period overdue",
+        "overdue_message": "{name}: the period is {days} days past the predicted start ({date}). If it has started, please log it.",
+        "checkup_title": "Checkup reminder",
+        "checkup_message": "{name}: the next checkup is due on {date}. A good time to book an appointment.",
+        "pill_gap_message": "{name}: the last logged pill was {days} days ago. If pills were missed, protection may be reduced - see your pill's leaflet or ask a pharmacist. If you only forgot to log it, please add it now.",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
@@ -977,6 +991,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "In 1 Stunde erinnern",
         "recap_title": "Zyklus-Rückblick",
         "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
+        "overdue_title": "Periode überfällig",
+        "overdue_message": "{name}: Die Periode ist {days} Tage nach dem vorhergesagten Beginn ({date}) noch nicht eingetragen. Falls sie begonnen hat, bitte eintragen.",
+        "checkup_title": "Kontrolltermin-Erinnerung",
+        "checkup_message": "{name}: Die nächste Kontrolle ist am {date} fällig. Ein guter Zeitpunkt, einen Termin zu vereinbaren.",
+        "pill_gap_message": "{name}: Die letzte eingetragene Pille war vor {days} Tagen. Falls Einnahmen vergessen wurden, kann der Schutz eingeschränkt sein - siehe Beipackzettel oder in der Apotheke nachfragen. Falls es nur nicht eingetragen wurde, bitte jetzt nachtragen.",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
@@ -996,6 +1015,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Me rappeler dans 1 heure",
         "recap_title": "Bilan du cycle",
         "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
+        "overdue_title": "Règles en retard",
+        "overdue_message": "{name} : les règles ont {days} jours de retard sur le début prévu ({date}). Si elles ont commencé, merci de les saisir.",
+        "checkup_title": "Rappel de contrôle",
+        "checkup_message": "{name} : le prochain contrôle est dû le {date}. Bon moment pour prendre rendez-vous.",
+        "pill_gap_message": "{name} : la dernière pilule saisie date de {days} jours. Si des prises ont été oubliées, la protection peut être réduite - voir la notice ou demander conseil en pharmacie. Si elle a seulement été oubliée dans la saisie, merci de l'ajouter maintenant.",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
@@ -1015,6 +1039,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Recordar en 1 hora",
         "recap_title": "Resumen del ciclo",
         "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
+        "overdue_title": "Menstruación retrasada",
+        "overdue_message": "{name}: la menstruación lleva {days} días de retraso sobre el inicio previsto ({date}). Si ya empezó, por favor regístrala.",
+        "checkup_title": "Recordatorio de revisión",
+        "checkup_message": "{name}: la próxima revisión vence el {date}. Buen momento para pedir cita.",
+        "pill_gap_message": "{name}: la última píldora registrada fue hace {days} días. Si se olvidaron tomas, la protección puede verse reducida - consulta el prospecto o pregunta en la farmacia. Si solo faltó registrarla, añádela ahora.",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
@@ -1034,6 +1063,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_snooze": "Påminn om 1 timme",
         "recap_title": "Cykelsammanfattning",
         "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
+        "overdue_title": "Mensen är försenad",
+        "overdue_message": "{name}: mensen är {days} dagar efter beräknad start ({date}). Om den har börjat, logga den gärna nu.",
+        "checkup_title": "Påminnelse om kontroll",
+        "checkup_message": "{name}: nästa kontroll ska göras den {date}. Bra tillfälle att boka tid.",
+        "pill_gap_message": "{name}: det senast loggade p-pillret var för {days} dagar sedan. Om tabletter har glömts kan skyddet vara nedsatt - se bipacksedeln eller fråga på apotek. Om det bara glömdes att logga, lägg till det nu.",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
     },
@@ -1078,7 +1112,11 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     fertile_notify_enabled = bool(entry.options.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED))
     ovulation_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED))
     recap_notify_enabled = bool(entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED))
-    if not period_notify_enabled and not fertile_notify_enabled and not ovulation_notify_enabled and not recap_notify_enabled:
+    overdue_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED))
+    checkup_notify_enabled = bool(entry.options.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED))
+    if not any(
+        (period_notify_enabled, fertile_notify_enabled, ovulation_notify_enabled, recap_notify_enabled, overdue_notify_enabled, checkup_notify_enabled)
+    ):
         return
     period_lead_days = max(
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)))
@@ -1090,7 +1128,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_OVULATION_LEAD_DAYS, DEFAULT_NOTIFY_OVULATION_LEAD_DAYS)))
     )
 
-    from .model import build_cycle_model
+    from .model import build_cycle_model, next_checkup_due
 
     today = dt_util.now().date()
     model = build_cycle_model(
@@ -1202,6 +1240,48 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_cycle_recap"] = latest
             notified_something = True
 
+    # Overdue period: same gate as the repair issue (repairs.py::async_check_period_overdue); once per predicted start, own target only.
+    days_to_start = model.days_until_next_start
+    if (
+        overdue_notify_enabled
+        and days_to_start is not None
+        and days_to_start <= -PERIOD_OVERDUE_DAYS
+        and model.state != STATE_PERIOD
+        and (model.prediction_gating or {}).get("precision_allowed")
+    ):
+        predicted_iso = (today + timedelta(days=days_to_start)).isoformat()
+        if runtime.noncycle_data.get("notified_period_overdue") != predicted_iso:
+            await _send(
+                strings["overdue_title"],
+                strings["overdue_message"].format(name=runtime.friendly_name, days=-days_to_start, date=predicted_iso),
+                actions=[
+                    {
+                        "action": f"{NOTIFY_ACTION_PERIOD_STARTED_PREFIX}{entry.entry_id}",
+                        "title": strings["action_period_started"],
+                    }
+                ],
+            )
+            runtime.noncycle_data["notified_period_overdue"] = predicted_iso
+            notified_something = True
+
+    # Checkup due within CHECKUP_NOTIFY_LEAD_DAYS (or already overdue when first checked); once per due date, own target only.
+    if checkup_notify_enabled:
+        checkup_due = next_checkup_due(
+            runtime.symptom_history,
+            int(entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+        )
+        if (
+            checkup_due is not None
+            and (checkup_due - today).days <= CHECKUP_NOTIFY_LEAD_DAYS
+            and runtime.noncycle_data.get("notified_checkup_due") != checkup_due.isoformat()
+        ):
+            await _send(
+                strings["checkup_title"],
+                strings["checkup_message"].format(name=runtime.friendly_name, date=checkup_due.isoformat()),
+            )
+            runtime.noncycle_data["notified_checkup_due"] = checkup_due.isoformat()
+            notified_something = True
+
     # Reads the badge already computed by sensor.py (progress_badges_new_this_week)
     # instead of recomputing evaluate_badges here - avoids a second copy of that logic.
     entity_reg = er.async_get(hass)
@@ -1293,7 +1373,8 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
     status = compute_contraception_status(runtime.symptom_history, today=today)
     if status["current_method"] != CONTRACEPTION_METHOD_PILL:
         return
-    if pill_break_active(status, today, int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS))):
+    pause_days = int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS))
+    if pill_break_active(status, today, pause_days):
         return
     # ponytail: intake == today's entry has contraception_method "pill"; no separate per-day intake field
     if any(
@@ -1302,16 +1383,69 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
     ):
         return
     strings = _notify_strings(hass.config.language)
+    message = strings["pill_message"]
+    last_taken = status.get("pill_last_taken")
+    gap_days = (today - date.fromisoformat(last_taken)).days if last_taken else 0
+    # Without a configured pack break only gaps longer than any normal break are unambiguous (a break is not "forgotten").
+    if (
+        entry.options.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED)
+        and gap_days >= 2
+        and (pause_days > 0 or gap_days > PILL_PAUSE_DAYS_MAX)
+    ):
+        message = strings["pill_gap_message"]
     await _async_send_notification(
         hass,
         entry,
         strings["pill_title"],
-        strings["pill_message"].format(name=runtime.friendly_name),
+        message.format(name=runtime.friendly_name, days=gap_days),
         [
             {"action": f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}", "title": strings["action_pill_taken"]},
             {"action": f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}", "title": strings["action_snooze"]},
         ],
     )
+
+
+_SNOOZE_SENDERS = {"pill": _async_send_pill_reminder, "log": _async_send_log_reminder}
+
+
+def _arm_snooze(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", kind: str, delay: float) -> None:
+    """Re-send the reminder of this kind after delay seconds (the timer is cancelled when the entry unloads)."""
+
+    async def _async_snoozed(_now: datetime) -> None:
+        runtime.noncycle_data.get("snooze_due", {}).pop(kind, None)
+        try:
+            await _SNOOZE_SENDERS[kind](hass, entry, runtime)
+            await _async_save_and_notify(hass, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Snoozed reminder failed for %s", entry.entry_id)
+
+    entry.async_on_unload(async_call_later(hass, delay, _async_snoozed))
+
+
+async def _async_schedule_snooze(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", kind: str) -> None:
+    # The due time is stored so a restart within the hour re-arms the timer (see the re-arm loop in async_setup_entry).
+    due = dt_util.utcnow() + timedelta(seconds=NOTIFY_SNOOZE_SECONDS)
+    runtime.noncycle_data.setdefault("snooze_due", {})[kind] = due.isoformat()
+    await _async_save_and_notify(hass, runtime)
+    _arm_snooze(hass, entry, runtime, kind, NOTIFY_SNOOZE_SECONDS)
+
+
+async def _async_handle_mobile_action(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", event: Any) -> None:
+    # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake, snooze re-sends the reminder later.
+    action = event.data.get("action")
+    base = {SERVICE_FIELD_ENTRY_ID: entry.entry_id, SERVICE_FIELD_DATE: dt_util.now().date().isoformat()}
+    try:
+        if action == f"{NOTIFY_ACTION_PERIOD_STARTED_PREFIX}{entry.entry_id}":
+            await _async_handle_add(hass, SimpleNamespace(data=base))
+        elif action == f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}":
+            symptom_data = {SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHOD_PILL}
+            await _async_handle_add_symptom(hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data}))
+        elif action == f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}":
+            await _async_schedule_snooze(hass, entry, runtime, "pill")
+        elif action == f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}":
+            await _async_schedule_snooze(hass, entry, runtime, "log")
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("Could not handle notification action %s for %s", action, entry.entry_id)
 
 
 def _profile_last_activity_date(runtime: "MenstruationRuntime") -> str | None:
@@ -2553,54 +2687,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_notification_timer(hass, entry, runtime)
 
-    snooze_senders = {"pill": _async_send_pill_reminder, "log": _async_send_log_reminder}
+    async def _async_on_mobile_action(event: Any) -> None:
+        await _async_handle_mobile_action(hass, entry, runtime, event)
 
-    def _arm_snooze(kind: str, delay: float) -> None:
-        async def _async_snoozed(_now: datetime) -> None:
-            runtime.noncycle_data.get("snooze_due", {}).pop(kind, None)
-            try:
-                await snooze_senders[kind](hass, entry, runtime)
-                await _async_save_and_notify(hass, runtime)
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Snoozed reminder failed for %s", entry.entry_id)
-
-        entry.async_on_unload(async_call_later(hass, delay, _async_snoozed))
-
-    async def _async_schedule_snooze(kind: str) -> None:
-        # The due time is stored so a restart within the hour re-arms the timer (see the re-arm loop below).
-        due = dt_util.utcnow() + timedelta(seconds=NOTIFY_SNOOZE_SECONDS)
-        runtime.noncycle_data.setdefault("snooze_due", {})[kind] = due.isoformat()
-        await _async_save_and_notify(hass, runtime)
-        _arm_snooze(kind, NOTIFY_SNOOZE_SECONDS)
-
-    async def _async_handle_mobile_action(event: Any) -> None:
-        # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake, snooze re-sends the reminder later.
-        action = event.data.get("action")
-        base = {SERVICE_FIELD_ENTRY_ID: entry.entry_id, SERVICE_FIELD_DATE: dt_util.now().date().isoformat()}
-        try:
-            if action == f"{NOTIFY_ACTION_PERIOD_STARTED_PREFIX}{entry.entry_id}":
-                await _async_handle_add(hass, SimpleNamespace(data=base))
-            elif action == f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}":
-                symptom_data = {SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHOD_PILL}
-                await _async_handle_add_symptom(
-                    hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
-                )
-            elif action == f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}":
-                await _async_schedule_snooze("pill")
-            elif action == f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}":
-                await _async_schedule_snooze("log")
-        except Exception:  # noqa: BLE001
-            _LOGGER.exception("Could not handle notification action %s for %s", action, entry.entry_id)
-
-    entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_handle_mobile_action))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_on_mobile_action))
 
     # Re-arm snoozes that were pending at shutdown; ones overdue by more than the snooze length are dropped.
     snooze_due = runtime.noncycle_data.get("snooze_due")
     for kind, due_iso in list(snooze_due.items()) if isinstance(snooze_due, dict) else []:
         due_dt = dt_util.parse_datetime(str(due_iso))
         remaining = (due_dt - dt_util.utcnow()).total_seconds() if due_dt else -NOTIFY_SNOOZE_SECONDS
-        if kind in snooze_senders and remaining > -NOTIFY_SNOOZE_SECONDS:
-            _arm_snooze(kind, max(remaining, 1))
+        if kind in _SNOOZE_SENDERS and remaining > -NOTIFY_SNOOZE_SECONDS:
+            _arm_snooze(hass, entry, runtime, kind, max(remaining, 1))
         else:
             snooze_due.pop(kind, None)
 
