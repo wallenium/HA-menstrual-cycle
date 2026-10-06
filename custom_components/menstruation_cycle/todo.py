@@ -15,12 +15,13 @@ aufbaut.
 
 Die Liste selbst liegt in storage.py's `hospital_bag_items`-Feld (None =
 fuer dieses Profil noch nie angelegt -> wird beim ersten Erkennen einer
-aktiven Schwangerschaft mit DEFAULT_HOSPITAL_BAG_ITEMS vorbefuellt; []
+aktiven Schwangerschaft mit DEFAULT_HOSPITAL_BAG_ITEMS (in der HA-Sprache,
+de/en/es/fr/sv, sonst Englisch) vorbefuellt; []
 bedeutet dagegen "Nutzer hat bewusst alle Eintraege geloescht" und wird NICHT
 erneut mit den Default-Eintraegen aufgefuellt).
 
-Ungetestet wie der Rest der Integration - kein Zugriff auf eine echte
-Home-Assistant-Instanz in dieser Umgebung; API-Nutzung
+Mit Stubs getestet (tests/test_entity_platforms.py), aber nicht gegen eine echte
+Home-Assistant-Instanz; API-Nutzung
 (homeassistant.components.todo: TodoListEntity/TodoItem/TodoItemStatus/
 TodoListEntityFeature) aus Trainingswissen, nicht gegen eine installierte
 HA-Version verifiziert.
@@ -30,7 +31,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
 
 from homeassistant.components.todo import (
     TodoItem,
@@ -48,18 +48,75 @@ from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_HOSPITAL_BAG_ITEMS: list[str] = [
-    "Mutterpass / Ausweisdokumente",
-    "Kliniktasche fuer die Mutter (bequeme Kleidung, Still-BH, Hygieneartikel)",
-    "Kliniktasche fuers Baby (Erstlingsmode, Wickeldecke)",
-    "Ladekabel & Powerbank",
-    "Snacks & Getraenke",
-    "Kamera / Handy fuer Fotos",
-    "Geburtsplan (ausgedruckt)",
-    "Kontaktliste (Hebamme, Partner:in, Familie)",
-    "Autositz / Babyschale fuers Nachhause fahren",
-    "Kulturbeutel & Kosmetik",
-]
+# Seed items per Home Assistant language (de/en/es/fr/sv); anything else falls back to English.
+DEFAULT_HOSPITAL_BAG_ITEMS: dict[str, list[str]] = {
+    "de": [
+        "Mutterpass / Ausweisdokumente",
+        "Kliniktasche für die Mutter (bequeme Kleidung, Still-BH, Hygieneartikel)",
+        "Kliniktasche fürs Baby (Erstlingsmode, Wickeldecke)",
+        "Ladekabel & Powerbank",
+        "Snacks & Getränke",
+        "Kamera / Handy für Fotos",
+        "Geburtsplan (ausgedruckt)",
+        "Kontaktliste (Hebamme, Partner:in, Familie)",
+        "Autositz / Babyschale für die Heimfahrt",
+        "Kulturbeutel & Kosmetik",
+    ],
+    "en": [
+        "Maternity record / ID documents",
+        "Hospital bag for mom (comfortable clothes, nursing bra, toiletries)",
+        "Hospital bag for baby (first outfit, swaddle blanket)",
+        "Charging cable & power bank",
+        "Snacks & drinks",
+        "Camera / phone for photos",
+        "Birth plan (printed)",
+        "Contact list (midwife, partner, family)",
+        "Car seat / infant carrier for the ride home",
+        "Toiletry bag & cosmetics",
+    ],
+    "es": [
+        "Cartilla de embarazo / documentos de identidad",
+        "Bolsa del hospital para la madre (ropa cómoda, sujetador de lactancia, artículos de higiene)",
+        "Bolsa del hospital para el bebé (primera muda, manta envolvente)",
+        "Cable de carga y batería externa",
+        "Tentempiés y bebidas",
+        "Cámara / móvil para fotos",
+        "Plan de parto (impreso)",
+        "Lista de contactos (matrona, pareja, familia)",
+        "Silla de coche / portabebés para volver a casa",
+        "Neceser y cosméticos",
+    ],
+    "fr": [
+        "Carnet de maternité / pièces d'identité",
+        "Sac de maternité pour la maman (vêtements confortables, soutien-gorge d'allaitement, affaires de toilette)",
+        "Sac de maternité pour bébé (première tenue, couverture d'emmaillotage)",
+        "Câble de charge et batterie externe",
+        "Collations et boissons",
+        "Appareil photo / téléphone pour les photos",
+        "Projet de naissance (imprimé)",
+        "Liste de contacts (sage-femme, partenaire, famille)",
+        "Siège auto / coque pour le retour à la maison",
+        "Trousse de toilette et cosmétiques",
+    ],
+    "sv": [
+        "Mödravårdsjournal / id-handlingar",
+        "Sjukhusväska till mamman (bekväma kläder, amnings-bh, toalettartiklar)",
+        "Sjukhusväska till bebisen (första kläderna, svepfilt)",
+        "Laddkabel och powerbank",
+        "Snacks och drycker",
+        "Kamera / mobil för foton",
+        "Förlossningsbrev (utskrivet)",
+        "Kontaktlista (barnmorska, partner, familj)",
+        "Bilbarnstol / babyskydd för hemfärden",
+        "Necessär och kosmetika",
+    ],
+}
+
+
+def default_hospital_bag_items(language: str | None) -> list[str]:
+    """Seed items for the given HA language (primary subtag, English fallback)."""
+    code = str(language or "en").lower().replace("_", "-").split("-")[0]
+    return DEFAULT_HOSPITAL_BAG_ITEMS.get(code, DEFAULT_HOSPITAL_BAG_ITEMS["en"])
 
 
 async def async_setup_entry(
@@ -129,7 +186,7 @@ class MenstruationHospitalBagTodo(TodoListEntity):
                     "summary": summary,
                     "status": TodoItemStatus.NEEDS_ACTION.value,
                 }
-                for summary in DEFAULT_HOSPITAL_BAG_ITEMS
+                for summary in default_hospital_bag_items(self.hass.config.language)
             ]
             await runtime.storage.async_save_hospital_bag_items(stored)
 

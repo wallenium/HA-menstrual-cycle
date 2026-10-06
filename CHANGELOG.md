@@ -15,6 +15,7 @@
 - The doctor report is available in German, English, Spanish, French and Swedish (service, statistics card and report texts).
 - Service dropdowns (inventory action, body signs, visibility level, import mode, formats) show translated labels instead of raw values.
 - Blueprints and README now document the notification and blueprint setup.
+- The hospital-bag checklist is pre-filled in the Home Assistant language (German, English, Spanish, French or Swedish; English otherwise). Existing checklists stay unchanged.
 
 ### Changed
 - Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
