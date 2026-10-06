@@ -36,7 +36,6 @@ CONF_POSTPARTUM_ENABLED = "postpartum_enabled"
 CONF_POSTPARTUM_START_DATE = "postpartum_start_date"
 CONF_POSTPARTUM_DURATION_DAYS = "postpartum_duration_days"
 CONF_PRE_MENARCHE_ENABLED = "pre_menarche_enabled"
-CONF_ESTIMATED_MENARCHE_DATE = "estimated_menarche_date"
 CONF_FAMILY_MENARCHE_AGE = "family_menarche_age"
 CONF_MENOPAUSE_ENABLED = "menopause_enabled"
 CONF_MENOPAUSE_START_DATE = "menopause_start_date"
@@ -68,7 +67,6 @@ CONF_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
 # ServiceCall.context.user_id-Handling in dieser Integration).
 CONF_VISIBILITY_LEVEL = "visibility_level"
 CONF_SHOW_CYCLE_DASHBOARD = "show_cycle_dashboard"
-CONF_CYCLE_DASHBOARD_DEFAULT_PAGE = "cycle_dashboard_default_page"
 CONF_DASHBOARD_DISCREET_MODE = "dashboard_discreet_mode"
 CONF_DASHBOARD_WIDGETS = "dashboard_widgets"
 
@@ -181,7 +179,6 @@ DEFAULT_CHECKUP_INTERVAL_MONTHS = 12
 CHECKUP_INTERVAL_MONTHS_MAX = 60
 CHECKUP_APPOINTMENT_TYPES = frozenset({"gynecologist", "pap_smear"})
 NOTIFY_LEAD_DAYS_MAX = 7
-CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"
 
 # HA-Idee 1 (weitere Ideen, 15.09.2026): Basaltemperatur-Eingabe ueber den
 # Service log_symptoms/add_symptom war bislang stur Celsius-only (Werte
@@ -214,7 +211,6 @@ DEFAULT_DASHBOARD_ENABLED: bool = False
 # nicht das bisherige Verhalten fuer alle bestehenden Installationen aendern.
 DEFAULT_CALENDAR_ENABLED: bool = True
 DEFAULT_DASHBOARD_DISCREET_MODE: bool = True
-DEFAULT_DASHBOARD_DEFAULT_LANDING: bool = False
 DEFAULT_DASHBOARD_WIDGETS: dict[str, bool] = {key: True for key in DASHBOARD_WIDGET_KEYS}
 
 ONBOARDING_STAGE_PRE_MENARCHE = "pre_menarche"
@@ -434,7 +430,6 @@ SERVICE_FIELD_FUTURE_CYCLES = "future_cycles"
 SERVICE_FIELD_PATIENT_NAME = "patient_name"
 SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
-SERVICE_FIELD_INCLUDE_CHARTS = "include_charts"
 SERVICE_FIELD_VISIBILITY_LEVEL = "level"
 # HA-Idee ("weitere neue Ideen", 29.09.2026): optionale HA-Area-Zuordnung
 # fuer Haushaltsbestand-Verbrauchsereignisse.

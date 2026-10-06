@@ -3067,6 +3067,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_SET_MENOPAUSE_MODE,
             SERVICE_UPDATE_MENOPAUSE_DATE,
             SERVICE_SAVE_TIMER_STATE,
+            SERVICE_COMPARE_CURRENT_CYCLE,
+            SERVICE_EXPORT_DOCTOR_REPORT,
+            SERVICE_GET_CYCLE_PREDICTIONS,
+            SERVICE_GET_DASHBOARD_PREFS,
+            SERVICE_GET_HOUSEHOLD_SUMMARY,
+            SERVICE_SAVE_DASHBOARD_PREFS,
+            SERVICE_SET_PROFILE_VISIBILITY,
+            SERVICE_REIMPORT_BASAL_TEMP_STATS,
         ):
             if hass.services.has_service(DOMAIN, service):
                 hass.services.async_remove(DOMAIN, service)
