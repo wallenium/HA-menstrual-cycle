@@ -54,6 +54,24 @@ SYMPTOMS = [
 
 
 class LastCycleSummaryTests(unittest.TestCase):
+    def test_recent_cycle_lengths_end_with_the_last_cycle(self) -> None:
+        summary = statistics.compute_last_cycle_summary(HISTORY, SYMPTOMS)
+        self.assertEqual(summary["recent_cycle_lengths"], [28, 29, 28, 29])
+        self.assertEqual(summary["recent_cycle_lengths"][-1], summary["cycle_length"])
+
+    def test_recent_cycle_lengths_keep_only_the_newest_six(self) -> None:
+        first = date(2026, 1, 1)
+        gaps = [30, 31, 32, 33, 34, 35, 36, 37]
+        starts = [first]
+        for gap in gaps:
+            starts.append(starts[-1] + timedelta(days=gap))
+        summary = statistics.compute_last_cycle_summary(_bleeding(*(d.isoformat() for d in starts)), [])
+        self.assertEqual(summary["recent_cycle_lengths"], [32, 33, 34, 35, 36, 37])
+
+    def test_recent_cycle_lengths_with_a_single_completed_cycle(self) -> None:
+        summary = statistics.compute_last_cycle_summary(_bleeding("2026-06-01", "2026-06-30"), [])
+        self.assertEqual(summary["recent_cycle_lengths"], [29])
+
     def test_summary_of_the_last_completed_cycle(self) -> None:
         summary = statistics.compute_last_cycle_summary(HISTORY, SYMPTOMS)
         self.assertEqual(summary["cycle_start"], "2026-08-25")

@@ -86,6 +86,7 @@ const makePanel = (handler) => {
 const summary = {
   cycle_length: 29, average_cycle_length: 28, days_relative_to_average: 1,
   period_days: 5, pain_days: 3,
+  recent_cycle_lengths: [27, 30, 28, 29],
 };
 
 (async () => {
@@ -98,6 +99,19 @@ const summary = {
   assert.ok(html.includes('29 days (avg 28) · period 5 days · pain days 3'), html);
   assert.ok(!/\{(length|average|period|pain)\}/.test(html), 'no placeholder left over');
   assert.ok(!html.includes('dashboard_last_cycle'), 'no raw translation key shown');
+
+  // Trend bars: one per cycle, newest highlighted, heights relative to the longest, numbers in the aria-label.
+  assert.strictEqual((html.match(/class="cycle-bar( latest)?"/g) || []).length, 4, 'one bar per cycle');
+  assert.strictEqual((html.match(/cycle-bar latest/g) || []).length, 1, 'only the newest bar is highlighted');
+  assert.ok(/cycle-bar latest" style="height:\d+%" title="29"/.test(html), 'the newest cycle is the highlighted one');
+  assert.ok(html.indexOf('title="27"') < html.indexOf('title="29"'), 'oldest first');
+  assert.ok(html.includes('height:100%" title="30"'), 'longest cycle gets full height');
+  assert.ok(html.includes('aria-label="Cycle lengths of the latest cycles in days: 27, 30, 28, 29"'), html);
+
+  // Fewer than two cycles, or junk values: no chart at all.
+  assert.strictEqual(ok.panel._renderCycleLengthBars([29]), '');
+  assert.strictEqual(ok.panel._renderCycleLengthBars(undefined), '');
+  assert.strictEqual(ok.panel._renderCycleLengthBars([null, 'x', 29]), '');
 
   // Several renders trigger exactly one service call per profile.
   ok.panel._renderCycleInsights(stateObj);

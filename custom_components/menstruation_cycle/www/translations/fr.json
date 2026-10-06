@@ -994,6 +994,7 @@
   "dashboard_cycle_comparison_basis": "basé sur {count} cycles",
   "dashboard_last_cycle_tag": "Dernier cycle terminé",
   "dashboard_last_cycle_label": "{length} jours (moy. {average}) · règles {period} jours · jours de douleur {pain}",
+  "dashboard_last_cycle_trend_label": "Durée des derniers cycles en jours : {values}",
   "dashboard_chat_wellness_score": "Ton score de bien-être est de {score}/100 ({regularity}% régularité, {pain}% composante douleur, {history}% base de données).",
   "dashboard_chat_pain_days_comparison": "Jours de douleur jusqu'ici : {current} (moy. {avg} par cycle).",
   "dashboard_chat_q_wellness": "Quel est mon score de bien-être ?",

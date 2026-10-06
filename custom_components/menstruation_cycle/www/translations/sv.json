@@ -994,6 +994,7 @@
   "dashboard_cycle_comparison_basis": "baserat på {count} cykler",
   "dashboard_last_cycle_tag": "Senast avslutade cykel",
   "dashboard_last_cycle_label": "{length} dagar (snitt {average}) · mens {period} dagar · smärtdagar {pain}",
+  "dashboard_last_cycle_trend_label": "Cykellängd för de senaste cyklerna i dagar: {values}",
   "dashboard_chat_wellness_score": "Din välmåendepoäng är {score}/100 ({regularity}% regelbundenhet, {pain}% smärtkomponent, {history}% databas).",
   "dashboard_chat_pain_days_comparison": "Smärtdagar hittills: {current} (snitt {avg} per cykel).",
   "dashboard_chat_q_wellness": "Vad är min välmåendepoäng?",

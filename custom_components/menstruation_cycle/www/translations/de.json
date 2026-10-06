@@ -1032,6 +1032,7 @@
   "dashboard_cycle_comparison_basis": "basierend auf {count} Zyklen",
   "dashboard_last_cycle_tag": "Letzter abgeschlossener Zyklus",
   "dashboard_last_cycle_label": "{length} Tage (Ø {average}) · Periode {period} Tage · Schmerztage {pain}",
+  "dashboard_last_cycle_trend_label": "Zykluslängen der letzten Zyklen in Tagen: {values}",
   "dashboard_chat_wellness_score": "Dein Wellness-Score liegt bei {score}/100 ({regularity}% Regelmäßigkeit, {pain}% Schmerzkomponente, {history}% Datenbasis).",
   "dashboard_chat_pain_days_comparison": "Schmerztage bisher: {current} (Ø {avg} pro Zyklus).",
   "dashboard_chat_q_wellness": "Wie ist mein Wellness-Score?",

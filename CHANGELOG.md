@@ -20,7 +20,7 @@
 - `icons.json`: every service has its own icon, and the main cycle sensor shows a state-based icon (period, fertile, PMS, pregnancy, ...) unless a custom icon is set for the profile.
 - The cycle recap notification now also compares the finished cycle with the average of the cycles before and names the pain days (DE/EN/ES/FR/SV).
 - New service `get_last_cycle_summary`: summary of the last completed cycle (length compared with the earlier average, period and pain days, logged days, most frequent symptoms, bleeding-strength distribution) as a service response.
-- Dashboard panel: new "Last completed cycle" entry in the cycle insights widget (length vs. average, period days, pain days), based on `get_last_cycle_summary`.
+- Dashboard panel: new "Last completed cycle" entry in the cycle insights widget (length vs. average, period days, pain days), based on `get_last_cycle_summary`, with a small bar chart of the latest cycle lengths (`get_last_cycle_summary` now also returns `recent_cycle_lengths`).
 - New sensor `sensor.menstruation_<name>_cycle_length`: length of the last completed cycle in days as a measurement with long-term statistics (average of the earlier cycles as attribute; only at visibility "Full").
 
 ### Changed

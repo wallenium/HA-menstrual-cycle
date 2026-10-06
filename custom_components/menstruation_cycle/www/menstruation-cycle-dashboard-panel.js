@@ -5837,6 +5837,7 @@
             .replace('{average}', String(lastCycle.average_cycle_length ?? '–'))
             .replace('{period}', String(lastCycle.period_days ?? '–'))
             .replace('{pain}', String(lastCycle.pain_days ?? '–')),
+          extra: this._renderCycleLengthBars(lastCycle.recent_cycle_lengths),
         });
       }
 
@@ -5851,10 +5852,28 @@
             <div class="anomaly-body">
               <span class="anomaly-tag">${escapeHtml(ins.tag)}</span>
               <p class="anomaly-text">${escapeHtml(ins.label)}</p>
+              ${ins.extra || ''}
             </div>
           </div>
         `).join('')}
       </div>`;
+    }
+
+    /**
+     * Mini bar chart of the latest cycle lengths (oldest first, newest bar
+     * highlighted). Bars start at zero so the heights are honest; the exact
+     * numbers are in the aria-label and tooltips. Needs at least two cycles.
+     */
+    _renderCycleLengthBars(lengths) {
+      const values = Array.isArray(lengths) ? lengths.filter((n) => Number.isFinite(n) && n > 0) : [];
+      if (values.length < 2) return '';
+      const max = Math.max(...values);
+      const label = this._t('dashboard_last_cycle_trend_label').replace('{values}', values.join(', '));
+      const bars = values.map((n, i) => {
+        const cls = i === values.length - 1 ? 'cycle-bar latest' : 'cycle-bar';
+        return `<span class="${cls}" style="height:${Math.max(8, Math.round((n / max) * 100))}%" title="${n}"></span>`;
+      }).join('');
+      return `<div class="cycle-bars" role="img" aria-label="${escapeHtml(label)}">${bars}</div>`;
     }
 
     _renderAnomalyInsights(stateObj) {
@@ -7450,6 +7469,9 @@
             color: var(--secondary-text-color, #6b7280); display: block; margin-bottom: 3px;
           }
           .anomaly-text { margin: 0; font-size: 0.8125rem; line-height: 1.45; }
+          .cycle-bars { display: flex; align-items: flex-end; gap: 4px; height: 36px; margin-top: 8px; }
+          .cycle-bar { flex: 1 1 0; max-width: 28px; border-radius: 3px 3px 0 0; background: var(--mc-sage); opacity: .55; }
+          .cycle-bar.latest { opacity: 1; background: var(--primary-color, #2563eb); }
           /* Pain & mood trend */
           .pain-mood-wrap { width: 100%; }
           .calendar-card-mount { width: 100%; min-height: 40px; }

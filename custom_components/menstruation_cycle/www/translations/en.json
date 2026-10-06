@@ -1030,6 +1030,7 @@
   "dashboard_cycle_comparison_basis": "based on {count} cycles",
   "dashboard_last_cycle_tag": "Last completed cycle",
   "dashboard_last_cycle_label": "{length} days (avg {average}) · period {period} days · pain days {pain}",
+  "dashboard_last_cycle_trend_label": "Cycle lengths of the latest cycles in days: {values}",
   "dashboard_chat_wellness_score": "Your wellness score is {score}/100 ({regularity}% regularity, {pain}% pain component, {history}% data basis).",
   "dashboard_chat_pain_days_comparison": "Pain days so far: {current} (avg {avg} per cycle).",
   "dashboard_chat_q_wellness": "What's my wellness score?",
