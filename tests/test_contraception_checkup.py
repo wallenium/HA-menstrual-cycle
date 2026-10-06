@@ -137,6 +137,29 @@ class PillBreakTests(unittest.TestCase):
         self.assertTrue(self._active(-2, 24, 4))
 
 
+class PillPackEndTests(unittest.TestCase):
+    def _end(self, streak: int, pause_days: int, last_offset: int = 0):
+        status = model.compute_contraception_status(_pills(*range(last_offset - streak + 1, last_offset + 1)), today=TODAY)
+        return model.pill_pack_end(status, pause_days)
+
+    def test_21_plus_7_pack(self) -> None:
+        self.assertEqual(self._end(18, 7), TODAY + timedelta(days=3))
+
+    def test_24_plus_4_pack(self) -> None:
+        self.assertEqual(self._end(20, 4), TODAY + timedelta(days=4))
+
+    def test_counts_from_last_logged_pill_when_today_is_missing(self) -> None:
+        self.assertEqual(self._end(18, 7, last_offset=-1), TODAY + timedelta(days=2))
+
+    def test_last_pill_of_the_pack_ends_on_that_day(self) -> None:
+        self.assertEqual(self._end(21, 7), TODAY)
+
+    def test_unknown_without_pack_break_or_beyond_one_pack_or_without_pills(self) -> None:
+        self.assertIsNone(self._end(18, 0))
+        self.assertIsNone(self._end(22, 7))
+        self.assertIsNone(model.pill_pack_end(model.compute_contraception_status([], today=TODAY), 7))
+
+
 class CheckupHelperTests(unittest.TestCase):
     def test_last_checkup_is_the_latest_gyn_or_pap_entry(self) -> None:
         history = [
