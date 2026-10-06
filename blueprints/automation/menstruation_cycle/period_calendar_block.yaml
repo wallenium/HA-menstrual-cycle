@@ -12,7 +12,7 @@ blueprint:
     event is created once, at the start, and isn't automatically adjusted
     afterward.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/period_calendar_block.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/period_calendar_block.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

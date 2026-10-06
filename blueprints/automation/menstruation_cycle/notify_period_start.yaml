@@ -9,7 +9,7 @@ blueprint:
     — e.g. a partner's phone, a shared household notifier, or a second
     device alongside the person's own.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/notify_period_start.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/notify_period_start.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

@@ -7,7 +7,7 @@ blueprint:
     checks their calendar more reliably than their to-do list, or wants
     both.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/contraception_renewal_calendar.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/contraception_renewal_calendar.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

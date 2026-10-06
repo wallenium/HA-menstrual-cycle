@@ -6,7 +6,7 @@ blueprint:
     consistent, same-time-every-morning measurements, so this is just a
     plain recurring alarm.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/basal_temp_reminder.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/basal_temp_reminder.yaml
   input:
     reminder_time:
       name: Reminder time

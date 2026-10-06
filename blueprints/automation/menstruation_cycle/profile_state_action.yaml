@@ -8,6 +8,7 @@ blueprint:
     The profile's main sensor entity already carries the cycle state as its
     own entity state, so a plain state trigger is all that's needed.
   domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/profile_state_action.yaml
   input:
     profile_sensor:
       name: Profile sensor

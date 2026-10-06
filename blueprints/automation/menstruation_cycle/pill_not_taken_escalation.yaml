@@ -9,7 +9,7 @@ blueprint:
     current contraception method, and optionally stays quiet during the
     pack break.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/pill_not_taken_escalation.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/pill_not_taken_escalation.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

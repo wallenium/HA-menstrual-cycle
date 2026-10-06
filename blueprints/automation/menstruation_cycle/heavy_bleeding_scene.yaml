@@ -7,7 +7,7 @@ blueprint:
     logged and once each morning, so it catches both a same-day log and a
     day that was already logged before this automation runs.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/heavy_bleeding_scene.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/heavy_bleeding_scene.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

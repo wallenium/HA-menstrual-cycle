@@ -6,7 +6,7 @@ blueprint:
     Useful as a subtle, at-a-glance household indicator without needing to
     check the dashboard.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/fertile_window_light.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/fertile_window_light.yaml
   input:
     cycle_sensor:
       name: Cycle sensor

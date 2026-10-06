@@ -14,7 +14,7 @@ blueprint:
     weekly schedule after importing, or add your own condition (e.g. day of
     week) before using this as-is.
   domain: automation
-  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/irregularity_alert.yaml
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/irregularity_alert.yaml
   input:
     cycle_sensor:
       name: Cycle sensor
