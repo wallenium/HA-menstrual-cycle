@@ -78,7 +78,9 @@
               "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung",
               "notify_recap_enabled": "Rückblick nach jedem Zyklus",
               "notify_overdue_enabled": "Benachrichtigen, wenn die Periode überfällig ist",
-              "notify_checkup_enabled": "Vor fälliger Kontrolle benachrichtigen"
+              "notify_checkup_enabled": "Vor fälliger Kontrolle benachrichtigen",
+              "notify_fertile_mute_hormonal": "Keine Fruchtbarkeitsmeldungen bei hormoneller Verhütung",
+              "notify_unprotected_hint": "Hinweis nach ungeschütztem Verkehr"
             },
             "data_description": {
               "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
@@ -95,7 +97,9 @@
               "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
               "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer, im Vergleich zum Durchschnitt, dazu Schmerztage), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
               "notify_overdue_enabled": "Sendet einmalig eine Benachrichtigung, sobald die Periode 7 Tage nach dem vorhergesagten Beginn noch nicht eingetragen ist (gleiche Schwelle wie der Reparaturhinweis), mit Schaltfläche „Periode gestartet“. Nicht, solange die Vorhersage noch unsicher ist. Geht nur an das eigene Ziel dieses Profils. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben.",
-              "notify_checkup_enabled": "Sendet einmalig eine Benachrichtigung 14 Tage vor der nächsten fälligen Kontrolle (zuletzt eingetragene Kontrolle plus das Kontrollintervall unten) oder einmalig, wenn sie schon überfällig ist. Braucht ein Kontrollintervall über 0. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben."
+              "notify_checkup_enabled": "Sendet einmalig eine Benachrichtigung 14 Tage vor der nächsten fälligen Kontrolle (zuletzt eingetragene Kontrolle plus das Kontrollintervall unten) oder einmalig, wenn sie schon überfällig ist. Braucht ein Kontrollintervall über 0. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben.",
+              "notify_fertile_mute_hormonal": "Überspringt die Meldungen zum fruchtbaren Fenster und zum Eisprung, solange die aktuelle Verhütungsmethode hormonell ist (Pille, Hormonspirale, Implantat, Pflaster, Ring, Spritze), weil der Zyklus dann meist unterdrückt ist. Sensorzustand und Dashboard bleiben unverändert. Standardmäßig aus.",
+              "notify_unprotected_hint": "Wird ungeschützter Verkehr für heute oder einen der letzten 5 Tage eingetragen, kommt ein neutraler Hinweis: Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis zur Notfallverhütung beraten, je früher, desto besser. Keine Dosierung, keine medizinische Beratung. Wird nicht bei Schwangerschaft oder Wechseljahren gesendet. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben."
             }
           },
           "pill": {
@@ -109,7 +113,7 @@
               "notify_pill_gap_enabled": "Hinweis bei fehlenden Pilleneinnahmen"
             },
             "data_description": {
-              "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Bei Pflaster oder Ring erinnert sie stattdessen an die Schritte des üblichen 28-Tage-Rhythmus (wechseln, abnehmen, neue Packung), mit der Schaltfläche 'Heute neu begonnen' an Tagen mit neuer Packung. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
               "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
               "notify_pill_followup_hours": "Stunden nach der Pillen-Erinnerung für eine zweite Erinnerung, falls die heutige Pille noch nicht eingetragen ist. 0 = aus (Standard, maximal 12; entfällt, wenn sie nach Mitternacht läge).",
               "pill_pause_days": "Tage ohne Pille zwischen zwei Packungen (z. B. 7 bei 21/7, 4 bei 24/4). In dieser Pause wird nicht erinnert, sie wird nach mindestens 21 eingetragenen Pillentagen in Folge erkannt. 0 = Dauereinnahme ohne Pause (Standard, maximal 7).",
@@ -711,6 +715,28 @@
         "entry_id": {
           "name": "Entry-ID",
           "description": "Kennung des Config-Entries."
+        }
+      }
+    },
+    "confirm_contraception_renewal": {
+      "name": "Verhütungsmittel-Erneuerung bestätigen",
+      "description": "Hält fest, dass die aktuelle Verhütungsmethode erneuert wurde (Spirale, Implantat, Spritze) oder dass eine neue Pflaster- bzw. Ringpackung begonnen hat. Ab diesem Datum zählen die Erneuerungsfrist bzw. der Pflaster-/Ring-Rhythmus. Ohne Datum wird heute verwendet.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Ziel-Menstruationssensor."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurierter Profil-Slug."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Kennung des Config-Entries."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Tag der Erneuerung bzw. der neuen Packung (JJJJ-MM-TT). Standard: heute."
         }
       }
     },

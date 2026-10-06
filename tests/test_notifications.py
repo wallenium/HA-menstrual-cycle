@@ -292,6 +292,151 @@ class RecapNotificationTests(unittest.TestCase):
                 )
 
 
+class FertilityMuteTests(unittest.TestCase):
+    """Fertile-window and ovulation messages can be switched off while the current method is hormonal."""
+
+    FERTILE_TODAY = -8  # last cycle start offset that makes the fertile window start today (28-day cycles)
+    OVULATION_TODAY = -13
+    OPTIONS = {
+        const.CONF_NOTIFY_FERTILE_ENABLED: True,
+        const.CONF_NOTIFY_FERTILE_LEAD_DAYS: 0,
+        const.CONF_NOTIFY_OVULATION_ENABLED: True,
+        const.CONF_NOTIFY_OVULATION_LEAD_DAYS: 0,
+    }
+
+    def _runtime(self, last_start: int, method: str | None):
+        starts = [last_start - 28 * k for k in range(5)]
+        history = [_iso(o + k) for o in sorted(starts) for k in range(4)]
+        symptoms = [{"date": _iso(-1), "contraception_method": method}] if method else []
+        return _runtime(history=history, symptom_history=symptoms)
+
+    def _titles(self, last_start: int, method: str | None, **options) -> list[str]:
+        sent = _run_notifications(_entry(**{**self.OPTIONS, **options}), self._runtime(last_start, method))
+        return [title for title, _, _ in sent.calls]
+
+    def test_without_the_option_hormonal_users_still_get_the_messages(self) -> None:
+        self.assertEqual(self._titles(self.FERTILE_TODAY, "pill"), ["Fertile window reminder"])
+        self.assertEqual(self._titles(self.OVULATION_TODAY, "pill"), ["Ovulation reminder"])
+
+    def test_with_the_option_hormonal_methods_are_muted(self) -> None:
+        mute = {const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True}
+        for method in sorted(const.CONTRACEPTION_HORMONAL_METHODS):
+            self.assertEqual(self._titles(self.FERTILE_TODAY, method, **mute), [], method)
+            self.assertEqual(self._titles(self.OVULATION_TODAY, method, **mute), [], method)
+
+    def test_with_the_option_other_methods_and_no_method_still_get_the_messages(self) -> None:
+        mute = {const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True}
+        for method in (None, "none", "condom", "copper_iud", "diaphragm", "other"):
+            self.assertEqual(self._titles(self.FERTILE_TODAY, method, **mute), ["Fertile window reminder"], method)
+            self.assertEqual(self._titles(self.OVULATION_TODAY, method, **mute), ["Ovulation reminder"], method)
+
+    def test_the_period_message_is_not_muted(self) -> None:
+        # period predicted for today: last start 28 days ago
+        options = {const.CONF_NOTIFY_PERIOD_ENABLED: True, const.CONF_NOTIFY_PERIOD_LEAD_DAYS: 0}
+        titles = self._titles(-28, "pill", **options, **{const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True})
+        self.assertEqual(titles, ["Period reminder"])
+
+
+class UnprotectedHintTests(unittest.TestCase):
+    """Opt-in hint after unprotected intercourse is logged."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _log(self, symptom_data, day_offset=0, *, existing=None, runtime=None, **options):
+        options = {const.CONF_NOTIFY_UNPROTECTED_HINT: True, **options}
+        entry = _entry(**options)
+        runtime = runtime or _runtime(symptom_history=[dict(existing)] if existing else [])
+        hass = _hass()
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        sent = _Sent()
+        call = SimpleNamespace(data={const.SERVICE_FIELD_DATE: _iso(day_offset), const.SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_entry_id_for_runtime", lambda h, r: "e1"
+        ), patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ) as save, patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            _run(integration._async_handle_add_symptom(hass, call))
+        self.save = save
+        self.runtime = runtime
+        return sent
+
+    def test_hint_for_unprotected_intercourse_today(self) -> None:
+        sent = self._log({"intercourse": ["unprotected"]})
+        self.assertEqual(len(sent.calls), 1)
+        title, message, actions = sent.calls[0]
+        self.assertEqual(title, "Unprotected intercourse logged")
+        self.assertIn("pharmacy or doctor can advise on emergency contraception", message)
+        self.assertIsNone(actions)
+        self.assertEqual(self.runtime.noncycle_data["notified_unprotected"], _iso(0))
+        self.save.assert_awaited()
+
+    def test_a_plain_string_value_counts_too(self) -> None:
+        self.assertEqual(len(self._log({"intercourse": "unprotected"}).calls), 1)
+
+    def test_protected_intercourse_and_other_symptoms_do_not_trigger(self) -> None:
+        self.assertEqual(self._log({"intercourse": ["protected"]}).calls, [])
+        self.assertEqual(self._log({"mood": "good"}).calls, [])
+
+    def test_off_by_default_and_needs_the_master_switch(self) -> None:
+        self.assertEqual(self._log({"intercourse": ["unprotected"]}, **{const.CONF_NOTIFY_UNPROTECTED_HINT: False}).calls, [])
+        self.assertEqual(self._log({"intercourse": ["unprotected"]}, **{const.CONF_NOTIFICATIONS_ENABLED: False}).calls, [])
+
+    def test_only_for_the_last_days_not_for_back_filling_or_the_future(self) -> None:
+        self.assertEqual(len(self._log({"intercourse": ["unprotected"]}, -const.UNPROTECTED_HINT_MAX_DAYS).calls), 1)
+        self.assertEqual(self._log({"intercourse": ["unprotected"]}, -const.UNPROTECTED_HINT_MAX_DAYS - 1).calls, [])
+        self.assertEqual(self._log({"intercourse": ["unprotected"]}, 1).calls, [])
+
+    def test_once_per_day_even_if_the_entry_is_saved_again(self) -> None:
+        existing = {"date": _iso(0), "intercourse": ["unprotected"]}
+        self.assertEqual(self._log({"intercourse": ["unprotected"], "mood": "ok"}, existing=existing).calls, [])
+        runtime = _runtime(noncycle_data={"notified_unprotected": _iso(0)})
+        self.assertEqual(self._log({"intercourse": ["unprotected"]}, runtime=runtime).calls, [])
+
+    def test_a_day_that_only_had_protected_intercourse_before_can_still_trigger(self) -> None:
+        existing = {"date": _iso(0), "intercourse": ["protected"]}
+        self.assertEqual(len(self._log({"intercourse": ["unprotected"]}, existing=existing).calls), 1)
+
+    def test_not_during_pregnancy_or_menopause(self) -> None:
+        for field, value in (("pregnancy_data", {"is_pregnant": True, "start_date": None}), ("menopause_data", {"is_menopause": True, "start_date": None})):
+            runtime = _runtime(**{field: value})
+            self.assertEqual(self._log({"intercourse": ["unprotected"]}, runtime=runtime).calls, [], field)
+
+    def test_a_failing_notification_does_not_break_saving_the_symptom(self) -> None:
+        runtime = _runtime()
+        entry = _entry(**{const.CONF_NOTIFY_UNPROTECTED_HINT: True})
+        hass = _hass()
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        call = SimpleNamespace(data={const.SERVICE_FIELD_DATE: _iso(0), const.SERVICE_FIELD_SYMPTOM_DATA: {"intercourse": ["unprotected"]}})
+        failing = AsyncMock(side_effect=RuntimeError("target gone"))
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_entry_id_for_runtime", lambda h, r: "e1"
+        ), patch.object(integration, "_async_send_notification", failing), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ) as save, patch.object(integration.dt_util, "now", lambda: NOW[0]), self.assertLogs(level="ERROR"):
+            _run(integration._async_handle_add_symptom(hass, call))
+        save.assert_awaited()
+        self.assertEqual(runtime.symptom_history[0]["intercourse"], ["unprotected"])
+        self.assertNotIn("notified_unprotected", runtime.noncycle_data)
+
+    def test_import_without_saving_sends_nothing(self) -> None:
+        runtime, entry, sent = _runtime(), _entry(**{const.CONF_NOTIFY_UNPROTECTED_HINT: True}), _Sent()
+        hass = _hass()
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        call = SimpleNamespace(data={const.SERVICE_FIELD_DATE: _iso(0), const.SERVICE_FIELD_SYMPTOM_DATA: {"intercourse": ["unprotected"]}})
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_entry_id_for_runtime", lambda h, r: "e1"
+        ), patch.object(integration, "_async_send_notification", sent):
+            _run(integration._async_handle_add_symptom(hass, call, save=False))
+        self.assertEqual(sent.calls, [])
+
+    def test_text_in_every_language_names_the_person_and_gives_no_dosing(self) -> None:
+        for lang, strings in integration._NOTIFY_STRINGS.items():
+            self.assertIn("{name}", strings["unprotected_message"], lang)
+            self.assertTrue(strings["unprotected_title"].strip(), lang)
+            self.assertFalse(re.search(r"\d\s*(mg|h\b|hours|Stunden|heures|horas|timmar)", strings["unprotected_message"]), lang)
+
+
 class CheckupNotificationTests(unittest.TestCase):
     def _runtime(self, last_checkup_offset: int | None):
         history = [] if last_checkup_offset is None else [

@@ -14,6 +14,8 @@ from .const import (
     SYMPTOM_APPOINTMENTS,
     CONTRACEPTION_RENEWAL_MONTHS,
     CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS,
+    CONTRACEPTION_RHYTHM_DAYS,
+    CONTRACEPTION_RHYTHM_EVENTS,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_ONBOARDING_STAGE,
@@ -3051,10 +3053,55 @@ def next_checkup_due(symptom_history: list[dict[str, Any]], interval_months: int
     return last + timedelta(days=round(interval_months * 365 / 12))
 
 
+def _renewal_since(method: str, method_since: str, renewed: Any) -> str:
+    """Start of the current renewal period: a confirmed renewal of this same method counts when it is newer than the first log."""
+    if isinstance(renewed, dict) and renewed.get("method") == method:
+        try:
+            confirmed = date.fromisoformat(str(renewed.get("date"))).isoformat()
+        except ValueError:
+            return method_since
+        if confirmed > method_since:
+            return confirmed
+    return method_since
+
+
+def contraception_rhythm(method: str | None, since: str | None, today: date) -> dict[str, Any] | None:
+    """Next step of the patch/ring rhythm (None for other methods), counted in 28-day packs from `since`.
+
+    The rhythm rolls on by itself, so a missed confirmation does not stop the reminders; confirming a new
+    pack (confirm_contraception_renewal) moves the anchor to the real start day.
+    """
+    events = CONTRACEPTION_RHYTHM_EVENTS.get(method or "")
+    if not events or not since:
+        return None
+    try:
+        start = date.fromisoformat(since)
+    except ValueError:
+        return None
+    if start > today:
+        return None
+    elapsed = (today - start).days
+    day = elapsed % CONTRACEPTION_RHYTHM_DAYS
+    if elapsed and not day:
+        # the day the next pack is due, the last event of the rhythm
+        return {"event": events[-1][1], "date": today.isoformat(), "days_until": 0, "pack_start": today.isoformat(), "in_break": False}
+    pack_start = today - timedelta(days=day)
+    offset, event = next((o, e) for o, e in events if o >= day)
+    due = pack_start + timedelta(days=offset)
+    return {
+        "event": event,
+        "date": due.isoformat(),
+        "days_until": (due - today).days,
+        "pack_start": pack_start.isoformat(),
+        "in_break": day >= 21,
+    }
+
+
 def compute_contraception_status(
     symptom_history: list[dict[str, Any]],
     *,
     today: date | None = None,
+    renewed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive the current contraception method and related info from symptom
     history, rather than a separate stored profile field — the method is
@@ -3081,6 +3128,9 @@ def compute_contraception_status(
         pill_last_run_days: int — length of the most recent run of consecutive
             "pill" days, even if it ended days ago (used to recognise the pack break).
         pill_last_taken: str | None — most recent date with a logged "pill" entry.
+        renewal_since: str | None — start of the current renewal period: method_since, or the date of a confirmed
+            renewal (`renewed`, {"method", "date"}) of the same method when that is newer.
+        rhythm: dict | None — next patch/ring step, see contraception_rhythm.
     """
     today = today or date.today()
     empty: dict[str, Any] = {
@@ -3092,6 +3142,8 @@ def compute_contraception_status(
         "pill_streak_days": 0,
         "pill_last_run_days": 0,
         "pill_last_taken": None,
+        "renewal_since": None,
+        "rhythm": None,
     }
     if not symptom_history:
         return empty
@@ -3121,9 +3173,10 @@ def compute_contraception_status(
 
     renewal_due_date: str | None = None
     renewal_reminder_due = False
+    renewal_since = _renewal_since(current_method, method_since, renewed)
     renewal_months = CONTRACEPTION_RENEWAL_MONTHS.get(current_method)
     if renewal_months and method_since:
-        since_date = date.fromisoformat(method_since)
+        since_date = date.fromisoformat(renewal_since)
         # Approximate month arithmetic (avoids a dateutil dependency): add
         # renewal_months by converting to a total-months count and back.
         total_months = since_date.year * 12 + (since_date.month - 1) + renewal_months
@@ -3164,6 +3217,8 @@ def compute_contraception_status(
         "is_hormonal": is_hormonal,
         "renewal_due_date": renewal_due_date,
         "renewal_reminder_due": renewal_reminder_due,
+        "renewal_since": renewal_since,
+        "rhythm": contraception_rhythm(current_method, renewal_since, today),
     }
 
 

@@ -78,7 +78,9 @@
               "notify_log_reminder_time": "Evening reminder time",
               "notify_recap_enabled": "Recap after each cycle",
               "notify_overdue_enabled": "Notify when the period is overdue",
-              "notify_checkup_enabled": "Notify before a checkup is due"
+              "notify_checkup_enabled": "Notify before a checkup is due",
+              "notify_fertile_mute_hormonal": "No fertility notifications on hormonal contraception",
+              "notify_unprotected_hint": "Hint after unprotected intercourse"
             },
             "data_description": {
               "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
@@ -95,7 +97,9 @@
               "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
               "notify_recap_enabled": "Sends a short recap (cycle length and period duration, compared with the average, plus pain days) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above.",
               "notify_overdue_enabled": "Sends one notification once the period is 7 days past its predicted start and not logged (same threshold as the repair hint), with a 'Period started' button. Not sent while predictions are still low-confidence. Goes only to this profile's own target. Off by default. Requires 'Enable notifications' above.",
-              "notify_checkup_enabled": "Sends one notification 14 days before the next checkup is due (last logged checkup plus the checkup interval below), or once if it is already overdue. Needs a checkup interval above 0. Off by default. Requires 'Enable notifications' above."
+              "notify_checkup_enabled": "Sends one notification 14 days before the next checkup is due (last logged checkup plus the checkup interval below), or once if it is already overdue. Needs a checkup interval above 0. Off by default. Requires 'Enable notifications' above.",
+              "notify_fertile_mute_hormonal": "Skips the fertile-window and ovulation notifications while the current contraception method is hormonal (pill, hormonal IUD, implant, patch, ring, injection), since the cycle is usually suppressed then. The sensor state and the dashboard stay unchanged. Off by default.",
+              "notify_unprotected_hint": "When unprotected intercourse is logged for today or one of the last 5 days, sends one neutral hint: if a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception, and the sooner the better. No dosing, no medical advice. Not sent during pregnancy or menopause. Off by default. Requires 'Enable notifications' above."
             }
           },
           "pill": {
@@ -109,7 +113,7 @@
               "notify_pill_gap_enabled": "Hint when pill intakes are missing"
             },
             "data_description": {
-              "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. Off by default. Requires 'Enable notifications' above.",
+              "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. For a patch or ring it reminds on the steps of the usual 28-day rhythm instead (change, remove, new pack), with a 'Started today' button on new-pack days. Off by default. Requires 'Enable notifications' above.",
               "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
               "notify_pill_followup_hours": "Hours after the pill reminder for a second reminder if today's pill is still not logged. 0 = off (default, max 12; skipped if it would fall after midnight).",
               "pill_pause_days": "Days without pills between packs (e.g. 7 for 21/7, 4 for 24/4). No pill reminder is sent during that break, which is recognised after a run of at least 21 logged pill days. 0 = continuous use, no break (default, max 7).",
@@ -711,6 +715,28 @@
         "entry_id": {
           "name": "Entry ID",
           "description": "Config entry identifier."
+        }
+      }
+    },
+    "confirm_contraception_renewal": {
+      "name": "Confirm contraception renewal",
+      "description": "Records that the current contraception method was renewed (IUD, implant, injection) or that a new patch or ring pack was started, so the renewal period or the patch/ring rhythm counts from that date. Without a date, today is used.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Day of the renewal or of the new pack (YYYY-MM-DD). Defaults to today."
         }
       }
     },

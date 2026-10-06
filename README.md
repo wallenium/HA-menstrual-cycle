@@ -78,12 +78,16 @@ The integration can notify you itself (**Configure → Notifications**), no auto
 | Log reminder | nothing was logged for today yet | Evening reminder to log (+ time) | off, 20:00 |
 | Pill reminder | today's pill is not logged yet, plus an optional follow-up after 1-12 hours | Pill reminder (+ time, follow-up) | off, 09:00 |
 | Pill hint | 2 or more days in a row without a logged pill (neutral hint to check the leaflet) | Hint when pill intakes are missing | off |
+| Patch / ring | on each step of the usual 28-day rhythm (patch: change on days 7 and 14, remove on day 21, new patch on day 28; ring: remove on day 21, new ring on day 28), sent with the pill reminder time | Pill reminder (also covers patch and ring) | off |
+| Unprotected intercourse | unprotected intercourse was logged for today or one of the last 5 days: one neutral hint to ask a pharmacy or doctor about emergency contraception (no dosing or medical advice; not during pregnancy or menopause) | Hint after unprotected intercourse | off |
 | Badges | a new progress badge was unlocked | part of the date reminders | with notifications |
 
 Date reminders, the recap, overdue and checkup notifications are sent at **Notification time** (default 08:00).
 
 - **Pill pack break:** set **Pill break (days per pack)** (for example 7 for a 21+7 pack) so no reminder is sent during the break. It also lets the integration add "order a new pill pack" to the shopping list a few days before the pack ends.
-- **Buttons** (mobile app targets only): *Period started*, *Pill taken* and *Remind me in 1 hour*. A snooze survives a Home Assistant restart.
+- **Buttons** (mobile app targets only): *Period started*, *Pill taken*, *Started today* (on the patch and ring reminders that start a new pack) and *Remind me in 1 hour*. A snooze survives a Home Assistant restart.
+- **Contraception renewal:** the renewal reminder for an IUD, implant or injection counts from the first day the method was logged. After a renewal (or a new patch/ring pack) call `menstruation_cycle.confirm_contraception_renewal` or use the button in the dashboard; the period or the patch/ring rhythm then counts from that day.
+- **Hormonal methods:** *No fertility notifications on hormonal contraception* skips the fertile-window and ovulation messages while the current method is hormonal. The sensor state and the dashboard stay unchanged.
 - **Partner target:** an optional second notify target that only receives the date reminders (period; fertile window and ovulation only at visibility level "Full"), never health details. Nothing is sent for private profiles.
 - **Check your setup:** call the service `menstruation_cycle.send_test_notification` (Developer tools → Actions). If the target does not exist or fails, a repair issue appears under **Settings → Repairs** and disappears again after the next successful delivery.
 

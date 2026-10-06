@@ -196,7 +196,7 @@ class ContraceptionTodoTests(unittest.TestCase):
         model = sys.modules[f"{_PKG}.model"]
         with patch.object(model, "compute_contraception_status", lambda *a, **k: self.STATUS):
             _run(integration._async_check_contraception_renewal_todo(hass, SimpleNamespace(
-                friendly_name="Anna", symptom_history=[]
+                friendly_name="Anna", symptom_history=[], noncycle_data={}
             )))
         return hass.added
 
@@ -204,6 +204,22 @@ class ContraceptionTodoTests(unittest.TestCase):
         self.assertEqual(self._check(_Hass("en")), ["Anna: contraception method (iud) may need renewal soon (2026-11-01)"])
         self.assertEqual(self._check(_Hass("de")), ["Anna: Verhütungsmethode (iud) muss bald erneuert werden (2026-11-01)"])
         self.assertEqual(self._check(_Hass("fr")), ["Anna : méthode contraceptive (iud) : renouvellement à prévoir bientôt (2026-11-01)"])
+
+    def test_known_methods_are_written_with_their_localized_name(self) -> None:
+        self.STATUS = {**self.STATUS, "current_method": "hormonal_iud"}
+        self.assertEqual(self._check(_Hass("en")), ["Anna: contraception method (Hormonal IUD) may need renewal soon (2026-11-01)"])
+        self.assertEqual(self._check(_Hass("de")), ["Anna: Verhütungsmethode (Hormonspirale) muss bald erneuert werden (2026-11-01)"])
+        self.assertEqual(self._check(_Hass("sv")), ["Anna: preventivmetod (Hormonspiral) kan snart behöva förnyas (2026-11-01)"])
+
+    def test_an_item_written_by_an_older_version_with_the_raw_key_still_blocks_a_new_one(self) -> None:
+        self.STATUS = {**self.STATUS, "current_method": "hormonal_iud"}
+        legacy = "Anna: Verhütungsmethode (hormonal_iud) muss bald erneuert werden (2026-10-01)"
+        self.assertEqual(self._check(_Hass("en", existing=(legacy,))), [])
+
+    def test_every_language_names_every_contraception_method(self) -> None:
+        for lang, names in integration._METHOD_NAMES.items():
+            self.assertEqual(sorted(names), sorted(const.CONTRACEPTION_METHODS), lang)
+            self.assertTrue(all(isinstance(v, str) and v.strip() for v in names.values()), lang)
 
     def test_an_item_for_the_same_method_in_another_language_blocks_a_new_one(self) -> None:
         old = "Anna: contraception method (iud) may need renewal soon (2026-10-01)"
@@ -219,6 +235,7 @@ class PillRefillTodoTests(unittest.TestCase):
         entry = SimpleNamespace(options={const.CONF_PILL_PAUSE_DAYS: 7})
         runtime = SimpleNamespace(
             friendly_name="Test",
+            noncycle_data={},
             symptom_history=[{"date": _iso(o), "contraception_method": "pill"} for o in range(-17, 1)],
         )
         with patch.object(integration.dt_util, "now", lambda: NOW[0]):

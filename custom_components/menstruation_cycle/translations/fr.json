@@ -78,7 +78,9 @@
               "notify_log_reminder_time": "Heure du rappel du soir",
               "notify_recap_enabled": "Bilan après chaque cycle",
               "notify_overdue_enabled": "Notifier en cas de retard des règles",
-              "notify_checkup_enabled": "Notifier avant un contrôle dû"
+              "notify_checkup_enabled": "Notifier avant un contrôle dû",
+              "notify_fertile_mute_hormonal": "Pas de notifications de fertilité sous contraception hormonale",
+              "notify_unprotected_hint": "Conseil après un rapport non protégé"
             },
             "data_description": {
               "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
@@ -95,7 +97,9 @@
               "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
               "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles, comparée à la moyenne, et jours de douleur) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_overdue_enabled": "Envoie une notification dès que les règles ont 7 jours de retard sur le début prévu et ne sont pas saisies (même seuil que l'alerte de réparation), avec un bouton « Règles commencées ». Pas tant que la prévision reste peu fiable. Uniquement vers la cible de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
-              "notify_checkup_enabled": "Envoie une notification 14 jours avant le prochain contrôle (dernier contrôle saisi plus l'intervalle ci-dessous), ou une fois s'il est déjà en retard. Nécessite un intervalle supérieur à 0. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
+              "notify_checkup_enabled": "Envoie une notification 14 jours avant le prochain contrôle (dernier contrôle saisi plus l'intervalle ci-dessous), ou une fois s'il est déjà en retard. Nécessite un intervalle supérieur à 0. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_fertile_mute_hormonal": "Ignore les notifications de fenêtre fertile et d'ovulation tant que la méthode contraceptive actuelle est hormonale (pilule, stérilet hormonal, implant, patch, anneau, injection), car le cycle est alors généralement freiné. L'état du capteur et le tableau de bord restent inchangés. Désactivé par défaut.",
+              "notify_unprotected_hint": "Lorsqu'un rapport non protégé est saisi pour aujourd'hui ou l'un des 5 derniers jours, un conseil neutre est envoyé : si une grossesse n'est pas souhaitée, une pharmacie ou un médecin peut conseiller sur la contraception d'urgence, le plus tôt possible. Pas de posologie ni de conseil médical. Non envoyé pendant la grossesse ou la ménopause. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
             }
           },
           "pill": {
@@ -109,7 +113,7 @@
               "notify_pill_gap_enabled": "Avertissement en cas de prises manquantes"
             },
             "data_description": {
-              "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Avec un patch ou un anneau, il rappelle à la place les étapes du rythme habituel de 28 jours (changer, retirer, nouvelle boîte), avec un bouton « Commencé aujourd'hui » les jours de nouvelle boîte. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
               "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
               "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7).",
@@ -711,6 +715,28 @@
         "entry_id": {
           "name": "ID d'entrée",
           "description": "Identifiant de l'entrée de configuration."
+        }
+      }
+    },
+    "confirm_contraception_renewal": {
+      "name": "Confirmer le renouvellement de la contraception",
+      "description": "Enregistre que la méthode contraceptive actuelle a été renouvelée (stérilet, implant, injection) ou qu’une nouvelle boîte de patchs ou un nouvel anneau a été commencé. Le délai de renouvellement ou le rythme patch/anneau compte à partir de cette date. Sans date, aujourd’hui est utilisé.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Jour du renouvellement ou de la nouvelle boîte (AAAA-MM-JJ). Par défaut : aujourd’hui."
         }
       }
     },

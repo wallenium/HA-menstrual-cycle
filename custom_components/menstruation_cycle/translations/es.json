@@ -78,7 +78,9 @@
               "notify_log_reminder_time": "Hora del recordatorio nocturno",
               "notify_recap_enabled": "Resumen tras cada ciclo",
               "notify_overdue_enabled": "Avisar si la menstruación se retrasa",
-              "notify_checkup_enabled": "Avisar antes de una revisión"
+              "notify_checkup_enabled": "Avisar antes de una revisión",
+              "notify_fertile_mute_hormonal": "Sin avisos de fertilidad con anticoncepción hormonal",
+              "notify_unprotected_hint": "Aviso tras relaciones sin protección"
             },
             "data_description": {
               "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
@@ -95,7 +97,9 @@
               "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
               "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación, comparada con la media, y días con dolor) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
               "notify_overdue_enabled": "Envía un aviso cuando la menstruación lleva 7 días de retraso sobre el inicio previsto y no está registrada (mismo umbral que el aviso de reparación), con un botón «Menstruación iniciada». No mientras la predicción sea poco fiable. Solo al destino de este perfil. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
-              "notify_checkup_enabled": "Envía un aviso 14 días antes de la próxima revisión (última revisión registrada más el intervalo de abajo), o una vez si ya está vencida. Requiere un intervalo mayor que 0. Desactivado por defecto. Requiere «Activar notificaciones» arriba."
+              "notify_checkup_enabled": "Envía un aviso 14 días antes de la próxima revisión (última revisión registrada más el intervalo de abajo), o una vez si ya está vencida. Requiere un intervalo mayor que 0. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+              "notify_fertile_mute_hormonal": "Omite los avisos de ventana fértil y de ovulación mientras el método anticonceptivo actual sea hormonal (píldora, DIU hormonal, implante, parche, anillo, inyección), porque el ciclo suele estar suprimido. El estado del sensor y el panel no cambian. Desactivado por defecto.",
+              "notify_unprotected_hint": "Si se registra una relación sin protección para hoy o alguno de los últimos 5 días, se envía un aviso neutral: si no se desea un embarazo, una farmacia o un médico pueden orientar sobre la anticoncepción de emergencia, cuanto antes mejor. Sin dosis ni consejo médico. No se envía durante el embarazo ni la menopausia. Desactivado por defecto. Requiere 'Activar notificaciones' arriba."
             }
           },
           "pill": {
@@ -109,7 +113,7 @@
               "notify_pill_gap_enabled": "Aviso si faltan tomas de la píldora"
             },
             "data_description": {
-              "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+              "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Con parche o anillo recuerda en su lugar los pasos del ritmo habitual de 28 días (cambiar, quitar, nuevo envase), con un botón 'Empezado hoy' en los días de nuevo envase. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
               "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
               "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
               "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7).",
@@ -711,6 +715,28 @@
         "entry_id": {
           "name": "ID de entrada",
           "description": "Identificador de la entrada de configuración."
+        }
+      }
+    },
+    "confirm_contraception_renewal": {
+      "name": "Confirmar la renovación del anticonceptivo",
+      "description": "Registra que se renovó el método anticonceptivo actual (DIU, implante, inyección) o que se empezó un nuevo envase de parches o un nuevo anillo. El plazo de renovación o el ritmo de parche/anillo cuenta desde esa fecha. Sin fecha se usa hoy.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
+        },
+        "date": {
+          "name": "Fecha",
+          "description": "Día de la renovación o del nuevo envase (AAAA-MM-DD). Por defecto, hoy."
         }
       }
     },

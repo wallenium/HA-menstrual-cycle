@@ -92,5 +92,75 @@ class DoctorReportTests(unittest.TestCase):
         self.assertIn('<html lang="en">', _report("pt"))
 
 
+def _log(day: str, method: str) -> dict:
+    return {"date": day, "contraception_method": method}
+
+
+class ContraceptionTimelineTests(unittest.TestCase):
+    ENTRIES = [
+        _log("2024-01-05", "pill"), _log("2024-01-06", "pill"), _log("2025-03-01", "pill"),
+        _log("2025-04-10", "none"),
+        _log("2025-06-01", "implant"), _log("2026-01-10", "implant"),
+    ]
+
+    def test_runs_of_the_same_method_are_merged_and_the_last_one_is_ongoing(self) -> None:
+        runs = statistics.compute_contraception_timeline(self.ENTRIES)
+        self.assertEqual(
+            [(r["method"], r["since"], r["until"]) for r in runs],
+            [("pill", "2024-01-05", "2025-03-01"), ("none", "2025-04-10", "2025-04-10"), ("implant", "2025-06-01", None)],
+        )
+
+    def test_unordered_input_and_junk_entries(self) -> None:
+        junk = [*reversed(self.ENTRIES), "text", {"date": "2025-01-01"}, {"contraception_method": "pill"}, _log("", "pill")]
+        self.assertEqual(statistics.compute_contraception_timeline(junk), statistics.compute_contraception_timeline(self.ENTRIES))
+        self.assertEqual(statistics.compute_contraception_timeline([]), [])
+
+    def test_only_the_newest_runs_are_kept(self) -> None:
+        entries = [_log(f"2025-{m:02d}-01", "pill" if m % 2 else "condom") for m in range(1, 11)]
+        runs = statistics.compute_contraception_timeline(entries, limit=3)
+        self.assertEqual([r["since"] for r in runs], ["2025-08-01", "2025-09-01", "2025-10-01"])
+
+    def test_a_confirmed_renewal_is_attached_to_its_run_only(self) -> None:
+        renewed = {"method": "implant", "date": "2026-09-01"}
+        runs = statistics.compute_contraception_timeline(self.ENTRIES, renewed)
+        self.assertEqual([r["renewed_on"] for r in runs], [None, None, "2026-09-01"])
+        for other in ({"method": "pill", "date": "2026-09-01"}, {"method": "implant", "date": "2020-01-01"}, {"method": "implant", "date": "bad"}, "x"):
+            self.assertEqual([r["renewed_on"] for r in statistics.compute_contraception_timeline(self.ENTRIES, other)], [None, None, None], other)
+
+    def test_the_report_shows_the_history_in_every_language(self) -> None:
+        stats = statistics.compute_statistics(HISTORY, SYMPTOMS, days_back=180, today=TODAY, period_duration_days=5)
+        timeline = statistics.compute_contraception_timeline(self.ENTRIES, {"method": "implant", "date": "2026-09-01"})
+        expected = {
+            "de": ("Verlauf der Verhütung", "laufend", "erneuert am 2026-09-01"),
+            "en": ("Contraception history", "ongoing", "renewed 2026-09-01"),
+            "es": ("Historial anticonceptivo", "en curso", "renovado el 2026-09-01"),
+            "fr": ("Historique de contraception", "en cours", "renouvelé le 2026-09-01"),
+            "sv": ("Preventivmedelshistorik", "pågår", "förnyat 2026-09-01"),
+        }
+        for lang, texts in expected.items():
+            html = statistics.generate_doctor_report_html(
+                stats=stats, history=HISTORY, symptom_history=SYMPTOMS, profile="anna", patient_name=None,
+                patient_birthdate=None, language=lang, report_date=TODAY.isoformat(),
+                current_contraception_method="implant", contraception_timeline=timeline,
+            )
+            for text in texts:
+                self.assertIn(text, html, lang)
+            self.assertIn("2024-01-05", html)
+            self.assertIn("2025-03-01", html)
+
+    def test_no_history_block_without_a_timeline(self) -> None:
+        self.assertNotIn("Contraception history", _report("en"))
+
+    def test_diaphragm_has_a_label_in_every_language(self) -> None:
+        stats = statistics.compute_statistics(HISTORY, SYMPTOMS, days_back=180, today=TODAY, period_duration_days=5)
+        for lang, label in (("de", "Diaphragma"), ("en", "Diaphragm"), ("es", "Diafragma"), ("fr", "Diaphragme"), ("sv", "Pessar")):
+            html = statistics.generate_doctor_report_html(
+                stats=stats, history=HISTORY, symptom_history=SYMPTOMS, profile="anna", patient_name=None,
+                patient_birthdate=None, language=lang, report_date=TODAY.isoformat(), current_contraception_method="diaphragm",
+            )
+            self.assertIn(f"<td>{label}</td>", html, lang)
+            self.assertNotIn("<td>diaphragm</td>", html if lang != "en" else "")
+
+
 if __name__ == "__main__":
     unittest.main()

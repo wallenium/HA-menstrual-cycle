@@ -750,6 +750,36 @@ get_last_cycle_summary:
       selector:
         text:
 
+confirm_contraception_renewal:
+  name: Confirm contraception renewal
+  description: >-
+    Records that the current contraception method was renewed (IUD, implant,
+    injection) or that a new patch or ring pack was started, so the renewal
+    period or the patch/ring rhythm counts from that date. Without a date,
+    today is used.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    date:
+      required: false
+      example: "2026-10-01"
+      selector:
+        date: {}
+
 set_pregnancy_mode:
   name: Set pregnancy mode
   description: Enable or disable pregnancy mode. When enabled, the sensor reports pregnancy state with weeks pregnant and due date.

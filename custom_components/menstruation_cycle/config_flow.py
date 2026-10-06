@@ -57,6 +57,8 @@ from .const import (
     CONF_NOTIFY_OVERDUE_ENABLED,
     CONF_NOTIFY_CHECKUP_ENABLED,
     CONF_NOTIFY_PILL_GAP_ENABLED,
+    CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
+    CONF_NOTIFY_UNPROTECTED_HINT,
     CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
@@ -86,6 +88,8 @@ from .const import (
     DEFAULT_NOTIFY_OVERDUE_ENABLED,
     DEFAULT_NOTIFY_CHECKUP_ENABLED,
     DEFAULT_NOTIFY_PILL_GAP_ENABLED,
+    DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
+    DEFAULT_NOTIFY_UNPROTECTED_HINT,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CHECKUP_INTERVAL_MONTHS_MAX,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
@@ -192,6 +196,8 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_OVERDUE_ENABLED,
             CONF_NOTIFY_CHECKUP_ENABLED,
             CONF_NOTIFY_PILL_GAP_ENABLED,
+            CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
+            CONF_NOTIFY_UNPROTECTED_HINT,
             CONF_CHECKUP_INTERVAL_MONTHS,
             CONF_CALENDAR_ENABLED,
             CONF_NFP_ANALYSIS_MODE,
@@ -389,6 +395,8 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_RECAP_ENABLED,
         CONF_NOTIFY_OVERDUE_ENABLED,
         CONF_NOTIFY_CHECKUP_ENABLED,
+        CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
+        CONF_NOTIFY_UNPROTECTED_HINT,
     ),
     "pill": (
         CONF_NOTIFY_PILL_ENABLED,
@@ -586,6 +594,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_pill_gap_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED)
             ),
+            "notify_fertile_mute_hormonal": bool(
+                self._entry.options.get(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL)
+            ),
+            "notify_unprotected_hint": bool(
+                self._entry.options.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT)
+            ),
             "checkup_interval_months": int(
                 self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
             ),
@@ -710,6 +724,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append("  - Checkup reminder")
             if d.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED):
                 lines.append("  - Pill hint after missing intakes")
+            if d.get(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL):
+                lines.append("  - No fertility notifications while on hormonal contraception")
+            if d.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT):
+                lines.append("  - Hint after unprotected intercourse")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -862,6 +880,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_PILL_GAP_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_PILL_GAP_ENABLED, DEFAULT_NOTIFY_PILL_GAP_ENABLED)
                 )
+                self._data[CONF_NOTIFY_FERTILE_MUTE_HORMONAL] = bool(
+                    user_input.get(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL)
+                )
+                self._data[CONF_NOTIFY_UNPROTECTED_HINT] = bool(
+                    user_input.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT)
+                )
                 self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
                     0,
                     min(
@@ -1013,6 +1037,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_NOTIFY_OVERDUE_ENABLED, default=c["notify_overdue_enabled"]): bool,
                 vol.Optional(CONF_NOTIFY_CHECKUP_ENABLED, default=c["notify_checkup_enabled"]): bool,
                 vol.Optional(CONF_NOTIFY_PILL_GAP_ENABLED, default=c["notify_pill_gap_enabled"]): bool,
+                vol.Optional(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, default=c["notify_fertile_mute_hormonal"]): bool,
+                vol.Optional(CONF_NOTIFY_UNPROTECTED_HINT, default=c["notify_unprotected_hint"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
@@ -1352,6 +1378,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_OVERDUE_ENABLED: d[CONF_NOTIFY_OVERDUE_ENABLED],
                 CONF_NOTIFY_CHECKUP_ENABLED: d[CONF_NOTIFY_CHECKUP_ENABLED],
                 CONF_NOTIFY_PILL_GAP_ENABLED: d[CONF_NOTIFY_PILL_GAP_ENABLED],
+                CONF_NOTIFY_FERTILE_MUTE_HORMONAL: d[CONF_NOTIFY_FERTILE_MUTE_HORMONAL],
+                CONF_NOTIFY_UNPROTECTED_HINT: d[CONF_NOTIFY_UNPROTECTED_HINT],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],

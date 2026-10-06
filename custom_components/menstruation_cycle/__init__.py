@@ -86,6 +86,17 @@ from .const import (
     EVENT_MOBILE_APP_NOTIFICATION_ACTION,
     NOTIFY_ACTION_PERIOD_STARTED_PREFIX,
     NOTIFY_ACTION_PILL_TAKEN_PREFIX,
+    NONCYCLE_CONTRACEPTION_RENEWED,
+    CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
+    CONF_NOTIFY_UNPROTECTED_HINT,
+    DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
+    DEFAULT_NOTIFY_UNPROTECTED_HINT,
+    UNPROTECTED_HINT_MAX_DAYS,
+    NOTIFY_ACTION_RENEWED_PREFIX,
+    CONTRACEPTION_RENEWAL_MONTHS,
+    CONTRACEPTION_RHYTHM_EVENTS,
+    CONTRACEPTION_RHYTHM_START_EVENTS,
+    SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
     CONF_PILL_PAUSE_DAYS,
     DEFAULT_PILL_PAUSE_DAYS,
@@ -114,6 +125,7 @@ from .const import (
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CONTRACEPTION_METHOD_PILL,
     SYMPTOM_CONTRACEPTION_METHOD,
+    SYMPTOM_INTERCOURSE,
     DEFAULT_NFP_ANALYSIS_MODE,
     CONF_FRIENDLY_NAME,
     CONF_ICON,
@@ -250,7 +262,12 @@ from .model import (
     grouped_cycle_starts,
     normalize_history,
 )
-from .statistics import compute_last_cycle_summary, compute_statistics, generate_doctor_report_html
+from .statistics import (
+    compute_contraception_timeline,
+    compute_last_cycle_summary,
+    compute_statistics,
+    generate_doctor_report_html,
+)
 from .storage import MenstruationStorage
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
@@ -895,8 +912,79 @@ def _household_inventory_critical_products(household_data: dict[str, Any]) -> li
 
 
 # Texts of the shopping-list items this integration adds, per Home Assistant language (English fallback).
+# Method names for texts the backend writes itself (same wording as the panel's opt_<method> strings).
+_METHOD_NAMES: dict[str, dict[str, str]] = {
+    "en": {
+        "none": "None",
+        "pill": "Pill",
+        "hormonal_iud": "Hormonal IUD",
+        "copper_iud": "Copper IUD",
+        "implant": "Implant",
+        "patch": "Patch",
+        "ring": "Ring",
+        "injection": "Injection",
+        "condom": "Condom",
+        "diaphragm": "Diaphragm",
+        "other": "Other",
+    },
+    "de": {
+        "none": "Keine",
+        "pill": "Pille",
+        "hormonal_iud": "Hormonspirale",
+        "copper_iud": "Kupferspirale",
+        "implant": "Implantat",
+        "patch": "Verhütungspflaster",
+        "ring": "Vaginalring",
+        "injection": "Dreimonatsspritze",
+        "condom": "Kondom",
+        "diaphragm": "Diaphragma",
+        "other": "Sonstiges",
+    },
+    "es": {
+        "none": "Ninguno",
+        "pill": "Píldora",
+        "hormonal_iud": "DIU hormonal",
+        "copper_iud": "DIU de cobre",
+        "implant": "Implante",
+        "patch": "Parche anticonceptivo",
+        "ring": "Anillo vaginal",
+        "injection": "Inyección trimestral",
+        "condom": "Preservativo",
+        "diaphragm": "Diafragma",
+        "other": "Otro",
+    },
+    "fr": {
+        "none": "Aucun",
+        "pill": "Pilule",
+        "hormonal_iud": "Stérilet hormonal",
+        "copper_iud": "Stérilet en cuivre",
+        "implant": "Implant",
+        "patch": "Patch contraceptif",
+        "ring": "Anneau vaginal",
+        "injection": "Injection trimestrielle",
+        "condom": "Préservatif",
+        "diaphragm": "Diaphragme",
+        "other": "Autre",
+    },
+    "sv": {
+        "none": "Inga",
+        "pill": "P-piller",
+        "hormonal_iud": "Hormonspiral",
+        "copper_iud": "Kopparspiral",
+        "implant": "Implantat",
+        "patch": "Preventivplåster",
+        "ring": "Vaginalring",
+        "injection": "P-spruta",
+        "condom": "Kondom",
+        "diaphragm": "Pessar",
+        "other": "Annat",
+    },
+}
+
+
 _TODO_STRINGS: dict[str, dict[str, Any]] = {
     "en": {
+        "methods": _METHOD_NAMES["en"],
         "products": {"tampon": "Tampons", "pad": "Pads", "liner": "Liners", "underwear": "Period underwear"},
         "underwear_wash": "Underwear washing needed",
         "contraception_prefix": "{name}: contraception method ({method})",
@@ -904,6 +992,7 @@ _TODO_STRINGS: dict[str, dict[str, Any]] = {
         "pill_refill": "{name}: order a new pill pack (current one ends {date})",
     },
     "de": {
+        "methods": _METHOD_NAMES["de"],
         "products": {"tampon": "Tampons", "pad": "Binden", "liner": "Slipeinlagen", "underwear": "Periodenunterwäsche"},
         "underwear_wash": "Unterwäsche muss gewaschen werden",
         "contraception_prefix": "{name}: Verhütungsmethode ({method})",
@@ -911,6 +1000,7 @@ _TODO_STRINGS: dict[str, dict[str, Any]] = {
         "pill_refill": "{name}: neue Pillenpackung bestellen (aktuelle endet am {date})",
     },
     "es": {
+        "methods": _METHOD_NAMES["es"],
         "products": {"tampon": "Tampones", "pad": "Compresas", "liner": "Protectores diarios", "underwear": "Ropa interior menstrual"},
         "underwear_wash": "Hay que lavar la ropa interior",
         "contraception_prefix": "{name}: método anticonceptivo ({method})",
@@ -918,6 +1008,7 @@ _TODO_STRINGS: dict[str, dict[str, Any]] = {
         "pill_refill": "{name}: pedir un nuevo envase de píldoras (el actual termina el {date})",
     },
     "fr": {
+        "methods": _METHOD_NAMES["fr"],
         "products": {"tampon": "Tampons", "pad": "Serviettes", "liner": "Protège-slips", "underwear": "Culottes menstruelles"},
         "underwear_wash": "Culottes à laver",
         "contraception_prefix": "{name} : méthode contraceptive ({method})",
@@ -925,6 +1016,7 @@ _TODO_STRINGS: dict[str, dict[str, Any]] = {
         "pill_refill": "{name} : commander une nouvelle plaquette de pilules (l'actuelle se termine le {date})",
     },
     "sv": {
+        "methods": _METHOD_NAMES["sv"],
         "products": {"tampon": "Tamponger", "pad": "Bindor", "liner": "Trosskydd", "underwear": "Mensunderkläder"},
         "underwear_wash": "Underkläder behöver tvättas",
         "contraception_prefix": "{name}: preventivmetod ({method})",
@@ -1029,6 +1121,15 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_message": "{name}: time to take the pill.",
         "action_pill_taken": "Pill taken",
         "action_snooze": "Remind me in 1 hour",
+        "rhythm_title": "Patch/ring reminder",
+        "rhythm_patch_change": "{name}: today is a patch change day (usual 28-day rhythm; your leaflet is authoritative).",
+        "rhythm_patch_remove": "{name}: the patch-free week starts today (usual 28-day rhythm; your leaflet is authoritative).",
+        "rhythm_patch_new": "{name}: the patch-free week ends today, a new patch is due (usual 28-day rhythm; your leaflet is authoritative).",
+        "rhythm_ring_remove": "{name}: the ring comes out today, the ring-free week starts (usual 28-day rhythm; your leaflet is authoritative).",
+        "rhythm_ring_insert": "{name}: the ring-free week ends today, a new ring is due (usual 28-day rhythm; your leaflet is authoritative).",
+        "action_renewed": "Started today",
+        "unprotected_title": "Unprotected intercourse logged",
+        "unprotected_message": "{name}: unprotected intercourse was logged. If a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception right away - the sooner, the better.",
         "recap_title": "Cycle recap",
         "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
         "recap_longer": "That is {days} days longer than the average ({average} days).",
@@ -1059,6 +1160,15 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_message": "{name}: Zeit für die Pille.",
         "action_pill_taken": "Pille genommen",
         "action_snooze": "In 1 Stunde erinnern",
+        "rhythm_title": "Pflaster-/Ring-Erinnerung",
+        "rhythm_patch_change": "{name}: heute ist Pflasterwechsel (üblicher 28-Tage-Rhythmus; maßgeblich ist der Beipackzettel).",
+        "rhythm_patch_remove": "{name}: heute beginnt die pflasterfreie Woche (üblicher 28-Tage-Rhythmus; maßgeblich ist der Beipackzettel).",
+        "rhythm_patch_new": "{name}: die pflasterfreie Woche endet heute, ein neues Pflaster ist fällig (üblicher 28-Tage-Rhythmus; maßgeblich ist der Beipackzettel).",
+        "rhythm_ring_remove": "{name}: heute kommt der Ring raus, die ringfreie Woche beginnt (üblicher 28-Tage-Rhythmus; maßgeblich ist der Beipackzettel).",
+        "rhythm_ring_insert": "{name}: die ringfreie Woche endet heute, ein neuer Ring ist fällig (üblicher 28-Tage-Rhythmus; maßgeblich ist der Beipackzettel).",
+        "action_renewed": "Heute neu begonnen",
+        "unprotected_title": "Ungeschützter Verkehr eingetragen",
+        "unprotected_message": "{name}: Es wurde ungeschützter Verkehr eingetragen. Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis sofort zur Notfallverhütung beraten - je früher, desto besser.",
         "recap_title": "Zyklus-Rückblick",
         "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
         "recap_longer": "Das sind {days} Tage mehr als der Durchschnitt ({average} Tage).",
@@ -1089,6 +1199,15 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_message": "{name} : c'est l'heure de prendre la pilule.",
         "action_pill_taken": "Pilule prise",
         "action_snooze": "Me rappeler dans 1 heure",
+        "rhythm_title": "Rappel patch/anneau",
+        "rhythm_patch_change": "{name} : aujourd'hui, changement de patch (rythme habituel de 28 jours ; la notice fait foi).",
+        "rhythm_patch_remove": "{name} : la semaine sans patch commence aujourd'hui (rythme habituel de 28 jours ; la notice fait foi).",
+        "rhythm_patch_new": "{name} : la semaine sans patch se termine aujourd'hui, un nouveau patch est à poser (rythme habituel de 28 jours ; la notice fait foi).",
+        "rhythm_ring_remove": "{name} : l'anneau est à retirer aujourd'hui, la semaine sans anneau commence (rythme habituel de 28 jours ; la notice fait foi).",
+        "rhythm_ring_insert": "{name} : la semaine sans anneau se termine aujourd'hui, un nouvel anneau est à poser (rythme habituel de 28 jours ; la notice fait foi).",
+        "action_renewed": "Commencé aujourd'hui",
+        "unprotected_title": "Rapport non protégé saisi",
+        "unprotected_message": "{name} : un rapport non protégé a été saisi. Si une grossesse n'est pas souhaitée, une pharmacie ou un médecin peut conseiller tout de suite sur la contraception d'urgence - le plus tôt est le mieux.",
         "recap_title": "Bilan du cycle",
         "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
         "recap_longer": "C'est {days} jours de plus que la moyenne ({average} jours).",
@@ -1119,6 +1238,15 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_message": "{name}: es hora de tomar la píldora.",
         "action_pill_taken": "Píldora tomada",
         "action_snooze": "Recordar en 1 hora",
+        "rhythm_title": "Recordatorio de parche/anillo",
+        "rhythm_patch_change": "{name}: hoy toca cambiar el parche (ritmo habitual de 28 días; manda el prospecto).",
+        "rhythm_patch_remove": "{name}: hoy empieza la semana sin parche (ritmo habitual de 28 días; manda el prospecto).",
+        "rhythm_patch_new": "{name}: hoy termina la semana sin parche, toca un parche nuevo (ritmo habitual de 28 días; manda el prospecto).",
+        "rhythm_ring_remove": "{name}: hoy se retira el anillo y empieza la semana sin anillo (ritmo habitual de 28 días; manda el prospecto).",
+        "rhythm_ring_insert": "{name}: hoy termina la semana sin anillo, toca un anillo nuevo (ritmo habitual de 28 días; manda el prospecto).",
+        "action_renewed": "Empezado hoy",
+        "unprotected_title": "Relación sin protección registrada",
+        "unprotected_message": "{name}: se registró una relación sin protección. Si no se desea un embarazo, una farmacia o un médico pueden orientar de inmediato sobre la anticoncepción de emergencia: cuanto antes, mejor.",
         "recap_title": "Resumen del ciclo",
         "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
         "recap_longer": "Son {days} días más que la media ({average} días).",
@@ -1149,6 +1277,15 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_message": "{name}: dags att ta p-pillret.",
         "action_pill_taken": "P-piller taget",
         "action_snooze": "Påminn om 1 timme",
+        "rhythm_title": "Påminnelse: plåster/ring",
+        "rhythm_patch_change": "{name}: idag är det plåsterbyte (vanlig rytm på 28 dagar; bipacksedeln gäller).",
+        "rhythm_patch_remove": "{name}: den plåsterfria veckan börjar idag (vanlig rytm på 28 dagar; bipacksedeln gäller).",
+        "rhythm_patch_new": "{name}: den plåsterfria veckan slutar idag, ett nytt plåster ska sättas på (vanlig rytm på 28 dagar; bipacksedeln gäller).",
+        "rhythm_ring_remove": "{name}: ringen tas ut idag och den ringfria veckan börjar (vanlig rytm på 28 dagar; bipacksedeln gäller).",
+        "rhythm_ring_insert": "{name}: den ringfria veckan slutar idag, en ny ring ska sättas in (vanlig rytm på 28 dagar; bipacksedeln gäller).",
+        "action_renewed": "Påbörjad idag",
+        "unprotected_title": "Oskyddat samlag loggat",
+        "unprotected_message": "{name}: oskyddat samlag har loggats. Om graviditet inte önskas kan ett apotek eller en läkare genast ge råd om akut preventivmedel - ju tidigare desto bättre.",
         "recap_title": "Cykelsammanfattning",
         "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
         "recap_longer": "Det är {days} dagar längre än genomsnittet ({average} dagar).",
@@ -1222,7 +1359,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_OVULATION_LEAD_DAYS, DEFAULT_NOTIFY_OVULATION_LEAD_DAYS)))
     )
 
-    from .model import build_cycle_model, next_checkup_due
+    from .model import build_cycle_model, compute_contraception_status, next_checkup_due
 
     today = dt_util.now().date()
     model = build_cycle_model(
@@ -1239,6 +1376,11 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
     )
+
+    # The sensor state and the dashboard keep showing the forecast; only these two messages are skipped.
+    mute_fertility = bool(
+        entry.options.get(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL)
+    ) and compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))["is_hormonal"]
 
     strings = _notify_strings(hass.config.language)
     async def _send(title: str, message: str, actions: list[dict[str, str]] | None = None) -> None:
@@ -1286,7 +1428,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_period_start"] = period_start
             notified_something = True
 
-    if fertile_start and fertile_notify_enabled:
+    if fertile_start and fertile_notify_enabled and not mute_fertility:
         fertile_target_iso = (today + timedelta(days=fertile_lead_days)).isoformat()
         if fertile_start == fertile_target_iso and runtime.noncycle_data.get("notified_fertile_start") != fertile_start:
             await _send(
@@ -1301,7 +1443,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_fertile_start"] = fertile_start
             notified_something = True
 
-    if ovulation_day and ovulation_notify_enabled:
+    if ovulation_day and ovulation_notify_enabled and not mute_fertility:
         ovulation_target_iso = (today + timedelta(days=ovulation_lead_days)).isoformat()
         if ovulation_day == ovulation_target_iso and runtime.noncycle_data.get("notified_ovulation_day") != ovulation_day:
             await _send(
@@ -1478,7 +1620,7 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
 
     today = dt_util.now().date()
     today_iso = today.isoformat()
-    status = compute_contraception_status(runtime.symptom_history, today=today)
+    status = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))
     if status["current_method"] != CONTRACEPTION_METHOD_PILL:
         return
     pause_days = int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS))
@@ -1511,6 +1653,62 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
             {"action": f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}", "title": strings["action_snooze"]},
         ],
     )
+
+
+async def _async_send_rhythm_reminder(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Patch/ring: reminder on each step of the 28-day rhythm (change, remove, new), once per step."""
+    if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+        return
+    from .model import compute_contraception_status
+
+    today = dt_util.now().date()
+    rhythm = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))["rhythm"]
+    if not rhythm or rhythm["days_until"] != 0:
+        return
+    event = rhythm["event"]
+    step = f"{event}:{rhythm['date']}"
+    # the follow-up time of the pill reminder fires this function again on the same day
+    if runtime.noncycle_data.get("notified_rhythm") == step:
+        return
+    strings = _notify_strings(hass.config.language)
+    actions = None
+    if event in CONTRACEPTION_RHYTHM_START_EVENTS:
+        actions = [{"action": f"{NOTIFY_ACTION_RENEWED_PREFIX}{entry.entry_id}", "title": strings["action_renewed"]}]
+    await _async_send_notification(
+        hass, entry, strings["rhythm_title"], strings[f"rhythm_{event}"].format(name=runtime.friendly_name), actions
+    )
+    runtime.noncycle_data["notified_rhythm"] = step
+
+
+async def _async_send_unprotected_hint(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", date_iso: str) -> None:
+    """Opt-in neutral hint after unprotected intercourse was logged (ask a pharmacy or doctor about emergency contraception).
+
+    Only for today or the last UNPROTECTED_HINT_MAX_DAYS days (older entries are back-filling), once per day,
+    never during pregnancy or menopause, own target only. No dosing and no medical advice in the text.
+    """
+    if not entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED):
+        return
+    if not entry.options.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT):
+        return
+    if runtime.pregnancy_data.get("is_pregnant") or runtime.menopause_data.get("is_menopause"):
+        return
+    age = (dt_util.now().date() - date.fromisoformat(date_iso)).days
+    if not 0 <= age <= UNPROTECTED_HINT_MAX_DAYS or runtime.noncycle_data.get("notified_unprotected") == date_iso:
+        return
+    strings = _notify_strings(hass.config.language)
+    try:
+        await _async_send_notification(
+            hass, entry, strings["unprotected_title"], strings["unprotected_message"].format(name=runtime.friendly_name)
+        )
+    except Exception:  # noqa: BLE001 - a failing notification must never break saving the symptom
+        _LOGGER.exception("Could not send the unprotected-intercourse hint for %s", entry.entry_id)
+        return
+    runtime.noncycle_data["notified_unprotected"] = date_iso
+
+
+def _is_unprotected(value: Any) -> bool:
+    values = value if isinstance(value, (list, tuple, set)) else [value]
+    return any(str(item).strip().lower() == "unprotected" for item in values)
 
 
 _SNOOZE_SENDERS = {"pill": _async_send_pill_reminder, "log": _async_send_log_reminder}
@@ -1560,6 +1758,8 @@ async def _async_handle_mobile_action(hass: HomeAssistant, entry: ConfigEntry, r
         elif action == f"{NOTIFY_ACTION_PILL_TAKEN_PREFIX}{entry.entry_id}":
             symptom_data = {SYMPTOM_CONTRACEPTION_METHOD: CONTRACEPTION_METHOD_PILL}
             await _async_handle_add_symptom(hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data}))
+        elif action == f"{NOTIFY_ACTION_RENEWED_PREFIX}{entry.entry_id}":
+            await _async_handle_confirm_contraception_renewal(hass, SimpleNamespace(data={SERVICE_FIELD_ENTRY_ID: entry.entry_id}))
         elif action == f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}":
             await _async_schedule_snooze(hass, entry, runtime, "pill")
         elif action == f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}":
@@ -1652,6 +1852,12 @@ def _register_basal_temp_listener(hass: HomeAssistant, entry: ConfigEntry, runti
     runtime.unregister_basal_temp_listener = async_track_state_change_event(hass, [entity_id], _on_sensor_change)
 
 
+def _renewed(runtime: "MenstruationRuntime") -> dict[str, Any] | None:
+    """The confirmed contraception renewal stored for this profile, if any."""
+    value = runtime.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED)
+    return value if isinstance(value, dict) else None
+
+
 async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: "MenstruationRuntime") -> None:
     """Add a todo-list reminder when the current contraception method's
     estimated renewal/replacement date is approaching.
@@ -1667,7 +1873,7 @@ async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: 
     """
     from .model import compute_contraception_status
 
-    status = compute_contraception_status(runtime.symptom_history, today=dt_util.now().date())
+    status = compute_contraception_status(runtime.symptom_history, today=dt_util.now().date(), renewed=_renewed(runtime))
     if not status.get("renewal_reminder_due"):
         return
     method = status.get("current_method")
@@ -1675,12 +1881,15 @@ async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: 
     if not method or not due_date:
         return
 
-    def prefix(strings: dict[str, Any]) -> str:
-        return strings["contraception_prefix"].format(name=runtime.friendly_name, method=method)
+    def prefix(strings: dict[str, Any], raw: bool = False) -> str:
+        label = method if raw else strings["methods"].get(method, method)
+        return strings["contraception_prefix"].format(name=runtime.friendly_name, method=label)
 
     strings = _todo_strings(hass.config.language)
     item_text = strings["contraception_renewal"].format(prefix=prefix(strings), date=due_date)
-    await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=_todo_variants(prefix))
+    # the raw-key spelling is what older versions wrote, so their open items still count as duplicates
+    known = _todo_variants(prefix) + _todo_variants(lambda s: prefix(s, raw=True))
+    await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=known)
 
 
 async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
@@ -1688,7 +1897,7 @@ async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry,
     from .model import compute_contraception_status, pill_pack_end
 
     today = dt_util.now().date()
-    status = compute_contraception_status(runtime.symptom_history, today=today)
+    status = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))
     if status["current_method"] != CONTRACEPTION_METHOD_PILL:
         return
     end = pill_pack_end(status, int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
@@ -2328,6 +2537,16 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _compare_current_cycle_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_COMPARE_CURRENT_CYCLE, async_compare_current_cycle, **_compare_current_cycle_register_kwargs
+    )
+
+    async def async_confirm_contraception_renewal(call: ServiceCall) -> None:
+        await _async_handle_confirm_contraception_renewal(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
+        async_confirm_contraception_renewal,
+        schema=vol.Schema({**common_profile_field, vol.Optional(SERVICE_FIELD_DATE): cv.string}),
     )
 
     async def async_get_last_cycle_summary(call: ServiceCall) -> dict[str, Any]:
@@ -3103,6 +3322,7 @@ def _register_notification_timer(hass: HomeAssistant, entry: ConfigEntry, runtim
         async def _async_handle_pill_reminder_time(_now: datetime) -> None:
             try:
                 await _async_send_pill_reminder(hass, entry, runtime)
+                await _async_send_rhythm_reminder(hass, entry, runtime)
             except Exception:  # noqa: BLE001
                 _LOGGER.exception("Scheduled pill reminder failed for %s", entry.entry_id)
 
@@ -3201,6 +3421,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_SAVE_TIMER_STATE,
             SERVICE_COMPARE_CURRENT_CYCLE,
             SERVICE_GET_LAST_CYCLE_SUMMARY,
+            SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
             SERVICE_EXPORT_DOCTOR_REPORT,
             SERVICE_GET_CYCLE_PREDICTIONS,
             SERVICE_GET_DASHBOARD_PREFS,
@@ -3329,7 +3550,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
 
     today = dt_util.now().date()
     stats = compute_statistics(runtime.history, runtime.symptom_history, days_back=days_back, today=today, period_duration_days=runtime.period_duration_days)
-    contraception_status = compute_contraception_status(runtime.symptom_history, today=today)
+    contraception_status = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))
     html_content = generate_doctor_report_html(
         stats=stats,
         history=runtime.history,
@@ -3339,6 +3560,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
         patient_birthdate=patient_birthdate,
         language=language,
         current_contraception_method=contraception_status.get("current_method"),
+        contraception_timeline=compute_contraception_timeline(runtime.symptom_history, _renewed(runtime)),
     )
 
     stem = _sanitize_export_filename(f"doctor_report_{runtime.profile}_{dt_util.now().strftime('%Y%m%d_%H%M%S')}")
@@ -4544,6 +4766,7 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
             raise HomeAssistantError(f"Symptom field '{SYMPTOM_CLOT_SIZE}' can only be set when '{SYMPTOM_CLOTS}' is 'yes'.")
 
     was_pill = existing is not None and existing.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
+    was_unprotected = existing is not None and _is_unprotected(existing.get(SYMPTOM_INTERCOURSE))
     if existing:
         merged = dict(existing)
         merged.update(next_symptom_data)
@@ -4568,6 +4791,9 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         for history_date in _smart_period_history_dates(runtime, date_iso, allow_new_period=False):
             if history_date not in runtime.history:
                 runtime.history.append(history_date)
+
+    if save and entry_for_unit is not None and not was_unprotected and _is_unprotected(next_symptom_data.get(SYMPTOM_INTERCOURSE)):
+        await _async_send_unprotected_hint(hass, entry_for_unit, runtime, date_iso)
 
     if save:
         await _async_save_and_notify(hass, runtime)
@@ -4783,6 +5009,25 @@ async def _async_handle_get_last_cycle_summary(hass: HomeAssistant, call: Servic
     if summary is None:
         raise HomeAssistantError("At least two cycle starts are needed for a completed cycle.")
     return summary
+
+
+async def _async_handle_confirm_contraception_renewal(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Start the renewal period (IUD, implant, injection) or the patch/ring pack from the given day (default today)."""
+    from .model import compute_contraception_status
+
+    runtime = _runtime_for_call(hass, call)
+    today = dt_util.now().date()
+    raw = call.data.get(SERVICE_FIELD_DATE)
+    day = date.fromisoformat(_normalize_date_or_raise(str(raw))) if raw else today
+    if day > today:
+        raise HomeAssistantError("The renewal date cannot be in the future.")
+    method = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))["current_method"]
+    if method not in CONTRACEPTION_RENEWAL_MONTHS and method not in CONTRACEPTION_RHYTHM_EVENTS:
+        raise HomeAssistantError(
+            "The current contraception method has no renewal period. Log an IUD, implant, injection, patch or ring first."
+        )
+    runtime.noncycle_data[NONCYCLE_CONTRACEPTION_RENEWED] = {"method": method, "date": day.isoformat()}
+    await _async_save_and_notify(hass, runtime)
 
 
 async def _async_handle_set_pregnancy_mode(hass: HomeAssistant, call: ServiceCall) -> None:

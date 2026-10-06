@@ -74,6 +74,7 @@ from .const import (
     ATTR_CYCLE_PHASE,
     ATTR_CYCLE_PHASE_TIP,
     ATTR_WELLNESS_SCORE,
+    NONCYCLE_CONTRACEPTION_RENEWED,
     CONF_LINKED_PERSON_ENTITY_ID,
     DEFAULT_VISIBILITY_LEVEL,
     STATE_FERTILE,
@@ -1415,7 +1416,11 @@ class MenstruationGaugeSensor(SensorEntity):
             # per-profile sensors (product usage, basal temp) also carry profile+
             # entry_id and no longer happened to be excluded by name.
             "is_primary_profile_sensor": True,
-            "contraception_status": compute_contraception_status(model.symptom_history, today=today),
+            "contraception_status": compute_contraception_status(
+                model.symptom_history,
+                today=today,
+                renewed=model.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED),
+            ),
             "product_usage_today": usage_stats["today"],
             "product_usage_this_cycle": usage_stats["this_cycle"],
             "product_usage_stats": usage_stats["stats"],

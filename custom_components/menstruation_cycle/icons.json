@@ -85,6 +85,9 @@
     "get_last_cycle_summary": {
       "service": "mdi:calendar-check"
     },
+    "confirm_contraception_renewal": {
+      "service": "mdi:autorenew"
+    },
     "set_pregnancy_mode": {
       "service": "mdi:baby-carriage"
     },

@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from statistics import mean, stdev
 from typing import Any
 
-from .const import DOCTOR_REPORT_LANGUAGES
+from .const import DOCTOR_REPORT_LANGUAGES, SYMPTOM_CONTRACEPTION_METHOD
 from .model import analyze_nfp_cycle, bleeding_blocks, grouped_cycle_starts, normalize_history
 
 _LOGGER = logging.getLogger(__name__)
@@ -235,6 +235,42 @@ def _compute_pain_trend(
         pain_days = sum(1 for e in entries if _coerce_list(e.get("pain")))
         trend.append({"cycle_start": start_iso, "pain_days": pain_days})
     return trend
+
+
+def compute_contraception_timeline(
+    symptom_history: list[dict[str, Any]], renewed: dict[str, Any] | None = None, limit: int = 8
+) -> list[dict[str, Any]]:
+    """Runs of the same logged contraception method, oldest first, for the doctor report.
+
+    Each run: method, since (first day logged), until (last day logged, None while it is the current method) and
+    renewed_on (the confirmed renewal date of that method, if it falls into the run). Only the newest `limit` runs.
+    """
+    entries = sorted(
+        (str(e["date"]), str(e[SYMPTOM_CONTRACEPTION_METHOD]))
+        for e in symptom_history
+        if isinstance(e, dict) and e.get("date") and e.get(SYMPTOM_CONTRACEPTION_METHOD)
+    )
+    runs: list[dict[str, Any]] = []
+    for day, method in entries:
+        if runs and runs[-1]["method"] == method:
+            runs[-1]["until"] = day
+        else:
+            runs.append({"method": method, "since": day, "until": day})
+    if runs:
+        runs[-1]["until"] = None
+    confirmed = renewed.get("date") if isinstance(renewed, dict) else None
+    for run in runs:
+        run["renewed_on"] = None
+        if (
+            isinstance(renewed, dict)
+            and renewed.get("method") == run["method"]
+            and isinstance(confirmed, str)
+            and _parse_iso(confirmed) is not None
+            and confirmed >= run["since"]
+            and (run["until"] is None or confirmed <= run["until"])
+        ):
+            run["renewed_on"] = confirmed
+    return runs[-limit:]
 
 
 def compute_last_cycle_summary(history: list[str], symptom_history: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -492,6 +528,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Durchschnittlich bestätigt an Zyklustag",
         "current_status": "Aktueller Status",
         "current_contraception": "Aktuelle Verhütungsmethode",
+        "contraception_history": "Verlauf der Verhütung",
+        "contraception_from": "Von",
+        "contraception_until": "Bis",
+        "contraception_ongoing": "laufend",
+        "contraception_renewed": "erneuert am {date}",
         "pain_trend": "Schmerztage pro Zyklus (Trend)",
         "cycle_start": "Zyklusbeginn",
         "pain_days": "Schmerztage",
@@ -530,6 +571,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Average confirmation on cycle day",
         "current_status": "Current Status",
         "current_contraception": "Current Contraception Method",
+        "contraception_history": "Contraception history",
+        "contraception_from": "From",
+        "contraception_until": "Until",
+        "contraception_ongoing": "ongoing",
+        "contraception_renewed": "renewed {date}",
         "pain_trend": "Pain Days per Cycle (Trend)",
         "cycle_start": "Cycle Start",
         "pain_days": "Pain Days",
@@ -568,6 +614,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Confirmada de media en el día del ciclo",
         "current_status": "Estado actual",
         "current_contraception": "Método anticonceptivo actual",
+        "contraception_history": "Historial anticonceptivo",
+        "contraception_from": "Desde",
+        "contraception_until": "Hasta",
+        "contraception_ongoing": "en curso",
+        "contraception_renewed": "renovado el {date}",
         "pain_trend": "Días de dolor por ciclo (tendencia)",
         "cycle_start": "Inicio del ciclo",
         "pain_days": "Días de dolor",
@@ -606,6 +657,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Confirmée en moyenne au jour du cycle",
         "current_status": "Statut actuel",
         "current_contraception": "Méthode de contraception actuelle",
+        "contraception_history": "Historique de contraception",
+        "contraception_from": "Depuis",
+        "contraception_until": "Jusqu'au",
+        "contraception_ongoing": "en cours",
+        "contraception_renewed": "renouvelé le {date}",
         "pain_trend": "Jours de douleur par cycle (tendance)",
         "cycle_start": "Début du cycle",
         "pain_days": "Jours de douleur",
@@ -644,6 +700,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Bekräftad i genomsnitt på cykeldag",
         "current_status": "Aktuell status",
         "current_contraception": "Aktuellt preventivmedel",
+        "contraception_history": "Preventivmedelshistorik",
+        "contraception_from": "Från",
+        "contraception_until": "Till",
+        "contraception_ongoing": "pågår",
+        "contraception_renewed": "förnyat {date}",
         "pain_trend": "Smärtdagar per cykel (trend)",
         "cycle_start": "Cykelstart",
         "pain_days": "Smärtdagar",
@@ -666,6 +727,7 @@ def generate_doctor_report_html(
     language: str = "de",
     report_date: str | None = None,
     current_contraception_method: str | None = None,
+    contraception_timeline: list[dict[str, Any]] | None = None,
 ) -> str:
     """Generate a professional HTML doctor report from computed statistics."""
     code = language.lower().replace("_", "-").split("-")[0]
@@ -756,6 +818,7 @@ def generate_doctor_report_html(
         "ring": {"de": "Vaginalring", "en": "Ring", "es": "Anillo vaginal", "fr": "Anneau vaginal", "sv": "Vaginalring"},
         "injection": {"de": "Hormonspritze", "en": "Injection", "es": "Inyección", "fr": "Injection", "sv": "Injektion"},
         "condom": {"de": "Kondom", "en": "Condom", "es": "Preservativo", "fr": "Préservatif", "sv": "Kondom"},
+        "diaphragm": {"de": "Diaphragma", "en": "Diaphragm", "es": "Diafragma", "fr": "Diaphragme", "sv": "Pessar"},
         "other": {"de": "Andere", "en": "Other", "es": "Otro", "fr": "Autre", "sv": "Annat"},
     }
     current_status_html = ""
@@ -765,6 +828,20 @@ def generate_doctor_report_html(
     <table class="stats-table">
       <tr><th>{_h(T['current_contraception'])}</th></tr>
       <tr><td>{_h(method_label)}</td></tr>
+    </table>"""
+        if contraception_timeline:
+            history_rows = ""
+            for run in contraception_timeline:
+                label = _label(run["method"], _CONTRACEPTION_METHOD_LABELS, lang, run["method"])
+                if run.get("renewed_on"):
+                    label += f" ({T['contraception_renewed'].format(date=run['renewed_on'])})"
+                until = run["until"] or T["contraception_ongoing"]
+                history_rows += f"<tr><td>{_h(label)}</td><td>{_h(run['since'])}</td><td>{_h(until)}</td></tr>"
+            current_status_html += f"""
+    <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['contraception_history'])}</h3>
+    <table class="stats-table">
+      <tr><th>{_h(T['current_contraception'])}</th><th>{_h(T['contraception_from'])}</th><th>{_h(T['contraception_until'])}</th></tr>
+      {history_rows}
     </table>"""
 
     # Basal body temperature — was entirely absent from earlier versions of

@@ -128,6 +128,8 @@ CONF_NOTIFY_PILL_TIME = "notify_pill_time"
 DEFAULT_NOTIFY_PILL_ENABLED = False
 DEFAULT_NOTIFY_PILL_TIME = "09:00:00"
 NOTIFY_ACTION_PILL_TAKEN_PREFIX = "MCYCLE_PILL_TAKEN_"
+# "New pack started today" button on the patch/ring reminders that start a new pack; confirms the renewal for today.
+NOTIFY_ACTION_RENEWED_PREFIX = "MCYCLE_RENEWED_"
 # Hours after the pill reminder for a second reminder if the pill is still not logged (0 = off).
 CONF_NOTIFY_PILL_FOLLOWUP_HOURS = "notify_pill_followup_hours"
 DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS = 0
@@ -150,6 +152,14 @@ CONF_PILL_PAUSE_DAYS = "pill_pause_days"
 DEFAULT_PILL_PAUSE_DAYS = 0
 PILL_PAUSE_DAYS_MAX = 7
 PILL_ACTIVE_DAYS_MIN = 21
+# Skip the fertile-window and ovulation notifications while the current method is hormonal (the cycle is suppressed then).
+CONF_NOTIFY_FERTILE_MUTE_HORMONAL = "notify_fertile_mute_hormonal"
+DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL = False
+# Neutral hint (emergency contraception: ask a pharmacy or doctor) when unprotected intercourse is logged for today or the last days.
+CONF_NOTIFY_UNPROTECTED_HINT = "notify_unprotected_hint"
+DEFAULT_NOTIFY_UNPROTECTED_HINT = False
+# Days back in which a newly logged "unprotected" entry still triggers that hint (older entries are back-filling).
+UNPROTECTED_HINT_MAX_DAYS = 5
 # To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
 PILL_REFILL_LEAD_DAYS = 5
 # "Remind me in 1 hour" button on the pill and evening log reminders (in-memory timer).
@@ -375,6 +385,7 @@ SERVICE_GET_CYCLE_PREDICTIONS = "get_cycle_predictions"
 SERVICE_COMPARE_CURRENT_CYCLE = "compare_current_cycle"
 # Read-only summary of the last completed cycle (length, period/pain days, top symptoms).
 SERVICE_GET_LAST_CYCLE_SUMMARY = "get_last_cycle_summary"
+SERVICE_CONFIRM_CONTRACEPTION_RENEWAL = "confirm_contraception_renewal"
 # HA-Idee 4 ("weitere Ideen?", 27.09.2026): read-only, household-wide (not
 # per-profile, like repair_storage/export_full_backup above) - one call
 # across every currently loaded profile instead of a client having to call
@@ -688,6 +699,17 @@ CONTRACEPTION_RENEWAL_MONTHS: dict[str, int] = {
     CONTRACEPTION_METHOD_INJECTION: 3,        # 3 months
 }
 CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS = 30
+# Where a confirmed renewal ({"method": ..., "date": ...}) is kept (noncycle_data, so backups carry it).
+NONCYCLE_CONTRACEPTION_RENEWED = "contraception_renewed"
+# Patch and ring follow a fixed 28-day rhythm counted from the day a new pack/ring was started:
+# patch = change on days 7, 14, remove on day 21, new patch on day 28; ring = remove on day 21, new ring on day 28.
+CONTRACEPTION_RHYTHM_DAYS = 28
+CONTRACEPTION_RHYTHM_EVENTS: dict[str, tuple[tuple[int, str], ...]] = {
+    CONTRACEPTION_METHOD_PATCH: ((7, "patch_change"), (14, "patch_change"), (21, "patch_remove"), (28, "patch_new")),
+    CONTRACEPTION_METHOD_RING: ((21, "ring_remove"), (28, "ring_insert")),
+}
+# Rhythm events that start a new pack: the "new pack started today" confirmation is offered on these.
+CONTRACEPTION_RHYTHM_START_EVENTS = frozenset({"patch_new", "ring_insert"})
 
 # Symptom options for reference (used in UI)
 SYMPTOM_OPTIONS = {

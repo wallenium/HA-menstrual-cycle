@@ -100,6 +100,17 @@ class TestSensorAttributeCompaction(unittest.TestCase):
             },
         }
 
+    def test_contraception_status_keeps_the_patch_ring_rhythm(self) -> None:
+        attrs = self._base_attrs()
+        status = {
+            "current_method": "patch",
+            "renewal_since": "2026-09-01",
+            "rhythm": {"event": "patch_new", "date": "2026-09-29", "days_until": 0, "pack_start": "2026-09-29", "in_break": False},
+        }
+        attrs["contraception_status"] = status
+        compact = sensor_module._build_compact_sensor_attributes(attrs)
+        self.assertEqual(compact["contraception_status"], status)
+
     def test_drops_verbose_fields(self) -> None:
         attrs = self._base_attrs()
         attrs[const.ATTR_PREDICTION_DAY_CONFIDENCE] = {"by_day": {"2026-08-01": {"period": {"level": "high"}}}}

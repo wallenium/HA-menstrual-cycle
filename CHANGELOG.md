@@ -21,6 +21,11 @@
 - The cycle recap notification now also compares the finished cycle with the average of the cycles before and names the pain days (DE/EN/ES/FR/SV).
 - New service `get_last_cycle_summary`: summary of the last completed cycle (length compared with the earlier average, period and pain days, logged days, most frequent symptoms, bleeding-strength distribution) as a service response.
 - Dashboard panel: new "Last completed cycle" entry in the cycle insights widget (length vs. average, period days, pain days), based on `get_last_cycle_summary`, with a small bar chart of the latest cycle lengths (`get_last_cycle_summary` now also returns `recent_cycle_lengths`).
+- New service `confirm_contraception_renewal` (and a button in the dashboard): restarts the renewal period of an IUD, implant or injection from the given day (default today), or marks the start of a new patch/ring pack.
+- Patch and ring: the dashboard shows the next step of the usual 28-day rhythm, and the pill reminder time also reminds on the change days (new-pack days come with a "Started today" button). The sensor attribute `contraception_status` gained `renewal_since` and `rhythm`.
+- New option "No fertility notifications on hormonal contraception" (off by default): skips the fertile-window and ovulation notifications while the current method is hormonal.
+- New option "Hint after unprotected intercourse" (off by default): one neutral hint to ask a pharmacy or doctor about emergency contraception when unprotected intercourse is logged for today or the last 5 days.
+- The doctor report now lists the history of contraception methods (from/until, renewals), and the diaphragm has a label in every language.
 - New sensor `sensor.menstruation_<name>_cycle_length`: length of the last completed cycle in days as a measurement with long-term statistics (average of the earlier cycles as attribute; only at visibility "Full").
 
 ### Changed
@@ -33,6 +38,8 @@
 ### Fixed
 - Several places used the system clock (`date.today()`) instead of Home Assistant's time zone to decide what "today" is (cycle model at the midnight run and on load, calendar, ICS feed, hospital-bag reminder, cycle predictions, date checks in the options form); around midnight they could work with the wrong day. A test now guards against it.
 - The basal-temperature import from a linked sensor only ran at midnight and on load, when the sensor still held yesterday's value: that value was stored under the new day and blocked the real morning reading. The import now runs when the sensor updates (and when the option is saved), stores a reading under the day it was taken, and ignores readings older than yesterday.
+- The renewal reminder for an IUD, implant or injection counted from the very first log of the method, so re-logging the same method after a renewal (for example every injection) left it overdue forever. A confirmed renewal now restarts the period.
+- The shopping-list text for the renewal showed the internal method key (`hormonal_iud`); it now uses the localized name, and items written by older versions still count as duplicates.
 - The cycle insights widget showed the raw text `dashboard_cycle_comparison_basis` instead of "based on N cycles" (translation was missing in all languages). A test now checks that every literal key used by the panel is translated.
 - hassfest rejected the service descriptions of `export_history` and `export_doctor_report` (the text `<config>` looked like HTML); the same placeholder was also removed from the calendar option text in DE/ES/FR/SV.
 - Crash in profile label sync (wrong LabelRegistry API).

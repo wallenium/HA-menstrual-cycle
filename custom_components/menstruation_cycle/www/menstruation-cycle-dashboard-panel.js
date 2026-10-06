@@ -1755,6 +1755,26 @@
       this.render();
     }
 
+    async _confirmContraceptionRenewal() {
+      if (!this._hass || !this._selectedEntityId) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'confirm_contraception_renewal', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+        });
+        this._message = this._t('dashboard_contraception_renewed_done');
+      } catch (_error) {
+        this._message = this._t('dashboard_contraception_renewed_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     async _logPreMenarcheSign(signKey, stageValue) {
       if (!this._hass || !this._selectedEntityId) return;
       const stateObj = this._hass.states?.[this._selectedEntityId];
@@ -3571,6 +3591,11 @@
 
       if (action === 'quick-log-save') {
         this._handleQuickLogSave();
+        return;
+      }
+
+      if (action === 'confirm-contraception-renewal') {
+        this._confirmContraceptionRenewal();
         return;
       }
 
@@ -6548,6 +6573,17 @@
         parts.push(
           `<p style="margin:${status.is_hormonal ? '4px' : '0'} 0 0;">🔔 ${escapeHtml(this._t('dashboard_contraception_renewal_due') || 'Verhütungsmethode könnte bald einen Wechsel benötigen')} (${escapeHtml(dueLabel)})</p>`
         );
+      }
+      const rhythm = status.rhythm && typeof status.rhythm === 'object' ? status.rhythm : null;
+      if (rhythm && rhythm.event && rhythm.date) {
+        const stepText = this._t(`dashboard_contraception_step_${rhythm.event}`);
+        const nextText = this._t('dashboard_contraception_next_step').replace('{step}', stepText).replace('{date}', this._formatDate(rhythm.date));
+        parts.push(`<p style="margin:${parts.length ? '4px' : '0'} 0 0;">&#128260; ${escapeHtml(nextText)}</p>`);
+      }
+      // A confirmation restarts the renewal period (IUD, implant, injection) or the patch/ring pack.
+      const packDue = rhythm && (rhythm.event === 'patch_new' || rhythm.event === 'ring_insert') && rhythm.days_until <= 2;
+      if (status.renewal_reminder_due || packDue) {
+        parts.push(`<p style="margin:4px 0 0;"><button type="button" data-action="confirm-contraception-renewal">${escapeHtml(this._t('dashboard_contraception_renewed_button'))}</button></p>`);
       }
       if (status.current_method === 'pill' && status.pill_streak_days > 0 && status.pill_last_taken) {
         const streakText = (this._t('dashboard_contraception_pill_streak') || 'Pillen-Serie: {days} Tage in Folge (zuletzt eingetragen: {date})')
