@@ -116,6 +116,7 @@ import_cycle_history:
       example: "auto"
       selector:
         select:
+          translation_key: import_date_format
           options:
             - "auto"
             - "dmy"
@@ -164,6 +165,7 @@ import_symptom_history:
       example: "auto"
       selector:
         select:
+          translation_key: import_date_format
           options:
             - "auto"
             - "dmy"
@@ -257,6 +259,7 @@ export_history:
       example: "csv"
       selector:
         select:
+          translation_key: export_format
           options:
             - "csv"
             - "txt"
@@ -307,6 +310,7 @@ import_full_backup:
       example: "merge"
       selector:
         select:
+          translation_key: backup_import_mode
           options:
             - "merge"
             - "overwrite"
@@ -383,6 +387,7 @@ log_product_usage:
       example: "tampon"
       selector:
         select:
+          translation_key: product_type
           options:
             - "tampon"
             - "pad"
@@ -394,6 +399,7 @@ log_product_usage:
       example: "used"
       selector:
         select:
+          translation_key: product_usage_action
           options:
             - "used"
             - "emptied"
@@ -453,6 +459,7 @@ manage_household_inventory:
       example: "add"
       selector:
         select:
+          translation_key: inventory_action
           options:
             - "set"
             - "add"
@@ -466,6 +473,7 @@ manage_household_inventory:
       example: "tampon"
       selector:
         select:
+          translation_key: product_type
           options:
             - "tampon"
             - "pad"
@@ -919,6 +927,7 @@ add_pre_menarche_sign:
       description: The puberty sign to record.
       selector:
         select:
+          translation_key: pre_menarche_sign
           options:
             - "pubic_hair_growth"
             - "breast_development"
@@ -960,6 +969,7 @@ remove_pre_menarche_sign:
       description: The puberty sign to remove.
       selector:
         select:
+          translation_key: pre_menarche_sign
           options:
             - "pubic_hair_growth"
             - "breast_development"
@@ -1140,12 +1150,16 @@ export_doctor_report:
     language:
       required: false
       example: "de"
-      description: Report language. "de" for German, "en" for English. Default is "de".
+      description: Report language (de, en, es, fr or sv). Default is "de".
       selector:
         select:
+          translation_key: report_language
           options:
             - "de"
             - "en"
+            - "es"
+            - "fr"
+            - "sv"
 
 set_profile_visibility:
   name: Set profile visibility
@@ -1182,6 +1196,7 @@ set_profile_visibility:
       description: One of "full", "status_only", "private".
       selector:
         select:
+          translation_key: visibility_level
           options:
             - "full"
             - "status_only"

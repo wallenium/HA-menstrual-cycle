@@ -195,6 +195,7 @@ from .const import (
     SERVICE_FIELD_PATIENT_NAME,
     SERVICE_FIELD_PATIENT_BIRTHDATE,
     SERVICE_FIELD_LANGUAGE,
+    DOCTOR_REPORT_LANGUAGES,
     SERVICE_UPDATE_MENARCHE_DATE,
     SERVICE_UPDATE_MENOPAUSE_DATE,
     SERVICE_UPDATE_PREGNANCY_DATE,
@@ -2320,7 +2321,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
             vol.Optional(SERVICE_FIELD_DAYS_BACK, default=180): vol.All(vol.Coerce(int), vol.Range(min=30, max=730)),
             vol.Optional(SERVICE_FIELD_PATIENT_NAME): cv.string,
             vol.Optional(SERVICE_FIELD_PATIENT_BIRTHDATE): cv.string,
-            vol.Optional(SERVICE_FIELD_LANGUAGE, default="de"): vol.In(["de", "en"]),
+            vol.Optional(SERVICE_FIELD_LANGUAGE, default="de"): vol.In(list(DOCTOR_REPORT_LANGUAGES)),
         }),
     )
 

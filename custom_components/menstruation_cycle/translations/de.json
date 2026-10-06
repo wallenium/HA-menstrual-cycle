@@ -1139,6 +1139,71 @@
         "celsius": "Celsius (°C)",
         "fahrenheit": "Fahrenheit (°F)"
       }
+    },
+    "import_date_format": {
+      "options": {
+        "auto": "Automatisch (nur ISO- oder Punkt-Daten)",
+        "dmy": "Tag zuerst (TT/MM/JJJJ)",
+        "mdy": "Monat zuerst (MM/TT/JJJJ)"
+      }
+    },
+    "export_format": {
+      "options": {
+        "csv": "CSV",
+        "txt": "Text (TXT)"
+      }
+    },
+    "backup_import_mode": {
+      "options": {
+        "merge": "Zusammenführen (Lücken füllen, aktuelle Daten behalten)",
+        "overwrite": "Überschreiben (durch das Backup ersetzen)"
+      }
+    },
+    "product_type": {
+      "options": {
+        "tampon": "Tampon",
+        "pad": "Binde",
+        "cup": "Menstruationstasse",
+        "underwear": "Periodenunterwäsche",
+        "liner": "Slipeinlage"
+      }
+    },
+    "product_usage_action": {
+      "options": {
+        "used": "Benutzt",
+        "emptied": "Geleert"
+      }
+    },
+    "inventory_action": {
+      "options": {
+        "set": "Vorrat festlegen",
+        "add": "Zum Vorrat hinzufügen",
+        "consume": "Aus dem Vorrat verbrauchen",
+        "set_thresholds": "Schwellen festlegen",
+        "add_to_shopping_list": "Zur Einkaufsliste hinzufügen",
+        "reset": "Zurücksetzen",
+        "set_area_tracking": "Bereichs-Tracking festlegen"
+      }
+    },
+    "pre_menarche_sign": {
+      "options": {
+        "pubic_hair_growth": "Schambehaarung",
+        "breast_development": "Brustentwicklung",
+        "height_spurt": "Wachstumsschub",
+        "mood_changes": "Stimmungsschwankungen",
+        "acne": "Akne",
+        "body_odor": "Körpergeruch",
+        "vaginal_discharge": "Ausfluss"
+      }
+    },
+    "report_language": {
+      "options": {
+        "de": "Deutsch",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "sv": "Svenska"
+      }
     }
   }
 }

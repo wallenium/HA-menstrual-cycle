@@ -430,6 +430,8 @@ SERVICE_FIELD_FUTURE_CYCLES = "future_cycles"
 SERVICE_FIELD_PATIENT_NAME = "patient_name"
 SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
+# Languages the doctor report is available in.
+DOCTOR_REPORT_LANGUAGES = ("de", "en", "es", "fr", "sv")
 SERVICE_FIELD_VISIBILITY_LEVEL = "level"
 # HA-Idee ("weitere neue Ideen", 29.09.2026): optionale HA-Area-Zuordnung
 # fuer Haushaltsbestand-Verbrauchsereignisse.

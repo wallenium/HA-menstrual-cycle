@@ -1139,6 +1139,71 @@
         "celsius": "Celsius (°C)",
         "fahrenheit": "Fahrenheit (°F)"
       }
+    },
+    "import_date_format": {
+      "options": {
+        "auto": "Automatique (dates ISO ou avec points uniquement)",
+        "dmy": "Jour d'abord (JJ/MM/AAAA)",
+        "mdy": "Mois d'abord (MM/JJ/AAAA)"
+      }
+    },
+    "export_format": {
+      "options": {
+        "csv": "CSV",
+        "txt": "Texte (TXT)"
+      }
+    },
+    "backup_import_mode": {
+      "options": {
+        "merge": "Fusionner (combler les lacunes, conserver les données actuelles)",
+        "overwrite": "Écraser (remplacer par la sauvegarde)"
+      }
+    },
+    "product_type": {
+      "options": {
+        "tampon": "Tampon",
+        "pad": "Serviette",
+        "cup": "Coupe menstruelle",
+        "underwear": "Culotte menstruelle",
+        "liner": "Protège-slip"
+      }
+    },
+    "product_usage_action": {
+      "options": {
+        "used": "Utilisé",
+        "emptied": "Vidé"
+      }
+    },
+    "inventory_action": {
+      "options": {
+        "set": "Définir le stock",
+        "add": "Ajouter au stock",
+        "consume": "Consommer du stock",
+        "set_thresholds": "Définir les seuils",
+        "add_to_shopping_list": "Ajouter à la liste de courses",
+        "reset": "Réinitialiser",
+        "set_area_tracking": "Définir le suivi par zone"
+      }
+    },
+    "pre_menarche_sign": {
+      "options": {
+        "pubic_hair_growth": "Pilosité pubienne",
+        "breast_development": "Développement des seins",
+        "height_spurt": "Poussée de croissance",
+        "mood_changes": "Changements d'humeur",
+        "acne": "Acné",
+        "body_odor": "Odeur corporelle",
+        "vaginal_discharge": "Pertes vaginales"
+      }
+    },
+    "report_language": {
+      "options": {
+        "de": "Deutsch",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "sv": "Svenska"
+      }
     }
   }
 }

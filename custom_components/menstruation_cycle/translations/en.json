@@ -1139,6 +1139,71 @@
         "celsius": "Celsius (°C)",
         "fahrenheit": "Fahrenheit (°F)"
       }
+    },
+    "import_date_format": {
+      "options": {
+        "auto": "Automatic (ISO or dotted dates only)",
+        "dmy": "Day first (DD/MM/YYYY)",
+        "mdy": "Month first (MM/DD/YYYY)"
+      }
+    },
+    "export_format": {
+      "options": {
+        "csv": "CSV",
+        "txt": "Text (TXT)"
+      }
+    },
+    "backup_import_mode": {
+      "options": {
+        "merge": "Merge (fill gaps, keep current data)",
+        "overwrite": "Overwrite (replace with the backup)"
+      }
+    },
+    "product_type": {
+      "options": {
+        "tampon": "Tampon",
+        "pad": "Pad",
+        "cup": "Menstrual cup",
+        "underwear": "Period underwear",
+        "liner": "Panty liner"
+      }
+    },
+    "product_usage_action": {
+      "options": {
+        "used": "Used",
+        "emptied": "Emptied"
+      }
+    },
+    "inventory_action": {
+      "options": {
+        "set": "Set stock",
+        "add": "Add to stock",
+        "consume": "Use up from stock",
+        "set_thresholds": "Set thresholds",
+        "add_to_shopping_list": "Add to shopping list",
+        "reset": "Reset",
+        "set_area_tracking": "Set area tracking"
+      }
+    },
+    "pre_menarche_sign": {
+      "options": {
+        "pubic_hair_growth": "Pubic hair growth",
+        "breast_development": "Breast development",
+        "height_spurt": "Growth spurt",
+        "mood_changes": "Mood changes",
+        "acne": "Acne",
+        "body_odor": "Body odor",
+        "vaginal_discharge": "Vaginal discharge"
+      }
+    },
+    "report_language": {
+      "options": {
+        "de": "Deutsch",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "sv": "Svenska"
+      }
     }
   }
 }

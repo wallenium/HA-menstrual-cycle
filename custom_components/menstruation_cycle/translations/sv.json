@@ -1139,6 +1139,71 @@
         "celsius": "Celsius (°C)",
         "fahrenheit": "Fahrenheit (°F)"
       }
+    },
+    "import_date_format": {
+      "options": {
+        "auto": "Automatiskt (endast ISO- eller punktdatum)",
+        "dmy": "Dag först (DD/MM/ÅÅÅÅ)",
+        "mdy": "Månad först (MM/DD/ÅÅÅÅ)"
+      }
+    },
+    "export_format": {
+      "options": {
+        "csv": "CSV",
+        "txt": "Text (TXT)"
+      }
+    },
+    "backup_import_mode": {
+      "options": {
+        "merge": "Slå ihop (fyll luckor, behåll nuvarande data)",
+        "overwrite": "Skriv över (ersätt med säkerhetskopian)"
+      }
+    },
+    "product_type": {
+      "options": {
+        "tampon": "Tampong",
+        "pad": "Binda",
+        "cup": "Menskopp",
+        "underwear": "Mensunderkläder",
+        "liner": "Trosskydd"
+      }
+    },
+    "product_usage_action": {
+      "options": {
+        "used": "Använd",
+        "emptied": "Tömd"
+      }
+    },
+    "inventory_action": {
+      "options": {
+        "set": "Ställ in lager",
+        "add": "Lägg till i lagret",
+        "consume": "Förbruka från lagret",
+        "set_thresholds": "Ställ in gränser",
+        "add_to_shopping_list": "Lägg till i inköpslistan",
+        "reset": "Återställ",
+        "set_area_tracking": "Ställ in områdesspårning"
+      }
+    },
+    "pre_menarche_sign": {
+      "options": {
+        "pubic_hair_growth": "Könshår",
+        "breast_development": "Bröstutveckling",
+        "height_spurt": "Tillväxtspurt",
+        "mood_changes": "Humörsvängningar",
+        "acne": "Akne",
+        "body_odor": "Kroppslukt",
+        "vaginal_discharge": "Flytningar"
+      }
+    },
+    "report_language": {
+      "options": {
+        "de": "Deutsch",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "sv": "Svenska"
+      }
     }
   }
 }

@@ -1139,6 +1139,71 @@
         "celsius": "Celsius (°C)",
         "fahrenheit": "Fahrenheit (°F)"
       }
+    },
+    "import_date_format": {
+      "options": {
+        "auto": "Automático (solo fechas ISO o con puntos)",
+        "dmy": "Día primero (DD/MM/AAAA)",
+        "mdy": "Mes primero (MM/DD/AAAA)"
+      }
+    },
+    "export_format": {
+      "options": {
+        "csv": "CSV",
+        "txt": "Texto (TXT)"
+      }
+    },
+    "backup_import_mode": {
+      "options": {
+        "merge": "Combinar (rellenar huecos, conservar los datos actuales)",
+        "overwrite": "Sobrescribir (reemplazar por la copia de seguridad)"
+      }
+    },
+    "product_type": {
+      "options": {
+        "tampon": "Tampón",
+        "pad": "Compresa",
+        "cup": "Copa menstrual",
+        "underwear": "Ropa interior menstrual",
+        "liner": "Protegeslip"
+      }
+    },
+    "product_usage_action": {
+      "options": {
+        "used": "Usado",
+        "emptied": "Vaciado"
+      }
+    },
+    "inventory_action": {
+      "options": {
+        "set": "Establecer existencias",
+        "add": "Añadir a las existencias",
+        "consume": "Consumir de las existencias",
+        "set_thresholds": "Establecer umbrales",
+        "add_to_shopping_list": "Añadir a la lista de la compra",
+        "reset": "Restablecer",
+        "set_area_tracking": "Establecer seguimiento por área"
+      }
+    },
+    "pre_menarche_sign": {
+      "options": {
+        "pubic_hair_growth": "Vello púbico",
+        "breast_development": "Desarrollo mamario",
+        "height_spurt": "Estirón",
+        "mood_changes": "Cambios de humor",
+        "acne": "Acné",
+        "body_odor": "Olor corporal",
+        "vaginal_discharge": "Flujo vaginal"
+      }
+    },
+    "report_language": {
+      "options": {
+        "de": "Deutsch",
+        "en": "English",
+        "es": "Español",
+        "fr": "Français",
+        "sv": "Svenska"
+      }
     }
   }
 }

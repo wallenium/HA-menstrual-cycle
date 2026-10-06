@@ -95,6 +95,9 @@ function mergeConfig(config) {
   return { ...DEFAULT_CONFIG, ...(config || {}) };
 }
 
+// Languages the doctor report can be exported in (code, name in its own language).
+const REPORT_LANGUAGES = [['de', 'Deutsch'], ['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['sv', 'Svenska']];
+
 function getLang(hass) {
   return _mcStatisticsCardI18n.normalizeLang(hass?.locale?.language || hass?.language || 'en');
 }
@@ -756,6 +759,12 @@ class MenstruationStatisticsCard extends HTMLElement {
     if (_mcStatisticsCardI18n.cache[lang] || _mcStatisticsCardI18n.loading[lang]) return;
     if (typeof _mcStatisticsCardI18n.load !== 'function') return;
     _mcStatisticsCardI18n.load(lang).then(() => this._render()).catch(() => {});
+  }
+
+  // The export language the person picked; a UI language without a report translation exports in English.
+  _reportLang() {
+    const lang = this._exportLanguage || this._lang();
+    return REPORT_LANGUAGES.some(([code]) => code === lang) ? lang : 'en';
   }
 
   _lang() {
@@ -2619,7 +2628,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
   _renderDoctorTab() {
     const t = (k) => this._t(k);
-    const exportLang = this._exportLanguage || this._lang();
+    const exportLang = this._reportLang();
     const btnLabel = this._exportStatus === 'loading' ? t('exporting')
       : this._exportStatus === 'ok' ? t('export_ok')
       : this._exportStatus === 'err' ? t('export_err')
@@ -2641,8 +2650,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         <div class="form-field">
           <label>${this._escHtml(t('export_language'))}</label>
           <select id="export-lang">
-            <option value="de" ${exportLang === 'de' ? 'selected' : ''}>Deutsch</option>
-            <option value="en" ${exportLang === 'en' ? 'selected' : ''}>English</option>
+            ${REPORT_LANGUAGES.map(([code, name]) => `<option value="${code}" ${exportLang === code ? 'selected' : ''}>${name}</option>`).join('')}
           </select>
         </div>
         <button class="export-btn" id="export-btn" ${btnDisabled}>${this._escHtml(btnLabel)}</button>
@@ -2962,14 +2970,14 @@ class MenstruationStatisticsCard extends HTMLElement {
         try {
           const serviceData = {
             days_back: this._daysBack,
-            language: this._exportLanguage || this._lang(),
+            language: this._reportLang(),
           };
           if (this._config.entity) serviceData.entity_id = this._config.entity;
           if (this._config.entry_id) serviceData.entry_id = this._config.entry_id;
           if (this._config.profile) serviceData.profile = this._config.profile;
           const name = (root.getElementById('patient-name') || { value: this._patientName }).value.trim();
           const bd = (root.getElementById('patient-birthdate') || { value: this._patientBirthdate }).value.trim();
-          const lang = (root.getElementById('export-lang') || { value: this._exportLanguage || this._lang() }).value;
+          const lang = (root.getElementById('export-lang') || { value: this._reportLang() }).value;
           if (name) serviceData.patient_name = name;
           if (bd) serviceData.patient_birthdate = bd;
           serviceData.language = lang;
@@ -3005,7 +3013,7 @@ class MenstruationStatisticsCardEditor extends HTMLElement {
       { name: 'entity', required: false, label: 'Entity (sensor)', type: 'entity', domain: 'sensor' },
       { name: 'title', required: false, label: 'Card Title', type: 'text' },
       { name: 'days_back', required: false, label: 'Default days back (30–730)', type: 'number', min: 30, max: 730 },
-      { name: 'language', required: false, label: 'Language (auto / de / en)', type: 'select', options: ['auto', 'de', 'en'] },
+      { name: 'language', required: false, label: 'Language (auto or a language code)', type: 'select', options: ['auto', ...REPORT_LANGUAGES.map(([code]) => code)] },
     ];
   }
 
@@ -3051,8 +3059,7 @@ class MenstruationStatisticsCardEditor extends HTMLElement {
           <label>Language</label>
           <select id="language">
             <option value="auto" ${(cfg.language || 'auto') === 'auto' ? 'selected' : ''}>Auto</option>
-            <option value="de" ${cfg.language === 'de' ? 'selected' : ''}>Deutsch (DE)</option>
-            <option value="en" ${cfg.language === 'en' ? 'selected' : ''}>English (EN)</option>
+            ${REPORT_LANGUAGES.map(([code, name]) => `<option value="${code}" ${cfg.language === code ? 'selected' : ''}>${name}</option>`).join('')}
           </select>
         </div>
       </div>`;
