@@ -55,7 +55,7 @@
           "num_predictions": "Wie viele zukünftige Zyklusstarts erzeugt werden sollen (1–12). Standard ist 6.",
           "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen.",
           "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu.",
-          "calendar_enabled": "Erstellt eine native calendar.<profil>_cycle-Entität mit vorhergesagten Perioden-, Fruchtbarkeitsfenster- und Eisprung-Terminen, nutzbar in HAs eigener Kalender-Ansicht und für calendar.*-Automatisierungs-Trigger. Deaktivieren, falls nicht benötigt - dieselben Termine bleiben weiterhin über den separaten ICS-Kalender-Feed verfügbar.",
+          "calendar_enabled": "Erstellt eine native calendar.PROFIL_cycle-Entität mit vorhergesagten Perioden-, Fruchtbarkeitsfenster- und Eisprung-Terminen, nutzbar in HAs eigener Kalender-Ansicht und für calendar.*-Automatisierungs-Trigger. Deaktivieren, falls nicht benötigt - dieselben Termine bleiben weiterhin über den separaten ICS-Kalender-Feed verfügbar.",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
         },
@@ -524,7 +524,7 @@
     },
     "export_history": {
       "name": "Zyklusverlauf exportieren",
-      "description": "Exportiert den aktuellen Verlauf in eine lokale Datei. Die Dateien werden in `<config>/menstruation_cycle_exports/` gespeichert. Unterstützte Formate: `csv`, `txt`.",
+      "description": "Exportiert den aktuellen Verlauf in eine lokale Datei. Die Dateien werden in `/config/menstruation_cycle_exports/` gespeichert. Unterstützte Formate: `csv`, `txt`.",
       "fields": {
         "entity_id": {
           "name": "Entität",
@@ -972,7 +972,7 @@
     },
     "export_doctor_report": {
       "name": "Arztbericht exportieren (HTML)",
-      "description": "Erzeugt aus Zyklusverlauf und Symptomdaten einen professionellen medizinischen HTML-Bericht. Die Datei wird in `<config>/menstruation_cycle_exports/` gespeichert. Öffne sie im Browser und nutze „Als PDF drucken“, um ein PDF zu erstellen.",
+      "description": "Erzeugt aus Zyklusverlauf und Symptomdaten einen professionellen medizinischen HTML-Bericht. Die Datei wird in `/config/menstruation_cycle_exports/` gespeichert. Öffne sie im Browser und nutze „Als PDF drucken“, um ein PDF zu erstellen.",
       "fields": {
         "entity_id": {
           "name": "Entität",

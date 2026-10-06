@@ -55,7 +55,7 @@
           "num_predictions": "Hur många framtida cykelstarter som ska genereras (1–12). Standard är 6.",
           "onboarding_stage": "Välj förmenarche, tidig inlärningsfas efter menarche, eller etablerad cykel.",
           "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel.",
-          "calendar_enabled": "Skapar en inbyggd calendar.<profil>_cycle-entitet med förutspådda mens-, fertila fönster- och ägglossningshändelser, användbar i Home Assistants egen kalendervy och för calendar.*-automationsutlösare. Inaktivera om du inte behöver den - samma händelser finns kvar via det separata ICS-flödet.",
+          "calendar_enabled": "Skapar en inbyggd calendar.PROFIL_cycle-entitet med förutspådda mens-, fertila fönster- och ägglossningshändelser, användbar i Home Assistants egen kalendervy och för calendar.*-automationsutlösare. Inaktivera om du inte behöver den - samma händelser finns kvar via det separata ICS-flödet.",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
           "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
         },
@@ -524,7 +524,7 @@
     },
     "export_history": {
       "name": "Exportera cykelhistoriken",
-      "description": "Exporterar den aktuella historiken till en lokal fil. Filerna skrivs till `<config>/menstruation_cycle_exports/`. Format som stöds: `csv`, `txt`.",
+      "description": "Exporterar den aktuella historiken till en lokal fil. Filerna skrivs till `/config/menstruation_cycle_exports/`. Format som stöds: `csv`, `txt`.",
       "fields": {
         "entity_id": {
           "name": "Entitet",
@@ -972,7 +972,7 @@
     },
     "export_doctor_report": {
       "name": "Exportera läkarrapport (HTML)",
-      "description": "Skapar en professionell medicinsk HTML-rapport från cykelhistoriken och symtomdata. Filen sparas i `<config>/menstruation_cycle_exports/`. Öppna den i en webbläsare och använd ”Skriv ut till PDF” för att skapa en PDF.",
+      "description": "Skapar en professionell medicinsk HTML-rapport från cykelhistoriken och symtomdata. Filen sparas i `/config/menstruation_cycle_exports/`. Öppna den i en webbläsare och använd ”Skriv ut till PDF” för att skapa en PDF.",
       "fields": {
         "entity_id": {
           "name": "Entitet",

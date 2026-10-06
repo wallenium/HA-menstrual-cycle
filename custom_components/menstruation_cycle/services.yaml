@@ -235,7 +235,7 @@ export_history:
   name: Export cycle history
   description: |
     Exports the current history to a local file.
-    Files are written to `<config>/menstruation_cycle_exports/`.
+    Files are written to `/config/menstruation_cycle_exports/`.
     Supported formats: `csv`, `txt`.
   fields:
     entity_id:
@@ -278,7 +278,7 @@ export_full_backup:
     dates like export_history. Also includes each signed-in person's saved
     dashboard widget/category settings. The calendar-feed (ICS) token is
     intentionally left out for security. Files are written to
-    `<config>/menstruation_cycle_exports/`. See import_full_backup to restore.
+    `/config/menstruation_cycle_exports/`. See import_full_backup to restore.
   fields:
     filename:
       required: false
@@ -298,7 +298,7 @@ import_full_backup:
     with the backup's contents. Dashboard widget/category settings are always
     overwritten for restored profiles, regardless of mode (there's no
     gap-filling concept for a settings blob). Requires confirm: true. The file
-    is read from `<config>/menstruation_cycle_exports/` by filename only.
+    is read from `/config/menstruation_cycle_exports/` by filename only.
   fields:
     filename:
       required: true
@@ -1107,7 +1107,7 @@ export_doctor_report:
   name: Export doctor report (HTML)
   description: |
     Generates a professional HTML medical report from the cycle history and symptom data.
-    The file is saved to `<config>/menstruation_cycle_exports/`.
+    The file is saved to `/config/menstruation_cycle_exports/`.
     Open the file in a browser and use "Print to PDF" to create a PDF.
   fields:
     entity_id:

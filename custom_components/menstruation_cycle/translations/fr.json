@@ -55,7 +55,7 @@
           "num_predictions": "Nombre de débuts de cycle futurs à générer (1 à 12). Par défaut : 6.",
           "onboarding_stage": "Choisissez pré-ménarche, phase d'apprentissage post-ménarche précoce, ou cycle établi.",
           "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant.",
-          "calendar_enabled": "Crée une entité native calendar.<profil>_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
+          "calendar_enabled": "Crée une entité native calendar.PROFIL_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
         },
@@ -524,7 +524,7 @@
     },
     "export_history": {
       "name": "Exporter l'historique des cycles",
-      "description": "Exporte l'historique actuel vers un fichier local. Les fichiers sont écrits dans `<config>/menstruation_cycle_exports/`. Formats pris en charge : `csv`, `txt`.",
+      "description": "Exporte l'historique actuel vers un fichier local. Les fichiers sont écrits dans `/config/menstruation_cycle_exports/`. Formats pris en charge : `csv`, `txt`.",
       "fields": {
         "entity_id": {
           "name": "Entité",
@@ -972,7 +972,7 @@
     },
     "export_doctor_report": {
       "name": "Exporter le rapport médical (HTML)",
-      "description": "Génère un rapport médical professionnel en HTML à partir de l'historique des cycles et des symptômes. Le fichier est enregistré dans `<config>/menstruation_cycle_exports/`. Ouvrez-le dans un navigateur et utilisez « Imprimer en PDF » pour créer un PDF.",
+      "description": "Génère un rapport médical professionnel en HTML à partir de l'historique des cycles et des symptômes. Le fichier est enregistré dans `/config/menstruation_cycle_exports/`. Ouvrez-le dans un navigateur et utilisez « Imprimer en PDF » pour créer un PDF.",
       "fields": {
         "entity_id": {
           "name": "Entité",

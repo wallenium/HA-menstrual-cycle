@@ -55,7 +55,7 @@
           "num_predictions": "Cuántos inicios de ciclo futuros generar (1 a 12). El valor predeterminado es 6.",
           "onboarding_stage": "Elige pre-menarquia, fase de aprendizaje temprana tras la menarquia, o ciclo establecido.",
           "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
-          "calendar_enabled": "Crea una entidad nativa calendar.<perfil>_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
+          "calendar_enabled": "Crea una entidad nativa calendar.PERFIL_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
         },
@@ -524,7 +524,7 @@
     },
     "export_history": {
       "name": "Exportar el historial de ciclos",
-      "description": "Exporta el historial actual a un archivo local. Los archivos se guardan en `<config>/menstruation_cycle_exports/`. Formatos admitidos: `csv`, `txt`.",
+      "description": "Exporta el historial actual a un archivo local. Los archivos se guardan en `/config/menstruation_cycle_exports/`. Formatos admitidos: `csv`, `txt`.",
       "fields": {
         "entity_id": {
           "name": "Entidad",
@@ -972,7 +972,7 @@
     },
     "export_doctor_report": {
       "name": "Exportar informe médico (HTML)",
-      "description": "Genera un informe médico profesional en HTML a partir del historial de ciclos y los datos de síntomas. El archivo se guarda en `<config>/menstruation_cycle_exports/`. Ábrelo en un navegador y usa «Imprimir en PDF» para crear un PDF.",
+      "description": "Genera un informe médico profesional en HTML a partir del historial de ciclos y los datos de síntomas. El archivo se guarda en `/config/menstruation_cycle_exports/`. Ábrelo en un navegador y usa «Imprimir en PDF» para crear un PDF.",
       "fields": {
         "entity_id": {
           "name": "Entidad",

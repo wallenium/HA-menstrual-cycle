@@ -123,6 +123,21 @@ class TranslationParityTests(unittest.TestCase):
                         problems.append(f"{name}: selector {key.group(1)} has no label for {option}")
         self.assertEqual(problems, [])
 
+    def test_no_text_looks_like_html(self) -> None:
+        """hassfest rejects any string with <...>, so placeholders like <config> must not appear."""
+        problems = []
+
+        def walk(node, where):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    walk(value, f"{where}.{key}")
+            elif isinstance(node, str) and re.search(r"<.+>", node):
+                problems.append(f"{where}: {node[:60]!r}")
+
+        for name in ["strings.json", *(f"translations/{lang}.json" for lang in LANGS)]:
+            walk(json.loads((ROOT / name).read_text(encoding="utf-8")), name)
+        self.assertEqual(problems, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@
 - Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
+- hassfest rejected the service descriptions of `export_history` and `export_doctor_report` (the text `<config>` looked like HTML); the same placeholder was also removed from the calendar option text in DE/ES/FR/SV.
 - Crash in profile label sync (wrong LabelRegistry API).
 - "Day of the week" off-by-one bug (#255).
 - Stale translation cache in the household summary.
