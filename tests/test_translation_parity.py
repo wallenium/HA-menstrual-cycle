@@ -106,6 +106,23 @@ class TranslationParityTests(unittest.TestCase):
                             problems.append(f"{name}: {service}.{field} has no {label}")
         self.assertEqual(problems, [])
 
+    def test_every_service_select_has_translated_option_labels(self) -> None:
+        text = (ROOT / "services.yaml").read_text(encoding="utf-8")
+        selects = re.findall(r"^        select:\n((?:          .*\n)+)", text, re.M)
+        self.assertGreater(len(selects), 8)
+        problems = []
+        for name in ["strings.json", *(f"translations/{lang}.json" for lang in LANGS)]:
+            translated = json.loads((ROOT / name).read_text(encoding="utf-8"))["selector"]
+            for block in selects:
+                key = re.search(r"translation_key:\s*(\w+)", block)
+                if key is None:
+                    problems.append(f"{name}: a select has no translation_key: {block.strip()[:60]!r}")
+                    continue
+                for option in re.findall(r"^\s+- \"?([\w-]+)\"?\s*$", block, re.M):
+                    if not str(translated.get(key.group(1), {}).get("options", {}).get(option, "")).strip():
+                        problems.append(f"{name}: selector {key.group(1)} has no label for {option}")
+        self.assertEqual(problems, [])
+
 
 if __name__ == "__main__":
     unittest.main()

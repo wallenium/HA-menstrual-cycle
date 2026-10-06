@@ -1132,6 +1132,27 @@ test('regression: existing stats sections still present alongside progress secti
   assert.ok(html.includes('progress-section') || html.includes('Progress'), 'progress section missing');
 });
 
+function doctorTabHtml(language) {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = { ...makeHass(), locale: { language } };
+  return card._renderDoctorTab();
+}
+
+test('doctor report export offers every report language and preselects the UI language', () => {
+  const html = doctorTabHtml('sv-SE');
+  for (const [code, name] of [['de', 'Deutsch'], ['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['sv', 'Svenska']]) {
+    assert.ok(html.includes(`<option value="${code}"`) && html.includes(`>${name}</option>`), `${code} option missing`);
+  }
+  assert.ok(html.includes('<option value="sv" selected>'), 'Swedish UI should preselect Swedish');
+});
+
+test('doctor report export falls back to English for a UI language without a report translation', () => {
+  const html = doctorTabHtml('pt-BR');
+  assert.ok(html.includes('<option value="en" selected>'), 'unsupported language should preselect English');
+  assert.ok(!html.includes('value="pt"'), 'unsupported language must not be offered');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

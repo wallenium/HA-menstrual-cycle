@@ -12,6 +12,8 @@
 - Notifications: overdue-period, check-up due and pill-gap reminders, a pill refill to-do, and mobile-app action buttons with snooze (snoozes survive a restart).
 - `send_test_notification` service and a repair issue when the configured notify target is unavailable.
 - Notification, pill, tracking and life-stage options are grouped into sections in the options form.
+- The doctor report is available in German, English, Spanish, French and Swedish (service, statistics card and report texts).
+- Service dropdowns (inventory action, body signs, visibility level, import mode, formats) show translated labels instead of raw values.
 - Blueprints and README now document the notification and blueprint setup.
 
 ### Changed
