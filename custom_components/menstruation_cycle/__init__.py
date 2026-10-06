@@ -100,6 +100,7 @@ from .const import (
     DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS,
     CONF_NOTIFY_RECAP_ENABLED,
     DEFAULT_NOTIFY_RECAP_ENABLED,
+    PILL_REFILL_LEAD_DAYS,
     CONF_NOTIFY_OVERDUE_ENABLED,
     CONF_NOTIFY_CHECKUP_ENABLED,
     CONF_NOTIFY_PILL_GAP_ENABLED,
@@ -1326,7 +1327,14 @@ async def _async_send_notification(
 ) -> None:
     """Send one notification to the profile's own target. Action buttons are only
     attached for mobile_app targets (the only ones that understand them)."""
+    from .repairs import async_create_notify_target_issue, async_delete_notify_target_issue
+
     notify_domain, notify_service = _resolve_notify_target(entry)
+    target = f"{notify_domain}.{notify_service}"
+    if not hass.services.has_service(notify_domain, notify_service):
+        _LOGGER.warning("Notify service %s does not exist, cannot send notification for %s", target, entry.entry_id)
+        async_create_notify_target_issue(hass, entry.entry_id, entry.title, target)
+        return
     try:
         if notify_domain == "persistent_notification":
             await hass.services.async_call(
@@ -1339,8 +1347,10 @@ async def _async_send_notification(
             if actions and notify_service.startswith("mobile_app_"):
                 payload["data"] = {"actions": actions}
             await hass.services.async_call(notify_domain, notify_service, payload)
+        async_delete_notify_target_issue(hass, entry.entry_id)
     except Exception as ex:  # noqa: BLE001 - a bad/misconfigured notify target must never crash the scheduled run
-        _LOGGER.warning("Could not send notification via %s.%s: %s", notify_domain, notify_service, ex)
+        _LOGGER.warning("Could not send notification via %s: %s", target, ex)
+        async_create_notify_target_issue(hass, entry.entry_id, entry.title, target)
 
 
 async def _async_send_log_reminder(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
@@ -1420,6 +1430,18 @@ def _arm_snooze(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationR
             _LOGGER.exception("Snoozed reminder failed for %s", entry.entry_id)
 
     entry.async_on_unload(async_call_later(hass, delay, _async_snoozed))
+
+
+def _rearm_snoozes(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Re-arm snoozes that were pending at shutdown; unknown ones and ones overdue by more than the snooze length are dropped."""
+    snooze_due = runtime.noncycle_data.get("snooze_due")
+    for kind, due_iso in list(snooze_due.items()) if isinstance(snooze_due, dict) else []:
+        due_dt = dt_util.parse_datetime(str(due_iso))
+        remaining = (due_dt - dt_util.utcnow()).total_seconds() if due_dt else -NOTIFY_SNOOZE_SECONDS
+        if kind in _SNOOZE_SENDERS and remaining > -NOTIFY_SNOOZE_SECONDS:
+            _arm_snooze(hass, entry, runtime, kind, max(remaining, 1))
+        else:
+            snooze_due.pop(kind, None)
 
 
 async def _async_schedule_snooze(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", kind: str) -> None:
@@ -1536,6 +1558,23 @@ async def _async_check_contraception_renewal_todo(hass: HomeAssistant, runtime: 
     # washing reminder) — todo-list items aren't currently localized.
     item_text = f"{runtime.friendly_name}: contraception method ({method}) may need renewal soon ({due_date})"
     await _async_add_todo_item_if_missing(hass, item_text, duplicate_contains=f"{runtime.friendly_name}: contraception method ({method})")
+
+
+async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """Shopping-list item shortly before the running pill pack ends (only with a configured pack break)."""
+    from .model import compute_contraception_status, pill_pack_end
+
+    today = dt_util.now().date()
+    status = compute_contraception_status(runtime.symptom_history, today=today)
+    if status["current_method"] != CONTRACEPTION_METHOD_PILL:
+        return
+    end = pill_pack_end(status, int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
+    if end is None or not 0 <= (end - today).days <= PILL_REFILL_LEAD_DAYS:
+        return
+    # the end date in the text makes the item unique per pack, so a ticked-off item does not block the next pack
+    await _async_add_todo_item_if_missing(
+        hass, f"{runtime.friendly_name}: order a new pill pack (current one ends {end.isoformat()})"
+    )
 
 
 def _profile_from_entry(entry: ConfigEntry) -> str:
@@ -2525,6 +2564,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight contraception renewal check failed for %s", entry.entry_id)
         try:
+            await _async_check_pill_refill_todo(hass, entry, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight pill refill check failed for %s", entry.entry_id)
+        try:
             # HA-Idee 6 (weitere Ideen, 15.09.2026): re-check daily rather
             # than only on integration load/restart, so the repair issue
             # appears promptly once the token crosses the staleness
@@ -2692,15 +2735,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_on_mobile_action))
 
-    # Re-arm snoozes that were pending at shutdown; ones overdue by more than the snooze length are dropped.
-    snooze_due = runtime.noncycle_data.get("snooze_due")
-    for kind, due_iso in list(snooze_due.items()) if isinstance(snooze_due, dict) else []:
-        due_dt = dt_util.parse_datetime(str(due_iso))
-        remaining = (due_dt - dt_util.utcnow()).total_seconds() if due_dt else -NOTIFY_SNOOZE_SECONDS
-        if kind in _SNOOZE_SENDERS and remaining > -NOTIFY_SNOOZE_SECONDS:
-            _arm_snooze(hass, entry, runtime, kind, max(remaining, 1))
-        else:
-            snooze_due.pop(kind, None)
+    _rearm_snoozes(hass, entry, runtime)
 
     hass.data[DOMAIN][entry.entry_id] = runtime
 
@@ -2969,9 +3004,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             runtime.options_update_unsub()
     await _async_update_household_inventory_state(hass)
 
-    from .repairs import async_delete_entity_naming_issue, async_delete_stale_ics_token_issue
+    from .repairs import (
+        async_delete_entity_naming_issue,
+        async_delete_notify_target_issue,
+        async_delete_stale_ics_token_issue,
+    )
 
     async_delete_entity_naming_issue(hass, entry.entry_id)
+    async_delete_notify_target_issue(hass, entry.entry_id)
     async_delete_stale_ics_token_issue(hass, entry.entry_id)
 
     if not hass.data.get(DOMAIN):

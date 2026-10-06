@@ -419,6 +419,10 @@
     "checkup_overdue": {
       "title": "Menstruation Cycle: puede que toque una revisión de rutina",
       "description": "Perfil: **{entry_title}**\n\nLa última revisión ginecológica registrada para este perfil fue el {last_date}, hace unos {months} meses. Este recordatorio está configurado en {interval} meses en las opciones, pero el intervalo adecuado depende de la edad, los antecedentes y las recomendaciones locales. Esto es meramente informativo, no un consejo médico, y no se realiza ninguna acción automáticamente. Registra tu próxima cita cuando se haya realizado, o descarta este problema si ya lo sabes."
+    },
+    "notify_target_unavailable": {
+      "title": "Ciclo menstrual: las notificaciones no se entregan",
+      "description": "Perfil: **{entry_title}**\n\nEl destino de notificación `{target}` no existe o el último intento de usarlo falló, por lo que los recordatorios de este perfil no llegan. Revisa el servicio notify en las opciones de este perfil (por ejemplo `mobile_app_mimovil`). Este aviso desaparece solo cuando se haya entregado una notificación con éxito."
     }
   },
   "selector": {

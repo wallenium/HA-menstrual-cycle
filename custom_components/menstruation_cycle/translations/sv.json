@@ -419,6 +419,10 @@
     "checkup_overdue": {
       "title": "Menstruation Cycle: Rutinkontroll kan vara aktuell",
       "description": "Profil: **{entry_title}**\n\nDen senaste gynekologiska kontrollen som loggats för den här profilen var den {last_date}, för ungefär {months} månader sedan. Den här påminnelsen är inställd på {interval} månader i alternativen, men lämpligt intervall beror på ålder, bakgrund och lokala rekommendationer. Detta är enbart information, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Logga nästa besök när det har skett, eller avfärda det här problemet om du redan känner till det."
+    },
+    "notify_target_unavailable": {
+      "title": "Menscykel: aviseringar levereras inte",
+      "description": "Profil: **{entry_title}**\n\nAviseringsmålet `{target}` finns inte eller det senaste försöket att använda det misslyckades, så påminnelser för den här profilen kommer inte fram. Kontrollera notify-tjänsten i den här profilens alternativ (till exempel `mobile_app_minmobil`). Det här meddelandet försvinner av sig självt när en avisering har levererats."
     }
   },
   "selector": {

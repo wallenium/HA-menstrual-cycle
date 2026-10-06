@@ -419,6 +419,10 @@
     "checkup_overdue": {
       "title": "Menstruation Cycle : un contrôle de routine est peut-être dû",
       "description": "Profil : **{entry_title}**\n\nLe dernier contrôle gynécologique enregistré pour ce profil date du {last_date}, il y a environ {months} mois. Ce rappel est réglé sur {interval} mois dans les options, mais l'intervalle adapté dépend de l'âge, des antécédents et des recommandations locales. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Enregistrez votre prochain rendez-vous une fois effectué, ou ignorez ce problème si vous êtes déjà au courant."
+    },
+    "notify_target_unavailable": {
+      "title": "Cycle menstruel : les notifications ne sont pas livrées",
+      "description": "Profil : **{entry_title}**\n\nLa cible de notification `{target}` n'existe pas ou la dernière tentative de l'utiliser a échoué ; les rappels de ce profil n'arrivent donc pas. Vérifiez le service notify dans les options de ce profil (par exemple `mobile_app_monphone`). Ce problème disparaît de lui-même dès qu'une notification a été livrée avec succès."
     }
   },
   "selector": {

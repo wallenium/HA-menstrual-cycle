@@ -3175,3 +3175,17 @@ def pill_break_active(status: dict[str, Any], today: date, pause_days: int) -> b
     if not pause_days or not last or status.get("pill_last_run_days", 0) < PILL_ACTIVE_DAYS_MIN:
         return False
     return 0 < (today - date.fromisoformat(last)).days <= pause_days
+
+
+def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
+    """Last active pill day of the running pack, or None when it cannot be told.
+
+    The pack length is 28 - pause_days (21+7, 24+4, ...), so it is only known when a pack break is configured;
+    a run longer than one pack (no break logged) has no recognisable pack boundary either.
+    """
+    last = status.get("pill_last_taken")
+    streak = status.get("pill_streak_days", 0)
+    pack_days = 28 - pause_days
+    if not pause_days or not last or not 0 < streak <= pack_days:
+        return None
+    return date.fromisoformat(last) + timedelta(days=pack_days - streak)

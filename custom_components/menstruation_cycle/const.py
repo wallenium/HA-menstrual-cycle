@@ -152,6 +152,8 @@ CONF_PILL_PAUSE_DAYS = "pill_pause_days"
 DEFAULT_PILL_PAUSE_DAYS = 0
 PILL_PAUSE_DAYS_MAX = 7
 PILL_ACTIVE_DAYS_MIN = 21
+# To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
+PILL_REFILL_LEAD_DAYS = 5
 # "Remind me in 1 hour" button on the pill and evening log reminders (in-memory timer).
 NOTIFY_ACTION_PILL_SNOOZE_PREFIX = "MCYCLE_PILL_SNOOZE_"
 NOTIFY_ACTION_LOG_SNOOZE_PREFIX = "MCYCLE_LOG_SNOOZE_"

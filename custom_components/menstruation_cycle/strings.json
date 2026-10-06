@@ -415,6 +415,10 @@
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine checkup may be due",
       "description": "Profile: **{entry_title}**\n\nThe last gynecological checkup logged for this profile was on {last_date}, about {months} months ago. This reminder is set to {interval} months in the options; the right interval depends on age, history and local recommendations. This is purely informational, not medical advice, and no action is taken automatically. Log your next appointment once it has happened, or dismiss this issue if you're already aware."
+    },
+    "notify_target_unavailable": {
+      "title": "Menstruation Cycle: Notifications cannot be delivered",
+      "description": "Profile: **{entry_title}**\n\nThe notify target `{target}` does not exist or the last attempt to use it failed, so reminders for this profile are not arriving. Check the notify service in this profile's options (for example `mobile_app_myphone`). This issue disappears by itself once a notification has been delivered successfully."
     }
   },
   "selector": {

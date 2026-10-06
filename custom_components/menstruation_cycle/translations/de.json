@@ -419,6 +419,10 @@
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine-Vorsorge könnte fällig sein",
       "description": "Profil: **{entry_title}**\n\nDie letzte für dieses Profil eingetragene gynäkologische Vorsorge war am {last_date}, vor etwa {months} Monaten. Diese Erinnerung ist in den Optionen auf {interval} Monate eingestellt, das passende Intervall hängt aber von Alter, Vorgeschichte und örtlichen Empfehlungen ab. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Trage den nächsten Termin ein, sobald er stattgefunden hat, oder verwirf dieses Problem, falls du es bereits kennst."
+    },
+    "notify_target_unavailable": {
+      "title": "Menstruationszyklus: Benachrichtigungen kommen nicht an",
+      "description": "Profil: **{entry_title}**\n\nDas Benachrichtigungsziel `{target}` existiert nicht oder der letzte Versuch, es zu nutzen, ist fehlgeschlagen. Erinnerungen für dieses Profil kommen deshalb nicht an. Prüfe den notify-Dienst in den Optionen dieses Profils (zum Beispiel `mobile_app_meinhandy`). Dieser Hinweis verschwindet von selbst, sobald eine Benachrichtigung erfolgreich zugestellt wurde."
     }
   },
   "selector": {

@@ -649,6 +649,25 @@ def async_check_period_overdue(
     async_create_period_overdue_issue(hass, entry_id, entry_title, -days_until_next_start)
 
 
+def async_create_notify_target_issue(hass: HomeAssistant, entry_id: str, entry_title: str, target: str) -> None:
+    """Create a repair issue when the profile's notify target is missing or failed on the last attempt."""
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"notify_target_unavailable_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="notify_target_unavailable",
+        translation_placeholders={"entry_title": entry_title, "target": target},
+    )
+
+
+def async_delete_notify_target_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the notify-target issue (after a notification was delivered, or when the entry unloads)."""
+    async_delete_issue(hass, DOMAIN, f"notify_target_unavailable_{entry_id}")
+
+
 def async_create_period_prolonged_issue(
     hass: HomeAssistant,
     entry_id: str,
