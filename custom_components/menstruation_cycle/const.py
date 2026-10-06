@@ -128,6 +128,13 @@ CONF_NOTIFY_PILL_TIME = "notify_pill_time"
 DEFAULT_NOTIFY_PILL_ENABLED = False
 DEFAULT_NOTIFY_PILL_TIME = "09:00:00"
 NOTIFY_ACTION_PILL_TAKEN_PREFIX = "MCYCLE_PILL_TAKEN_"
+# Hours after the pill reminder for a second reminder if the pill is still not logged (0 = off).
+CONF_NOTIFY_PILL_FOLLOWUP_HOURS = "notify_pill_followup_hours"
+DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS = 0
+NOTIFY_PILL_FOLLOWUP_HOURS_MAX = 12
+# Short recap notification after a new cycle start is logged, see __init__.py::_async_check_and_send_notifications.
+CONF_NOTIFY_RECAP_ENABLED = "notify_recap_enabled"
+DEFAULT_NOTIFY_RECAP_ENABLED = False
 # Aktions-Button "Periode hat begonnen" in der Perioden-Erinnerung (nur
 # mobile_app-Ziele): Action-ID = Prefix + entry_id, Event siehe Home-Assistant-
 # Companion-App-Doku.
@@ -145,8 +152,10 @@ CONF_NOTIFY_PARTNER_SERVICE = "notify_partner_service"
 # Aufeinanderfolgende Blutungstage ab denen repairs.py::async_check_period_prolonged
 # einen rein informativen Hinweis erzeugt (>7 Tage gilt allgemein als auffaellig lang).
 PERIOD_PROLONGED_DAYS = 8
-# Days since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup.
-CHECKUP_OVERDUE_DAYS = 365
+# Months since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup (0 = off).
+CONF_CHECKUP_INTERVAL_MONTHS = "checkup_interval_months"
+DEFAULT_CHECKUP_INTERVAL_MONTHS = 12
+CHECKUP_INTERVAL_MONTHS_MAX = 60
 CHECKUP_APPOINTMENT_TYPES = frozenset({"gynecologist", "pap_smear"})
 NOTIFY_LEAD_DAYS_MAX = 7
 CONF_DASHBOARD_DEFAULT_LANDING = "dashboard_default_landing"

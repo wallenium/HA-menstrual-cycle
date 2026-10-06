@@ -50,6 +50,9 @@ from .const import (
     CONF_NOTIFY_LOG_REMINDER_TIME,
     CONF_NOTIFY_PILL_ENABLED,
     CONF_NOTIFY_PILL_TIME,
+    CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+    CONF_NOTIFY_RECAP_ENABLED,
+    CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
     CONF_NOTIFY_TIME,
@@ -71,6 +74,11 @@ from .const import (
     DEFAULT_NOTIFY_LOG_REMINDER_TIME,
     DEFAULT_NOTIFY_PILL_ENABLED,
     DEFAULT_NOTIFY_PILL_TIME,
+    DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS,
+    DEFAULT_NOTIFY_RECAP_ENABLED,
+    DEFAULT_CHECKUP_INTERVAL_MONTHS,
+    CHECKUP_INTERVAL_MONTHS_MAX,
+    NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
     DEFAULT_NOTIFY_OVULATION_LEAD_DAYS,
     DEFAULT_NOTIFY_TIME,
     NOTIFY_LEAD_DAYS_MAX,
@@ -168,6 +176,9 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_LOG_REMINDER_TIME,
             CONF_NOTIFY_PILL_ENABLED,
             CONF_NOTIFY_PILL_TIME,
+            CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+            CONF_NOTIFY_RECAP_ENABLED,
+            CONF_CHECKUP_INTERVAL_MONTHS,
             CONF_CALENDAR_ENABLED,
             CONF_NFP_ANALYSIS_MODE,
             CONF_TEMPERATURE_UNIT,
@@ -493,6 +504,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_pill_time": str(
                 self._entry.options.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME) or DEFAULT_NOTIFY_PILL_TIME
             ),
+            "notify_pill_followup_hours": int(
+                self._entry.options.get(CONF_NOTIFY_PILL_FOLLOWUP_HOURS, DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS)
+            ),
+            "notify_recap_enabled": bool(
+                self._entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
+            ),
+            "checkup_interval_months": int(
+                self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
+            ),
             "notify_time": str(self._entry.options.get(CONF_NOTIFY_TIME, DEFAULT_NOTIFY_TIME) or DEFAULT_NOTIFY_TIME),
             "notify_ovulation_enabled": bool(
                 self._entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
@@ -604,6 +624,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
             if d.get(CONF_NOTIFY_PILL_ENABLED, DEFAULT_NOTIFY_PILL_ENABLED):
                 lines.append(f"  - Pill reminder at: {d.get(CONF_NOTIFY_PILL_TIME, DEFAULT_NOTIFY_PILL_TIME)}")
+            if d.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED):
+                lines.append("  - Cycle recap after each new cycle start")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -733,6 +755,23 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 except ValueError:
                     pill_time_raw = DEFAULT_NOTIFY_PILL_TIME
                 self._data[CONF_NOTIFY_PILL_TIME] = pill_time_raw[:8]
+                self._data[CONF_NOTIFY_PILL_FOLLOWUP_HOURS] = max(
+                    0,
+                    min(
+                        NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
+                        int(user_input.get(CONF_NOTIFY_PILL_FOLLOWUP_HOURS, DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS)),
+                    ),
+                )
+                self._data[CONF_NOTIFY_RECAP_ENABLED] = bool(
+                    user_input.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED)
+                )
+                self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
+                    0,
+                    min(
+                        CHECKUP_INTERVAL_MONTHS_MAX,
+                        int(user_input.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+                    ),
+                )
                 self._data[CONF_NOTIFY_OVULATION_ENABLED] = bool(
                     user_input.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED)
                 )
@@ -867,6 +906,13 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ): selector.TimeSelector(),
                 vol.Optional(CONF_NOTIFY_PILL_ENABLED, default=c["notify_pill_enabled"]): bool,
                 vol.Optional(CONF_NOTIFY_PILL_TIME, default=c["notify_pill_time"]): selector.TimeSelector(),
+                vol.Optional(
+                    CONF_NOTIFY_PILL_FOLLOWUP_HOURS, default=c["notify_pill_followup_hours"]
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=NOTIFY_PILL_FOLLOWUP_HOURS_MAX)),
+                vol.Optional(CONF_NOTIFY_RECAP_ENABLED, default=c["notify_recap_enabled"]): bool,
+                vol.Optional(
+                    CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
                 vol.Optional(
                     CONF_NOTIFY_OVULATION_ENABLED, default=c["notify_ovulation_enabled"]
                 ): bool,
@@ -1186,6 +1232,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_LOG_REMINDER_TIME: d[CONF_NOTIFY_LOG_REMINDER_TIME],
                 CONF_NOTIFY_PILL_ENABLED: d[CONF_NOTIFY_PILL_ENABLED],
                 CONF_NOTIFY_PILL_TIME: d[CONF_NOTIFY_PILL_TIME],
+                CONF_NOTIFY_PILL_FOLLOWUP_HOURS: d[CONF_NOTIFY_PILL_FOLLOWUP_HOURS],
+                CONF_NOTIFY_RECAP_ENABLED: d[CONF_NOTIFY_RECAP_ENABLED],
+                CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],
                 CONF_TEMPERATURE_UNIT: d[CONF_TEMPERATURE_UNIT],

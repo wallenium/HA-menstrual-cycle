@@ -65,6 +65,9 @@
           "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung",
           "notify_pill_enabled": "Pillen-Erinnerung",
           "notify_pill_time": "Uhrzeit der Pillen-Erinnerung",
+          "notify_pill_followup_hours": "Pillen-Nachfass-Erinnerung (Stunden)",
+          "notify_recap_enabled": "Rückblick nach jedem Zyklus",
+          "checkup_interval_months": "Vorsorge-Intervall (Monate)",
           "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
           "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
           "temperature_unit": "Eingabeeinheit Basaltemperatur"
@@ -95,6 +98,9 @@
           "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
           "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
           "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
+          "notify_pill_followup_hours": "Stunden nach der Pillen-Erinnerung für eine zweite Erinnerung, falls die heutige Pille noch nicht eingetragen ist. 0 = aus (Standard, maximal 12; entfällt, wenn sie nach Mitternacht läge).",
+          "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+          "checkup_interval_months": "Monate nach dem zuletzt eingetragenen Frauenarzt-/Abstrich-Termin, bevor ein Hinweis zur Routine-Vorsorge erscheint. 0 = aus (Standard 12). Gilt nur für Profile, die einen solchen Termin eingetragen haben.",
           "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
           "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
           "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
@@ -368,7 +374,7 @@
     },
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine-Vorsorge könnte fällig sein",
-      "description": "Profil: **{entry_title}**\n\nDie letzte für dieses Profil eingetragene gynäkologische Vorsorge war am {last_date}, vor etwa {months} Monaten. Viele Empfehlungen sehen etwa einmal pro Jahr eine Routine-Vorsorge vor, das passende Intervall hängt aber von Alter, Vorgeschichte und örtlichen Empfehlungen ab. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Trage den nächsten Termin ein, sobald er stattgefunden hat, oder verwirf dieses Problem, falls du es bereits kennst."
+      "description": "Profil: **{entry_title}**\n\nDie letzte für dieses Profil eingetragene gynäkologische Vorsorge war am {last_date}, vor etwa {months} Monaten. Diese Erinnerung ist in den Optionen auf {interval} Monate eingestellt, das passende Intervall hängt aber von Alter, Vorgeschichte und örtlichen Empfehlungen ab. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Trage den nächsten Termin ein, sobald er stattgefunden hat, oder verwirf dieses Problem, falls du es bereits kennst."
     }
   },
   "selector": {

@@ -85,10 +85,17 @@ from .const import (
     EVENT_MOBILE_APP_NOTIFICATION_ACTION,
     NOTIFY_ACTION_PERIOD_STARTED_PREFIX,
     NOTIFY_ACTION_PILL_TAKEN_PREFIX,
+    NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
     CONF_NOTIFY_PILL_ENABLED,
     CONF_NOTIFY_PILL_TIME,
     DEFAULT_NOTIFY_PILL_ENABLED,
     DEFAULT_NOTIFY_PILL_TIME,
+    CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+    DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS,
+    CONF_NOTIFY_RECAP_ENABLED,
+    DEFAULT_NOTIFY_RECAP_ENABLED,
+    CONF_CHECKUP_INTERVAL_MONTHS,
+    DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CONTRACEPTION_METHOD_PILL,
     SYMPTOM_CONTRACEPTION_METHOD,
     DEFAULT_NFP_ANALYSIS_MODE,
@@ -942,6 +949,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Pill reminder",
         "pill_message": "{name}: time to take the pill.",
         "action_pill_taken": "Pill taken",
+        "recap_title": "Cycle recap",
+        "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
     },
@@ -958,6 +967,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Pillen-Erinnerung",
         "pill_message": "{name}: Zeit für die Pille.",
         "action_pill_taken": "Pille genommen",
+        "recap_title": "Zyklus-Rückblick",
+        "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
     },
@@ -974,6 +985,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Rappel de pilule",
         "pill_message": "{name} : c'est l'heure de prendre la pilule.",
         "action_pill_taken": "Pilule prise",
+        "recap_title": "Bilan du cycle",
+        "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
     },
@@ -990,6 +1003,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Recordatorio de la píldora",
         "pill_message": "{name}: es hora de tomar la píldora.",
         "action_pill_taken": "Píldora tomada",
+        "recap_title": "Resumen del ciclo",
+        "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
     },
@@ -1006,6 +1021,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "pill_title": "Påminnelse: p-piller",
         "pill_message": "{name}: dags att ta p-pillret.",
         "action_pill_taken": "P-piller taget",
+        "recap_title": "Cykelsammanfattning",
+        "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
     },
@@ -1049,7 +1066,8 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     period_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PERIOD_ENABLED, DEFAULT_NOTIFY_PERIOD_ENABLED))
     fertile_notify_enabled = bool(entry.options.get(CONF_NOTIFY_FERTILE_ENABLED, DEFAULT_NOTIFY_FERTILE_ENABLED))
     ovulation_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVULATION_ENABLED, DEFAULT_NOTIFY_OVULATION_ENABLED))
-    if not period_notify_enabled and not fertile_notify_enabled and not ovulation_notify_enabled:
+    recap_notify_enabled = bool(entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED))
+    if not period_notify_enabled and not fertile_notify_enabled and not ovulation_notify_enabled and not recap_notify_enabled:
         return
     period_lead_days = max(
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS)))
@@ -1153,6 +1171,24 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 full_only=True,
             )
             runtime.noncycle_data["notified_ovulation_day"] = ovulation_day
+            notified_something = True
+
+    # Recap of the cycle that just ended, once per new cycle start; own target only (health detail, never the partner).
+    if recap_notify_enabled and len(model.grouped_starts) >= 2:
+        latest, previous = model.grouped_starts[-1], model.grouped_starts[-2]
+        days_since_start = (today - date.fromisoformat(latest)).days
+        if runtime.noncycle_data.get("notified_cycle_recap") != latest and 0 <= days_since_start <= 7:
+            block = next((b for b in model.bleeding_blocks if b["start"] == previous), None)
+            # ponytail: falls back to the configured duration if no bleeding block starts exactly on the previous start
+            await _send(
+                strings["recap_title"],
+                strings["recap_message"].format(
+                    name=runtime.friendly_name,
+                    cycle_days=(date.fromisoformat(latest) - date.fromisoformat(previous)).days,
+                    period_days=block["length"] if block else model.period_duration_days,
+                ),
+            )
+            runtime.noncycle_data["notified_cycle_recap"] = latest
             notified_something = True
 
     # Reads the badge already computed by sensor.py (progress_badges_new_this_week)
@@ -2399,7 +2435,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # Same daily-recheck reasoning as the checks above - a checkup becomes overdue on a specific day.
             from .repairs import async_check_checkup_overdue
 
-            async_check_checkup_overdue(hass, entry.entry_id, entry.title, runtime.symptom_history, dt_util.now().date())
+            async_check_checkup_overdue(
+                hass,
+                entry.entry_id,
+                entry.title,
+                runtime.symptom_history,
+                dt_util.now().date(),
+                int(entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+            )
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight checkup-overdue check failed for %s", entry.entry_id)
         try:
@@ -2587,7 +2630,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Same "cheap, safe to run on every load" reasoning as the checks above.
     from .repairs import async_check_checkup_overdue
 
-    async_check_checkup_overdue(hass, entry.entry_id, entry.title, runtime.symptom_history, dt_util.now().date())
+    async_check_checkup_overdue(
+        hass,
+        entry.entry_id,
+        entry.title,
+        runtime.symptom_history,
+        dt_util.now().date(),
+        int(entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+    )
 
     # Same "cheap, safe to run on every load" reasoning as the checks above.
     from .repairs import async_check_period_overdue
@@ -2716,9 +2766,36 @@ def _register_notification_timer(hass: HomeAssistant, entry: ConfigEntry, runtim
             except Exception:  # noqa: BLE001
                 _LOGGER.exception("Scheduled pill reminder failed for %s", entry.entry_id)
 
-        runtime.unregister_pill_listener = async_track_time_change(
-            hass, _async_handle_pill_reminder_time, hour=pill_parsed.hour, minute=pill_parsed.minute, second=0
+        pill_unsubs = [
+            async_track_time_change(
+                hass, _async_handle_pill_reminder_time, hour=pill_parsed.hour, minute=pill_parsed.minute, second=0
+            )
+        ]
+        followup_hours = max(
+            0,
+            min(
+                NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
+                int(entry.options.get(CONF_NOTIFY_PILL_FOLLOWUP_HOURS, DEFAULT_NOTIFY_PILL_FOLLOWUP_HOURS)),
+            ),
         )
+        followup_parsed = pill_parsed + timedelta(hours=followup_hours)
+        # ponytail: a follow-up that would land after midnight is skipped, the reminder is per-day
+        if followup_hours and followup_parsed.date() == pill_parsed.date():
+            pill_unsubs.append(
+                async_track_time_change(
+                    hass,
+                    _async_handle_pill_reminder_time,
+                    hour=followup_parsed.hour,
+                    minute=followup_parsed.minute,
+                    second=0,
+                )
+            )
+
+        def _unsub_pill_listeners() -> None:
+            for unsub in pill_unsubs:
+                unsub()
+
+        runtime.unregister_pill_listener = _unsub_pill_listeners
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

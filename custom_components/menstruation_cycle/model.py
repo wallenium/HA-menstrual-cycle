@@ -8,6 +8,7 @@ from typing import Any
 
 from .const import (
     CONTRACEPTION_HORMONAL_METHODS,
+    CONTRACEPTION_METHOD_PILL,
     CONTRACEPTION_RENEWAL_MONTHS,
     CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS,
     CYCLE_LENGTH_OVERRIDE_MAX,
@@ -3046,6 +3047,9 @@ def compute_contraception_status(
             such a period, or if the method has never been logged.
         renewal_reminder_due: bool — True if renewal_due_date is within
             CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS of today.
+        pill_streak_days: int — consecutive days with a logged "pill" entry,
+            ending today (or yesterday while today's intake is not logged yet).
+        pill_last_taken: str | None — most recent date with a logged "pill" entry.
     """
     today = today or date.today()
     empty: dict[str, Any] = {
@@ -3054,6 +3058,8 @@ def compute_contraception_status(
         "is_hormonal": False,
         "renewal_due_date": None,
         "renewal_reminder_due": False,
+        "pill_streak_days": 0,
+        "pill_last_taken": None,
     }
     if not symptom_history:
         return empty
@@ -3103,7 +3109,18 @@ def compute_contraception_status(
         renewal_due_date = due_date_obj.isoformat()
         renewal_reminder_due = (due_date_obj - today).days <= CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS
 
+    pill_dates = {
+        entry_date for entry_date, method in dated_entries if method == CONTRACEPTION_METHOD_PILL
+    }
+    pill_day = today if today.isoformat() in pill_dates else today - timedelta(days=1)
+    pill_streak = 0
+    while pill_day.isoformat() in pill_dates:
+        pill_streak += 1
+        pill_day -= timedelta(days=1)
+
     return {
+        "pill_streak_days": pill_streak,
+        "pill_last_taken": max(pill_dates) if pill_dates else None,
         "current_method": current_method,
         "method_since": method_since,
         "is_hormonal": is_hormonal,

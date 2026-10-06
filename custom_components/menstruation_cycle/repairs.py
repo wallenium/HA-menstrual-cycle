@@ -19,7 +19,6 @@ from homeassistant.helpers.issue_registry import (
 
 from .const import (
     CHECKUP_APPOINTMENT_TYPES,
-    CHECKUP_OVERDUE_DAYS,
     CYCLE_PATTERN_IRREGULARITY_THRESHOLD_DAYS,
     CYCLE_PATTERN_PAIN_DAYS_THRESHOLD,
     HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE,
@@ -717,6 +716,7 @@ def async_create_checkup_overdue_issue(
     entry_title: str,
     last_date: str,
     months: int,
+    interval: int,
 ) -> None:
     """Create a repair issue hinting that the last logged checkup is long ago."""
     async_create_issue(
@@ -731,6 +731,7 @@ def async_create_checkup_overdue_issue(
             "entry_title": entry_title,
             "last_date": last_date,
             "months": str(months),
+            "interval": str(interval),
         },
     )
 
@@ -746,12 +747,16 @@ def async_check_checkup_overdue(
     entry_title: str,
     symptom_history: list[dict[str, Any]],
     today: date,
+    interval_months: int,
 ) -> None:
     """Raise (or clear) the checkup-overdue issue from the logged appointments.
 
     Only profiles that logged at least one gynecologist/pap-smear appointment are
-    considered, so nobody who never tracks appointments gets nagged.
+    considered, so nobody who never tracks appointments gets nagged. interval_months 0 turns it off.
     """
+    if interval_months <= 0:
+        async_delete_checkup_overdue_issue(hass, entry_id)
+        return
     last_iso: str | None = None
     for entry in symptom_history:
         if not isinstance(entry, dict) or not entry.get("date"):
@@ -763,10 +768,10 @@ def async_check_checkup_overdue(
         days = (today - date.fromisoformat(last_iso)).days if last_iso else 0
     except ValueError:
         days = 0
-    if days < CHECKUP_OVERDUE_DAYS:
+    if not last_iso or days < round(interval_months * 365 / 12):
         async_delete_checkup_overdue_issue(hass, entry_id)
         return
-    async_create_checkup_overdue_issue(hass, entry_id, entry_title, last_iso, days // 30)
+    async_create_checkup_overdue_issue(hass, entry_id, entry_title, last_iso, days // 30, interval_months)
 
 
 _HOUSEHOLD_INVENTORY_CRITICAL_ISSUE_ID = "household_inventory_critical"

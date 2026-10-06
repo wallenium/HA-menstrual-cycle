@@ -65,6 +65,9 @@
           "notify_log_reminder_time": "Evening reminder time",
           "notify_pill_enabled": "Pill reminder",
           "notify_pill_time": "Pill reminder time",
+          "notify_pill_followup_hours": "Pill follow-up reminder (hours)",
+          "notify_recap_enabled": "Recap after each cycle",
+          "checkup_interval_months": "Checkup reminder interval (months)",
           "notify_ovulation_enabled": "Notify when ovulation is estimated",
           "notify_ovulation_lead_days": "Ovulation notice (days ahead)",
           "temperature_unit": "Basal temperature input unit"
@@ -95,6 +98,9 @@
           "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
           "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. Off by default. Requires 'Enable notifications' above.",
           "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
+          "notify_pill_followup_hours": "Hours after the pill reminder for a second reminder if today's pill is still not logged. 0 = off (default, max 12; skipped if it would fall after midnight).",
+          "notify_recap_enabled": "Sends a short recap (cycle length and period duration) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above.",
+          "checkup_interval_months": "Months after the last logged gynecologist/pap smear appointment before a repair hint suggests a routine checkup. 0 = off (default 12). Only applies to profiles that logged such an appointment.",
           "notify_ovulation_enabled": "Sends a notification a configurable number of days before the estimated ovulation day. Off by default. Requires 'Enable notifications' above.",
           "notify_ovulation_lead_days": "How many days ahead of the estimated ovulation day to notify (0–7). 0 (default) means the same day.",
           "temperature_unit": "Which unit basal_temp values are interpreted in when logged via the log_symptoms/add_symptom service. Storage and the basal-temperature sensor always stay in Celsius — Home Assistant automatically displays it in the unit your HA instance is configured for."
@@ -364,7 +370,7 @@
     },
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine checkup may be due",
-      "description": "Profile: **{entry_title}**\n\nThe last gynecological checkup logged for this profile was on {last_date}, about {months} months ago. Many guidelines suggest a routine checkup roughly once a year, but the right interval depends on age, history and local recommendations. This is purely informational, not medical advice, and no action is taken automatically. Log your next appointment once it has happened, or dismiss this issue if you're already aware."
+      "description": "Profile: **{entry_title}**\n\nThe last gynecological checkup logged for this profile was on {last_date}, about {months} months ago. This reminder is set to {interval} months in the options; the right interval depends on age, history and local recommendations. This is purely informational, not medical advice, and no action is taken automatically. Log your next appointment once it has happened, or dismiss this issue if you're already aware."
     }
   },
   "selector": {

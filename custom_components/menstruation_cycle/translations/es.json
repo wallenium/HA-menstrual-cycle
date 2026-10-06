@@ -65,6 +65,9 @@
           "notify_log_reminder_time": "Hora del recordatorio nocturno",
           "notify_pill_enabled": "Recordatorio de la píldora",
           "notify_pill_time": "Hora del recordatorio de la píldora",
+          "notify_pill_followup_hours": "Segundo recordatorio de la píldora (horas)",
+          "notify_recap_enabled": "Resumen tras cada ciclo",
+          "checkup_interval_months": "Intervalo del recordatorio de revisión (meses)",
           "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
           "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
           "temperature_unit": "Unidad de entrada de temperatura basal"
@@ -95,6 +98,9 @@
           "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
           "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
           "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
+          "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
+          "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+          "checkup_interval_months": "Meses tras la última cita ginecológica/citología registrada antes de que un aviso sugiera una revisión de rutina. 0 = desactivado (por defecto 12). Solo para perfiles que registraron una cita así.",
           "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
           "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
           "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA."
@@ -368,7 +374,7 @@
     },
     "checkup_overdue": {
       "title": "Menstruation Cycle: puede que toque una revisión de rutina",
-      "description": "Perfil: **{entry_title}**\n\nLa última revisión ginecológica registrada para este perfil fue el {last_date}, hace unos {months} meses. Muchas recomendaciones sugieren una revisión de rutina aproximadamente una vez al año, pero el intervalo adecuado depende de la edad, los antecedentes y las recomendaciones locales. Esto es meramente informativo, no un consejo médico, y no se realiza ninguna acción automáticamente. Registra tu próxima cita cuando se haya realizado, o descarta este problema si ya lo sabes."
+      "description": "Perfil: **{entry_title}**\n\nLa última revisión ginecológica registrada para este perfil fue el {last_date}, hace unos {months} meses. Este recordatorio está configurado en {interval} meses en las opciones, pero el intervalo adecuado depende de la edad, los antecedentes y las recomendaciones locales. Esto es meramente informativo, no un consejo médico, y no se realiza ninguna acción automáticamente. Registra tu próxima cita cuando se haya realizado, o descarta este problema si ya lo sabes."
     }
   },
   "selector": {

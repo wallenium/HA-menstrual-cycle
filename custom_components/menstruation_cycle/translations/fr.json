@@ -65,6 +65,9 @@
           "notify_log_reminder_time": "Heure du rappel du soir",
           "notify_pill_enabled": "Rappel de pilule",
           "notify_pill_time": "Heure du rappel de pilule",
+          "notify_pill_followup_hours": "Rappel de pilule supplémentaire (heures)",
+          "notify_recap_enabled": "Bilan après chaque cycle",
+          "checkup_interval_months": "Intervalle du rappel de contrôle (mois)",
           "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
           "notify_ovulation_lead_days": "Préavis ovulation (jours)",
           "temperature_unit": "Unité de saisie de la température basale"
@@ -95,6 +98,9 @@
           "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
           "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
           "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
+          "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
+          "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+          "checkup_interval_months": "Mois après le dernier rendez-vous gynécologique/frottis enregistré avant qu'un avis suggère un contrôle de routine. 0 = désactivé (par défaut 12). Ne concerne que les profils ayant enregistré un tel rendez-vous.",
           "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
           "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
           "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA."
@@ -368,7 +374,7 @@
     },
     "checkup_overdue": {
       "title": "Menstruation Cycle : un contrôle de routine est peut-être dû",
-      "description": "Profil : **{entry_title}**\n\nLe dernier contrôle gynécologique enregistré pour ce profil date du {last_date}, il y a environ {months} mois. De nombreuses recommandations préconisent un contrôle de routine environ une fois par an, mais l'intervalle adapté dépend de l'âge, des antécédents et des recommandations locales. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Enregistrez votre prochain rendez-vous une fois effectué, ou ignorez ce problème si vous êtes déjà au courant."
+      "description": "Profil : **{entry_title}**\n\nLe dernier contrôle gynécologique enregistré pour ce profil date du {last_date}, il y a environ {months} mois. Ce rappel est réglé sur {interval} mois dans les options, mais l'intervalle adapté dépend de l'âge, des antécédents et des recommandations locales. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Enregistrez votre prochain rendez-vous une fois effectué, ou ignorez ce problème si vous êtes déjà au courant."
     }
   },
   "selector": {
