@@ -2,7 +2,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-![Version](https://img.shields.io/badge/version-1.5.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
 
 
 HA Menstruation Cycle is a Home Assistant custom integration for tracking cycle history, showing cycle phases, and powering Lovelace dashboards with interactive menstrual-cycle cards.
@@ -45,6 +45,27 @@ Detailed guides:
 - [Services & Automations](https://github.com/wallenium/HA-menstrual-cycle/wiki/Services-&-Automations)
 - [FAQ & Troubleshooting](https://github.com/wallenium/HA-menstrual-cycle/wiki/FAQ-&-Troubleshooting)
 - [Developer Guide](https://github.com/wallenium/HA-menstrual-cycle/wiki/Developer-Guide)
+
+## Blueprints
+
+Ready-made automations for the common cases. Click **Import** to add one to Home Assistant (or paste the file URL under **Settings → Automations & Scenes → Blueprints → Import Blueprint**).
+
+| Blueprint | What it does | |
+|---|---|---|
+| Basal temperature reminder | Daily reminder at a fixed time to log the basal body temperature. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fbasal_temp_reminder.yaml) |
+| Contraception renewal in calendar | Calendar event ahead of an IUD, implant or injection renewal. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fcontraception_renewal_calendar.yaml) |
+| Light during the fertile window | Sets lights to a colour while the fertile window is active. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Ffertile_window_light.yaml) |
+| Scene on heavy bleeding | Activates a scene when heavy or very heavy bleeding is logged. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fheavy_bleeding_scene.yaml) |
+| Weekly household digest | One combined weekly overview across all profiles. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fhousehold_weekly_digest.yaml) |
+| Irregularity alert | Notifies when the cycle regularity drops below a threshold. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Firregularity_alert.yaml) |
+| Notify on period start | Notification the moment a period is confirmed. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fnotify_period_start.yaml) |
+| Ovulation confirmed | Notification once the NFP analysis confirms a temperature rise. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fovulation_confirmed.yaml) |
+| Period as calendar block | Multi-day calendar event from the actual start to the predicted end. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fperiod_calendar_block.yaml) |
+| Pill not taken escalation | Runs your own actions when today's pill is still not logged at a chosen time. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fpill_not_taken_escalation.yaml) |
+| Light during PMS | Sets lights to a colour while the PMS phase is active. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fpms_light.yaml) |
+| Action on cycle state | Runs any action when a profile enters a chosen state (period, fertile, ...). | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fprofile_state_action.yaml) |
+
+For your own automations the integration also fires the events `menstruation_cycle_cycle_start_logged`, `menstruation_cycle_pill_taken` (data: `entry_id`, `profile`, `friendly_name`, `date`; not fired for private profiles), `menstruation_cycle_product_consumed` and `menstruation_cycle_state_changed`.
 
 ## Disclaimer summary
 
