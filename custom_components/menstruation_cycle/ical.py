@@ -167,6 +167,7 @@ def generate_ics(
     horizon_months: int = ICS_HORIZON_MONTHS_DEFAULT,
     lang: str | None = None,
     period_alarm_days_before: int | None = None,
+    checkup_due: date | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -208,6 +209,17 @@ def generate_ics(
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
     ]
+
+    if checkup_due is not None:
+        lines.extend(
+            _vevent_lines(
+                uid=_deterministic_uid(entry_id, "checkup", checkup_due.isoformat()),
+                dtstamp=dtstamp,
+                summary=strings["checkup"],
+                start=checkup_due,
+                end_exclusive=checkup_due + timedelta(days=1),
+            )
+        )
 
     if windows:
         period_confidence = (period_forecast or {}).get("confidence", "")

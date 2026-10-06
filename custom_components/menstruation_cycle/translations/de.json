@@ -47,31 +47,7 @@
           "onboarding_stage": "Einstiegsphase",
           "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen",
           "calendar_enabled": "Zyklus-Kalender-Entität anzeigen",
-          "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
-          "pre_menarche_enabled": "Vor-der-Menarche-Tracking aktivieren",
-          "menopause_enabled": "Menopause-Modus aktivieren",
-          "postpartum_enabled": "Wochenbett-Modus aktivieren",
-          "notifications_enabled": "Benachrichtigungen aktivieren",
-          "notify_service": "Benachrichtigungsziel (optional)",
-          "notify_partner_service": "Partner-Benachrichtigungsdienst (optional)",
-          "linked_person_entity_id": "Verknüpfte Home-Assistant-Person (optional)",
-          "visibility_level": "Sichtbarkeitsstufe",
-          "notify_period_enabled": "Vor Periodenbeginn benachrichtigen",
-          "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
-          "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
-          "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
-          "notify_time": "Uhrzeit der Benachrichtigungen",
-          "notify_log_reminder_enabled": "Abend-Erinnerung zum Eintragen",
-          "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung",
-          "notify_pill_enabled": "Pillen-Erinnerung",
-          "notify_pill_time": "Uhrzeit der Pillen-Erinnerung",
-          "notify_pill_followup_hours": "Pillen-Nachfass-Erinnerung (Stunden)",
-          "pill_pause_days": "Pillen-Pause (Tage pro Packung)",
-          "notify_recap_enabled": "Rückblick nach jedem Zyklus",
-          "checkup_interval_months": "Vorsorge-Intervall (Monate)",
-          "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
-          "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
-          "temperature_unit": "Eingabeeinheit Basaltemperatur"
+          "visibility_level": "Sichtbarkeitsstufe"
         },
         "data_description": {
           "period_duration_days": "Anzahl der Tage, die die Periode typischerweise dauert (1–14).",
@@ -81,31 +57,91 @@
           "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu.",
           "calendar_enabled": "Erstellt eine native calendar.<profil>_cycle-Entität mit vorhergesagten Perioden-, Fruchtbarkeitsfenster- und Eisprung-Terminen, nutzbar in HAs eigener Kalender-Ansicht und für calendar.*-Automatisierungs-Trigger. Deaktivieren, falls nicht benötigt - dieselben Termine bleiben weiterhin über den separaten ICS-Kalender-Feed verfügbar.",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
-          "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
-          "pre_menarche_enabled": "Verfolgt Pubertätszeichen vor der ersten Periode (Menarche) und zeigt als Nächstes einen Detail-Bildschirm.",
-          "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
-          "postpartum_enabled": "Aktiviert den Wochenbett-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
-          "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
-          "notify_service": "Zu verwendendes Home-Assistant-Benachrichtigungsziel. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden.",
-          "notify_partner_service": "Optionales zweites Benachrichtigungsziel (z. B. das Handy des Partners), das nur die Termin-Erinnerungen erhält - Periode, fruchtbares Fenster und Eisprung - nie Badges, Symptome oder andere Gesundheitsdaten. Bei Sichtbarkeitsstufe 'Privat' wird nichts gesendet; fruchtbares Fenster und Eisprung nur bei 'Voll'. Leer lassen zum Ausschalten.",
-          "linked_person_entity_id": "Dieses Profil mit einer bestehenden Person verknüpfen (Einstellungen → Personen). Hat diese Person ein Bild hinterlegt, kann die Companion-App es als Profilbild anzeigen.",
-          "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft.",
-          "notify_period_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor die Periode voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
-          "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
-          "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
-          "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
-          "notify_time": "Uhrzeit, zu der Perioden-, Fruchtbarkeits-, Eisprung- und Badge-Benachrichtigungen gesendet werden (Standard 08:00). Bisher wurden sie direkt nach Mitternacht gesendet. Wirkt sofort nach dem Speichern.",
-          "notify_log_reminder_enabled": "Sendet eine Erinnerung, wenn für heute noch nichts (Zyklusstart oder Symptome) eingetragen ist. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
-          "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
-          "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
-          "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
-          "notify_pill_followup_hours": "Stunden nach der Pillen-Erinnerung für eine zweite Erinnerung, falls die heutige Pille noch nicht eingetragen ist. 0 = aus (Standard, maximal 12; entfällt, wenn sie nach Mitternacht läge).",
-          "pill_pause_days": "Tage ohne Pille zwischen zwei Packungen (z. B. 7 bei 21/7, 4 bei 24/4). In dieser Pause wird nicht erinnert, sie wird nach mindestens 21 eingetragenen Pillentagen in Folge erkannt. 0 = Dauereinnahme ohne Pause (Standard, maximal 7).",
-          "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
-          "checkup_interval_months": "Monate nach dem zuletzt eingetragenen Frauenarzt-/Abstrich-Termin, bevor ein Hinweis zur Routine-Vorsorge erscheint. 0 = aus (Standard 12). Gilt nur für Profile, die einen solchen Termin eingetragen haben.",
-          "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
-          "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
-          "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an."
+          "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
+        },
+        "sections": {
+          "notifications": {
+            "name": "Benachrichtigungen",
+            "description": "Wann und wohin Erinnerungen gesendet werden.",
+            "data": {
+              "notifications_enabled": "Benachrichtigungen aktivieren",
+              "notify_service": "Benachrichtigungsziel (optional)",
+              "notify_partner_service": "Partner-Benachrichtigungsdienst (optional)",
+              "notify_time": "Uhrzeit der Benachrichtigungen",
+              "notify_period_enabled": "Vor Periodenbeginn benachrichtigen",
+              "notify_period_lead_days": "Vorlaufzeit Periode (Tage)",
+              "notify_fertile_enabled": "Bei Beginn des fruchtbaren Fensters benachrichtigen",
+              "notify_fertile_lead_days": "Vorlaufzeit fruchtbares Fenster (Tage)",
+              "notify_ovulation_enabled": "Benachrichtigen, wenn der Eisprung geschätzt wird",
+              "notify_ovulation_lead_days": "Vorlaufzeit Eisprung (Tage)",
+              "notify_log_reminder_enabled": "Abend-Erinnerung zum Eintragen",
+              "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung",
+              "notify_recap_enabled": "Rückblick nach jedem Zyklus"
+            },
+            "data_description": {
+              "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
+              "notify_service": "Zu verwendendes Home-Assistant-Benachrichtigungsziel. Leer lassen, um standardmäßig eine dauerhafte Benachrichtigung (in der HA-Oberfläche) zu verwenden.",
+              "notify_partner_service": "Optionales zweites Benachrichtigungsziel (z. B. das Handy des Partners), das nur die Termin-Erinnerungen erhält - Periode, fruchtbares Fenster und Eisprung - nie Badges, Symptome oder andere Gesundheitsdaten. Bei Sichtbarkeitsstufe 'Privat' wird nichts gesendet; fruchtbares Fenster und Eisprung nur bei 'Voll'. Leer lassen zum Ausschalten.",
+              "notify_time": "Uhrzeit, zu der Perioden-, Fruchtbarkeits-, Eisprung- und Badge-Benachrichtigungen gesendet werden (Standard 08:00). Bisher wurden sie direkt nach Mitternacht gesendet. Wirkt sofort nach dem Speichern.",
+              "notify_period_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor die Periode voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
+              "notify_period_lead_days": "Wie viele Tage vor dem vorhergesagten Periodenbeginn benachrichtigt werden soll (0–7). 1 (Standard) bedeutet einen Tag vorher, 0 bedeutet am selben Tag.",
+              "notify_fertile_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage bevor das fruchtbare Fenster voraussichtlich beginnt. Setzt 'Benachrichtigungen aktivieren' oben voraus.",
+              "notify_fertile_lead_days": "Wie viele Tage vor dem vorhergesagten Beginn des fruchtbaren Fensters benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
+              "notify_ovulation_enabled": "Sendet eine Benachrichtigung eine einstellbare Anzahl Tage vor dem geschätzten Eisprung-Tag. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_ovulation_lead_days": "Wie viele Tage vor dem geschätzten Eisprung-Tag benachrichtigt werden soll (0–7). 0 (Standard) bedeutet am selben Tag.",
+              "notify_log_reminder_enabled": "Sendet eine Erinnerung, wenn für heute noch nichts (Zyklusstart oder Symptome) eingetragen ist. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_log_reminder_time": "Uhrzeit der Abend-Erinnerung zum Eintragen (Standard 20:00).",
+              "notify_recap_enabled": "Sendet eine kurze Zusammenfassung (Zykluslänge und Periodendauer), sobald ein neuer Zyklusstart eingetragen wurde. Geht nur an das eigene Benachrichtigungsziel dieses Profils. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben."
+            }
+          },
+          "pill": {
+            "name": "Pille",
+            "description": "Tägliche Pillen-Erinnerung, Nachfass-Erinnerung und Packungspause.",
+            "data": {
+              "notify_pill_enabled": "Pillen-Erinnerung",
+              "notify_pill_time": "Uhrzeit der Pillen-Erinnerung",
+              "notify_pill_followup_hours": "Pillen-Nachfass-Erinnerung (Stunden)",
+              "pill_pause_days": "Pillen-Pause (Tage pro Packung)"
+            },
+            "data_description": {
+              "notify_pill_enabled": "Sendet täglich eine Erinnerung mit der Schaltfläche 'Pille genommen' (Mobile-App-Ziele), solange die Pille die aktuelle Verhütungsmethode des Profils ist. Ein Tipp auf die Schaltfläche trägt die heutige Einnahme ein, und ist die heutige Pille eingetragen, wird nicht erinnert. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
+              "notify_pill_followup_hours": "Stunden nach der Pillen-Erinnerung für eine zweite Erinnerung, falls die heutige Pille noch nicht eingetragen ist. 0 = aus (Standard, maximal 12; entfällt, wenn sie nach Mitternacht läge).",
+              "pill_pause_days": "Tage ohne Pille zwischen zwei Packungen (z. B. 7 bei 21/7, 4 bei 24/4). In dieser Pause wird nicht erinnert, sie wird nach mindestens 21 eingetragenen Pillentagen in Folge erkannt. 0 = Dauereinnahme ohne Pause (Standard, maximal 7)."
+            }
+          },
+          "tracking": {
+            "name": "Tracking & Integrationen",
+            "description": "Temperatureinheit, verknüpfte Sensoren und Vorsorge-Erinnerung.",
+            "data": {
+              "temperature_unit": "Eingabeeinheit Basaltemperatur",
+              "basal_temp_sensor_entity_id": "Basaltemperatur-Sensor",
+              "checkup_interval_months": "Vorsorge-Intervall (Monate)",
+              "linked_person_entity_id": "Verknüpfte Home-Assistant-Person (optional)"
+            },
+            "data_description": {
+              "temperature_unit": "In welcher Einheit basal_temp-Werte interpretiert werden, wenn sie über den Service log_symptoms/add_symptom übermittelt werden. Gespeichert wird immer in Celsius — Home Assistant zeigt den Wert automatisch in der für die HA-Instanz konfigurierten Einheit an.",
+              "basal_temp_sensor_entity_id": "Optionaler Temperatursensor (z. B. ein Smart-Thermometer). Sein Wert wird beim Start der Integration und um Mitternacht als heutige Basaltemperatur übernommen; ein selbst eingetragener Wert wird nie überschrieben.",
+              "checkup_interval_months": "Monate nach dem zuletzt eingetragenen Frauenarzt-/Abstrich-Termin, bevor ein Hinweis zur Routine-Vorsorge erscheint. 0 = aus (Standard 12). Gilt nur für Profile, die einen solchen Termin eingetragen haben.",
+              "linked_person_entity_id": "Dieses Profil mit einer bestehenden Person verknüpfen (Einstellungen → Personen). Hat diese Person ein Bild hinterlegt, kann die Companion-App es als Profilbild anzeigen."
+            }
+          },
+          "life_stages": {
+            "name": "Lebensphasen",
+            "description": "Eine Lebensphase aktivieren, um sie im nächsten Schritt einzurichten.",
+            "data": {
+              "pregnancy_enabled": "Schwangerschaftsmodus aktivieren",
+              "pre_menarche_enabled": "Vor-der-Menarche-Tracking aktivieren",
+              "menopause_enabled": "Menopause-Modus aktivieren",
+              "postpartum_enabled": "Wochenbett-Modus aktivieren"
+            },
+            "data_description": {
+              "pregnancy_enabled": "Aktiviert den Schwangerschafts-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
+              "pre_menarche_enabled": "Verfolgt Pubertätszeichen vor der ersten Periode (Menarche) und zeigt als Nächstes einen Detail-Bildschirm.",
+              "menopause_enabled": "Aktiviert den Menopause-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm.",
+              "postpartum_enabled": "Aktiviert den Wochenbett-Tracking-Modus und zeigt als Nächstes einen Detail-Bildschirm."
+            }
+          }
         }
       },
       "pregnancy": {

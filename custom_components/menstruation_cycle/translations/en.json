@@ -47,31 +47,7 @@
           "onboarding_stage": "Onboarding stage",
           "dashboard_enabled": "Show Cycle Dashboard in sidebar",
           "calendar_enabled": "Show cycle calendar entity",
-          "pregnancy_enabled": "Enable pregnancy mode",
-          "pre_menarche_enabled": "Enable pre-menarche tracking",
-          "menopause_enabled": "Enable menopause mode",
-          "postpartum_enabled": "Enable postpartum mode",
-          "notifications_enabled": "Enable notifications",
-          "notify_service": "Notification service (optional)",
-          "notify_partner_service": "Partner notification service (optional)",
-          "linked_person_entity_id": "Linked Home Assistant person (optional)",
-          "visibility_level": "Visibility level",
-          "notify_period_enabled": "Notify before period starts",
-          "notify_period_lead_days": "Period notice (days ahead)",
-          "notify_fertile_enabled": "Notify when fertile window starts",
-          "notify_fertile_lead_days": "Fertile window notice (days ahead)",
-          "notify_time": "Notification time",
-          "notify_log_reminder_enabled": "Evening reminder to log",
-          "notify_log_reminder_time": "Evening reminder time",
-          "notify_pill_enabled": "Pill reminder",
-          "notify_pill_time": "Pill reminder time",
-          "notify_pill_followup_hours": "Pill follow-up reminder (hours)",
-          "pill_pause_days": "Pill break (days per pack)",
-          "notify_recap_enabled": "Recap after each cycle",
-          "checkup_interval_months": "Checkup reminder interval (months)",
-          "notify_ovulation_enabled": "Notify when ovulation is estimated",
-          "notify_ovulation_lead_days": "Ovulation notice (days ahead)",
-          "temperature_unit": "Basal temperature input unit"
+          "visibility_level": "Visibility level"
         },
         "data_description": {
           "period_duration_days": "Number of days the period typically lasts (1–14).",
@@ -81,31 +57,91 @@
           "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
           "calendar_enabled": "Creates a native calendar.profile_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
-          "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
-          "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
-          "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
-          "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next.",
-          "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
-          "notify_service": "Home Assistant notify target to use. Leave empty to use a persistent notification (shown in the HA UI) by default.",
-          "notify_partner_service": "Optional second notify target (e.g. a partner's phone) that receives only the date reminders - period, fertile window and ovulation - never badges, symptoms or other health details. Nothing is sent at visibility level 'Private'; fertile window and ovulation are only sent at 'Full'. Leave empty to turn off.",
-          "linked_person_entity_id": "Link this profile to an existing person (Settings → People). If that person has a picture, the companion app can show it as the profile picture.",
-          "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling.",
-          "notify_period_enabled": "Sends a notification a configurable number of days before the period is predicted to start. Requires 'Enable notifications' above.",
-          "notify_period_lead_days": "How many days ahead of the predicted period start to notify (0–7). 1 (default) means the day before, 0 means the same day.",
-          "notify_fertile_enabled": "Sends a notification a configurable number of days before the fertile window is predicted to start. Requires 'Enable notifications' above.",
-          "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day.",
-          "notify_time": "Time of day at which period, fertile window, ovulation and badge notifications are sent (default 08:00). Previously these were sent right after midnight. Takes effect as soon as the settings are saved.",
-          "notify_log_reminder_enabled": "Sends a reminder when nothing (cycle start or symptoms) is logged for today yet. Off by default. Requires 'Enable notifications' above.",
-          "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
-          "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. Off by default. Requires 'Enable notifications' above.",
-          "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
-          "notify_pill_followup_hours": "Hours after the pill reminder for a second reminder if today's pill is still not logged. 0 = off (default, max 12; skipped if it would fall after midnight).",
-          "pill_pause_days": "Days without pills between packs (e.g. 7 for 21/7, 4 for 24/4). No pill reminder is sent during that break, which is recognised after a run of at least 21 logged pill days. 0 = continuous use, no break (default, max 7).",
-          "notify_recap_enabled": "Sends a short recap (cycle length and period duration) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above.",
-          "checkup_interval_months": "Months after the last logged gynecologist/pap smear appointment before a repair hint suggests a routine checkup. 0 = off (default 12). Only applies to profiles that logged such an appointment.",
-          "notify_ovulation_enabled": "Sends a notification a configurable number of days before the estimated ovulation day. Off by default. Requires 'Enable notifications' above.",
-          "notify_ovulation_lead_days": "How many days ahead of the estimated ovulation day to notify (0–7). 0 (default) means the same day.",
-          "temperature_unit": "Which unit basal_temp values are interpreted in when logged via the log_symptoms/add_symptom service. Storage and the basal-temperature sensor always stay in Celsius — Home Assistant automatically displays it in the unit your HA instance is configured for."
+          "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
+        },
+        "sections": {
+          "notifications": {
+            "name": "Notifications",
+            "description": "When and where reminders are sent.",
+            "data": {
+              "notifications_enabled": "Enable notifications",
+              "notify_service": "Notification service (optional)",
+              "notify_partner_service": "Partner notification service (optional)",
+              "notify_time": "Notification time",
+              "notify_period_enabled": "Notify before period starts",
+              "notify_period_lead_days": "Period notice (days ahead)",
+              "notify_fertile_enabled": "Notify when fertile window starts",
+              "notify_fertile_lead_days": "Fertile window notice (days ahead)",
+              "notify_ovulation_enabled": "Notify when ovulation is estimated",
+              "notify_ovulation_lead_days": "Ovulation notice (days ahead)",
+              "notify_log_reminder_enabled": "Evening reminder to log",
+              "notify_log_reminder_time": "Evening reminder time",
+              "notify_recap_enabled": "Recap after each cycle"
+            },
+            "data_description": {
+              "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
+              "notify_service": "Home Assistant notify target to use. Leave empty to use a persistent notification (shown in the HA UI) by default.",
+              "notify_partner_service": "Optional second notify target (e.g. a partner's phone) that receives only the date reminders - period, fertile window and ovulation - never badges, symptoms or other health details. Nothing is sent at visibility level 'Private'; fertile window and ovulation are only sent at 'Full'. Leave empty to turn off.",
+              "notify_time": "Time of day at which period, fertile window, ovulation and badge notifications are sent (default 08:00). Previously these were sent right after midnight. Takes effect as soon as the settings are saved.",
+              "notify_period_enabled": "Sends a notification a configurable number of days before the period is predicted to start. Requires 'Enable notifications' above.",
+              "notify_period_lead_days": "How many days ahead of the predicted period start to notify (0–7). 1 (default) means the day before, 0 means the same day.",
+              "notify_fertile_enabled": "Sends a notification a configurable number of days before the fertile window is predicted to start. Requires 'Enable notifications' above.",
+              "notify_fertile_lead_days": "How many days ahead of the predicted fertile window start to notify (0–7). 0 (default) means the same day.",
+              "notify_ovulation_enabled": "Sends a notification a configurable number of days before the estimated ovulation day. Off by default. Requires 'Enable notifications' above.",
+              "notify_ovulation_lead_days": "How many days ahead of the estimated ovulation day to notify (0–7). 0 (default) means the same day.",
+              "notify_log_reminder_enabled": "Sends a reminder when nothing (cycle start or symptoms) is logged for today yet. Off by default. Requires 'Enable notifications' above.",
+              "notify_log_reminder_time": "Time of day for the evening log reminder (default 20:00).",
+              "notify_recap_enabled": "Sends a short recap (cycle length and period duration) once a new cycle start has been logged. Goes only to this profile's own notification target. Off by default. Requires 'Enable notifications' above."
+            }
+          },
+          "pill": {
+            "name": "Pill reminder",
+            "description": "Daily pill reminder, follow-up and pack break.",
+            "data": {
+              "notify_pill_enabled": "Pill reminder",
+              "notify_pill_time": "Pill reminder time",
+              "notify_pill_followup_hours": "Pill follow-up reminder (hours)",
+              "pill_pause_days": "Pill break (days per pack)"
+            },
+            "data_description": {
+              "notify_pill_enabled": "Sends a daily reminder with a 'Pill taken' button (mobile app targets) while the pill is the profile's current contraception method. Tapping the button logs today's intake, and no reminder is sent once today's pill is logged. Off by default. Requires 'Enable notifications' above.",
+              "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
+              "notify_pill_followup_hours": "Hours after the pill reminder for a second reminder if today's pill is still not logged. 0 = off (default, max 12; skipped if it would fall after midnight).",
+              "pill_pause_days": "Days without pills between packs (e.g. 7 for 21/7, 4 for 24/4). No pill reminder is sent during that break, which is recognised after a run of at least 21 logged pill days. 0 = continuous use, no break (default, max 7)."
+            }
+          },
+          "tracking": {
+            "name": "Tracking & integrations",
+            "description": "Temperature unit, linked sensors and checkup reminder.",
+            "data": {
+              "temperature_unit": "Basal temperature input unit",
+              "basal_temp_sensor_entity_id": "Basal temperature sensor",
+              "checkup_interval_months": "Checkup reminder interval (months)",
+              "linked_person_entity_id": "Linked Home Assistant person (optional)"
+            },
+            "data_description": {
+              "temperature_unit": "Which unit basal_temp values are interpreted in when logged via the log_symptoms/add_symptom service. Storage and the basal-temperature sensor always stay in Celsius — Home Assistant automatically displays it in the unit your HA instance is configured for.",
+              "basal_temp_sensor_entity_id": "Optional temperature sensor (e.g. a smart thermometer). Its reading is imported as today's basal temperature when the integration starts and at midnight; a value you logged yourself is never overwritten.",
+              "checkup_interval_months": "Months after the last logged gynecologist/pap smear appointment before a repair hint suggests a routine checkup. 0 = off (default 12). Only applies to profiles that logged such an appointment.",
+              "linked_person_entity_id": "Link this profile to an existing person (Settings → People). If that person has a picture, the companion app can show it as the profile picture."
+            }
+          },
+          "life_stages": {
+            "name": "Life stages",
+            "description": "Switch on a life stage to configure it in the next step.",
+            "data": {
+              "pregnancy_enabled": "Enable pregnancy mode",
+              "pre_menarche_enabled": "Enable pre-menarche tracking",
+              "menopause_enabled": "Enable menopause mode",
+              "postpartum_enabled": "Enable postpartum mode"
+            },
+            "data_description": {
+              "pregnancy_enabled": "Activates pregnancy tracking mode and shows a details screen next.",
+              "pre_menarche_enabled": "Track puberty signs before the first period (menarche) and shows a details screen next.",
+              "menopause_enabled": "Activates menopause tracking mode and shows a details screen next.",
+              "postpartum_enabled": "Activates postpartum tracking mode and shows a details screen next."
+            }
+          }
         }
       },
       "pregnancy": {

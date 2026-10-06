@@ -47,31 +47,7 @@
           "onboarding_stage": "Introduktionsfas",
           "dashboard_enabled": "Visa cykelöversikt i sidopanelen",
           "calendar_enabled": "Visa cykelkalenderentitet",
-          "pregnancy_enabled": "Aktivera graviditetsläge",
-          "pre_menarche_enabled": "Aktivera spårning innan menarche",
-          "menopause_enabled": "Aktivera klimakterieläge",
-          "postpartum_enabled": "Aktivera läge efter förlossning",
-          "notifications_enabled": "Aktivera aviseringar",
-          "notify_service": "Aviseringstjänst (valfritt)",
-          "notify_partner_service": "Aviseringstjänst för partner (valfritt)",
-          "linked_person_entity_id": "Länkad Home Assistant-person (valfritt)",
-          "visibility_level": "Synlighetsnivå",
-          "notify_period_enabled": "Avisera innan mensen börjar",
-          "notify_period_lead_days": "Förvarningstid mens (dagar)",
-          "notify_fertile_enabled": "Avisera när fertilt fönster börjar",
-          "notify_fertile_lead_days": "Förvarningstid fertilt fönster (dagar)",
-          "notify_time": "Tid för aviseringar",
-          "notify_log_reminder_enabled": "Kvällspåminnelse att logga",
-          "notify_log_reminder_time": "Tid för kvällspåminnelsen",
-          "notify_pill_enabled": "Påminnelse: p-piller",
-          "notify_pill_time": "Tid för p-pillerpåminnelsen",
-          "notify_pill_followup_hours": "Extra p-pillerpåminnelse (timmar)",
-          "pill_pause_days": "P-pillerpaus (dagar per karta)",
-          "notify_recap_enabled": "Sammanfattning efter varje cykel",
-          "checkup_interval_months": "Intervall för kontrollpåminnelse (månader)",
-          "notify_ovulation_enabled": "Avisera när ägglossning beräknas",
-          "notify_ovulation_lead_days": "Förvarningstid ägglossning (dagar)",
-          "temperature_unit": "Inmatningsenhet för basaltemperatur"
+          "visibility_level": "Synlighetsnivå"
         },
         "data_description": {
           "period_duration_days": "Antal dagar mensen vanligtvis varar (1–14).",
@@ -81,31 +57,91 @@
           "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel.",
           "calendar_enabled": "Skapar en inbyggd calendar.<profil>_cycle-entitet med förutspådda mens-, fertila fönster- och ägglossningshändelser, användbar i Home Assistants egen kalendervy och för calendar.*-automationsutlösare. Inaktivera om du inte behöver den - samma händelser finns kvar via det separata ICS-flödet.",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
-          "pregnancy_enabled": "Aktiverar graviditetsspårningsläge och visar en detaljskärm härnäst.",
-          "pre_menarche_enabled": "Spårar pubertetstecken innan den första mensen (menarche) och visar en detaljskärm härnäst.",
-          "menopause_enabled": "Aktiverar klimakteriespårningsläge och visar en detaljskärm härnäst.",
-          "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst.",
-          "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
-          "notify_service": "Home Assistant-aviseringsmål att använda. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet).",
-          "notify_partner_service": "Valfritt andra aviseringsmål (t.ex. partnerns telefon) som bara får datumpåminnelserna - mens, fertilt fönster och ägglossning - aldrig märken, symtom eller andra hälsouppgifter. Inget skickas vid synlighetsnivå 'Privat'; fertilt fönster och ägglossning bara vid 'Full'. Lämna tomt för att stänga av.",
-          "linked_person_entity_id": "Länka den här profilen till en befintlig person (Inställningar → Personer). Om den personen har en bild inställd kan följeslagarappen visa den som profilbild.",
-          "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar.",
-          "notify_period_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan mensen väntas börja. Kräver 'Aktivera aviseringar' ovan.",
-          "notify_period_lead_days": "Hur många dagar innan den förväntade mensstarten som avisering ska ske (0–7). 1 (standard) betyder dagen innan, 0 betyder samma dag.",
-          "notify_fertile_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan det fertila fönstret väntas börja. Kräver 'Aktivera aviseringar' ovan.",
-          "notify_fertile_lead_days": "Hur många dagar innan den förväntade starten av det fertila fönstret som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
-          "notify_time": "Tid på dagen då aviseringar om mens, fertilt fönster, ägglossning och märken skickas (08:00 som standard). Tidigare skickades de strax efter midnatt. Gäller direkt efter att inställningarna sparats.",
-          "notify_log_reminder_enabled": "Skickar en påminnelse om inget (cykelstart eller symtom) är loggat för idag än. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
-          "notify_log_reminder_time": "Tid på dagen för kvällspåminnelsen (20:00 som standard).",
-          "notify_pill_enabled": "Skickar en daglig påminnelse med knappen 'P-piller taget' (mål i mobilappen) så länge p-piller är profilens nuvarande preventivmetod. Ett tryck på knappen loggar dagens intag, och ingen påminnelse skickas när dagens piller redan är loggat. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
-          "notify_pill_time": "Tid på dagen för p-pillerpåminnelsen (standard 09:00).",
-          "notify_pill_followup_hours": "Timmar efter p-pillerpåminnelsen för en andra påminnelse om dagens piller fortfarande inte är loggat. 0 = av (standard, max 12; hoppas över om den skulle hamna efter midnatt).",
-          "pill_pause_days": "Dagar utan piller mellan två kartor (t.ex. 7 vid 21/7, 4 vid 24/4). Ingen påminnelse skickas under pausen, som känns igen efter minst 21 loggade pillerdagar i följd. 0 = kontinuerligt intag utan paus (standard, max 7).",
-          "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
-          "checkup_interval_months": "Månader efter det senast loggade gynekolog-/cellprovsbesöket innan en notis föreslår en rutinkontroll. 0 = av (standard 12). Gäller bara profiler som loggat ett sådant besök.",
-          "notify_ovulation_enabled": "Skickar en avisering ett inställbart antal dagar före den beräknade ägglossningsdagen. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
-          "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
-          "temperature_unit": "Vilken enhet basal_temp-värden tolkas i när de loggas via tjänsten log_symptoms/add_symptom. Lagring sker alltid i Celsius — Home Assistant visar automatiskt värdet i den enhet som din HA-instans är konfigurerad för."
+          "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
+        },
+        "sections": {
+          "notifications": {
+            "name": "Aviseringar",
+            "description": "När och vart påminnelser skickas.",
+            "data": {
+              "notifications_enabled": "Aktivera aviseringar",
+              "notify_service": "Aviseringstjänst (valfritt)",
+              "notify_partner_service": "Aviseringstjänst för partner (valfritt)",
+              "notify_time": "Tid för aviseringar",
+              "notify_period_enabled": "Avisera innan mensen börjar",
+              "notify_period_lead_days": "Förvarningstid mens (dagar)",
+              "notify_fertile_enabled": "Avisera när fertilt fönster börjar",
+              "notify_fertile_lead_days": "Förvarningstid fertilt fönster (dagar)",
+              "notify_ovulation_enabled": "Avisera när ägglossning beräknas",
+              "notify_ovulation_lead_days": "Förvarningstid ägglossning (dagar)",
+              "notify_log_reminder_enabled": "Kvällspåminnelse att logga",
+              "notify_log_reminder_time": "Tid för kvällspåminnelsen",
+              "notify_recap_enabled": "Sammanfattning efter varje cykel"
+            },
+            "data_description": {
+              "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
+              "notify_service": "Home Assistant-aviseringsmål att använda. Lämna tomt för att som standard använda en beständig avisering (visas i HA-gränssnittet).",
+              "notify_partner_service": "Valfritt andra aviseringsmål (t.ex. partnerns telefon) som bara får datumpåminnelserna - mens, fertilt fönster och ägglossning - aldrig märken, symtom eller andra hälsouppgifter. Inget skickas vid synlighetsnivå 'Privat'; fertilt fönster och ägglossning bara vid 'Full'. Lämna tomt för att stänga av.",
+              "notify_time": "Tid på dagen då aviseringar om mens, fertilt fönster, ägglossning och märken skickas (08:00 som standard). Tidigare skickades de strax efter midnatt. Gäller direkt efter att inställningarna sparats.",
+              "notify_period_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan mensen väntas börja. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_period_lead_days": "Hur många dagar innan den förväntade mensstarten som avisering ska ske (0–7). 1 (standard) betyder dagen innan, 0 betyder samma dag.",
+              "notify_fertile_enabled": "Skickar en avisering ett konfigurerbart antal dagar innan det fertila fönstret väntas börja. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_fertile_lead_days": "Hur många dagar innan den förväntade starten av det fertila fönstret som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
+              "notify_ovulation_enabled": "Skickar en avisering ett inställbart antal dagar före den beräknade ägglossningsdagen. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_ovulation_lead_days": "Hur många dagar före den beräknade ägglossningsdagen som avisering ska ske (0–7). 0 (standard) betyder samma dag.",
+              "notify_log_reminder_enabled": "Skickar en påminnelse om inget (cykelstart eller symtom) är loggat för idag än. Avstängd som standard. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_log_reminder_time": "Tid på dagen för kvällspåminnelsen (20:00 som standard).",
+              "notify_recap_enabled": "Skickar en kort sammanfattning (cykel- och mensläng) när en ny cykelstart har loggats. Går bara till den här profilens egna aviseringsmål. Av som standard. Kräver 'Aktivera aviseringar' ovan."
+            }
+          },
+          "pill": {
+            "name": "P-piller",
+            "description": "Daglig påminnelse, extra påminnelse och paus mellan kartor.",
+            "data": {
+              "notify_pill_enabled": "Påminnelse: p-piller",
+              "notify_pill_time": "Tid för p-pillerpåminnelsen",
+              "notify_pill_followup_hours": "Extra p-pillerpåminnelse (timmar)",
+              "pill_pause_days": "P-pillerpaus (dagar per karta)"
+            },
+            "data_description": {
+              "notify_pill_enabled": "Skickar en daglig påminnelse med knappen 'P-piller taget' (mål i mobilappen) så länge p-piller är profilens nuvarande preventivmetod. Ett tryck på knappen loggar dagens intag, och ingen påminnelse skickas när dagens piller redan är loggat. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
+              "notify_pill_time": "Tid på dagen för p-pillerpåminnelsen (standard 09:00).",
+              "notify_pill_followup_hours": "Timmar efter p-pillerpåminnelsen för en andra påminnelse om dagens piller fortfarande inte är loggat. 0 = av (standard, max 12; hoppas över om den skulle hamna efter midnatt).",
+              "pill_pause_days": "Dagar utan piller mellan två kartor (t.ex. 7 vid 21/7, 4 vid 24/4). Ingen påminnelse skickas under pausen, som känns igen efter minst 21 loggade pillerdagar i följd. 0 = kontinuerligt intag utan paus (standard, max 7)."
+            }
+          },
+          "tracking": {
+            "name": "Spårning och integrationer",
+            "description": "Temperaturenhet, länkade sensorer och kontrollpåminnelse.",
+            "data": {
+              "temperature_unit": "Inmatningsenhet för basaltemperatur",
+              "basal_temp_sensor_entity_id": "Sensor för basaltemperatur",
+              "checkup_interval_months": "Intervall för kontrollpåminnelse (månader)",
+              "linked_person_entity_id": "Länkad Home Assistant-person (valfritt)"
+            },
+            "data_description": {
+              "temperature_unit": "Vilken enhet basal_temp-värden tolkas i när de loggas via tjänsten log_symptoms/add_symptom. Lagring sker alltid i Celsius — Home Assistant visar automatiskt värdet i den enhet som din HA-instans är konfigurerad för.",
+              "basal_temp_sensor_entity_id": "Valfri temperatursensor (t.ex. en smart termometer). Dess värde importeras som dagens basaltemperatur när integrationen startar och vid midnatt; ett värde du själv loggat skrivs aldrig över.",
+              "checkup_interval_months": "Månader efter det senast loggade gynekolog-/cellprovsbesöket innan en notis föreslår en rutinkontroll. 0 = av (standard 12). Gäller bara profiler som loggat ett sådant besök.",
+              "linked_person_entity_id": "Länka den här profilen till en befintlig person (Inställningar → Personer). Om den personen har en bild inställd kan följeslagarappen visa den som profilbild."
+            }
+          },
+          "life_stages": {
+            "name": "Livsfaser",
+            "description": "Aktivera en livsfas för att ställa in den i nästa steg.",
+            "data": {
+              "pregnancy_enabled": "Aktivera graviditetsläge",
+              "pre_menarche_enabled": "Aktivera spårning innan menarche",
+              "menopause_enabled": "Aktivera klimakterieläge",
+              "postpartum_enabled": "Aktivera läge efter förlossning"
+            },
+            "data_description": {
+              "pregnancy_enabled": "Aktiverar graviditetsspårningsläge och visar en detaljskärm härnäst.",
+              "pre_menarche_enabled": "Spårar pubertetstecken innan den första mensen (menarche) och visar en detaljskärm härnäst.",
+              "menopause_enabled": "Aktiverar klimakteriespårningsläge och visar en detaljskärm härnäst.",
+              "postpartum_enabled": "Aktiverar spårningsläge efter förlossning och visar en detaljskärm härnäst."
+            }
+          }
         }
       },
       "pregnancy": {

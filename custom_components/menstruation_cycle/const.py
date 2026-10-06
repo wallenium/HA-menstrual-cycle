@@ -14,6 +14,8 @@ EVENT_STATE_CHANGED = f"{DOMAIN}_state_changed"
 EVENT_PRODUCT_CONSUMED = f"{DOMAIN}_product_consumed"
 # Fired by add_cycle_start; described in logbook.py.
 EVENT_CYCLE_START_LOGGED = f"{DOMAIN}_cycle_start_logged"
+# Fired when a pill intake is newly logged (dashboard, service or notification button); described in logbook.py.
+EVENT_PILL_TAKEN = f"{DOMAIN}_pill_taken"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1

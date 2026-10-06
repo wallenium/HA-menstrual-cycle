@@ -39,6 +39,7 @@ from homeassistant.util import slugify
 from .const import (
     ATTR_HISTORY,
     EVENT_CYCLE_START_LOGGED,
+    EVENT_PILL_TAKEN,
     EVENT_PRODUCT_CONSUMED,
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
@@ -2552,15 +2553,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_notification_timer(hass, entry, runtime)
 
-    def _schedule_snooze(send: Any) -> None:
-        # ponytail: in-memory timer, a restart within the hour drops the snoozed reminder
+    snooze_senders = {"pill": _async_send_pill_reminder, "log": _async_send_log_reminder}
+
+    def _arm_snooze(kind: str, delay: float) -> None:
         async def _async_snoozed(_now: datetime) -> None:
+            runtime.noncycle_data.get("snooze_due", {}).pop(kind, None)
             try:
-                await send(hass, entry, runtime)
+                await snooze_senders[kind](hass, entry, runtime)
+                await _async_save_and_notify(hass, runtime)
             except Exception:  # noqa: BLE001
                 _LOGGER.exception("Snoozed reminder failed for %s", entry.entry_id)
 
-        entry.async_on_unload(async_call_later(hass, NOTIFY_SNOOZE_SECONDS, _async_snoozed))
+        entry.async_on_unload(async_call_later(hass, delay, _async_snoozed))
+
+    async def _async_schedule_snooze(kind: str) -> None:
+        # The due time is stored so a restart within the hour re-arms the timer (see the re-arm loop below).
+        due = dt_util.utcnow() + timedelta(seconds=NOTIFY_SNOOZE_SECONDS)
+        runtime.noncycle_data.setdefault("snooze_due", {})[kind] = due.isoformat()
+        await _async_save_and_notify(hass, runtime)
+        _arm_snooze(kind, NOTIFY_SNOOZE_SECONDS)
 
     async def _async_handle_mobile_action(event: Any) -> None:
         # "Period started" logs today as a cycle start, "Pill taken" logs today's pill intake, snooze re-sends the reminder later.
@@ -2575,13 +2586,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     hass, SimpleNamespace(data={**base, SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
                 )
             elif action == f"{NOTIFY_ACTION_PILL_SNOOZE_PREFIX}{entry.entry_id}":
-                _schedule_snooze(_async_send_pill_reminder)
+                await _async_schedule_snooze("pill")
             elif action == f"{NOTIFY_ACTION_LOG_SNOOZE_PREFIX}{entry.entry_id}":
-                _schedule_snooze(_async_send_log_reminder)
+                await _async_schedule_snooze("log")
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Could not handle notification action %s for %s", action, entry.entry_id)
 
     entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_handle_mobile_action))
+
+    # Re-arm snoozes that were pending at shutdown; ones overdue by more than the snooze length are dropped.
+    snooze_due = runtime.noncycle_data.get("snooze_due")
+    for kind, due_iso in list(snooze_due.items()) if isinstance(snooze_due, dict) else []:
+        due_dt = dt_util.parse_datetime(str(due_iso))
+        remaining = (due_dt - dt_util.utcnow()).total_seconds() if due_dt else -NOTIFY_SNOOZE_SECONDS
+        if kind in snooze_senders and remaining > -NOTIFY_SNOOZE_SECONDS:
+            _arm_snooze(kind, max(remaining, 1))
+        else:
+            snooze_due.pop(kind, None)
 
     hass.data[DOMAIN][entry.entry_id] = runtime
 
@@ -4195,6 +4216,7 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         if clots_value != "yes":
             raise HomeAssistantError(f"Symptom field '{SYMPTOM_CLOT_SIZE}' can only be set when '{SYMPTOM_CLOTS}' is 'yes'.")
 
+    was_pill = existing is not None and existing.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
     if existing:
         merged = dict(existing)
         merged.update(next_symptom_data)
@@ -4222,6 +4244,21 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
 
     if save:
         await _async_save_and_notify(hass, runtime)
+        # Described in logbook.py; skipped for private profiles like EVENT_CYCLE_START_LOGGED.
+        if (
+            next_symptom_data.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
+            and not was_pill
+            and runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE
+        ):
+            hass.bus.async_fire(
+                EVENT_PILL_TAKEN,
+                {
+                    "entry_id": _entry_id_for_runtime(hass, runtime),
+                    "profile": runtime.profile,
+                    "friendly_name": runtime.friendly_name,
+                    "date": date_iso,
+                },
+            )
 
 
 async def _async_handle_remove_symptom(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -4678,7 +4715,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             horizon_months = ICS_HORIZON_MONTHS_DEFAULT
 
         # Build cycle model to get forecasts
-        from .model import build_cycle_model
+        from .model import build_cycle_model, next_checkup_due
         cycle_model = await hass.async_add_executor_job(
             build_cycle_model,
             matched_runtime.history,
@@ -4709,6 +4746,16 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             else DEFAULT_NOTIFY_PERIOD_LEAD_DAYS
         )
 
+        # Routine checkup due date; the ICS feed is a token-guarded capability URL, so no visibility gating (see ical.py).
+        checkup_due = next_checkup_due(
+            matched_runtime.symptom_history,
+            int(
+                matched_entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
+                if matched_entry is not None
+                else DEFAULT_CHECKUP_INTERVAL_MONTHS
+            ),
+        )
+
         ics_bytes = await hass.async_add_executor_job(
             generate_ics,
             matched_entry_id,
@@ -4718,6 +4765,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             horizon_months,
             hass.config.language,
             period_alarm_days_before,
+            checkup_due,
         )
 
         return Response(

@@ -47,31 +47,7 @@
           "onboarding_stage": "Étape d'intégration",
           "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
           "calendar_enabled": "Afficher l'entité calendrier du cycle",
-          "pregnancy_enabled": "Activer le mode grossesse",
-          "pre_menarche_enabled": "Activer le suivi pré-ménarche",
-          "menopause_enabled": "Activer le mode ménopause",
-          "postpartum_enabled": "Activer le mode post-partum",
-          "notifications_enabled": "Activer les notifications",
-          "notify_service": "Service de notification (optionnel)",
-          "notify_partner_service": "Service de notification partenaire (facultatif)",
-          "linked_person_entity_id": "Personne Home Assistant liée (optionnel)",
-          "visibility_level": "Niveau de visibilité",
-          "notify_period_enabled": "Notifier avant le début des règles",
-          "notify_period_lead_days": "Préavis règles (jours)",
-          "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
-          "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)",
-          "notify_time": "Heure des notifications",
-          "notify_log_reminder_enabled": "Rappel du soir pour saisir",
-          "notify_log_reminder_time": "Heure du rappel du soir",
-          "notify_pill_enabled": "Rappel de pilule",
-          "notify_pill_time": "Heure du rappel de pilule",
-          "notify_pill_followup_hours": "Rappel de pilule supplémentaire (heures)",
-          "pill_pause_days": "Pause de pilule (jours par plaquette)",
-          "notify_recap_enabled": "Bilan après chaque cycle",
-          "checkup_interval_months": "Intervalle du rappel de contrôle (mois)",
-          "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
-          "notify_ovulation_lead_days": "Préavis ovulation (jours)",
-          "temperature_unit": "Unité de saisie de la température basale"
+          "visibility_level": "Niveau de visibilité"
         },
         "data_description": {
           "period_duration_days": "Nombre de jours pendant lesquels les règles durent généralement (1 à 14).",
@@ -81,31 +57,91 @@
           "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant.",
           "calendar_enabled": "Crée une entité native calendar.<profil>_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
-          "pregnancy_enabled": "Active le mode de suivi de grossesse et affiche un écran de détails ensuite.",
-          "pre_menarche_enabled": "Suit les signes de puberté avant les premières règles (ménarche) et affiche un écran de détails ensuite.",
-          "menopause_enabled": "Active le mode de suivi de la ménopause et affiche un écran de détails ensuite.",
-          "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite.",
-          "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
-          "notify_service": "Cible de notification Home Assistant à utiliser. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut.",
-          "notify_partner_service": "Seconde cible de notification facultative (p. ex. le téléphone d'un partenaire) qui ne reçoit que les rappels de dates - règles, fenêtre de fertilité et ovulation - jamais les badges, symptômes ni autres données de santé. Rien n'est envoyé au niveau de visibilité « Privé » ; fenêtre de fertilité et ovulation uniquement au niveau « Complet ». Laisser vide pour désactiver.",
-          "linked_person_entity_id": "Lier ce profil à une personne existante (Paramètres → Personnes). Si cette personne a une photo enregistrée, l'application compagnon peut l'afficher comme photo de profil.",
-          "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel.",
-          "notify_period_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu des règles. Nécessite « Activer les notifications » ci-dessus.",
-          "notify_period_lead_days": "Combien de jours avant le début prévu des règles notifier (0–7). 1 (par défaut) signifie la veille, 0 signifie le jour même.",
-          "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
-          "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même.",
-          "notify_time": "Heure à laquelle les notifications de règles, de fenêtre de fertilité, d'ovulation et de badges sont envoyées (08:00 par défaut). Elles étaient auparavant envoyées juste après minuit. Prend effet dès l'enregistrement.",
-          "notify_log_reminder_enabled": "Envoie un rappel si rien (début de cycle ou symptômes) n'est encore enregistré pour aujourd'hui. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
-          "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
-          "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
-          "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
-          "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
-          "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7).",
-          "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
-          "checkup_interval_months": "Mois après le dernier rendez-vous gynécologique/frottis enregistré avant qu'un avis suggère un contrôle de routine. 0 = désactivé (par défaut 12). Ne concerne que les profils ayant enregistré un tel rendez-vous.",
-          "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
-          "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
-          "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA."
+          "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
+        },
+        "sections": {
+          "notifications": {
+            "name": "Notifications",
+            "description": "Quand et où les rappels sont envoyés.",
+            "data": {
+              "notifications_enabled": "Activer les notifications",
+              "notify_service": "Service de notification (optionnel)",
+              "notify_partner_service": "Service de notification partenaire (facultatif)",
+              "notify_time": "Heure des notifications",
+              "notify_period_enabled": "Notifier avant le début des règles",
+              "notify_period_lead_days": "Préavis règles (jours)",
+              "notify_fertile_enabled": "Notifier au début de la fenêtre de fertilité",
+              "notify_fertile_lead_days": "Préavis fenêtre de fertilité (jours)",
+              "notify_ovulation_enabled": "Notifier lorsque l'ovulation est estimée",
+              "notify_ovulation_lead_days": "Préavis ovulation (jours)",
+              "notify_log_reminder_enabled": "Rappel du soir pour saisir",
+              "notify_log_reminder_time": "Heure du rappel du soir",
+              "notify_recap_enabled": "Bilan après chaque cycle"
+            },
+            "data_description": {
+              "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
+              "notify_service": "Cible de notification Home Assistant à utiliser. Laissez vide pour utiliser une notification persistante (affichée dans l'interface HA) par défaut.",
+              "notify_partner_service": "Seconde cible de notification facultative (p. ex. le téléphone d'un partenaire) qui ne reçoit que les rappels de dates - règles, fenêtre de fertilité et ovulation - jamais les badges, symptômes ni autres données de santé. Rien n'est envoyé au niveau de visibilité « Privé » ; fenêtre de fertilité et ovulation uniquement au niveau « Complet ». Laisser vide pour désactiver.",
+              "notify_time": "Heure à laquelle les notifications de règles, de fenêtre de fertilité, d'ovulation et de badges sont envoyées (08:00 par défaut). Elles étaient auparavant envoyées juste après minuit. Prend effet dès l'enregistrement.",
+              "notify_period_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu des règles. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_period_lead_days": "Combien de jours avant le début prévu des règles notifier (0–7). 1 (par défaut) signifie la veille, 0 signifie le jour même.",
+              "notify_fertile_enabled": "Envoie une notification un nombre configurable de jours avant le début prévu de la fenêtre de fertilité. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_fertile_lead_days": "Combien de jours avant le début prévu de la fenêtre de fertilité notifier (0–7). 0 (par défaut) signifie le jour même.",
+              "notify_ovulation_enabled": "Envoie une notification un nombre configurable de jours avant le jour d'ovulation estimé. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_ovulation_lead_days": "Combien de jours avant le jour d'ovulation estimé notifier (0–7). 0 (par défaut) signifie le jour même.",
+              "notify_log_reminder_enabled": "Envoie un rappel si rien (début de cycle ou symptômes) n'est encore enregistré pour aujourd'hui. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_log_reminder_time": "Heure du rappel de saisie du soir (20:00 par défaut).",
+              "notify_recap_enabled": "Envoie un court bilan (durée du cycle et des règles) dès qu'un nouveau début de cycle est enregistré. Uniquement vers la cible de notification de ce profil. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus."
+            }
+          },
+          "pill": {
+            "name": "Pilule",
+            "description": "Rappel quotidien, rappel supplémentaire et pause entre plaquettes.",
+            "data": {
+              "notify_pill_enabled": "Rappel de pilule",
+              "notify_pill_time": "Heure du rappel de pilule",
+              "notify_pill_followup_hours": "Rappel de pilule supplémentaire (heures)",
+              "pill_pause_days": "Pause de pilule (jours par plaquette)"
+            },
+            "data_description": {
+              "notify_pill_enabled": "Envoie chaque jour un rappel avec un bouton « Pilule prise » (cibles application mobile) tant que la pilule est la méthode de contraception actuelle du profil. Appuyer sur le bouton enregistre la prise du jour, et aucun rappel n'est envoyé une fois la pilule du jour enregistrée. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
+              "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
+              "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
+              "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7)."
+            }
+          },
+          "tracking": {
+            "name": "Suivi et intégrations",
+            "description": "Unité de température, capteurs liés et rappel de contrôle.",
+            "data": {
+              "temperature_unit": "Unité de saisie de la température basale",
+              "basal_temp_sensor_entity_id": "Capteur de température basale",
+              "checkup_interval_months": "Intervalle du rappel de contrôle (mois)",
+              "linked_person_entity_id": "Personne Home Assistant liée (optionnel)"
+            },
+            "data_description": {
+              "temperature_unit": "Unité dans laquelle les valeurs basal_temp sont interprétées lors de l'appel du service log_symptoms/add_symptom. Le stockage reste toujours en Celsius — Home Assistant affiche automatiquement la valeur dans l'unité configurée pour votre instance HA.",
+              "basal_temp_sensor_entity_id": "Capteur de température optionnel (p. ex. un thermomètre connecté). Sa valeur est importée comme température basale du jour au démarrage de l'intégration et à minuit ; une valeur saisie par vous n'est jamais écrasée.",
+              "checkup_interval_months": "Mois après le dernier rendez-vous gynécologique/frottis enregistré avant qu'un avis suggère un contrôle de routine. 0 = désactivé (par défaut 12). Ne concerne que les profils ayant enregistré un tel rendez-vous.",
+              "linked_person_entity_id": "Lier ce profil à une personne existante (Paramètres → Personnes). Si cette personne a une photo enregistrée, l'application compagnon peut l'afficher comme photo de profil."
+            }
+          },
+          "life_stages": {
+            "name": "Phases de vie",
+            "description": "Activez une phase de vie pour la configurer à l'étape suivante.",
+            "data": {
+              "pregnancy_enabled": "Activer le mode grossesse",
+              "pre_menarche_enabled": "Activer le suivi pré-ménarche",
+              "menopause_enabled": "Activer le mode ménopause",
+              "postpartum_enabled": "Activer le mode post-partum"
+            },
+            "data_description": {
+              "pregnancy_enabled": "Active le mode de suivi de grossesse et affiche un écran de détails ensuite.",
+              "pre_menarche_enabled": "Suit les signes de puberté avant les premières règles (ménarche) et affiche un écran de détails ensuite.",
+              "menopause_enabled": "Active le mode de suivi de la ménopause et affiche un écran de détails ensuite.",
+              "postpartum_enabled": "Active le mode de suivi post-partum et affiche un écran de détails ensuite."
+            }
+          }
         }
       },
       "pregnancy": {

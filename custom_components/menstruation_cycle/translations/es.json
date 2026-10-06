@@ -47,31 +47,7 @@
           "onboarding_stage": "Etapa de incorporación",
           "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral",
           "calendar_enabled": "Mostrar la entidad de calendario del ciclo",
-          "pregnancy_enabled": "Activar modo embarazo",
-          "pre_menarche_enabled": "Activar seguimiento pre-menarquia",
-          "menopause_enabled": "Activar modo menopausia",
-          "postpartum_enabled": "Activar modo posparto",
-          "notifications_enabled": "Activar notificaciones",
-          "notify_service": "Servicio de notificación (opcional)",
-          "notify_partner_service": "Servicio de notificación para la pareja (opcional)",
-          "linked_person_entity_id": "Persona vinculada de Home Assistant (opcional)",
-          "visibility_level": "Nivel de visibilidad",
-          "notify_period_enabled": "Avisar antes de que comience la menstruación",
-          "notify_period_lead_days": "Antelación de aviso de menstruación (días)",
-          "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
-          "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)",
-          "notify_time": "Hora de las notificaciones",
-          "notify_log_reminder_enabled": "Recordatorio nocturno para registrar",
-          "notify_log_reminder_time": "Hora del recordatorio nocturno",
-          "notify_pill_enabled": "Recordatorio de la píldora",
-          "notify_pill_time": "Hora del recordatorio de la píldora",
-          "notify_pill_followup_hours": "Segundo recordatorio de la píldora (horas)",
-          "pill_pause_days": "Descanso de la píldora (días por envase)",
-          "notify_recap_enabled": "Resumen tras cada ciclo",
-          "checkup_interval_months": "Intervalo del recordatorio de revisión (meses)",
-          "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
-          "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
-          "temperature_unit": "Unidad de entrada de temperatura basal"
+          "visibility_level": "Nivel de visibilidad"
         },
         "data_description": {
           "period_duration_days": "Número de días que suele durar la menstruación (1 a 14).",
@@ -81,31 +57,91 @@
           "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
           "calendar_enabled": "Crea una entidad nativa calendar.<perfil>_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
-          "pregnancy_enabled": "Activa el modo de seguimiento del embarazo y muestra a continuación una pantalla de detalles.",
-          "pre_menarche_enabled": "Realiza un seguimiento de los signos de la pubertad antes de la primera menstruación (menarquia) y muestra a continuación una pantalla de detalles.",
-          "menopause_enabled": "Activa el modo de seguimiento de la menopausia y muestra a continuación una pantalla de detalles.",
-          "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles.",
-          "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
-          "notify_service": "Objetivo de notificación de Home Assistant a usar. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto.",
-          "notify_partner_service": "Segundo destino de notificación opcional (p. ej. el móvil de la pareja) que recibe solo los recordatorios de fechas - regla, ventana fértil y ovulación - nunca insignias, síntomas ni otros datos de salud. No se envía nada con el nivel de visibilidad «Privado»; ventana fértil y ovulación solo con «Completo». Déjalo vacío para desactivarlo.",
-          "linked_person_entity_id": "Vincula este perfil con una persona existente (Ajustes → Personas). Si esa persona tiene una foto guardada, la app complementaria puede mostrarla como imagen de perfil.",
-          "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada.",
-          "notify_period_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la menstruación. Requiere 'Activar notificaciones' más arriba.",
-          "notify_period_lead_days": "Con cuántos días de antelación al inicio previsto de la menstruación avisar (0–7). 1 (predeterminado) significa el día anterior, 0 significa el mismo día.",
-          "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
-          "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día.",
-          "notify_time": "Hora del día a la que se envían las notificaciones de regla, ventana fértil, ovulación e insignias (08:00 por defecto). Antes se enviaban justo después de medianoche. Surte efecto al guardar.",
-          "notify_log_reminder_enabled": "Envía un recordatorio si todavía no hay nada (inicio de ciclo o síntomas) registrado para hoy. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
-          "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
-          "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
-          "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
-          "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
-          "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7).",
-          "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
-          "checkup_interval_months": "Meses tras la última cita ginecológica/citología registrada antes de que un aviso sugiera una revisión de rutina. 0 = desactivado (por defecto 12). Solo para perfiles que registraron una cita así.",
-          "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
-          "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
-          "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA."
+          "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
+        },
+        "sections": {
+          "notifications": {
+            "name": "Notificaciones",
+            "description": "Cuándo y dónde se envían los recordatorios.",
+            "data": {
+              "notifications_enabled": "Activar notificaciones",
+              "notify_service": "Servicio de notificación (opcional)",
+              "notify_partner_service": "Servicio de notificación para la pareja (opcional)",
+              "notify_time": "Hora de las notificaciones",
+              "notify_period_enabled": "Avisar antes de que comience la menstruación",
+              "notify_period_lead_days": "Antelación de aviso de menstruación (días)",
+              "notify_fertile_enabled": "Avisar cuando comience la ventana fértil",
+              "notify_fertile_lead_days": "Antelación de aviso de ventana fértil (días)",
+              "notify_ovulation_enabled": "Avisar cuando se estime la ovulación",
+              "notify_ovulation_lead_days": "Antelación de aviso de ovulación (días)",
+              "notify_log_reminder_enabled": "Recordatorio nocturno para registrar",
+              "notify_log_reminder_time": "Hora del recordatorio nocturno",
+              "notify_recap_enabled": "Resumen tras cada ciclo"
+            },
+            "data_description": {
+              "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
+              "notify_service": "Objetivo de notificación de Home Assistant a usar. Déjalo vacío para usar una notificación persistente (mostrada en la interfaz de HA) por defecto.",
+              "notify_partner_service": "Segundo destino de notificación opcional (p. ej. el móvil de la pareja) que recibe solo los recordatorios de fechas - regla, ventana fértil y ovulación - nunca insignias, síntomas ni otros datos de salud. No se envía nada con el nivel de visibilidad «Privado»; ventana fértil y ovulación solo con «Completo». Déjalo vacío para desactivarlo.",
+              "notify_time": "Hora del día a la que se envían las notificaciones de regla, ventana fértil, ovulación e insignias (08:00 por defecto). Antes se enviaban justo después de medianoche. Surte efecto al guardar.",
+              "notify_period_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la menstruación. Requiere 'Activar notificaciones' más arriba.",
+              "notify_period_lead_days": "Con cuántos días de antelación al inicio previsto de la menstruación avisar (0–7). 1 (predeterminado) significa el día anterior, 0 significa el mismo día.",
+              "notify_fertile_enabled": "Envía un aviso un número configurable de días antes de que se prevea que comience la ventana fértil. Requiere 'Activar notificaciones' más arriba.",
+              "notify_fertile_lead_days": "Con cuántos días de antelación al inicio previsto de la ventana fértil avisar (0–7). 0 (predeterminado) significa el mismo día.",
+              "notify_ovulation_enabled": "Envía una notificación un número configurable de días antes del día de ovulación estimado. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+              "notify_ovulation_lead_days": "Con cuántos días de antelación al día de ovulación estimado avisar (0–7). 0 (predeterminado) significa el mismo día.",
+              "notify_log_reminder_enabled": "Envía un recordatorio si todavía no hay nada (inicio de ciclo o síntomas) registrado para hoy. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
+              "notify_log_reminder_time": "Hora del recordatorio nocturno de registro (20:00 por defecto).",
+              "notify_recap_enabled": "Envía un breve resumen (duración del ciclo y de la menstruación) cuando se registra un nuevo inicio de ciclo. Solo al destino de notificación de este perfil. Desactivado por defecto. Requiere 'Activar notificaciones' arriba."
+            }
+          },
+          "pill": {
+            "name": "Píldora",
+            "description": "Recordatorio diario, segundo aviso y descanso entre envases.",
+            "data": {
+              "notify_pill_enabled": "Recordatorio de la píldora",
+              "notify_pill_time": "Hora del recordatorio de la píldora",
+              "notify_pill_followup_hours": "Segundo recordatorio de la píldora (horas)",
+              "pill_pause_days": "Descanso de la píldora (días por envase)"
+            },
+            "data_description": {
+              "notify_pill_enabled": "Envía cada día un recordatorio con un botón 'Píldora tomada' (destinos de la app móvil) mientras la píldora sea el método anticonceptivo actual del perfil. Al pulsar el botón se registra la toma de hoy, y no se envía recordatorio una vez registrada la píldora de hoy. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+              "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
+              "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
+              "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7)."
+            }
+          },
+          "tracking": {
+            "name": "Seguimiento e integraciones",
+            "description": "Unidad de temperatura, sensores vinculados y recordatorio de revisión.",
+            "data": {
+              "temperature_unit": "Unidad de entrada de temperatura basal",
+              "basal_temp_sensor_entity_id": "Sensor de temperatura basal",
+              "checkup_interval_months": "Intervalo del recordatorio de revisión (meses)",
+              "linked_person_entity_id": "Persona vinculada de Home Assistant (opcional)"
+            },
+            "data_description": {
+              "temperature_unit": "Unidad en la que se interpretan los valores de basal_temp al usar el servicio log_symptoms/add_symptom. El almacenamiento siempre permanece en Celsius — Home Assistant muestra automáticamente el valor en la unidad configurada para tu instancia de HA.",
+              "basal_temp_sensor_entity_id": "Sensor de temperatura opcional (p. ej. un termómetro inteligente). Su lectura se importa como temperatura basal de hoy al iniciar la integración y a medianoche; un valor registrado por ti nunca se sobrescribe.",
+              "checkup_interval_months": "Meses tras la última cita ginecológica/citología registrada antes de que un aviso sugiera una revisión de rutina. 0 = desactivado (por defecto 12). Solo para perfiles que registraron una cita así.",
+              "linked_person_entity_id": "Vincula este perfil con una persona existente (Ajustes → Personas). Si esa persona tiene una foto guardada, la app complementaria puede mostrarla como imagen de perfil."
+            }
+          },
+          "life_stages": {
+            "name": "Etapas de la vida",
+            "description": "Activa una etapa para configurarla en el siguiente paso.",
+            "data": {
+              "pregnancy_enabled": "Activar modo embarazo",
+              "pre_menarche_enabled": "Activar seguimiento pre-menarquia",
+              "menopause_enabled": "Activar modo menopausia",
+              "postpartum_enabled": "Activar modo posparto"
+            },
+            "data_description": {
+              "pregnancy_enabled": "Activa el modo de seguimiento del embarazo y muestra a continuación una pantalla de detalles.",
+              "pre_menarche_enabled": "Realiza un seguimiento de los signos de la pubertad antes de la primera menstruación (menarquia) y muestra a continuación una pantalla de detalles.",
+              "menopause_enabled": "Activa el modo de seguimiento de la menopausia y muestra a continuación una pantalla de detalles.",
+              "postpartum_enabled": "Activa el modo de seguimiento posparto y muestra a continuación una pantalla de detalles."
+            }
+          }
         }
       },
       "pregnancy": {

@@ -7,7 +7,7 @@ from datetime import date, datetime
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.data_entry_flow import FlowResult, section
 from homeassistant.helpers import selector
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import slugify
@@ -361,6 +361,55 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
 
+# Collapsible groups of the options form; fields not listed here stay at the top level.
+_OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
+    "notifications": (
+        CONF_NOTIFICATIONS_ENABLED,
+        CONF_NOTIFY_SERVICE,
+        CONF_NOTIFY_PARTNER_SERVICE,
+        CONF_NOTIFY_TIME,
+        CONF_NOTIFY_PERIOD_ENABLED,
+        CONF_NOTIFY_PERIOD_LEAD_DAYS,
+        CONF_NOTIFY_FERTILE_ENABLED,
+        CONF_NOTIFY_FERTILE_LEAD_DAYS,
+        CONF_NOTIFY_OVULATION_ENABLED,
+        CONF_NOTIFY_OVULATION_LEAD_DAYS,
+        CONF_NOTIFY_LOG_REMINDER_ENABLED,
+        CONF_NOTIFY_LOG_REMINDER_TIME,
+        CONF_NOTIFY_RECAP_ENABLED,
+    ),
+    "pill": (
+        CONF_NOTIFY_PILL_ENABLED,
+        CONF_NOTIFY_PILL_TIME,
+        CONF_NOTIFY_PILL_FOLLOWUP_HOURS,
+        CONF_PILL_PAUSE_DAYS,
+    ),
+    "tracking": (
+        CONF_TEMPERATURE_UNIT,
+        CONF_BASAL_TEMP_SENSOR_ENTITY_ID,
+        CONF_CHECKUP_INTERVAL_MONTHS,
+        CONF_LINKED_PERSON_ENTITY_ID,
+    ),
+    "life_stages": (
+        CONF_PREGNANCY_ENABLED,
+        CONF_PRE_MENARCHE_ENABLED,
+        CONF_MENOPAUSE_ENABLED,
+        CONF_POSTPARTUM_ENABLED,
+    ),
+}
+
+
+def _flatten_sections(user_input: dict) -> dict:
+    """Flatten the options form's section dicts into one flat dict (the parsing below expects flat keys)."""
+    flat: dict = {}
+    for key, value in user_input.items():
+        if isinstance(value, dict):
+            flat.update(value)
+        else:
+            flat[key] = value
+    return flat
+
+
 class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
     """Handle options for menstruation gauge, as a short multi-step wizard.
 
@@ -666,6 +715,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            user_input = _flatten_sections(user_input)
             birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
             birth_date_parsed = _parse_date_opt(birth_date_raw)
             if birth_date_parsed is _INVALID_DATE_SENTINEL:
@@ -956,7 +1006,18 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_POSTPARTUM_ENABLED, default=bool(c["noncycle_data"].get("is_postpartum", False))): bool,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+        # Group the flat schema into collapsed sections (the options form has ~40 fields).
+        grouped: dict = {
+            key: field
+            for key, field in schema.schema.items()
+            if not any(key.schema in names for names in _OPTION_SECTIONS.values())
+        }
+        for section_key, names in _OPTION_SECTIONS.items():
+            grouped[vol.Required(section_key)] = section(
+                vol.Schema({key: field for key, field in schema.schema.items() if key.schema in names}),
+                {"collapsed": True},
+            )
+        return self.async_show_form(step_id="init", data_schema=vol.Schema(grouped), errors=errors)
 
     # ------------------------------------------------------------------
     # Step 2 (conditional): pregnancy
