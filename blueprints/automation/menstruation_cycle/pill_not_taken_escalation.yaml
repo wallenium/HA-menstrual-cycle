@@ -1,0 +1,70 @@
+blueprint:
+  name: Menstruation Cycle - Pill not taken escalation
+  description: >
+    Runs your own actions (a speaker announcement, a blinking light, a second
+    person's phone, ...) when the pill is still not logged for today at a
+    chosen time. The integration's own pill reminder and the "Pill taken"
+    button only notify the profile's own target - this is for anyone who
+    wants a louder fallback. Only triggers while the pill is the profile's
+    current contraception method, and optionally stays quiet during the
+    pack break.
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/custom_components/menstruation_cycle/blueprints/automation/menstruation_cycle/pill_not_taken_escalation.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    check_time:
+      name: Check time
+      description: When to check whether today's pill is logged.
+      default: "21:00:00"
+      selector:
+        time: {}
+    pause_days:
+      name: Pill break (days per pack)
+      description: >
+        Same value as the integration's "Pill break" option. After a full
+        pill run, no escalation happens during this many days. 0 = continuous use.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 7
+          mode: box
+    escalation_actions:
+      name: Actions
+      description: What to run when the pill is still not logged. The variable "profile" holds the profile name.
+      selector:
+        action: {}
+
+trigger:
+  - platform: time
+    at: !input check_time
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+  pause_days: !input pause_days
+
+condition:
+  - condition: template
+    value_template: >
+      {% set status = state_attr(cycle_sensor, 'contraception_status') %}
+      {% if status and status.current_method == 'pill' %}
+        {% set last = status.pill_last_taken %}
+        {% set since = (now().date() - as_datetime(last).date()).days if last else none %}
+        {% set in_break = (pause_days | int) > 0 and since is not none
+           and (status.pill_last_run_days | int(0)) >= 21 and 0 < since <= (pause_days | int) %}
+        {{ since != 0 and not in_break }}
+      {% else %}
+        false
+      {% endif %}
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+
+action: !input escalation_actions
