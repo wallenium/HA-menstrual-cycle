@@ -58,7 +58,7 @@ from .const import (
     VISIBILITY_LEVEL_STATUS_ONLY,
     menstruation_object_ids_for_profile,
 )
-from .ical import _ics_strings
+from .ical import _ics_strings, collect_extra_events
 from .model import build_cycle_model, next_checkup_due, project_range_windows
 from .sensor import _device_info_for_entry
 
@@ -175,7 +175,8 @@ class MenstruationCycleCalendar(CalendarEntity):
             runtime.symptom_history,
             int(self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
         )
-        self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due)
+        extra = collect_extra_events(self._entry.options, runtime, cycle_model.due_date, self.hass.config.language, today)
+        self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due, extra)
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
@@ -212,6 +213,7 @@ def _build_events(
     lang: str | None,
     visibility_level: str = VISIBILITY_LEVEL_FULL,
     checkup_due: date | None = None,
+    extra_events: list[tuple[str, date, str]] | None = None,
 ) -> list[CalendarEvent]:
     """Turn project_range_windows()'s output into CalendarEvent objects.
 
@@ -245,6 +247,13 @@ def _build_events(
                 uid=f"checkup-{checkup_due.isoformat()}",
             )
         )
+
+    # Opt-in pregnancy / contraception dates; health details, so full visibility only (like the checkup).
+    if visibility_level == VISIBILITY_LEVEL_FULL:
+        for kind, day, summary in extra_events or []:
+            events.append(
+                CalendarEvent(start=day, end=day + timedelta(days=1), summary=summary, uid=f"{kind}-{day.isoformat()}")
+            )
 
     for window in windows.get("period_windows", []):
         try:

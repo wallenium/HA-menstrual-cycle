@@ -24,6 +24,7 @@ from .const import (
     ICS_TOKEN_STALE_DAYS,
     PERIOD_OVERDUE_DAYS,
     PERIOD_PROLONGED_DAYS,
+    PREGNANCY_OVERDUE_REPAIR_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
@@ -434,6 +435,67 @@ def async_check_hospital_bag_incomplete(
     async_create_hospital_bag_incomplete_issue(
         hass, entry_id, entry_title, due_date, max(days_until_due, 0), remaining_items
     )
+
+
+def async_create_pregnancy_overdue_issue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    due_date: str,
+    days_overdue: int,
+) -> None:
+    """Create a repair issue asking whether pregnancy mode should be ended.
+
+    Informational only (not fixable): ending pregnancy mode / starting the
+    postpartum phase is a service call the user makes themselves.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"pregnancy_overdue_{entry_id}",
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="pregnancy_overdue",
+        translation_placeholders={
+            "entry_title": entry_title,
+            "due_date": due_date,
+            "days_overdue": str(days_overdue),
+        },
+    )
+
+
+def async_delete_pregnancy_overdue_issue(hass: HomeAssistant, entry_id: str) -> None:
+    """Delete the pregnancy-overdue repair issue."""
+    async_delete_issue(hass, DOMAIN, f"pregnancy_overdue_{entry_id}")
+
+
+def async_check_pregnancy_overdue(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    is_pregnant: bool,
+    due_date: str | None,
+    today: date | None = None,
+) -> None:
+    """Raise (or clear) the "end pregnancy mode?" issue.
+
+    Raised once is_pregnant is still true PREGNANCY_OVERDUE_REPAIR_DAYS or
+    more days after the due date; cleared otherwise (idempotent).
+    """
+    if not is_pregnant or not due_date:
+        async_delete_pregnancy_overdue_issue(hass, entry_id)
+        return
+    try:
+        due = date.fromisoformat(due_date)
+    except ValueError:
+        async_delete_pregnancy_overdue_issue(hass, entry_id)
+        return
+    days_overdue = ((today or date.today()) - due).days
+    if days_overdue < PREGNANCY_OVERDUE_REPAIR_DAYS:
+        async_delete_pregnancy_overdue_issue(hass, entry_id)
+        return
+    async_create_pregnancy_overdue_issue(hass, entry_id, entry_title, due_date, days_overdue)
 
 
 def async_create_storage_integrity_issue(

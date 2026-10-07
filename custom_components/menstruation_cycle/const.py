@@ -160,6 +160,16 @@ CONF_NOTIFY_UNPROTECTED_HINT = "notify_unprotected_hint"
 DEFAULT_NOTIFY_UNPROTECTED_HINT = False
 # Days back in which a newly logged "unprotected" entry still triggers that hint (older entries are back-filling).
 UNPROTECTED_HINT_MAX_DAYS = 5
+# Weekly "week N" message (same weekday as the pregnancy start, trimester text on week 14 and 28) while pregnancy mode is on.
+CONF_NOTIFY_PREGNANCY_UPDATES = "notify_pregnancy_updates"
+DEFAULT_NOTIFY_PREGNANCY_UPDATES = False
+# Days since the pregnancy start at which the 2nd (14+0) and 3rd (28+0) trimester begin.
+PREGNANCY_TRIMESTER_START_DAYS = (98, 196)
+# Extra all-day events in the cycle calendar and the ICS feed (both off by default: the feed is shared by token, e.g. with a partner).
+CONF_CALENDAR_PREGNANCY_EVENTS = "calendar_pregnancy_events"
+DEFAULT_CALENDAR_PREGNANCY_EVENTS = False
+CONF_CALENDAR_CONTRACEPTION_EVENTS = "calendar_contraception_events"
+DEFAULT_CALENDAR_CONTRACEPTION_EVENTS = False
 # To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
 PILL_REFILL_LEAD_DAYS = 5
 # "Remind me in 1 hour" button on the pill and evening log reminders (in-memory timer).
@@ -474,6 +484,12 @@ ICS_TOKEN_STALE_DAYS = 365
 # guidance point (~week 36-37), not the due date itself, since packing early
 # is the whole point of the reminder.
 HOSPITAL_BAG_REMINDER_DAYS_BEFORE_DUE = 21
+
+# Days after the computed due date at which
+# repairs.py::async_check_pregnancy_overdue asks whether pregnancy mode should
+# be ended (or postpartum started) - the week counter would otherwise keep
+# growing indefinitely, as nothing else ends pregnancy mode automatically.
+PREGNANCY_OVERDUE_REPAIR_DAYS = 14
 
 # Score below which repairs.py::async_check_low_wellness_score raises a repair issue
 WELLNESS_SCORE_LOW_THRESHOLD = 40

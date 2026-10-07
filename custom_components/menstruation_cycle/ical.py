@@ -6,8 +6,24 @@ import hashlib
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from .const import ICS_HORIZON_MONTHS_DEFAULT, ICS_HORIZON_MONTHS_MAX
-from .model import project_range_windows
+from .const import (
+    CONF_CALENDAR_CONTRACEPTION_EVENTS,
+    CONF_CALENDAR_PREGNANCY_EVENTS,
+    CONF_PILL_PAUSE_DAYS,
+    CONTRACEPTION_METHOD_PILL,
+    DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
+    DEFAULT_CALENDAR_PREGNANCY_EVENTS,
+    DEFAULT_PILL_PAUSE_DAYS,
+    ICS_HORIZON_MONTHS_DEFAULT,
+    ICS_HORIZON_MONTHS_MAX,
+    NONCYCLE_CONTRACEPTION_RENEWED,
+)
+from .model import (
+    compute_contraception_status,
+    contraception_rhythm_schedule,
+    pill_pack_end,
+    project_range_windows,
+)
 
 _PRODID = "-//menstruation_cycle//HA Menstrual Cycle//EN"
 
@@ -24,6 +40,14 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "fertile_window": "Fertile window (predicted)",
         "ovulation": "Ovulation (predicted)",
         "checkup": "Routine checkup due",
+        "pregnancy_due": "Due date (calculated)",
+        "contraception_renewal": "Contraception: renewal due",
+        "pill_pack_end": "Pill pack ends",
+        "patch_change": "Change patch",
+        "patch_remove": "Remove patch",
+        "patch_new": "Apply new patch",
+        "ring_remove": "Remove ring",
+        "ring_insert": "Insert new ring",
         "source_predicted": "Source: predicted",
         "source_prefix": "Source",
         "confidence": "confidence",
@@ -34,6 +58,14 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "fertile_window": "Fruchtbares Fenster (vorhergesagt)",
         "ovulation": "Eisprung (vorhergesagt)",
         "checkup": "Routine-Vorsorge fällig",
+        "pregnancy_due": "Entbindungstermin (berechnet)",
+        "contraception_renewal": "Verhütung: Erneuerung fällig",
+        "pill_pack_end": "Pillenpackung endet",
+        "patch_change": "Pflaster wechseln",
+        "patch_remove": "Pflaster entfernen",
+        "patch_new": "Neues Pflaster aufkleben",
+        "ring_remove": "Ring entfernen",
+        "ring_insert": "Neuen Ring einsetzen",
         "source_predicted": "Quelle: Vorhersage",
         "source_prefix": "Quelle",
         "confidence": "Konfidenz",
@@ -44,6 +76,14 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "fertile_window": "Fenêtre de fertilité (prévu)",
         "ovulation": "Ovulation (prévu)",
         "checkup": "Contrôle de routine à prévoir",
+        "pregnancy_due": "Date prévue d'accouchement (calculée)",
+        "contraception_renewal": "Contraception : renouvellement à prévoir",
+        "pill_pack_end": "Fin de la plaquette de pilule",
+        "patch_change": "Changer le patch",
+        "patch_remove": "Retirer le patch",
+        "patch_new": "Poser un nouveau patch",
+        "ring_remove": "Retirer l'anneau",
+        "ring_insert": "Insérer un nouvel anneau",
         "source_predicted": "Source : prévision",
         "source_prefix": "Source",
         "confidence": "confiance",
@@ -54,6 +94,14 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "fertile_window": "Ventana fértil (previsto)",
         "ovulation": "Ovulación (previsto)",
         "checkup": "Revisión de rutina pendiente",
+        "pregnancy_due": "Fecha prevista de parto (calculada)",
+        "contraception_renewal": "Anticoncepción: renovación pendiente",
+        "pill_pack_end": "Fin del envase de la píldora",
+        "patch_change": "Cambiar el parche",
+        "patch_remove": "Quitar el parche",
+        "patch_new": "Poner un parche nuevo",
+        "ring_remove": "Quitar el anillo",
+        "ring_insert": "Colocar un anillo nuevo",
         "source_predicted": "Fuente: predicción",
         "source_prefix": "Fuente",
         "confidence": "confianza",
@@ -64,6 +112,14 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "fertile_window": "Fertilt fönster (förutspått)",
         "ovulation": "Ägglossning (förutspått)",
         "checkup": "Rutinkontroll aktuell",
+        "pregnancy_due": "Beräknat förlossningsdatum",
+        "contraception_renewal": "Preventivmedel: förnyelse aktuell",
+        "pill_pack_end": "P-pillerkartan tar slut",
+        "patch_change": "Byt plåster",
+        "patch_remove": "Ta bort plåstret",
+        "patch_new": "Sätt på nytt plåster",
+        "ring_remove": "Ta bort ringen",
+        "ring_insert": "Sätt in ny ring",
         "source_predicted": "Källa: prognos",
         "source_prefix": "Källa",
         "confidence": "konfidens",
@@ -77,6 +133,41 @@ def _ics_strings(lang: str | None) -> dict[str, str]:
     letters, so regional variants (e.g. "de-AT", "en-GB") still match."""
     key = str(lang or "en").strip().lower()[:2]
     return _ICS_STRINGS.get(key, _ICS_STRINGS["en"])
+
+
+def collect_extra_events(
+    options: Any,
+    runtime: Any,
+    due_date: str | None,
+    lang: str | None,
+    today: date,
+) -> list[tuple[str, date, str]]:
+    """Opt-in all-day events for the calendar entity and the ICS feed: (kind, day, summary).
+
+    Pregnancy due date (only while pregnancy mode is on) and contraception dates (renewal due, end of the pill
+    pack, next patch/ring steps) each follow their own option and are off by default. Summaries stay generic
+    (no method name) because the ICS feed is shared via token.
+    """
+    strings = _ics_strings(lang)
+    events: list[tuple[str, date, str]] = []
+    if options.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS) and due_date and runtime.pregnancy_data.get("is_pregnant"):
+        try:
+            events.append(("pregnancy_due", date.fromisoformat(due_date), strings["pregnancy_due"]))
+        except ValueError:
+            pass
+    if options.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS):
+        status = compute_contraception_status(
+            runtime.symptom_history, today=today, renewed=runtime.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED)
+        )
+        if status["renewal_due_date"]:
+            events.append(("contraception_renewal", date.fromisoformat(status["renewal_due_date"]), strings["contraception_renewal"]))
+        if status["current_method"] == CONTRACEPTION_METHOD_PILL:
+            end = pill_pack_end(status, int(options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
+            if end is not None:
+                events.append(("pill_pack_end", end, strings["pill_pack_end"]))
+        for day, event in contraception_rhythm_schedule(status, today):
+            events.append((event, day, strings[event]))
+    return events
 
 
 def _format_date(d: date) -> str:
@@ -169,6 +260,7 @@ def generate_ics(
     period_alarm_days_before: int | None = None,
     checkup_due: date | None = None,
     today: date | None = None,
+    extra_events: list[tuple[str, date, str]] | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -219,6 +311,19 @@ def generate_ics(
                 summary=strings["checkup"],
                 start=checkup_due,
                 end_exclusive=checkup_due + timedelta(days=1),
+            )
+        )
+
+    for kind, day, summary in extra_events or []:
+        if day > range_end:
+            continue
+        lines.extend(
+            _vevent_lines(
+                uid=_deterministic_uid(entry_id, kind, day.isoformat()),
+                dtstamp=dtstamp,
+                summary=summary,
+                start=day,
+                end_exclusive=day + timedelta(days=1),
             )
         )
 

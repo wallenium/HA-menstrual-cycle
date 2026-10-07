@@ -47,6 +47,8 @@
           "onboarding_stage": "Etapa de incorporación",
           "dashboard_enabled": "Mostrar el panel del ciclo en la barra lateral",
           "calendar_enabled": "Mostrar la entidad de calendario del ciclo",
+          "calendar_pregnancy_events": "Calendario: fecha prevista de parto",
+          "calendar_contraception_events": "Calendario: fechas de anticoncepción",
           "visibility_level": "Nivel de visibilidad"
         },
         "data_description": {
@@ -56,6 +58,8 @@
           "onboarding_stage": "Elige pre-menarquia, fase de aprendizaje temprana tras la menarquia, o ciclo establecido.",
           "dashboard_enabled": "Añade una página opcional y dedicada del panel del ciclo a la barra lateral de Home Assistant.",
           "calendar_enabled": "Crea una entidad nativa calendar.PERFIL_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
+          "calendar_pregnancy_events": "Añade la fecha prevista de parto calculada como evento de día completo al calendario del ciclo y al feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
+          "calendar_contraception_events": "Añade las fechas de renovación (DIU, implante, inyección), el final del envase de la píldora y los próximos pasos del parche/anillo al calendario del ciclo y al feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
         },
@@ -80,7 +84,8 @@
               "notify_overdue_enabled": "Avisar si la menstruación se retrasa",
               "notify_checkup_enabled": "Avisar antes de una revisión",
               "notify_fertile_mute_hormonal": "Sin avisos de fertilidad con anticoncepción hormonal",
-              "notify_unprotected_hint": "Aviso tras relaciones sin protección"
+              "notify_unprotected_hint": "Aviso tras relaciones sin protección",
+              "notify_pregnancy_updates": "Mensaje semanal de embarazo"
             },
             "data_description": {
               "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
@@ -99,7 +104,8 @@
               "notify_overdue_enabled": "Envía un aviso cuando la menstruación lleva 7 días de retraso sobre el inicio previsto y no está registrada (mismo umbral que el aviso de reparación), con un botón «Menstruación iniciada». No mientras la predicción sea poco fiable. Solo al destino de este perfil. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
               "notify_checkup_enabled": "Envía un aviso 14 días antes de la próxima revisión (última revisión registrada más el intervalo de abajo), o una vez si ya está vencida. Requiere un intervalo mayor que 0. Desactivado por defecto. Requiere «Activar notificaciones» arriba.",
               "notify_fertile_mute_hormonal": "Omite los avisos de ventana fértil y de ovulación mientras el método anticonceptivo actual sea hormonal (píldora, DIU hormonal, implante, parche, anillo, inyección), porque el ciclo suele estar suprimido. El estado del sensor y el panel no cambian. Desactivado por defecto.",
-              "notify_unprotected_hint": "Si se registra una relación sin protección para hoy o alguno de los últimos 5 días, se envía un aviso neutral: si no se desea un embarazo, una farmacia o un médico pueden orientar sobre la anticoncepción de emergencia, cuanto antes mejor. Sin dosis ni consejo médico. No se envía durante el embarazo ni la menopausia. Desactivado por defecto. Requiere 'Activar notificaciones' arriba."
+              "notify_unprotected_hint": "Si se registra una relación sin protección para hoy o alguno de los últimos 5 días, se envía un aviso neutral: si no se desea un embarazo, una farmacia o un médico pueden orientar sobre la anticoncepción de emergencia, cuanto antes mejor. Sin dosis ni consejo médico. No se envía durante el embarazo ni la menopausia. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
+              "notify_pregnancy_updates": "Mientras el modo embarazo está activo, envía una vez por semana (el día de la semana del inicio del embarazo) un mensaje breve y neutral con la semana actual, y una nota al comenzar el 2.º y el 3.er trimestre. Sin consejos médicos."
             }
           },
           "pill": {
@@ -1119,6 +1125,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: La lista de la maleta para el hospital aún tiene puntos pendientes",
       "description": "Perfil: **{entry_title}**\n\nLa fecha probable de parto ({due_date}) está a unos {days_until_due} día(s) y la lista de la maleta para el hospital todavía tiene {remaining_items} punto(s) sin marcar. No se realiza ninguna acción automáticamente - abre la lista de tareas **Hospital bag checklist** para revisar o marcar los puntos, o descarta este aviso si ya lo tienes todo listo."
+    },
+    "pregnancy_overdue": {
+      "title": "Menstruation Cycle: el modo embarazo sigue activo tras la fecha prevista",
+      "description": "Perfil: **{entry_title}**\n\nLa fecha prevista ({due_date}) fue hace {days_overdue} día(s), pero el modo embarazo sigue activado, por lo que el contador de semanas sigue creciendo. No se hace nada automáticamente: si el embarazo ha terminado o el bebé ya ha nacido, desactiva el modo embarazo con el servicio **set_pregnancy_mode** (o inicia el posparto); si la fecha estaba mal, corrígela con **update_pregnancy_date**. Descarta este problema si todo está en orden."
     },
     "storage_integrity": {
       "title": "Menstruation Cycle: Hallazgos de integridad del almacenamiento",

@@ -47,6 +47,8 @@
           "onboarding_stage": "Onboarding stage",
           "dashboard_enabled": "Show Cycle Dashboard in sidebar",
           "calendar_enabled": "Show cycle calendar entity",
+          "calendar_pregnancy_events": "Calendar: pregnancy due date",
+          "calendar_contraception_events": "Calendar: contraception dates",
           "visibility_level": "Visibility level"
         },
         "data_description": {
@@ -56,6 +58,8 @@
           "onboarding_stage": "Choose pre-menarche, early menarche learning phase, or established cycle.",
           "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
           "calendar_enabled": "Creates a native calendar.profile_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
+          "calendar_pregnancy_events": "Adds the calculated due date as an all-day event to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
+          "calendar_contraception_events": "Adds renewal dates (IUD, implant, injection), the end of the pill pack and the next patch/ring steps to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
         },
@@ -80,7 +84,8 @@
               "notify_overdue_enabled": "Notify when the period is overdue",
               "notify_checkup_enabled": "Notify before a checkup is due",
               "notify_fertile_mute_hormonal": "No fertility notifications on hormonal contraception",
-              "notify_unprotected_hint": "Hint after unprotected intercourse"
+              "notify_unprotected_hint": "Hint after unprotected intercourse",
+              "notify_pregnancy_updates": "Weekly pregnancy message"
             },
             "data_description": {
               "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
@@ -99,7 +104,8 @@
               "notify_overdue_enabled": "Sends one notification once the period is 7 days past its predicted start and not logged (same threshold as the repair hint), with a 'Period started' button. Not sent while predictions are still low-confidence. Goes only to this profile's own target. Off by default. Requires 'Enable notifications' above.",
               "notify_checkup_enabled": "Sends one notification 14 days before the next checkup is due (last logged checkup plus the checkup interval below), or once if it is already overdue. Needs a checkup interval above 0. Off by default. Requires 'Enable notifications' above.",
               "notify_fertile_mute_hormonal": "Skips the fertile-window and ovulation notifications while the current contraception method is hormonal (pill, hormonal IUD, implant, patch, ring, injection), since the cycle is usually suppressed then. The sensor state and the dashboard stay unchanged. Off by default.",
-              "notify_unprotected_hint": "When unprotected intercourse is logged for today or one of the last 5 days, sends one neutral hint: if a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception, and the sooner the better. No dosing, no medical advice. Not sent during pregnancy or menopause. Off by default. Requires 'Enable notifications' above."
+              "notify_unprotected_hint": "When unprotected intercourse is logged for today or one of the last 5 days, sends one neutral hint: if a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception, and the sooner the better. No dosing, no medical advice. Not sent during pregnancy or menopause. Off by default. Requires 'Enable notifications' above.",
+              "notify_pregnancy_updates": "While pregnancy mode is on, sends a short neutral message once a week (on the weekday of the pregnancy start) with the current week, and a note at the start of the 2nd and 3rd trimester. No medical advice."
             }
           },
           "pill": {
@@ -1119,6 +1125,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: Hospital bag checklist still has open items",
       "description": "Profile: **{entry_title}**\n\nThe due date ({due_date}) is about {days_until_due} day(s) away and the hospital bag checklist still has {remaining_items} item(s) left unchecked. No action is taken automatically - open the **Hospital bag checklist** todo list to review or check off items, or dismiss this issue if you're already on top of it."
+    },
+    "pregnancy_overdue": {
+      "title": "Menstruation Cycle: Pregnancy mode is still active after the due date",
+      "description": "Profile: **{entry_title}**\n\nThe due date ({due_date}) was {days_overdue} day(s) ago, but pregnancy mode is still switched on, so the week counter keeps growing. No action is taken automatically - if the pregnancy has ended or the baby has arrived, turn pregnancy mode off with the **set_pregnancy_mode** service (or start the postpartum phase); if the due date was entered wrongly, correct it with **update_pregnancy_date**. Dismiss this issue if everything is as it should be."
     },
     "storage_integrity": {
       "title": "Menstruation Cycle: Storage integrity findings",

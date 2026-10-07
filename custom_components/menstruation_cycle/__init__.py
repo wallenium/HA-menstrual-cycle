@@ -89,8 +89,10 @@ from .const import (
     NONCYCLE_CONTRACEPTION_RENEWED,
     CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
     CONF_NOTIFY_UNPROTECTED_HINT,
+    CONF_NOTIFY_PREGNANCY_UPDATES,
     DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
+    DEFAULT_NOTIFY_PREGNANCY_UPDATES,
     UNPROTECTED_HINT_MAX_DAYS,
     NOTIFY_ACTION_RENEWED_PREFIX,
     CONTRACEPTION_RENEWAL_MONTHS,
@@ -250,7 +252,7 @@ from .const import (
     DEFAULT_IMPORT_DATE_FORMAT,
     CYCLE_LENGTH_OVERRIDE_MIN,
 )
-from .ical import generate_ics
+from .ical import collect_extra_events, generate_ics
 from .model import (
     _count_pain_days,
     build_cycle_model,
@@ -1130,6 +1132,9 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_renewed": "Started today",
         "unprotected_title": "Unprotected intercourse logged",
         "unprotected_message": "{name}: unprotected intercourse was logged. If a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception right away - the sooner, the better.",
+        "pregnancy_title": "Pregnancy",
+        "pregnancy_week_message": "{name}: week {week} of the pregnancy. Calculated due date: {date}.",
+        "pregnancy_trimester_message": "{name}: trimester {trimester} begins (week {week}). Calculated due date: {date}.",
         "recap_title": "Cycle recap",
         "recap_message": "{name}: cycle finished - {cycle_days} days long, period lasted {period_days} days.",
         "recap_longer": "That is {days} days longer than the average ({average} days).",
@@ -1169,6 +1174,9 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_renewed": "Heute neu begonnen",
         "unprotected_title": "Ungeschützter Verkehr eingetragen",
         "unprotected_message": "{name}: Es wurde ungeschützter Verkehr eingetragen. Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis sofort zur Notfallverhütung beraten - je früher, desto besser.",
+        "pregnancy_title": "Schwangerschaft",
+        "pregnancy_week_message": "{name}: Schwangerschaftswoche {week}. Berechneter Entbindungstermin: {date}.",
+        "pregnancy_trimester_message": "{name}: das {trimester}. Trimester beginnt (Woche {week}). Berechneter Entbindungstermin: {date}.",
         "recap_title": "Zyklus-Rückblick",
         "recap_message": "{name}: Zyklus abgeschlossen - {cycle_days} Tage lang, die Periode dauerte {period_days} Tage.",
         "recap_longer": "Das sind {days} Tage mehr als der Durchschnitt ({average} Tage).",
@@ -1208,6 +1216,9 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_renewed": "Commencé aujourd'hui",
         "unprotected_title": "Rapport non protégé saisi",
         "unprotected_message": "{name} : un rapport non protégé a été saisi. Si une grossesse n'est pas souhaitée, une pharmacie ou un médecin peut conseiller tout de suite sur la contraception d'urgence - le plus tôt est le mieux.",
+        "pregnancy_title": "Grossesse",
+        "pregnancy_week_message": "{name} : semaine {week} de la grossesse. Date prévue d'accouchement calculée : {date}.",
+        "pregnancy_trimester_message": "{name} : le trimestre {trimester} commence (semaine {week}). Date prévue d'accouchement calculée : {date}.",
         "recap_title": "Bilan du cycle",
         "recap_message": "{name} : cycle terminé - {cycle_days} jours, règles de {period_days} jours.",
         "recap_longer": "C'est {days} jours de plus que la moyenne ({average} jours).",
@@ -1247,6 +1258,9 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_renewed": "Empezado hoy",
         "unprotected_title": "Relación sin protección registrada",
         "unprotected_message": "{name}: se registró una relación sin protección. Si no se desea un embarazo, una farmacia o un médico pueden orientar de inmediato sobre la anticoncepción de emergencia: cuanto antes, mejor.",
+        "pregnancy_title": "Embarazo",
+        "pregnancy_week_message": "{name}: semana {week} del embarazo. Fecha prevista de parto calculada: {date}.",
+        "pregnancy_trimester_message": "{name}: comienza el trimestre {trimester} (semana {week}). Fecha prevista de parto calculada: {date}.",
         "recap_title": "Resumen del ciclo",
         "recap_message": "{name}: ciclo terminado - {cycle_days} días de duración, la menstruación duró {period_days} días.",
         "recap_longer": "Son {days} días más que la media ({average} días).",
@@ -1286,6 +1300,9 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "action_renewed": "Påbörjad idag",
         "unprotected_title": "Oskyddat samlag loggat",
         "unprotected_message": "{name}: oskyddat samlag har loggats. Om graviditet inte önskas kan ett apotek eller en läkare genast ge råd om akut preventivmedel - ju tidigare desto bättre.",
+        "pregnancy_title": "Graviditet",
+        "pregnancy_week_message": "{name}: graviditetsvecka {week}. Beräknat förlossningsdatum: {date}.",
+        "pregnancy_trimester_message": "{name}: trimester {trimester} börjar (vecka {week}). Beräknat förlossningsdatum: {date}.",
         "recap_title": "Cykelsammanfattning",
         "recap_message": "{name}: cykeln är avslutad - {cycle_days} dagar lång, mensen varade {period_days} dagar.",
         "recap_longer": "Det är {days} dagar längre än genomsnittet ({average} dagar).",
@@ -1345,8 +1362,17 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     recap_notify_enabled = bool(entry.options.get(CONF_NOTIFY_RECAP_ENABLED, DEFAULT_NOTIFY_RECAP_ENABLED))
     overdue_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED))
     checkup_notify_enabled = bool(entry.options.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED))
+    pregnancy_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES))
     if not any(
-        (period_notify_enabled, fertile_notify_enabled, ovulation_notify_enabled, recap_notify_enabled, overdue_notify_enabled, checkup_notify_enabled)
+        (
+            period_notify_enabled,
+            fertile_notify_enabled,
+            ovulation_notify_enabled,
+            recap_notify_enabled,
+            overdue_notify_enabled,
+            checkup_notify_enabled,
+            pregnancy_notify_enabled,
+        )
     ):
         return
     period_lead_days = max(
@@ -1359,7 +1385,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_OVULATION_LEAD_DAYS, DEFAULT_NOTIFY_OVULATION_LEAD_DAYS)))
     )
 
-    from .model import build_cycle_model, compute_contraception_status, next_checkup_due
+    from .model import build_cycle_model, compute_contraception_status, next_checkup_due, pregnancy_week_notification
 
     today = dt_util.now().date()
     model = build_cycle_model(
@@ -1521,6 +1547,22 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 strings["checkup_message"].format(name=runtime.friendly_name, date=checkup_due.isoformat()),
             )
             runtime.noncycle_data["notified_checkup_due"] = checkup_due.isoformat()
+            notified_something = True
+
+    # Weekly pregnancy message (own target only, neutral text); the trimester text replaces it on the day a trimester starts.
+    if pregnancy_notify_enabled and runtime.pregnancy_data.get("is_pregnant"):
+        due = pregnancy_week_notification(
+            runtime.pregnancy_data.get("start_date"), today, runtime.noncycle_data.get("notified_pregnancy_week")
+        )
+        if due is not None:
+            key = "pregnancy_trimester_message" if due["trimester"] else "pregnancy_week_message"
+            await _send(
+                strings["pregnancy_title"],
+                strings[key].format(
+                    name=runtime.friendly_name, week=due["week"], trimester=due["trimester"], date=model.due_date or "?"
+                ),
+            )
+            runtime.noncycle_data["notified_pregnancy_week"] = due["week"]
             notified_something = True
 
     # Reads the badge already computed by sensor.py (progress_badges_new_this_week)
@@ -3043,6 +3085,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight hospital-bag-incomplete check failed for %s", entry.entry_id)
         try:
+            from .repairs import async_check_pregnancy_overdue
+
+            async_check_pregnancy_overdue(
+                hass,
+                entry.entry_id,
+                entry.title,
+                bool(runtime.pregnancy_data.get("is_pregnant")),
+                _midnight_model.due_date,
+                dt_util.now().date(),
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight pregnancy-overdue check failed for %s", entry.entry_id)
+        try:
             # "weitere Ideen?" 25.09.2026: re-diagnosed daily, same reasoning
             # as the checks above - new history/symptom data can introduce or
             # resolve a finding on any day, not just on integration
@@ -3220,6 +3275,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bool(runtime.pregnancy_data.get("is_pregnant")),
         _setup_model.due_date,
         await runtime.storage.async_load_hospital_bag_items(),
+        dt_util.now().date(),
+    )
+
+    from .repairs import async_check_pregnancy_overdue
+
+    async_check_pregnancy_overdue(
+        hass,
+        entry.entry_id,
+        entry.title,
+        bool(runtime.pregnancy_data.get("is_pregnant")),
+        _setup_model.due_date,
         dt_util.now().date(),
     )
 
@@ -5349,6 +5415,13 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             period_alarm_days_before,
             checkup_due,
             dt_util.now().date(),
+            collect_extra_events(
+                matched_entry.options if matched_entry is not None else {},
+                matched_runtime,
+                cycle_model.due_date,
+                hass.config.language,
+                dt_util.now().date(),
+            ),
         )
 
         return Response(

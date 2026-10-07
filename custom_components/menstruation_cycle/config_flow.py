@@ -59,6 +59,9 @@ from .const import (
     CONF_NOTIFY_PILL_GAP_ENABLED,
     CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
     CONF_NOTIFY_UNPROTECTED_HINT,
+    CONF_NOTIFY_PREGNANCY_UPDATES,
+    CONF_CALENDAR_PREGNANCY_EVENTS,
+    CONF_CALENDAR_CONTRACEPTION_EVENTS,
     CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
@@ -90,6 +93,9 @@ from .const import (
     DEFAULT_NOTIFY_PILL_GAP_ENABLED,
     DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
+    DEFAULT_NOTIFY_PREGNANCY_UPDATES,
+    DEFAULT_CALENDAR_PREGNANCY_EVENTS,
+    DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CHECKUP_INTERVAL_MONTHS_MAX,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
@@ -198,8 +204,11 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NOTIFY_PILL_GAP_ENABLED,
             CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
             CONF_NOTIFY_UNPROTECTED_HINT,
+            CONF_NOTIFY_PREGNANCY_UPDATES,
             CONF_CHECKUP_INTERVAL_MONTHS,
             CONF_CALENDAR_ENABLED,
+            CONF_CALENDAR_PREGNANCY_EVENTS,
+            CONF_CALENDAR_CONTRACEPTION_EVENTS,
             CONF_NFP_ANALYSIS_MODE,
             CONF_TEMPERATURE_UNIT,
             CONF_VISIBILITY_LEVEL,
@@ -397,6 +406,7 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_CHECKUP_ENABLED,
         CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
         CONF_NOTIFY_UNPROTECTED_HINT,
+        CONF_NOTIFY_PREGNANCY_UPDATES,
     ),
     "pill": (
         CONF_NOTIFY_PILL_ENABLED,
@@ -600,6 +610,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_unprotected_hint": bool(
                 self._entry.options.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT)
             ),
+            "notify_pregnancy_updates": bool(
+                self._entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES)
+            ),
+            "calendar_pregnancy_events": bool(
+                self._entry.options.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
+            ),
+            "calendar_contraception_events": bool(
+                self._entry.options.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS)
+            ),
             "checkup_interval_months": int(
                 self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
             ),
@@ -686,6 +705,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         lines.append(f"- Basal temperature input unit: {d.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)}")
         lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
         lines.append(f"- Cycle calendar entity: {'yes' if d.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED) else 'no'}")
+        if d.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS):
+            lines.append("- Calendar and ICS feed: pregnancy due date")
+        if d.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS):
+            lines.append("- Calendar and ICS feed: contraception dates")
 
         if d.get(CONF_NOTIFICATIONS_ENABLED):
             lines.append("- Notifications: enabled")
@@ -728,6 +751,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append("  - No fertility notifications while on hormonal contraception")
             if d.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT):
                 lines.append("  - Hint after unprotected intercourse")
+            if d.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES):
+                lines.append("  - Weekly pregnancy message")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -811,6 +836,12 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
                 self._data[CONF_CALENDAR_ENABLED] = bool(user_input.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED))
+                self._data[CONF_CALENDAR_PREGNANCY_EVENTS] = bool(
+                    user_input.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
+                )
+                self._data[CONF_CALENDAR_CONTRACEPTION_EVENTS] = bool(
+                    user_input.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS)
+                )
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
                 self._data[CONF_NOTIFY_PARTNER_SERVICE] = str(user_input.get(CONF_NOTIFY_PARTNER_SERVICE, "")).strip()
@@ -885,6 +916,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
                 self._data[CONF_NOTIFY_UNPROTECTED_HINT] = bool(
                     user_input.get(CONF_NOTIFY_UNPROTECTED_HINT, DEFAULT_NOTIFY_UNPROTECTED_HINT)
+                )
+                self._data[CONF_NOTIFY_PREGNANCY_UPDATES] = bool(
+                    user_input.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES)
                 )
                 self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
                     0,
@@ -979,6 +1013,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
                 vol.Optional(CONF_CALENDAR_ENABLED, default=c["calendar_enabled"]): bool,
+                vol.Optional(CONF_CALENDAR_PREGNANCY_EVENTS, default=c["calendar_pregnancy_events"]): bool,
+                vol.Optional(CONF_CALENDAR_CONTRACEPTION_EVENTS, default=c["calendar_contraception_events"]): bool,
                 vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
                 # HA-2 (M-Cycle_HA-Component-Roadmap.md): war ein reines
                 # Freitextfeld - ein Tippfehler im Servicenamen scheiterte damit
@@ -1039,6 +1075,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_NOTIFY_PILL_GAP_ENABLED, default=c["notify_pill_gap_enabled"]): bool,
                 vol.Optional(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, default=c["notify_fertile_mute_hormonal"]): bool,
                 vol.Optional(CONF_NOTIFY_UNPROTECTED_HINT, default=c["notify_unprotected_hint"]): bool,
+                vol.Optional(CONF_NOTIFY_PREGNANCY_UPDATES, default=c["notify_pregnancy_updates"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
@@ -1358,6 +1395,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_ONBOARDING_STAGE: new_onboarding_stage,
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
                 CONF_CALENDAR_ENABLED: d[CONF_CALENDAR_ENABLED],
+                CONF_CALENDAR_PREGNANCY_EVENTS: d[CONF_CALENDAR_PREGNANCY_EVENTS],
+                CONF_CALENDAR_CONTRACEPTION_EVENTS: d[CONF_CALENDAR_CONTRACEPTION_EVENTS],
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
                 CONF_NOTIFY_PARTNER_SERVICE: d[CONF_NOTIFY_PARTNER_SERVICE],
@@ -1380,6 +1419,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_PILL_GAP_ENABLED: d[CONF_NOTIFY_PILL_GAP_ENABLED],
                 CONF_NOTIFY_FERTILE_MUTE_HORMONAL: d[CONF_NOTIFY_FERTILE_MUTE_HORMONAL],
                 CONF_NOTIFY_UNPROTECTED_HINT: d[CONF_NOTIFY_UNPROTECTED_HINT],
+                CONF_NOTIFY_PREGNANCY_UPDATES: d[CONF_NOTIFY_PREGNANCY_UPDATES],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],

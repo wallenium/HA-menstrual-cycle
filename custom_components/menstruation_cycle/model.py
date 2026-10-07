@@ -16,6 +16,7 @@ from .const import (
     CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS,
     CONTRACEPTION_RHYTHM_DAYS,
     CONTRACEPTION_RHYTHM_EVENTS,
+    PREGNANCY_TRIMESTER_START_DAYS,
     CYCLE_LENGTH_OVERRIDE_MAX,
     CYCLE_LENGTH_OVERRIDE_MIN,
     DEFAULT_ONBOARDING_STAGE,
@@ -933,6 +934,24 @@ def calculate_pregnancy_info(pregnancy_start_date: str | None, today: date | Non
     due = start + timedelta(days=PREGNANCY_DAYS)
 
     return weeks, due.isoformat()
+
+
+def pregnancy_week_notification(
+    start_date: str | None, today: date, notified_week: int | None = None
+) -> dict[str, int | None] | None:
+    """What the optional weekly pregnancy message should say today, or None.
+
+    Due on the weekday of the pregnancy start from the second week on, once per week number; `trimester` is
+    2 or 3 on the day a trimester begins, else None.
+    """
+    weeks, _due = calculate_pregnancy_info(start_date, today)
+    if weeks is None or weeks < 2 or notified_week == weeks:
+        return None
+    days = (today - date.fromisoformat(str(start_date))).days
+    if days % 7:
+        return None
+    trimester = next((n for n, d in zip((2, 3), PREGNANCY_TRIMESTER_START_DAYS) if d == days), None)
+    return {"week": weeks, "trimester": trimester}
 
 
 def analyze_nfp_cycle(
@@ -3095,6 +3114,21 @@ def contraception_rhythm(method: str | None, since: str | None, today: date) -> 
         "pack_start": pack_start.isoformat(),
         "in_break": day >= 21,
     }
+
+
+def contraception_rhythm_schedule(status: dict[str, Any], today: date, packs: int = 3) -> list[tuple[date, str]]:
+    """Upcoming patch/ring steps (today onwards) for the next `packs` 28-day packs, from status["rhythm"]'s pack start."""
+    rhythm = status.get("rhythm")
+    events = CONTRACEPTION_RHYTHM_EVENTS.get(status.get("current_method") or "")
+    if not rhythm or not events:
+        return []
+    pack_start = date.fromisoformat(rhythm["pack_start"])
+    schedule = [
+        (pack_start + timedelta(days=CONTRACEPTION_RHYTHM_DAYS * k + offset), event)
+        for k in range(packs)
+        for offset, event in events
+    ]
+    return [(day, event) for day, event in schedule if day >= today]
 
 
 def compute_contraception_status(

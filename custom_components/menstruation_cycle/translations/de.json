@@ -47,6 +47,8 @@
           "onboarding_stage": "Einstiegsphase",
           "dashboard_enabled": "Zyklus-Dashboard in der Seitenleiste anzeigen",
           "calendar_enabled": "Zyklus-Kalender-Entität anzeigen",
+          "calendar_pregnancy_events": "Kalender: Entbindungstermin",
+          "calendar_contraception_events": "Kalender: Verhütungstermine",
           "visibility_level": "Sichtbarkeitsstufe"
         },
         "data_description": {
@@ -56,6 +58,8 @@
           "onboarding_stage": "Vor-der-Menarche, frühe Lernphase nach der Menarche oder etablierter Zyklus wählen.",
           "dashboard_enabled": "Fügt eine optionale, eigene Zyklus-Dashboard-Seite zur Home-Assistant-Seitenleiste hinzu.",
           "calendar_enabled": "Erstellt eine native calendar.PROFIL_cycle-Entität mit vorhergesagten Perioden-, Fruchtbarkeitsfenster- und Eisprung-Terminen, nutzbar in HAs eigener Kalender-Ansicht und für calendar.*-Automatisierungs-Trigger. Deaktivieren, falls nicht benötigt - dieselben Termine bleiben weiterhin über den separaten ICS-Kalender-Feed verfügbar.",
+          "calendar_pregnancy_events": "Fügt den berechneten Entbindungstermin als ganztägigen Termin zum Zykluskalender und zum ICS-Feed hinzu. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
+          "calendar_contraception_events": "Fügt Erneuerungstermine (Spirale, Implantat, Spritze), das Ende der Pillenpackung und die nächsten Pflaster-/Ring-Schritte zum Zykluskalender und zum ICS-Feed hinzu. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
         },
@@ -80,7 +84,8 @@
               "notify_overdue_enabled": "Benachrichtigen, wenn die Periode überfällig ist",
               "notify_checkup_enabled": "Vor fälliger Kontrolle benachrichtigen",
               "notify_fertile_mute_hormonal": "Keine Fruchtbarkeitsmeldungen bei hormoneller Verhütung",
-              "notify_unprotected_hint": "Hinweis nach ungeschütztem Verkehr"
+              "notify_unprotected_hint": "Hinweis nach ungeschütztem Verkehr",
+              "notify_pregnancy_updates": "Wöchentliche Schwangerschaftsnachricht"
             },
             "data_description": {
               "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
@@ -99,7 +104,8 @@
               "notify_overdue_enabled": "Sendet einmalig eine Benachrichtigung, sobald die Periode 7 Tage nach dem vorhergesagten Beginn noch nicht eingetragen ist (gleiche Schwelle wie der Reparaturhinweis), mit Schaltfläche „Periode gestartet“. Nicht, solange die Vorhersage noch unsicher ist. Geht nur an das eigene Ziel dieses Profils. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben.",
               "notify_checkup_enabled": "Sendet einmalig eine Benachrichtigung 14 Tage vor der nächsten fälligen Kontrolle (zuletzt eingetragene Kontrolle plus das Kontrollintervall unten) oder einmalig, wenn sie schon überfällig ist. Braucht ein Kontrollintervall über 0. Standardmäßig aus. Erfordert „Benachrichtigungen aktivieren“ oben.",
               "notify_fertile_mute_hormonal": "Überspringt die Meldungen zum fruchtbaren Fenster und zum Eisprung, solange die aktuelle Verhütungsmethode hormonell ist (Pille, Hormonspirale, Implantat, Pflaster, Ring, Spritze), weil der Zyklus dann meist unterdrückt ist. Sensorzustand und Dashboard bleiben unverändert. Standardmäßig aus.",
-              "notify_unprotected_hint": "Wird ungeschützter Verkehr für heute oder einen der letzten 5 Tage eingetragen, kommt ein neutraler Hinweis: Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis zur Notfallverhütung beraten, je früher, desto besser. Keine Dosierung, keine medizinische Beratung. Wird nicht bei Schwangerschaft oder Wechseljahren gesendet. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben."
+              "notify_unprotected_hint": "Wird ungeschützter Verkehr für heute oder einen der letzten 5 Tage eingetragen, kommt ein neutraler Hinweis: Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis zur Notfallverhütung beraten, je früher, desto besser. Keine Dosierung, keine medizinische Beratung. Wird nicht bei Schwangerschaft oder Wechseljahren gesendet. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
+              "notify_pregnancy_updates": "Sendet bei aktivem Schwangerschaftsmodus einmal pro Woche (am Wochentag des Schwangerschaftsbeginns) eine kurze, neutrale Nachricht mit der aktuellen Woche sowie einen Hinweis zu Beginn des 2. und 3. Trimesters. Keine medizinischen Ratschläge."
             }
           },
           "pill": {
@@ -1119,6 +1125,10 @@
     "hospital_bag_incomplete": {
       "title": "Menstruation Cycle: Kliniktaschen-Checkliste hat noch offene Punkte",
       "description": "Profil: **{entry_title}**\n\nDer Entbindungstermin ({due_date}) ist noch etwa {days_until_due} Tag(e) entfernt, und die Kliniktaschen-Checkliste hat noch {remaining_items} offene Punkt(e). Es wird automatisch nichts geändert - öffne die Aufgabenliste **Hospital bag checklist**, um Punkte zu prüfen oder abzuhaken, oder verwerfe dieses Problem, falls du bereits alles erledigt hast."
+    },
+    "pregnancy_overdue": {
+      "title": "Menstruation Cycle: Schwangerschaftsmodus nach dem Entbindungstermin noch aktiv",
+      "description": "Profil: **{entry_title}**\n\nDer Entbindungstermin ({due_date}) liegt {days_overdue} Tag(e) zurück, der Schwangerschaftsmodus ist aber noch eingeschaltet, sodass der Wochenzähler weiter hochläuft. Es wird automatisch nichts geändert - ist die Schwangerschaft beendet oder das Baby da, schalte den Schwangerschaftsmodus mit dem Service **set_pregnancy_mode** aus (oder starte das Wochenbett); falls der Termin falsch eingetragen war, korrigiere ihn mit **update_pregnancy_date**. Verwirf dieses Problem, falls alles seine Richtigkeit hat."
     },
     "storage_integrity": {
       "title": "Menstruation Cycle: Speicher-Integritätsbefunde",
