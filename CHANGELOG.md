@@ -45,6 +45,7 @@
 - The shopping-list text for the renewal showed the internal method key (`hormonal_iud`); it now uses the localized name, and items written by older versions still count as duplicates.
 - The cycle insights widget showed the raw text `dashboard_cycle_comparison_basis` instead of "based on N cycles" (translation was missing in all languages). A test now checks that every literal key used by the panel is translated.
 - hassfest rejected the service descriptions of `export_history` and `export_doctor_report` (the text `<config>` looked like HTML); the same placeholder was also removed from the calendar option text in DE/ES/FR/SV.
+- The repair dialogs of the three fixable issues (rename entities, rotate calendar token, migrate old integration) opened empty after clicking "Fix" because the form texts (`fix_flow`) were missing in all languages; they are added now, and the rename list is shown as a bullet list. For these issues the text now lives only in the fix form (hassfest does not allow both `description` and `fix_flow`). Tests check that every fixable issue has its form text and that the flow supplies its placeholders.
 - Crash in profile label sync (wrong LabelRegistry API).
 - "Day of the week" off-by-one bug (#255).
 - Stale translation cache in the household summary.

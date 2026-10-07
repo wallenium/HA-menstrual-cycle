@@ -1108,36 +1108,33 @@
   "issues": {
     "migrate_config_entry": {
       "title": "Menstruation Cycle: Integrations-Migration erforderlich",
-      "description": "Die Integration **{old_domain}** wurde in **{new_domain}** umbenannt.\n\nProfil: **{entry_title}**\n\nDeine Sensordaten und der Verlauf bleiben bei der Migration erhalten. Klicke auf **Reparieren**, um die Migration abzuschließen.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Migration abschließen",
-            "description": "Dieses Profil wird von der alten Integration menstruation_gauge zu menstruation_cycle migriert. Sensordaten und Verlauf bleiben erhalten. Mit **Absenden** wird die Migration gestartet."
+            "description": "Die Integration **{old_domain}** wurde in **{new_domain}** umbenannt.\n\nProfil: **{entry_title}**\n\nSensordaten und Verlauf bleiben erhalten. Mit **Absenden** wird die Migration abgeschlossen."
           }
         }
       }
     },
     "rename_entities": {
       "title": "Menstruation Cycle: Aktualisierung der Entity-Namen verfügbar",
-      "description": "Profil: **{entry_title}**\n\nFolgende Entities nutzen noch das ältere Namensschema von vor der Umstellung auf durchsuchbare, mit `menstruation_` beginnende Entity-IDs:\n\n{renames_list}\n\nVerlauf und Statistik bleiben beim Umbenennen erhalten, aber **Dashboards, Automationen oder Skripte, die die alte Entity-ID referenzieren, müssen danach manuell angepasst werden**. Klicke auf **Reparieren**, um umzubenennen, oder ignoriere diese Meldung, um die aktuellen IDs zu behalten.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Entity-Namen aktualisieren",
-            "description": "Diese Entities werden umbenannt:\n\n{renames}\n\nVerlauf und Statistik bleiben erhalten. Dashboards, Automationen oder Skripte, die eine alte Entity-ID referenzieren, müssen danach manuell angepasst werden. Mit **Absenden** wird umbenannt."
+            "description": "Profil: **{entry_title}**\n\nDiese Entities nutzen noch das ältere Namensschema von vor der Umstellung auf durchsuchbare, mit `menstruation_` beginnende Entity-IDs:\n\n{renames_list}\n\nVerlauf und Statistik bleiben beim Umbenennen erhalten, aber **Dashboards, Automationen oder Skripte, die eine alte Entity-ID referenzieren, müssen danach manuell angepasst werden**. Mit **Absenden** wird umbenannt; schließe diesen Dialog, um die aktuellen IDs zu behalten."
           }
         }
       }
     },
     "stale_ics_token": {
       "title": "Menstruation Cycle: Kalender-Feed-Token schon lange nicht rotiert",
-      "description": "Profil: **{entry_title}**\n\nDie Kalender-Abo-URL (ICS) dieses Profils verwendet noch ein Token, das etwa {age_days} Tage alt ist. Wer diese URL jemals hatte (altes Gerät, geteilter Kalender, Screenshot, ...) kann damit weiterhin die Vorhersagen dieses Profils lesen, da der Feed keinen eigenen Login hat. Auf **Reparieren** klicken erzeugt ein neues Token — bestehende Kalender-Abos funktionieren dann nicht mehr und müssen mit der neuen URL neu eingerichtet werden — oder dieses Issue verwerfen, um das aktuelle Token zu behalten.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Neues Kalender-Feed-Token erzeugen",
-            "description": "Für die Kalender-Abo-URL (ICS) wird ein neues Token erzeugt. Bestehende Kalender-Abos funktionieren danach nicht mehr und müssen mit der neuen URL neu eingerichtet werden. Mit **Absenden** fortfahren."
+            "description": "Profil: **{entry_title}**\n\nDie Kalender-Abo-URL (ICS) dieses Profils verwendet ein Token, das schon lange nicht rotiert wurde. Wer diese URL jemals hatte (altes Gerät, geteilter Kalender, Screenshot, ...) kann damit weiterhin die Vorhersagen dieses Profils lesen, da der Feed keinen eigenen Login hat. Mit **Absenden** wird ein neues Token erzeugt: bestehende Kalender-Abos funktionieren dann nicht mehr und müssen mit der neuen URL neu eingerichtet werden. Oder schließe diesen Dialog, um das aktuelle Token zu behalten."
           }
         }
       }

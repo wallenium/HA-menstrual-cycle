@@ -966,6 +966,12 @@ async def async_create_fix_flow(
     return MigrationRepairFlow(issue_id)
 
 
+def _flow_entry_title(hass: HomeAssistant, entry_id: str) -> str:
+    """Profile name for a fix form (falls back to the entry id when the profile is gone)."""
+    runtime = hass.data.get(DOMAIN, {}).get(entry_id)
+    return getattr(runtime, "friendly_name", None) or entry_id
+
+
 class EntityRenameRepairFlow(RepairsFlow):
     """Repair flow to rename a profile's entities onto the current
     "menstruation_"-prefixed ID scheme.
@@ -1019,7 +1025,8 @@ class EntityRenameRepairFlow(RepairsFlow):
             step_id="confirm",
             data_schema=vol.Schema({}),
             description_placeholders={
-                "renames": "\n".join(f"- {old} → {new}" for old, new in self._renames.items())
+                "entry_title": _flow_entry_title(self.hass, self._entry_id),
+                "renames_list": "\n".join(f"- {old} → {new}" for old, new in self._renames.items()),
             },
         )
 
@@ -1059,6 +1066,7 @@ class StaleIcsTokenRepairFlow(RepairsFlow):
         return self.async_show_form(
             step_id="confirm",
             data_schema=vol.Schema({}),
+            description_placeholders={"entry_title": _flow_entry_title(self.hass, self._entry_id)},
         )
 
 
@@ -1104,7 +1112,16 @@ class MigrationRepairFlow(RepairsFlow):
             await self._async_run_migration()
             return self.async_create_entry(title="", data={})
 
-        return self.async_show_form(step_id="confirm", data_schema=vol.Schema({}))
+        old_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "old_domain": OLD_DOMAIN,
+                "new_domain": DOMAIN,
+                "entry_title": old_entry.title if old_entry else self._entry_id,
+            },
+        )
 
     async def _async_run_migration(self) -> None:
         """Locate the old-domain entry and perform the migration."""

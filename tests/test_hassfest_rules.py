@@ -143,11 +143,33 @@ class FixFlowTextTests(unittest.TestCase):
                 step = issues[key].get("fix_flow", {}).get("step", {}).get("confirm", {})
                 self.assertTrue(step.get("title") and step.get("description"), f"{file_name}: {key} fix form has no text")
 
-    def test_the_rename_form_shows_the_list_it_is_given(self) -> None:
+    def test_fixable_issues_have_no_plain_description(self) -> None:
+        # hassfest: "description" and "fix_flow" exclude each other; the text lives in the fix form
         for file_name in FILES:
             issues = json.loads((ROOT / file_name).read_text(encoding="utf-8"))["issues"]
-            text = issues["rename_entities"]["fix_flow"]["step"]["confirm"]["description"]
-            self.assertIn("{renames}", text, file_name)
+            for key in self._fixable_keys():
+                self.assertNotIn("description", issues[key], f"{file_name}: {key}")
+
+    def test_fix_form_placeholders_are_supplied_by_the_flow(self) -> None:
+        flows = {
+            "rename_entities": "EntityRenameRepairFlow",
+            "stale_ics_token": "StaleIcsTokenRepairFlow",
+            "migrate_config_entry": "MigrationRepairFlow",
+        }
+        tree = ast.parse((ROOT / "repairs.py").read_text(encoding="utf-8"))
+        for key, class_name in flows.items():
+            cls = next(n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == class_name)
+            supplied = set()
+            for node in ast.walk(cls):
+                if isinstance(node, ast.Call):
+                    for kw in node.keywords:
+                        if kw.arg == "description_placeholders" and isinstance(kw.value, ast.Dict):
+                            supplied |= {k.value for k in kw.value.keys if isinstance(k, ast.Constant)}
+            for file_name in FILES:
+                issues = json.loads((ROOT / file_name).read_text(encoding="utf-8"))["issues"]
+                text = issues[key]["fix_flow"]["step"]["confirm"]["description"]
+                self.assertLessEqual(_placeholders(text), supplied, f"{file_name}: {key}")
+            self.assertIn("entry_title", supplied, key)
 
 
 if __name__ == "__main__":

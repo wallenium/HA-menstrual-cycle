@@ -1108,36 +1108,33 @@
   "issues": {
     "migrate_config_entry": {
       "title": "Menstruation Cycle: Migrering av integrationen krävs",
-      "description": "Integrationen **{old_domain}** har bytt namn till **{new_domain}**.\n\nProfil: **{entry_title}**\n\nDina sensordata och historik bevaras efter migreringen. Klicka på **Åtgärda** för att slutföra migreringen.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Slutför migreringen",
-            "description": "Den här profilen migreras från den gamla integrationen menstruation_gauge till menstruation_cycle. Sensordata och historik bevaras. Välj **Skicka** för att starta migreringen."
+            "description": "Integrationen **{old_domain}** har bytt namn till **{new_domain}**.\n\nProfil: **{entry_title}**\n\nSensordata och historik bevaras. Välj **Skicka** för att slutföra migreringen."
           }
         }
       }
     },
     "rename_entities": {
       "title": "Menstruation Cycle: Uppdatering av entitetsnamn tillgänglig",
-      "description": "Profil: **{entry_title}**\n\nFöljande entiteter använder fortfarande ett äldre ID-schema från innan integrationen började lägga till prefixet `menstruation_` för enklare sökning:\n\n{renames_list}\n\nNamnbytet bevarar all historik och statistik, men **instrumentpaneler, automationer eller skript som refererar till det gamla entitets-ID:t måste uppdateras manuellt** efteråt. Klicka på **Åtgärda** för att byta namn, eller avfärda denna avisering för att behålla de nuvarande ID:na.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Uppdatera entitetsnamn",
-            "description": "Följande entiteter byter namn:\n\n{renames}\n\nHistorik och statistik bevaras. Instrumentpaneler, automationer eller skript som använder ett gammalt entitets-ID måste justeras manuellt efteråt. Välj **Skicka** för att byta namn."
+            "description": "Profil: **{entry_title}**\n\nDessa entiteter använder fortfarande det äldre ID-schemat från innan integrationen började prefixa entitets-ID med `menstruation_` för enklare sökning:\n\n{renames_list}\n\nOmdöpningen bevarar all historik och statistik, men **instrumentpaneler, automationer eller skript som använder ett gammalt entitets-ID måste uppdateras manuellt** efteråt. Välj **Skicka** för att byta namn, eller stäng den här dialogen för att behålla nuvarande ID."
           }
         }
       }
     },
     "stale_ics_token": {
       "title": "Menstruation Cycle: kalenderflödets token har inte roterats på länge",
-      "description": "Profil: **{entry_title}**\n\nKalenderprenumerations-URL:en (ICS) för denna profil använder fortfarande ett token som är cirka {age_days} dagar gammalt. Alla som någonsin haft den URL:en (en gammal enhet, en delad kalender, en skärmdump, ...) kan fortfarande använda den för att läsa profilens prognoser, eftersom flödet saknar egen inloggning. Klicka på **Åtgärda** för att skapa ett nytt token — befintliga kalenderprenumerationer slutar då fungera och måste läggas till på nytt med den nya URL:en — eller avfärda detta ärende för att behålla det nuvarande token.",
       "fix_flow": {
         "step": {
           "confirm": {
             "title": "Skapa en ny token för kalenderflödet",
-            "description": "En ny token skapas för kalenderprenumerationens (ICS) URL. Befintliga prenumerationer slutar fungera och måste läggas upp igen med den nya URL:en. Välj **Skicka** för att fortsätta."
+            "description": "Profil: **{entry_title}**\n\nKalenderprenumerationens (ICS) URL för den här profilen använder fortfarande en token som inte har roterats på länge. Den som någon gång haft URL:en (en gammal enhet, en delad kalender, en skärmdump, ...) kan fortfarande läsa profilens prognoser, eftersom flödet saknar egen inloggning. Välj **Skicka** för att skapa en ny token: befintliga prenumerationer slutar fungera och måste läggas upp igen med den nya URL:en. Eller stäng dialogen för att behålla nuvarande token."
           }
         }
       }
