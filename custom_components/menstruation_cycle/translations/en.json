@@ -1108,15 +1108,39 @@
   "issues": {
     "migrate_config_entry": {
       "title": "Menstruation Cycle: Integration Migration Required",
-      "description": "The **{old_domain}** integration has been renamed to **{new_domain}**.\n\nProfile: **{entry_title}**\n\nYour sensor data and history will be preserved after migration. Click **Fix** to complete the migration."
+      "description": "The **{old_domain}** integration has been renamed to **{new_domain}**.\n\nProfile: **{entry_title}**\n\nYour sensor data and history will be preserved after migration. Click **Fix** to complete the migration.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Complete the migration",
+            "description": "This profile will be migrated from the old menstruation_gauge integration to menstruation_cycle. Sensor data and history are kept. Select **Submit** to start the migration."
+          }
+        }
+      }
     },
     "rename_entities": {
       "title": "Menstruation Cycle: Entity ID naming update available",
-      "description": "Profile: **{entry_title}**\n\nThe following entities still use an older ID scheme from before this integration started prefixing entity IDs with `menstruation_` for easier searching:\n\n{renames_list}\n\nRenaming keeps all history and statistics intact, but **any dashboards, automations, or scripts referencing the old entity ID(s) will need to be updated manually** afterwards. Click **Fix** to rename them, or dismiss this issue to keep the current IDs."
+      "description": "Profile: **{entry_title}**\n\nThe following entities still use an older ID scheme from before this integration started prefixing entity IDs with `menstruation_` for easier searching:\n\n{renames_list}\n\nRenaming keeps all history and statistics intact, but **any dashboards, automations, or scripts referencing the old entity ID(s) will need to be updated manually** afterwards. Click **Fix** to rename them, or dismiss this issue to keep the current IDs.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Update entity names",
+            "description": "These entities will be renamed:\n\n{renames}\n\nHistory and statistics are kept. Dashboards, automations or scripts that reference an old entity ID have to be adjusted manually afterwards. Select **Submit** to rename them."
+          }
+        }
+      }
     },
     "stale_ics_token": {
       "title": "Menstruation Cycle: Calendar feed token hasn't been rotated in a while",
-      "description": "Profile: **{entry_title}**\n\nThe calendar-subscription (ICS) URL for this profile still uses a token that's about {age_days} days old. Anyone who ever had that URL (an old device, a shared calendar, a screenshot, ...) can still use it to read this profile's predictions, since the feed has no separate login. Click **Fix** to generate a fresh token — existing calendar subscriptions will stop working and need to be re-added with the new URL — or dismiss this issue to keep the current one."
+      "description": "Profile: **{entry_title}**\n\nThe calendar-subscription (ICS) URL for this profile still uses a token that's about {age_days} days old. Anyone who ever had that URL (an old device, a shared calendar, a screenshot, ...) can still use it to read this profile's predictions, since the feed has no separate login. Click **Fix** to generate a fresh token — existing calendar subscriptions will stop working and need to be re-added with the new URL — or dismiss this issue to keep the current one.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Create a new calendar feed token",
+            "description": "A new token for the calendar subscription (ICS) URL will be created. Existing calendar subscriptions stop working afterwards and have to be set up again with the new URL. Select **Submit** to continue."
+          }
+        }
+      }
     },
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Predictions are still low-confidence",

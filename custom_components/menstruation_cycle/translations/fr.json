@@ -1108,15 +1108,39 @@
   "issues": {
     "migrate_config_entry": {
       "title": "Menstruation Cycle : migration de l'intégration requise",
-      "description": "L'intégration **{old_domain}** a été renommée en **{new_domain}**.\n\nProfil : **{entry_title}**\n\nVos données de capteur et votre historique seront conservés après la migration. Cliquez sur **Réparer** pour terminer la migration."
+      "description": "L'intégration **{old_domain}** a été renommée en **{new_domain}**.\n\nProfil : **{entry_title}**\n\nVos données de capteur et votre historique seront conservés après la migration. Cliquez sur **Réparer** pour terminer la migration.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Terminer la migration",
+            "description": "Ce profil sera migré de l'ancienne intégration menstruation_gauge vers menstruation_cycle. Les données des capteurs et l'historique sont conservés. Sélectionnez **Valider** pour lancer la migration."
+          }
+        }
+      }
     },
     "rename_entities": {
       "title": "Menstruation Cycle : mise à jour du nommage des entités disponible",
-      "description": "Profil : **{entry_title}**\n\nLes entités suivantes utilisent encore un ancien schéma d'ID datant d'avant l'ajout du préfixe `menstruation_` pour faciliter la recherche :\n\n{renames_list}\n\nLe renommage conserve tout l'historique et les statistiques, mais **les tableaux de bord, automatisations ou scripts faisant référence à l'ancien ID devront être mis à jour manuellement** ensuite. Cliquez sur **Réparer** pour renommer, ou ignorez cette notification pour conserver les ID actuels."
+      "description": "Profil : **{entry_title}**\n\nLes entités suivantes utilisent encore un ancien schéma d'ID datant d'avant l'ajout du préfixe `menstruation_` pour faciliter la recherche :\n\n{renames_list}\n\nLe renommage conserve tout l'historique et les statistiques, mais **les tableaux de bord, automatisations ou scripts faisant référence à l'ancien ID devront être mis à jour manuellement** ensuite. Cliquez sur **Réparer** pour renommer, ou ignorez cette notification pour conserver les ID actuels.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Mettre à jour les noms d'entités",
+            "description": "Ces entités vont être renommées :\n\n{renames}\n\nL'historique et les statistiques sont conservés. Les tableaux de bord, automatisations ou scripts qui référencent un ancien ID d'entité devront ensuite être adaptés manuellement. Sélectionnez **Valider** pour renommer."
+          }
+        }
+      }
     },
     "stale_ics_token": {
       "title": "Menstruation Cycle : le jeton du flux calendrier n'a pas été renouvelé depuis longtemps",
-      "description": "Profil : **{entry_title}**\n\nL'URL d'abonnement au calendrier (ICS) de ce profil utilise encore un jeton vieux d'environ {age_days} jours. Toute personne ayant déjà eu cette URL (ancien appareil, calendrier partagé, capture d'écran, ...) peut toujours l'utiliser pour lire les prévisions de ce profil, le flux n'ayant pas de connexion propre. Cliquez sur **Corriger** pour générer un nouveau jeton — les abonnements calendrier existants cesseront de fonctionner et devront être réajoutés avec la nouvelle URL — ou ignorez ce problème pour conserver le jeton actuel."
+      "description": "Profil : **{entry_title}**\n\nL'URL d'abonnement au calendrier (ICS) de ce profil utilise encore un jeton vieux d'environ {age_days} jours. Toute personne ayant déjà eu cette URL (ancien appareil, calendrier partagé, capture d'écran, ...) peut toujours l'utiliser pour lire les prévisions de ce profil, le flux n'ayant pas de connexion propre. Cliquez sur **Corriger** pour générer un nouveau jeton — les abonnements calendrier existants cesseront de fonctionner et devront être réajoutés avec la nouvelle URL — ou ignorez ce problème pour conserver le jeton actuel.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Créer un nouveau jeton du flux de calendrier",
+            "description": "Un nouveau jeton sera créé pour l'URL d'abonnement au calendrier (ICS). Les abonnements existants cesseront de fonctionner et devront être reconfigurés avec la nouvelle URL. Sélectionnez **Valider** pour continuer."
+          }
+        }
+      }
     },
     "low_prediction_confidence": {
       "title": "Menstruation Cycle : les prédictions manquent encore de précision",

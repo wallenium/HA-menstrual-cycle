@@ -1108,15 +1108,39 @@
   "issues": {
     "migrate_config_entry": {
       "title": "Menstruation Cycle: se requiere migración de la integración",
-      "description": "La integración **{old_domain}** se ha renombrado a **{new_domain}**.\n\nPerfil: **{entry_title}**\n\nTus datos del sensor y tu historial se conservarán tras la migración. Haz clic en **Reparar** para completar la migración."
+      "description": "La integración **{old_domain}** se ha renombrado a **{new_domain}**.\n\nPerfil: **{entry_title}**\n\nTus datos del sensor y tu historial se conservarán tras la migración. Haz clic en **Reparar** para completar la migración.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Completar la migración",
+            "description": "Este perfil se migrará de la antigua integración menstruation_gauge a menstruation_cycle. Los datos de los sensores y el historial se conservan. Selecciona **Enviar** para iniciar la migración."
+          }
+        }
+      }
     },
     "rename_entities": {
       "title": "Menstruation Cycle: actualización de nombres de entidad disponible",
-      "description": "Perfil: **{entry_title}**\n\nLas siguientes entidades todavía usan un esquema de ID anterior a que esta integración empezara a anteponer `menstruation_` para facilitar la búsqueda:\n\n{renames_list}\n\nRenombrar conserva todo el historial y las estadísticas, pero **los paneles, automatizaciones o scripts que referencien el ID anterior deberán actualizarse manualmente** después. Haz clic en **Reparar** para renombrarlas, o descarta este aviso para mantener los ID actuales."
+      "description": "Perfil: **{entry_title}**\n\nLas siguientes entidades todavía usan un esquema de ID anterior a que esta integración empezara a anteponer `menstruation_` para facilitar la búsqueda:\n\n{renames_list}\n\nRenombrar conserva todo el historial y las estadísticas, pero **los paneles, automatizaciones o scripts que referencien el ID anterior deberán actualizarse manualmente** después. Haz clic en **Reparar** para renombrarlas, o descarta este aviso para mantener los ID actuales.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Actualizar los nombres de las entidades",
+            "description": "Estas entidades se van a renombrar:\n\n{renames}\n\nEl historial y las estadísticas se conservan. Los paneles, automatizaciones o scripts que usen un ID de entidad antiguo habrá que adaptarlos manualmente después. Selecciona **Enviar** para renombrar."
+          }
+        }
+      }
     },
     "stale_ics_token": {
       "title": "Menstruation Cycle: el token del feed de calendario lleva mucho sin renovarse",
-      "description": "Perfil: **{entry_title}**\n\nLa URL de suscripción al calendario (ICS) de este perfil todavía usa un token de unos {age_days} días de antigüedad. Cualquiera que haya tenido esa URL alguna vez (un dispositivo antiguo, un calendario compartido, una captura de pantalla...) puede seguir usándola para leer las predicciones de este perfil, ya que el feed no tiene un inicio de sesión propio. Pulsa **Reparar** para generar un token nuevo — las suscripciones de calendario existentes dejarán de funcionar y habrá que volver a añadirlas con la nueva URL — o descarta este aviso para conservar el token actual."
+      "description": "Perfil: **{entry_title}**\n\nLa URL de suscripción al calendario (ICS) de este perfil todavía usa un token de unos {age_days} días de antigüedad. Cualquiera que haya tenido esa URL alguna vez (un dispositivo antiguo, un calendario compartido, una captura de pantalla...) puede seguir usándola para leer las predicciones de este perfil, ya que el feed no tiene un inicio de sesión propio. Pulsa **Reparar** para generar un token nuevo — las suscripciones de calendario existentes dejarán de funcionar y habrá que volver a añadirlas con la nueva URL — o descarta este aviso para conservar el token actual.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Crear un nuevo token del feed del calendario",
+            "description": "Se creará un nuevo token para la URL de suscripción al calendario (ICS). Las suscripciones existentes dejarán de funcionar y habrá que configurarlas de nuevo con la nueva URL. Selecciona **Enviar** para continuar."
+          }
+        }
+      }
     },
     "low_prediction_confidence": {
       "title": "Menstruation Cycle: Las predicciones aún tienen baja confianza",

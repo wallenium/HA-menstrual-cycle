@@ -110,10 +110,44 @@ class IssuePlaceholderTests(unittest.TestCase):
         problems = []
         for key, supplied in calls:
             self.assertIn(key, STRINGS["issues"], f"issue {key} has no text in strings.json")
-            used = {name for _, text in _strings(STRINGS["issues"][key]) for name in _placeholders(text)}
+            used = {
+                name
+                for where, text in _strings(STRINGS["issues"][key])
+                if not where.startswith("fix_flow")  # the fix form gets its own placeholders
+                for name in _placeholders(text)
+            }
             if used - supplied:
                 problems.append(f"{key}: text uses {sorted(used - supplied)} but the code does not pass them")
         self.assertEqual(problems, [])
+
+
+class FixFlowTextTests(unittest.TestCase):
+    """A fixable issue opens a form whose text comes from fix_flow.step.<step>; without it the dialog is empty."""
+
+    def _fixable_keys(self) -> set[str]:
+        keys = set()
+        for node in ast.walk(ast.parse((ROOT / "repairs.py").read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Call):
+                kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+                fixable, key = kwargs.get("is_fixable"), kwargs.get("translation_key")
+                if isinstance(fixable, ast.Constant) and fixable.value is True and isinstance(key, ast.Constant):
+                    keys.add(key.value)
+        return keys
+
+    def test_every_fixable_issue_has_a_confirm_form_text_in_every_language(self) -> None:
+        keys = self._fixable_keys()
+        self.assertGreaterEqual(len(keys), 3)
+        for file_name in FILES:
+            issues = json.loads((ROOT / file_name).read_text(encoding="utf-8"))["issues"]
+            for key in keys:
+                step = issues[key].get("fix_flow", {}).get("step", {}).get("confirm", {})
+                self.assertTrue(step.get("title") and step.get("description"), f"{file_name}: {key} fix form has no text")
+
+    def test_the_rename_form_shows_the_list_it_is_given(self) -> None:
+        for file_name in FILES:
+            issues = json.loads((ROOT / file_name).read_text(encoding="utf-8"))["issues"]
+            text = issues["rename_entities"]["fix_flow"]["step"]["confirm"]["description"]
+            self.assertIn("{renames}", text, file_name)
 
 
 if __name__ == "__main__":

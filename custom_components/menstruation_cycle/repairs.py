@@ -1019,7 +1019,7 @@ class EntityRenameRepairFlow(RepairsFlow):
             step_id="confirm",
             data_schema=vol.Schema({}),
             description_placeholders={
-                "renames": "\n".join(f"{old} → {new}" for old, new in self._renames.items())
+                "renames": "\n".join(f"- {old} → {new}" for old, new in self._renames.items())
             },
         )
 
