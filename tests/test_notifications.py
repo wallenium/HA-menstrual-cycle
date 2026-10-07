@@ -337,6 +337,61 @@ class FertilityMuteTests(unittest.TestCase):
         self.assertEqual(titles, ["Period reminder"])
 
 
+class PregnancyUpdateTests(unittest.TestCase):
+    """Opt-in weekly pregnancy message (own target), trimester text on the first day of trimester 2 and 3."""
+
+    def _titles_and_messages(self, days_since_start: int, *, notified=None, option=True, pregnant=True):
+        noncycle = {} if notified is None else {"notified_pregnancy_week": notified}
+        runtime = _runtime(
+            pregnancy_data={"is_pregnant": pregnant, "start_date": _iso(-days_since_start)}, noncycle_data=noncycle
+        )
+        # every other message switched off: the pregnancy option alone must keep the check running
+        options = {
+            const.CONF_NOTIFY_PERIOD_ENABLED: False,
+            const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False,
+            const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False,
+            const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            const.CONF_NOTIFY_PREGNANCY_UPDATES: option,
+        }
+        sent = _run_notifications(_entry(**options), runtime)
+        self.runtime = runtime
+        return [(title, message) for title, message, _ in sent.calls]
+
+    def test_weekly_message_on_the_start_weekday(self) -> None:
+        (title, message), = self._titles_and_messages(70)  # 10 weeks complete -> week 11
+        self.assertEqual(title, "Pregnancy")
+        self.assertIn("week 11 of the pregnancy", message)
+        self.assertIn("Calculated due date", message)
+        self.assertEqual(self.runtime.noncycle_data["notified_pregnancy_week"], 11)
+
+    def test_nothing_on_other_weekdays_in_week_one_or_when_already_sent(self) -> None:
+        self.assertEqual(self._titles_and_messages(71), [])
+        self.assertEqual(self._titles_and_messages(0), [])
+        self.assertEqual(self._titles_and_messages(70, notified=11), [])
+        self.assertEqual(len(self._titles_and_messages(70, notified=10)), 1)
+
+    def test_trimester_text_replaces_the_weekly_text(self) -> None:
+        for days, trimester in ((98, 2), (196, 3)):
+            (title, message), = self._titles_and_messages(days)
+            self.assertIn(f"trimester {trimester} begins", message, days)
+            self.assertNotIn("of the pregnancy", message)
+        self.assertIn("of the pregnancy", self._titles_and_messages(105)[0][1])
+
+    def test_off_by_default_and_only_while_pregnant(self) -> None:
+        self.assertEqual(self._titles_and_messages(70, option=False), [])
+        self.assertEqual(self._titles_and_messages(70, pregnant=False), [])
+
+    def test_texts_exist_in_every_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            strings = integration._notify_strings(lang)
+            for key in ("pregnancy_title", "pregnancy_week_message", "pregnancy_trimester_message"):
+                self.assertTrue(strings[key], (lang, key))
+            strings["pregnancy_week_message"].format(name="A", week=3, date="x", trimester=None)
+            strings["pregnancy_trimester_message"].format(name="A", week=15, date="x", trimester=2)
+
+
 class UnprotectedHintTests(unittest.TestCase):
     """Opt-in hint after unprotected intercourse is logged."""
 

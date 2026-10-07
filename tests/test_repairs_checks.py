@@ -162,6 +162,32 @@ class HospitalBagTests(RepairCheckCase):
         self.assertCleared("hospital_bag_incomplete_")
 
 
+class PregnancyOverdueTests(RepairCheckCase):
+    DUE = "2030-03-01"
+
+    def _check(self, days_after, *, pregnant=True, due=DUE) -> None:
+        CALLS.clear()
+        repairs.async_check_pregnancy_overdue(
+            None, "e1", "Sarah", pregnant, due, date(2030, 3, 1) + timedelta(days=days_after)
+        )
+
+    def test_raised_from_threshold_with_placeholders(self) -> None:
+        n = const.PREGNANCY_OVERDUE_REPAIR_DAYS
+        self._check(n)
+        self.assertCreated("pregnancy_overdue_", due_date=self.DUE, days_overdue=str(n), entry_title="Sarah")
+
+    def test_cleared_before_threshold(self) -> None:
+        self._check(const.PREGNANCY_OVERDUE_REPAIR_DAYS - 1)
+        self.assertCleared("pregnancy_overdue_")
+        self._check(-30)
+        self.assertCleared("pregnancy_overdue_")
+
+    def test_cleared_when_not_pregnant_or_no_or_garbage_date(self) -> None:
+        for kwargs in (dict(pregnant=False), dict(due=None), dict(due="soon")):
+            self._check(60, **kwargs)
+            self.assertCleared("pregnancy_overdue_")
+
+
 class LowWellnessScoreTests(RepairCheckCase):
     def test_threshold(self) -> None:
         low = const.WELLNESS_SCORE_LOW_THRESHOLD

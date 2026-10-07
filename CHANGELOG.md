@@ -26,6 +26,9 @@
 - New option "No fertility notifications on hormonal contraception" (off by default): skips the fertile-window and ovulation notifications while the current method is hormonal.
 - New option "Hint after unprotected intercourse" (off by default): one neutral hint to ask a pharmacy or doctor about emergency contraception when unprotected intercourse is logged for today or the last 5 days.
 - The doctor report now lists the history of contraception methods (from/until, renewals), and the diaphragm has a label in every language.
+- New repair issue "Pregnancy mode is still active after the due date": appears 14 days after the calculated due date while pregnancy mode is still on and points to `set_pregnancy_mode` / `update_pregnancy_date` (DE/EN/ES/FR/SV).
+- New options "Calendar: pregnancy due date" and "Calendar: contraception dates" (both off by default): add the due date, or the renewal date (IUD, implant, injection), the end of the pill pack and the next patch/ring steps, to the calendar entity (visibility "Full" only) and the ICS feed.
+- New option "Weekly pregnancy message" (off by default): one neutral message per week on the weekday of the pregnancy start, plus a note at the start of the 2nd and 3rd trimester.
 - New sensor `sensor.menstruation_<name>_cycle_length`: length of the last completed cycle in days as a measurement with long-term statistics (average of the earlier cycles as attribute; only at visibility "Full").
 
 ### Changed

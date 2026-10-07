@@ -29,11 +29,11 @@ Each profile creates these entities (`<name>` is the slugified profile name):
 | `sensor.menstruation_<name>_cycle_length` | Length of the last completed cycle in days, with Home Assistant long-term statistics so you can chart it over months. |
 | `sensor.menstruation_<name>_products_today` | Period products used today (usage statistics). |
 | `sensor.menstruation_<name>_basal_temp` | Basal body temperature, when a temperature sensor is linked. |
-| `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. |
+| `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. Two more options (off by default) add the pregnancy due date, and contraception dates (renewal due, end of the pill pack, next patch/ring steps); these also go into the calendar feed (ICS) and show only at visibility "Full" in the calendar. |
 | `image.menstruation_<name>_cycle_phase` | Illustration of the current phase, for picture cards and wall tablets. |
 | `todo.menstruation_<name>_hospital_bag` | Editable hospital-bag checklist, only available during a pregnancy. Pre-filled in the Home Assistant language (German, English, Spanish, French, Swedish; English otherwise). |
 
-Entities follow the profile's visibility level: at "Private" nothing is shown, at "Status only" only period events remain in the calendar. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook, and repair issues point out things like an old calendar feed (ICS) token or an unreachable notify target.
+Entities follow the profile's visibility level: at "Private" nothing is shown, at "Status only" only period events remain in the calendar. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook, and repair issues point out things like an old calendar feed (ICS) token an unreachable notify target, or pregnancy mode still being on 14 days after the due date.
 
 ## Quick Start
 
@@ -79,6 +79,7 @@ The integration can notify you itself (**Configure → Notifications**), no auto
 | Pill reminder | today's pill is not logged yet, plus an optional follow-up after 1-12 hours | Pill reminder (+ time, follow-up) | off, 09:00 |
 | Pill hint | 2 or more days in a row without a logged pill (neutral hint to check the leaflet) | Hint when pill intakes are missing | off |
 | Patch / ring | on each step of the usual 28-day rhythm (patch: change on days 7 and 14, remove on day 21, new patch on day 28; ring: remove on day 21, new ring on day 28), sent with the pill reminder time | Pill reminder (also covers patch and ring) | off |
+| Pregnancy week | pregnancy mode is on: one short, neutral message per week on the weekday of the pregnancy start (current week and calculated due date), with a trimester note when the 2nd or 3rd trimester begins (no medical advice) | Weekly pregnancy message | off |
 | Unprotected intercourse | unprotected intercourse was logged for today or one of the last 5 days: one neutral hint to ask a pharmacy or doctor about emergency contraception (no dosing or medical advice; not during pregnancy or menopause) | Hint after unprotected intercourse | off |
 | Badges | a new progress badge was unlocked | part of the date reminders | with notifications |
 
