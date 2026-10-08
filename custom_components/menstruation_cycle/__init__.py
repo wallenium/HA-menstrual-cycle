@@ -121,6 +121,7 @@ from .const import (
     DEFAULT_NOTIFY_CHECKUP_ENABLED,
     DEFAULT_NOTIFY_PILL_GAP_ENABLED,
     CHECKUP_NOTIFY_LEAD_DAYS,
+    NEW_PERIOD_MIN_GAP_DAYS,
     PERIOD_OVERDUE_DAYS,
     PILL_PAUSE_DAYS_MAX,
     CONF_CHECKUP_INTERVAL_MONTHS,
@@ -3697,6 +3698,14 @@ def _smart_period_history_dates(
     return fill_days
 
 
+def _bleeding_may_start_period(runtime: MenstruationRuntime, date_iso: str) -> bool:
+    """True if logged bleeding on date_iso may start a new period: not pregnant, no period day shortly before it."""
+    if runtime.pregnancy_data.get("is_pregnant"):
+        return False
+    window_start = (date.fromisoformat(date_iso) - timedelta(days=NEW_PERIOD_MIN_GAP_DAYS)).isoformat()
+    return not any(window_start <= item < date_iso for item in runtime.history)
+
+
 async def _async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
     runtime = _runtime_for_call(hass, call)
     date_iso = _normalize_date_or_raise(call.data[SERVICE_FIELD_DATE])
@@ -4854,7 +4863,9 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
     if bleeding_strength in {"none", "keine"}:
         runtime.history = [item for item in runtime.history if item != date_iso]
     elif "bleeding_strength" in next_symptom_data:
-        for history_date in _smart_period_history_dates(runtime, date_iso, allow_new_period=False):
+        for history_date in _smart_period_history_dates(
+            runtime, date_iso, allow_new_period=_bleeding_may_start_period(runtime, date_iso)
+        ):
             if history_date not in runtime.history:
                 runtime.history.append(history_date)
 
@@ -5575,8 +5586,9 @@ async def _async_get_lovelace_resource_collection(hass: HomeAssistant) -> tuple[
     """Return a Lovelace resource collection and its mode if available."""
     try:
         from homeassistant.components.lovelace.resources import async_get_resource_collection
-    except Exception:
-        _LOGGER.debug("Lovelace resource collection helper not importable", exc_info=True)
+    except ImportError:
+        # newer Home Assistant versions no longer have this helper; the LOVELACE_DATA lookup below replaces it
+        _LOGGER.debug("Lovelace resource collection helper not available; using LOVELACE_DATA")
         async_get_resource_collection = None
 
     if async_get_resource_collection is not None:

@@ -193,6 +193,10 @@ CONF_NOTIFY_PARTNER_SERVICE = "notify_partner_service"
 # Aufeinanderfolgende Blutungstage ab denen repairs.py::async_check_period_prolonged
 # einen rein informativen Hinweis erzeugt (>7 Tage gilt allgemein als auffaellig lang).
 PERIOD_PROLONGED_DAYS = 8
+
+# A logged bleeding strength starts a new period only if no period day was recorded in the days before it;
+# closer to the last period it counts as intermenstrual bleeding (the shortest plausible cycle is ~21 days).
+NEW_PERIOD_MIN_GAP_DAYS = 14
 # Months since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup (0 = off).
 CONF_CHECKUP_INTERVAL_MONTHS = "checkup_interval_months"
 DEFAULT_CHECKUP_INTERVAL_MONTHS = 12
