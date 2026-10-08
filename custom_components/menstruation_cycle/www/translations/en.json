@@ -1192,6 +1192,10 @@
   "dashboard_lh_positive": "LH test positive",
   "dashboard_lh_negative": "LH test negative",
   "dashboard_lh_done": "LH test saved for today.",
+  "dashboard_temp_label": "Basal temperature today:",
+  "dashboard_temp_save": "Save",
+  "dashboard_temp_done": "Temperature saved for today.",
+  "dashboard_temp_invalid": "Please enter a number.",
   "luteal_forecast_hint": "Period expected from temperature",
   "dashboard_luteal_forecast": "From temperature: {date} ({diff} days vs. calendar)"
 }

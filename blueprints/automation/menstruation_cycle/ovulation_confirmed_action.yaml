@@ -1,0 +1,42 @@
+blueprint:
+  name: M-Cycle - Action on confirmed temperature rise
+  description: >
+    Runs any action you choose at the moment the NFP analysis newly confirms
+    the temperature rise of a cycle (retrospectively, a few days after the
+    actual rise). Fired once per cycle, not for private profiles, and not for
+    a rise that was already confirmed when Home Assistant restarted. The
+    action can use trigger.event.data (friendly_name, profile, entry_id, date
+    of the rise).
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/ovulation_confirmed_action.yaml
+  input:
+    profile_name:
+      name: Profile name (optional)
+      description: >
+        Only react to this profile (its display name, as shown in the logbook).
+        Leave empty to react to every profile.
+      default: ""
+      selector:
+        text: {}
+
+    action_to_run:
+      name: Action
+      description: What should happen.
+      selector:
+        action: {}
+
+trigger:
+  - trigger: event
+    event_type: menstruation_cycle_ovulation_confirmed
+
+variables:
+  profile_name: !input profile_name
+
+condition:
+  - condition: template
+    value_template: "{{ profile_name == '' or trigger.event.data.friendly_name == profile_name }}"
+
+action:
+  - !input action_to_run
+
+mode: queued

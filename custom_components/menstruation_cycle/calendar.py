@@ -175,7 +175,10 @@ class MenstruationCycleCalendar(CalendarEntity):
             runtime.symptom_history,
             int(self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
         )
-        extra = collect_extra_events(self._entry.options, runtime, cycle_model.due_date, self.hass.config.language, today)
+        luteal = (cycle_model.nfp_analysis or {}).get("luteal_forecast") or {}
+        extra = collect_extra_events(
+            self._entry.options, runtime, cycle_model.due_date, self.hass.config.language, today, luteal.get("predicted_start")
+        )
         self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due, extra)
 
     async def async_get_events(

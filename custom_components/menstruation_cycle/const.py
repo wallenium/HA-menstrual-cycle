@@ -18,6 +18,8 @@ EVENT_CYCLE_START_LOGGED = f"{DOMAIN}_cycle_start_logged"
 EVENT_PILL_TAKEN = f"{DOMAIN}_pill_taken"
 # Fired when the first positive ovulation (LH) test of a cycle is logged; described in logbook.py.
 EVENT_LH_POSITIVE = f"{DOMAIN}_lh_positive"
+# Fired when the temperature rise of a cycle is newly confirmed (retrospectively); described in logbook.py.
+EVENT_OVULATION_CONFIRMED = f"{DOMAIN}_ovulation_confirmed"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1
@@ -206,6 +208,8 @@ DEFAULT_CALENDAR_CONTRACEPTION_EVENTS = False
 # Real logged periods (not only predictions) as events; shown for this many days back.
 CONF_CALENDAR_LOGGED_PERIODS = "calendar_logged_periods"
 DEFAULT_CALENDAR_LOGGED_PERIODS = False
+CONF_CALENDAR_LUTEAL_FORECAST = "calendar_luteal_forecast"
+DEFAULT_CALENDAR_LUTEAL_FORECAST = False
 CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS = 365
 # To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
 PILL_REFILL_LEAD_DAYS = 5

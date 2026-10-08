@@ -3792,6 +3792,11 @@
         return;
       }
 
+      if (action === 'temp-save') {
+        this._saveTemperature();
+        return;
+      }
+
       if (action === 'period-start') {
         this._requestPeriodStart(target.dataset.daysAgo);
         return;
@@ -6881,6 +6886,56 @@
       this.render();
     }
 
+    // Quick entry for today's basal temperature, offered to people who logged one in the last 14 days.
+    // The unit (°C/°F) is a profile option the panel does not know, so the service validates the value.
+    _renderTemperatureAction(stateObj, discreetMode) {
+      if (discreetMode || !stateObj) return '';
+      if (NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return '';
+      const since = new Date();
+      since.setDate(since.getDate() - 14);
+      const sinceIso = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+      const today = this._todayIso();
+      const logged = this._getFullSymptomHistory(stateObj)
+        .filter((item) => item && item.basal_temp != null && item.date >= sinceIso && item.date <= today);
+      if (!logged.length) return '';
+      const current = logged.find((item) => item.date === today);
+      const label = this._t('dashboard_temp_label');
+      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" role="group" aria-label="${escapeHtml(label)}">
+        <span>${escapeHtml(label)}</span>
+        <input type="text" inputmode="decimal" size="6" data-action="temp-input" value="${escapeHtml(current ? String(current.basal_temp) : '')}" aria-label="${escapeHtml(label)}" />
+        <button type="button" data-action="temp-save">${escapeHtml(this._t('dashboard_temp_save'))}</button>
+      </div>`;
+    }
+
+    async _saveTemperature() {
+      if (!this._hass || !this._selectedEntityId) return;
+      const raw = String(this.shadowRoot?.querySelector('input[data-action="temp-input"]')?.value ?? '').trim().replace(',', '.');
+      const value = Number(raw);
+      if (raw === '' || !Number.isFinite(value)) {
+        this._message = this._t('dashboard_temp_invalid');
+        this.render();
+        return;
+      }
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: this._todayIso(),
+          symptom_data: { basal_temp: value },
+        });
+        this._message = this._t('dashboard_temp_done');
+      } catch (error) {
+        this._message = (error && error.message) || this._t('dashboard_period_action_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     _renderContraceptionWarning(stateObj, discreetMode) {
       if (discreetMode) return '';
       const status = stateObj?.attributes?.contraception_status;
@@ -8014,6 +8069,7 @@
           ${this._renderDoctorReportAction(discreetMode)}
           ${this._renderPeriodActions(stateObj, discreetMode)}
           ${this._renderLhTestActions(stateObj, discreetMode)}
+          ${this._renderTemperatureAction(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}

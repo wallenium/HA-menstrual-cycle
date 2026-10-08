@@ -381,7 +381,7 @@ class LogbookTests(unittest.TestCase):
             set(found),
             {
                 const.EVENT_PRODUCT_CONSUMED, const.EVENT_STATE_CHANGED, const.EVENT_CYCLE_START_LOGGED,
-                const.EVENT_PILL_TAKEN, const.EVENT_LH_POSITIVE,
+                const.EVENT_PILL_TAKEN, const.EVENT_LH_POSITIVE, const.EVENT_OVULATION_CONFIRMED,
             },
         )
         self.assertEqual({domain for domain, _ in found.values()}, {const.DOMAIN})
@@ -412,21 +412,26 @@ class LogbookTests(unittest.TestCase):
         expected = {
             "de": ("hat 2x Tampons verwendet", "Zyklusstatus wechselte zu Periode",
                    "Periodenbeginn für 2026-10-01 erfasst", "Pille für 2026-10-01 genommen",
-                   "Erster positiver Ovulationstest des Zyklus für 2026-10-01 erfasst"),
+                   "Erster positiver Ovulationstest des Zyklus für 2026-10-01 erfasst",
+                   "Temperaturanstieg bestätigt (seit 2026-10-01)"),
             "en": ("used 2x tampons", "cycle status changed to period",
                    "logged period start on 2026-10-01", "took the pill on 2026-10-01",
-                   "logged the first positive ovulation test of the cycle on 2026-10-01"),
+                   "logged the first positive ovulation test of the cycle on 2026-10-01",
+                   "temperature rise confirmed (since 2026-10-01)"),
             "es": ("usó 2x tampones", "el estado del ciclo cambió a menstruación",
                    "registró el inicio del período el 2026-10-01", "tomó la píldora el 2026-10-01",
-                   "registró la primera prueba de ovulación positiva del ciclo el 2026-10-01"),
+                   "registró la primera prueba de ovulación positiva del ciclo el 2026-10-01",
+                   "aumento de temperatura confirmado (desde el 2026-10-01)"),
             "fr": ("a utilisé 2x tampons", "le statut du cycle est passé à règles",
                    "a enregistré le début des règles le 2026-10-01", "a pris la pilule le 2026-10-01",
-                   "a enregistré le premier test d'ovulation positif du cycle le 2026-10-01"),
+                   "a enregistré le premier test d'ovulation positif du cycle le 2026-10-01",
+                   "hausse de température confirmée (depuis le 2026-10-01)"),
             "sv": ("använde 2x tamponger", "cykelstatus ändrades till mens",
                    "loggade mensstart den 2026-10-01", "tog p-pillret den 2026-10-01",
-                   "loggade cykelns första positiva ägglossningstest den 2026-10-01"),
+                   "loggade cykelns första positiva ägglossningstest den 2026-10-01",
+                   "temperaturhöjning bekräftad (sedan 2026-10-01)"),
         }
-        for lang, (consumed, changed, start, pill, lh) in expected.items():
+        for lang, (consumed, changed, start, pill, lh, rise) in expected.items():
             found = _describers(lang)
             messages = [
                 found[const.EVENT_PRODUCT_CONSUMED][1](_event(product="tampon", quantity=2, member="Sarah"))["message"],
@@ -434,8 +439,9 @@ class LogbookTests(unittest.TestCase):
                 found[const.EVENT_CYCLE_START_LOGGED][1](_event(date="2026-10-01", friendly_name="Sarah"))["message"],
                 found[const.EVENT_PILL_TAKEN][1](_event(date="2026-10-01", friendly_name="Sarah"))["message"],
                 found[const.EVENT_LH_POSITIVE][1](_event(date="2026-10-01", friendly_name="Sarah"))["message"],
+                found[const.EVENT_OVULATION_CONFIRMED][1](_event(date="2026-10-01", friendly_name="Sarah"))["message"],
             ]
-            self.assertEqual(messages, [consumed, changed, start, pill, lh], lang)
+            self.assertEqual(messages, [consumed, changed, start, pill, lh, rise], lang)
 
     def test_regional_or_unknown_language_codes(self) -> None:
         def message(language):
@@ -473,6 +479,7 @@ class LogbookTests(unittest.TestCase):
         self.assertEqual(found[const.EVENT_PILL_TAKEN][1](_event())["name"], "unknown")
         entry = found[const.EVENT_LH_POSITIVE][1](_event())
         self.assertEqual((entry["name"], entry["message"]), ("unknown", "logged the first positive ovulation test of the cycle on ?"))
+        self.assertEqual(found[const.EVENT_OVULATION_CONFIRMED][1](_event())["message"], "temperature rise confirmed (since ?)")
 
 
 # ---------------------------------------------------------------------------------- calendar

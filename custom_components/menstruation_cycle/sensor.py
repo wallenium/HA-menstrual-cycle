@@ -83,6 +83,7 @@ from .const import (
     STATE_PMS,
     STATE_PRIVATE,
     VISIBILITY_LEVEL_FULL,
+    EVENT_OVULATION_CONFIRMED,
     EVENT_STATE_CHANGED,
     VISIBILITY_LEVEL_PRIVATE,
     VISIBILITY_LEVEL_STATUS_ONLY,
@@ -1152,6 +1153,8 @@ class MenstruationGaugeSensor(SensorEntity):
         # async_update() after (re)start, when self._state still holds
         # its constructor sentinel rather than a real previous value.
         self._state_initialized = False
+        # Temperature rise day seen by the previous update (None = not confirmed yet); see _fire_ovulation_confirmed.
+        self._seen_rise_day: str | None = None
         self._icon: str | None = runtime.icon or None
 
     @property
@@ -1489,7 +1492,28 @@ class MenstruationGaugeSensor(SensorEntity):
                     "entity_id": self.entity_id,
                 },
             )
+        self._fire_ovulation_confirmed(model, runtime, visibility_level)
         self._state_initialized = True
+
+    def _fire_ovulation_confirmed(self, model: Any, runtime: Any, visibility_level: str) -> None:
+        """Fire EVENT_OVULATION_CONFIRMED when this update confirms a temperature rise the last one did not.
+
+        Like the state-change event it is skipped on the first update after (re)start, so a restart never repeats
+        it; a rise that was already confirmed before then simply stays silent (ponytail: no persisted marker).
+        """
+        rise_day = (model.nfp_analysis or {}).get("temperature_rise_day")
+        newly_confirmed = self._state_initialized and rise_day and not self._seen_rise_day
+        self._seen_rise_day = rise_day
+        if newly_confirmed and visibility_level != VISIBILITY_LEVEL_PRIVATE:
+            self.hass.bus.async_fire(
+                EVENT_OVULATION_CONFIRMED,
+                {
+                    "entry_id": self._entry.entry_id,
+                    "profile": runtime.profile,
+                    "friendly_name": runtime.friendly_name,
+                    "date": rise_day,
+                },
+            )
 
     def _resolve_estimated_menarche_date(
         self,

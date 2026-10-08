@@ -97,6 +97,7 @@ class CollectExtraEventsTests(unittest.TestCase):
                         "patch_new", "ring_remove", "ring_insert"):
                 self.assertTrue(strings[key], (lang, key))
             self.assertTrue(strings["period_logged"] and strings["source_logged"], lang)
+            self.assertTrue(strings["period_luteal"], lang)
 
 
 LOGGED_ON = {const.CONF_CALENDAR_LOGGED_PERIODS: True}
@@ -107,6 +108,45 @@ def _with_history(*offsets_ranges):
     for first, last in offsets_ranges:
         days += [(TODAY + timedelta(days=o)).isoformat() for o in range(first, last + 1)]
     return SimpleNamespace(pregnancy_data={}, symptom_history=[], noncycle_data={}, history=days)
+
+
+LUTEAL_ON = {const.CONF_CALENDAR_LUTEAL_FORECAST: True}
+
+
+def _luteal(options, offset, runtime=None, lang="en"):
+    iso = None if offset is None else (TODAY + timedelta(days=offset)).isoformat()
+    return ical.collect_extra_events(options, runtime or _with_history(), "2027-01-10", lang, TODAY, iso)
+
+
+class LutealPeriodEventTests(unittest.TestCase):
+    def test_off_by_default_and_without_a_forecast(self) -> None:
+        self.assertEqual(_luteal({}, 5), [])
+        self.assertEqual(_luteal(LUTEAL_ON, None), [])
+
+    def test_one_all_day_event_on_the_forecast_date(self) -> None:
+        day = TODAY + timedelta(days=5)
+        self.assertEqual(_luteal(LUTEAL_ON, 5), [("period_luteal", day, day, "Period (luteal phase forecast)")])
+        self.assertEqual(_luteal(LUTEAL_ON, 5, lang="de")[0][3], "Periode (Prognose aus Lutealphase)")
+
+    def test_today_counts_but_a_date_in_the_past_does_not(self) -> None:
+        self.assertEqual(len(_luteal(LUTEAL_ON, 0)), 1)
+        self.assertEqual(_luteal(LUTEAL_ON, -1), [])
+
+    def test_other_options_do_not_enable_it(self) -> None:
+        self.assertEqual(_luteal({**PREG_ON, **CONTRA_ON, **LOGGED_ON}, 5), [])
+
+    def test_calendar_entity_and_ics_feed_pass_the_forecast_date_on(self) -> None:
+        # ponytail: source check instead of booting the calendar entity and the HTTP view
+        for file_name in ("calendar.py", "__init__.py"):
+            source = (COMPONENT_ROOT / file_name).read_text(encoding="utf-8")
+            at = source.index("collect_extra_events(")
+            self.assertIn('"luteal_forecast"', source[at - 200 : at + 400], file_name)
+            self.assertIn('"predicted_start"', source[at : at + 400], file_name)
+
+    def test_ics_contains_the_event(self) -> None:
+        ics = ical.generate_ics("e1", None, None, 28, 6, "en", None, None, TODAY, _luteal(LUTEAL_ON, 5)).decode()
+        self.assertIn("SUMMARY:Period (luteal phase forecast)", ics)
+        self.assertIn("DTSTART;VALUE=DATE:20261009", ics)
 
 
 class LoggedPeriodEventsTests(unittest.TestCase):

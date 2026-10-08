@@ -1800,7 +1800,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             notified_something = True
 
     # Overdue period: same gate as the repair issue (repairs.py::async_check_period_overdue); once per predicted start, own target only.
-    days_to_start = model.days_until_next_start
+    days_to_start = _days_until_expected_start(model, entry.options, today)
     if (
         overdue_notify_enabled
         and days_to_start is not None
@@ -2314,6 +2314,19 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
     raise HomeAssistantError(
         f"Multiple profiles configured. Provide '{SERVICE_FIELD_PROFILE}' in service data. Known: {known}"
     )
+
+
+def _days_until_expected_start(model: Any, options: Any, today: date) -> int | None:
+    """Days until the next period for the "overdue" checks (negative = late).
+
+    Normally the calendar prediction; with the luteal-phase option on and a luteal forecast available, the days to
+    that date, so "expected" and "overdue" refer to the same day. Stays None where there is no prediction at all.
+    """
+    days = model.days_until_next_start
+    luteal = ((model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start")
+    if days is not None and luteal and options.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL):
+        return (date.fromisoformat(luteal) - today).days
+    return days
 
 
 def _check_pregnancy_test_hint(hass: HomeAssistant, entry_id: str, entry_title: str, runtime: MenstruationRuntime) -> None:
@@ -3391,7 +3404,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass,
                 entry.entry_id,
                 entry.title,
-                _midnight_model.days_until_next_start,
+                _days_until_expected_start(_midnight_model, entry.options, dt_util.now().date()),
                 _midnight_model.state == STATE_PERIOD,
                 bool((_midnight_model.prediction_gating or {}).get("precision_allowed")),
             )
@@ -3593,7 +3606,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         entry.entry_id,
         entry.title,
-        _setup_model.days_until_next_start,
+        _days_until_expected_start(_setup_model, entry.options, dt_util.now().date()),
         _setup_model.state == STATE_PERIOD,
         bool((_setup_model.prediction_gating or {}).get("precision_allowed")),
     )
@@ -5881,6 +5894,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
                 cycle_model.due_date,
                 hass.config.language,
                 dt_util.now().date(),
+                ((cycle_model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start"),
             ),
         )
 

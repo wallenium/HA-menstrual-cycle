@@ -10,11 +10,13 @@ from .const import (
     CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS,
     CONF_CALENDAR_CONTRACEPTION_EVENTS,
     CONF_CALENDAR_LOGGED_PERIODS,
+    CONF_CALENDAR_LUTEAL_FORECAST,
     CONF_CALENDAR_PREGNANCY_EVENTS,
     CONF_PILL_PAUSE_DAYS,
     CONTRACEPTION_METHOD_PILL,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
     DEFAULT_CALENDAR_LOGGED_PERIODS,
+    DEFAULT_CALENDAR_LUTEAL_FORECAST,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
     DEFAULT_PILL_PAUSE_DAYS,
     ICS_HORIZON_MONTHS_DEFAULT,
@@ -54,6 +56,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_insert": "Insert new ring",
         "source_predicted": "Source: predicted",
         "period_logged": "Period",
+        "period_luteal": "Period (luteal phase forecast)",
         "source_logged": "Source: logged",
         "source_prefix": "Source",
         "confidence": "confidence",
@@ -74,6 +77,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_insert": "Neuen Ring einsetzen",
         "source_predicted": "Quelle: Vorhersage",
         "period_logged": "Periode",
+        "period_luteal": "Periode (Prognose aus Lutealphase)",
         "source_logged": "Quelle: erfasst",
         "source_prefix": "Quelle",
         "confidence": "Konfidenz",
@@ -94,6 +98,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_insert": "Insérer un nouvel anneau",
         "source_predicted": "Source : prévision",
         "period_logged": "Règles",
+        "period_luteal": "Règles (prévision par phase lutéale)",
         "source_logged": "Source : enregistré",
         "source_prefix": "Source",
         "confidence": "confiance",
@@ -114,6 +119,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_insert": "Colocar un anillo nuevo",
         "source_predicted": "Fuente: predicción",
         "period_logged": "Menstruación",
+        "period_luteal": "Menstruación (previsión por fase lútea)",
         "source_logged": "Fuente: registrado",
         "source_prefix": "Fuente",
         "confidence": "confianza",
@@ -134,6 +140,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_insert": "Sätt in ny ring",
         "source_predicted": "Källa: prognos",
         "period_logged": "Mens",
+        "period_luteal": "Mens (prognos via lutealfas)",
         "source_logged": "Källa: loggad",
         "source_prefix": "Källa",
         "confidence": "konfidens",
@@ -155,12 +162,14 @@ def collect_extra_events(
     due_date: str | None,
     lang: str | None,
     today: date,
+    luteal_date: str | None = None,
 ) -> list[tuple[str, date, date, str]]:
     """Opt-in all-day events for the calendar entity and the ICS feed: (kind, first day, last day, summary).
 
     Pregnancy due date (only while pregnancy mode is on) and contraception dates (renewal due, end of the pill
     pack, next patch/ring steps) each follow their own option and are off by default. Summaries stay generic
-    (no method name) because the ICS feed is shared via token.
+    (no method name) because the ICS feed is shared via token. The luteal-phase period date (luteal_date, the
+    model's luteal_forecast.predicted_start) is a fourth opt-in; it is left out once it lies in the past.
     """
     strings = _ics_strings(lang)
     events: list[tuple[str, date, date, str]] = []
@@ -189,6 +198,10 @@ def collect_extra_events(
             start, end = date.fromisoformat(block[0]), date.fromisoformat(block[-1])
             if end >= cutoff:
                 events.append(("period_logged", start, end, strings["period_logged"]))
+    if options.get(CONF_CALENDAR_LUTEAL_FORECAST, DEFAULT_CALENDAR_LUTEAL_FORECAST) and luteal_date:
+        predicted = date.fromisoformat(luteal_date)
+        if predicted >= today:
+            events.append(("period_luteal", predicted, predicted, strings["period_luteal"]))
     return events
 
 

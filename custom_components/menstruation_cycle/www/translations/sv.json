@@ -1192,6 +1192,10 @@
   "dashboard_lh_positive": "LH-test positivt",
   "dashboard_lh_negative": "LH-test negativt",
   "dashboard_lh_done": "LH-test sparat för idag.",
+  "dashboard_temp_label": "Basaltemperatur idag:",
+  "dashboard_temp_save": "Spara",
+  "dashboard_temp_done": "Temperaturen för idag sparad.",
+  "dashboard_temp_invalid": "Ange ett tal.",
   "luteal_forecast_hint": "Mens väntas enligt temperaturen",
   "dashboard_luteal_forecast": "Enligt temperatur: {date} ({diff} dagar mot kalendern)"
 }

@@ -50,6 +50,7 @@
           "calendar_pregnancy_events": "Kalender: Entbindungstermin",
           "calendar_contraception_events": "Kalender: Verhütungstermine",
           "calendar_logged_periods": "Kalender: erfasste Perioden",
+          "calendar_luteal_forecast": "Kalender: Periode aus der Lutealphase",
           "visibility_level": "Sichtbarkeitsstufe"
         },
         "data_description": {
@@ -62,6 +63,7 @@
           "calendar_pregnancy_events": "Fügt den berechneten Entbindungstermin als ganztägigen Termin zum Zykluskalender und zum ICS-Feed hinzu. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
           "calendar_contraception_events": "Fügt Erneuerungstermine (Spirale, Implantat, Spritze), das Ende der Pillenpackung und die nächsten Pflaster-/Ring-Schritte zum Zykluskalender und zum ICS-Feed hinzu. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
           "calendar_logged_periods": "Zeigt die erfassten Perioden (der letzten 12 Monate) als Termine im Zykluskalender und im ICS-Feed, nicht nur die Vorhersagen. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
+          "calendar_luteal_forecast": "Zeigt das aus der eigenen Lutealphasenlänge berechnete Perioden-Datum (Eisprung plus gelernte Lutealphase) als Termin im Zykluskalender und im ICS-Feed, sobald es existiert und solange es in der Zukunft liegt. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender einer Partnerperson).",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
         },
@@ -117,7 +119,7 @@
               "notify_test_hint": "Sendet 14 Tage nach einem Eisprung, der durch deine Temperatur- und Schleim-/Muttermund-Einträge bestätigt wurde, eine neutrale Nachricht: Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert und keine medizinische Beratung. Entfällt während einer Schwangerschaft und bei hormoneller Verhütung, wenn dafür die Fruchtbarkeits-Benachrichtigungen stummgeschaltet sind. Ohne bestätigten Eisprung gilt ersatzweise der Tag nach dem ersten positiven LH-Test des Zyklus. Standardmäßig aus.",
               "notify_lh_hint": "Sendet einmal pro Zyklus ein paar Tage vor dem erwarteten Eisprung eine neutrale Nachricht, dass jetzt ein guter Zeitpunkt ist, mit Ovulationstests (LH) zu beginnen. Sobald im Zyklus ein positiver LH-Test oder ein bestätigter Eisprung vorliegt, entfällt sie. Nur ein Richtwert, keine medizinische Beratung. Wird übersprungen, solange die Fruchtbarkeits-Benachrichtigungen wegen hormoneller Verhütung stummgeschaltet sind. Standardmäßig aus.",
               "notify_temp_reminder": "Erinnert zur Benachrichtigungszeit rund um den erwarteten Eisprung daran, die Basaltemperatur zu messen und einzutragen, solange noch kein Temperaturanstieg bestätigt ist. Nur für Personen, die ihre Temperatur regelmäßig eintragen (mindestens an 3 der letzten 7 Tage), und nur wenn die Temperatur von heute noch nicht eingetragen ist. Standardmäßig aus.",
-              "notify_period_luteal": "Nutzt für „Periode erwartet“ das Datum aus der eigenen Lutealphasenlänge (Eisprung plus gelernte Lutealphase), sobald es berechnet werden kann; sonst bleibt es beim Kalenderdatum. Standardmäßig aus."
+              "notify_period_luteal": "Nutzt für „Periode erwartet“ das Datum aus der eigenen Lutealphasenlänge (Eisprung plus gelernte Lutealphase), sobald es berechnet werden kann; sonst bleibt es beim Kalenderdatum. Der Hinweis „Periode überfällig“ und die Reparatur-Meldung zählen ebenfalls ab diesem Datum. Standardmäßig aus."
             }
           },
           "pill": {

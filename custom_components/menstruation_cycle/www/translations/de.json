@@ -1192,6 +1192,10 @@
   "dashboard_lh_positive": "LH-Test positiv",
   "dashboard_lh_negative": "LH-Test negativ",
   "dashboard_lh_done": "LH-Test für heute eingetragen.",
+  "dashboard_temp_label": "Basaltemperatur heute:",
+  "dashboard_temp_save": "Speichern",
+  "dashboard_temp_done": "Temperatur für heute eingetragen.",
+  "dashboard_temp_invalid": "Bitte eine Zahl eingeben.",
   "luteal_forecast_hint": "Periode laut Temperatur erwartet",
   "dashboard_luteal_forecast": "Aus Temperatur: {date} ({diff} Tage zum Kalender)"
 }

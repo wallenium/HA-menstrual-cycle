@@ -1495,6 +1495,73 @@ class PeriodFromLutealPhaseTests(unittest.TestCase):
         self.assertEqual(self._send(luteal_offset=0, calendar_offset=3, noncycle={"notified_period_start": _iso(0)}), [])
 
 
+class OverdueFromLutealPhaseTests(unittest.TestCase):
+    """With the luteal-phase option, "overdue" counts from the luteal date like "period expected" does."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _model(self, days, luteal_offset):
+        luteal = None if luteal_offset is None else {"luteal_forecast": {"predicted_start": _iso(luteal_offset)}}
+        return SimpleNamespace(days_until_next_start=days, nfp_analysis=luteal)
+
+    def test_days_until_expected_start(self) -> None:
+        on = {const.CONF_NOTIFY_PERIOD_LUTEAL: True}
+        today = TODAY
+        f = integration._days_until_expected_start
+        self.assertEqual(f(self._model(-1, -6), on, today), -6)
+        self.assertEqual(f(self._model(-1, 3), on, today), 3)
+        # option off, no forecast, nfp_analysis missing: calendar days
+        self.assertEqual(f(self._model(-1, -6), {}, today), -1)
+        self.assertEqual(f(self._model(-1, None), on, today), -1)
+        self.assertEqual(f(SimpleNamespace(days_until_next_start=-1, nfp_analysis=None), on, today), -1)
+        # no prediction at all (e.g. pregnancy): stays None even with a forecast
+        self.assertIsNone(f(self._model(None, -6), on, today))
+
+    def _overdue(self, late_days, luteal_offset, option):
+        # last cycle start (28 + late_days) ago: the calendar says "late_days overdue"
+        runtime = OverdueNotificationTests._runtime(None, late_days)
+        model_mod = sys.modules[f"{_PKG}.model"]
+        real = model_mod.build_cycle_model
+
+        def build(**kwargs):
+            result = real(**kwargs)
+            if luteal_offset is not None:
+                result.nfp_analysis = {"luteal_forecast": {"predicted_start": _iso(luteal_offset)}}
+            return result
+
+        entry = _entry(**{const.CONF_NOTIFY_OVERDUE_ENABLED: True, const.CONF_NOTIFY_PERIOD_LUTEAL: option})
+        sent = _Sent()
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]), patch.object(model_mod, "build_cycle_model", build):
+            _run(integration._async_check_and_send_notifications(_hass(), entry, runtime))
+        self.runtime = runtime
+        return [message for _, message, _ in sent.calls]
+
+    def test_luteal_date_decides_when_the_option_is_on(self) -> None:
+        # calendar: 10 days late, luteal date still ahead -> nothing
+        self.assertEqual(self._overdue(10, 2, True), [])
+        # calendar: on time, luteal date 8 days ago -> overdue by 8 days, once per date
+        (message,) = self._overdue(0, -8, True)
+        self.assertIn("8 days", message)
+        self.assertEqual(self.runtime.noncycle_data["notified_period_overdue"], _iso(-8))
+        # the usual threshold applies to the luteal date
+        self.assertEqual(len(self._overdue(0, -const.PERIOD_OVERDUE_DAYS, True)), 1)
+        self.assertEqual(self._overdue(0, -const.PERIOD_OVERDUE_DAYS + 1, True), [])
+
+    def test_calendar_date_decides_with_the_option_off_or_without_forecast(self) -> None:
+        self.assertEqual(len(self._overdue(10, 2, False)), 1)
+        self.assertEqual(self._overdue(0, -8, False), [])
+        self.assertEqual(len(self._overdue(10, None, True)), 1)
+
+    def test_repair_checks_at_midnight_and_setup_use_the_same_days(self) -> None:
+        source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
+        for model in ("_midnight_model", "_setup_model"):
+            self.assertEqual(source.count(f"_days_until_expected_start({model}, entry.options"), 1, model)
+            self.assertNotIn(f"{model}.days_until_next_start", source)
+
+
 class LhPositiveEventTests(unittest.TestCase):
     """The first positive ovulation test of a cycle fires an event for automations and the logbook."""
 

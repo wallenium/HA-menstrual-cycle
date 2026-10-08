@@ -324,6 +324,57 @@ class TestBackgroundThreadSafety(unittest.TestCase):
         entity.hass.loop.call_soon_threadsafe.assert_called_once()
 
 
+class TestOvulationConfirmedEvent(unittest.TestCase):
+    """The event fires when an update newly confirms the temperature rise, never on the first update."""
+
+    def _sensor(self):
+        entity = _make_gauge_sensor()
+        entity.hass.bus = MagicMock()
+        entity._entry = types.SimpleNamespace(entry_id="entry-1")
+        entity._state_initialized = False
+        entity._seen_rise_day = None
+        self.runtime = types.SimpleNamespace(profile="anna", friendly_name="Anna")
+        return entity
+
+    def _update(self, entity, rise_day, visibility="full"):
+        model = types.SimpleNamespace(nfp_analysis={"temperature_rise_day": rise_day} if rise_day else {})
+        entity._fire_ovulation_confirmed(model, self.runtime, visibility)
+        entity._state_initialized = True
+        return [c.args for c in entity.hass.bus.async_fire.call_args_list]
+
+    def test_fires_once_when_the_rise_becomes_confirmed(self) -> None:
+        entity = self._sensor()
+        self.assertEqual(self._update(entity, None), [])
+        (name, data), = self._update(entity, "2026-06-15")
+        self.assertEqual(name, "menstruation_cycle_ovulation_confirmed")
+        self.assertEqual(data, {"entry_id": "entry-1", "profile": "anna", "friendly_name": "Anna", "date": "2026-06-15"})
+        # still confirmed, or the day shifts a little: no second event
+        self.assertEqual(len(self._update(entity, "2026-06-15")), 1)
+        self.assertEqual(len(self._update(entity, "2026-06-16")), 1)
+
+    def test_a_new_cycle_can_fire_again(self) -> None:
+        entity = self._sensor()
+        self._update(entity, None)
+        self._update(entity, "2026-06-15")
+        self._update(entity, None)
+        self.assertEqual(len(self._update(entity, "2026-07-13")), 2)
+
+    def test_the_first_update_after_a_restart_stays_silent(self) -> None:
+        entity = self._sensor()
+        self.assertEqual(self._update(entity, "2026-06-15"), [])
+        self.assertEqual(self._update(entity, "2026-06-15"), [])
+
+    def test_the_sensor_update_calls_the_check_before_marking_itself_initialized(self) -> None:
+        source = Path(sensor_module.__file__).read_text(encoding="utf-8")
+        call = "self._fire_ovulation_confirmed(model, runtime, visibility_level)\n        self._state_initialized = True"
+        self.assertEqual(source.count(call), 1)
+
+    def test_private_profiles_fire_nothing(self) -> None:
+        entity = self._sensor()
+        self._update(entity, None, "private")
+        self.assertEqual(self._update(entity, "2026-06-15", "private"), [])
+
+
 class TestCycleLengthSensor(unittest.TestCase):
     """The cycle-length measurement sensor: value, attributes, visibility and identity."""
 

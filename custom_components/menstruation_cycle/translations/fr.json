@@ -50,6 +50,7 @@
           "calendar_pregnancy_events": "Calendrier : date prévue d'accouchement",
           "calendar_contraception_events": "Calendrier : dates de contraception",
           "calendar_logged_periods": "Calendrier : règles enregistrées",
+          "calendar_luteal_forecast": "Calendrier : règles selon la phase lutéale",
           "visibility_level": "Niveau de visibilité"
         },
         "data_description": {
@@ -62,6 +63,7 @@
           "calendar_pregnancy_events": "Ajoute la date prévue d'accouchement calculée comme événement sur la journée au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_contraception_events": "Ajoute les dates de renouvellement (stérilet, implant, injection), la fin de la plaquette de pilule et les prochaines étapes du patch/anneau au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_logged_periods": "Affiche les règles enregistrées (des 12 derniers mois) comme événements dans le calendrier du cycle et le flux ICS, et pas seulement les prévisions. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
+          "calendar_luteal_forecast": "Affiche la date des règles calculée avec ta propre durée de phase lutéale (ovulation plus phase lutéale apprise) comme événement dans le calendrier du cycle et le flux ICS, dès qu'elle existe et tant qu'elle est dans le futur. Désactivé par défaut : le flux ICS est partagé via son jeton (p. ex. avec l'agenda du ou de la partenaire).",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
         },
@@ -117,7 +119,7 @@
               "notify_test_hint": "Envoie 14 jours après une ovulation confirmée par vos relevés de température et de glaire/col de l'utérus un message neutre : un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical. Pas d'envoi pendant une grossesse ni sous contraception hormonale si les alertes de fertilité sont désactivées pour celle-ci. Sans ovulation confirmée, on prend à la place le lendemain du premier test LH positif du cycle. Désactivé par défaut.",
               "notify_lh_hint": "Quelques jours avant l'ovulation attendue, envoie une fois par cycle un message neutre indiquant qu'il est temps de commencer les tests d'ovulation (LH). Il n'est pas envoyé si un test LH positif ou une ovulation confirmée existe déjà dans le cycle. Simple repère, pas un avis médical. Ignoré tant que les notifications de fertilité sont désactivées pour cause de contraception hormonale. Désactivé par défaut.",
               "notify_temp_reminder": "À l'heure de notification, rappelle de mesurer et d'enregistrer la température basale autour de l'ovulation attendue, tant qu'aucune montée de température n'est confirmée. Uniquement pour les personnes qui enregistrent régulièrement leur température (au moins 3 des 7 derniers jours) et seulement si la température du jour n'est pas encore enregistrée. Désactivé par défaut.",
-              "notify_period_luteal": "Utilise pour « règles attendues » la date calculée avec ta propre durée de phase lutéale (ovulation plus phase lutéale apprise) dès qu'elle peut être calculée ; sinon la date du calendrier reste utilisée. Désactivé par défaut."
+              "notify_period_luteal": "Utilise pour « règles attendues » la date calculée avec ta propre durée de phase lutéale (ovulation plus phase lutéale apprise) dès qu'elle peut être calculée ; sinon la date du calendrier reste utilisée. L'alerte « règles en retard » et l'avis de réparation comptent aussi à partir de cette date. Désactivé par défaut."
             }
           },
           "pill": {

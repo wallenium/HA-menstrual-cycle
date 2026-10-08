@@ -50,6 +50,7 @@
           "calendar_pregnancy_events": "Calendar: pregnancy due date",
           "calendar_contraception_events": "Calendar: contraception dates",
           "calendar_logged_periods": "Calendar: logged periods",
+          "calendar_luteal_forecast": "Calendar: period from the luteal phase",
           "visibility_level": "Visibility level"
         },
         "data_description": {
@@ -62,6 +63,7 @@
           "calendar_pregnancy_events": "Adds the calculated due date as an all-day event to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_contraception_events": "Adds renewal dates (IUD, implant, injection), the end of the pill pack and the next patch/ring steps to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_logged_periods": "Shows your logged periods (the last 12 months) as events in the cycle calendar and the ICS feed, not only the predictions. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
+          "calendar_luteal_forecast": "Shows the period date calculated from your own luteal phase length (ovulation plus learned luteal phase) as an event in the cycle calendar and the ICS feed, as soon as it exists and while it lies in the future. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
         },
@@ -117,7 +119,7 @@
               "notify_test_hint": "After an ovulation that was confirmed by your temperature and mucus/cervix logs, sends one neutral message 14 days later: a pregnancy test is meaningful from about now. It is only a rule of thumb, no medical advice. Skipped while pregnant and on hormonal contraception if the fertility notifications are muted for it. Without a confirmed ovulation, the day after your first positive LH test of the cycle is used instead. Off by default.",
               "notify_lh_hint": "A few days before the expected ovulation, sends one neutral message once per cycle that now is a good time to start ovulation (LH) tests. It is not sent once a positive LH test or a confirmed ovulation exists in the cycle. Only a rule of thumb, no medical advice. Skipped while the fertility notifications are muted for hormonal contraception. Off by default.",
               "notify_temp_reminder": "At the notification time, reminds you to measure and log your basal body temperature around the expected ovulation, as long as no temperature rise is confirmed yet. Only for people who log their temperature regularly (at least 3 of the last 7 days) and only if today's temperature is not logged yet. Off by default.",
-              "notify_period_luteal": "Uses the date from your own luteal phase length (ovulation plus learned luteal phase) for \"period expected\" as soon as it can be calculated; otherwise the calendar date is used. Off by default."
+              "notify_period_luteal": "Uses the date from your own luteal phase length (ovulation plus learned luteal phase) for \"period expected\" as soon as it can be calculated; otherwise the calendar date is used. The \"period overdue\" hint and notice count from that date as well. Off by default."
             }
           },
           "pill": {

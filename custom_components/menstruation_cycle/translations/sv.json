@@ -50,6 +50,7 @@
           "calendar_pregnancy_events": "Kalender: beräknat förlossningsdatum",
           "calendar_contraception_events": "Kalender: preventivmedelsdatum",
           "calendar_logged_periods": "Kalender: loggade menstruationer",
+          "calendar_luteal_forecast": "Kalender: mens enligt lutealfasen",
           "visibility_level": "Synlighetsnivå"
         },
         "data_description": {
@@ -62,6 +63,7 @@
           "calendar_pregnancy_events": "Lägger till det beräknade förlossningsdatumet som heldagshändelse i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_contraception_events": "Lägger till förnyelsedatum (spiral, implantat, spruta), slutet på p-pillerkartan och nästa steg för plåster/ring i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_logged_periods": "Visar loggade menstruationer (de senaste 12 månaderna) som händelser i cykelkalendern och ICS-flödet, inte bara prognoserna. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
+          "calendar_luteal_forecast": "Visar mensdatumet beräknat från din egen lutealfaslängd (ägglossning plus inlärd lutealfas) som händelse i cykelkalendern och ICS-flödet så snart det finns och så länge det ligger i framtiden. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
           "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
         },
@@ -117,7 +119,7 @@
               "notify_test_hint": "Skickar 14 dagar efter en ägglossning som bekräftats av dina temperatur- och slem-/livmoderhalsloggar ett neutralt meddelande: ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd. Skickas inte under graviditet eller vid hormonell preventivmetod om fertilitetsnotiserna är avstängda för den. Utan bekräftad ägglossning används i stället dagen efter cykelns första positiva LH-test. Av som standard.",
               "notify_lh_hint": "Skickar en gång per cykel några dagar före den förväntade ägglossningen ett neutralt meddelande om att det nu är en bra tidpunkt att börja med ovulationstester (LH). Skickas inte om cykeln redan har ett positivt LH-test eller en bekräftad ägglossning. Bara en tumregel, inget medicinskt råd. Hoppas över medan fertilitetsaviseringarna är tystade på grund av hormonell preventivmedel. Av som standard.",
               "notify_temp_reminder": "Vid aviseringstiden påminner den om att mäta och registrera basaltemperaturen kring den förväntade ägglossningen, så länge ingen temperaturstigning är bekräftad. Endast för personer som regelbundet registrerar sin temperatur (minst 3 av de senaste 7 dagarna) och bara om dagens temperatur inte är registrerad ännu. Av som standard.",
-              "notify_period_luteal": "Använder för ”mens väntas” datumet från din egen lutealfaslängd (ägglossning plus inlärd lutealfas) så snart det kan beräknas; annars används kalenderdatumet. Av som standard."
+              "notify_period_luteal": "Använder för ”mens väntas” datumet från din egen lutealfaslängd (ägglossning plus inlärd lutealfas) så snart det kan beräknas; annars används kalenderdatumet. Påminnelsen ”mens försenad” och reparationsnotisen räknar också från det datumet. Av som standard."
             }
           },
           "pill": {
