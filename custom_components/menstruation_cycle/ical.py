@@ -7,11 +7,14 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from .const import (
+    CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS,
     CONF_CALENDAR_CONTRACEPTION_EVENTS,
+    CONF_CALENDAR_LOGGED_PERIODS,
     CONF_CALENDAR_PREGNANCY_EVENTS,
     CONF_PILL_PAUSE_DAYS,
     CONTRACEPTION_METHOD_PILL,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
+    DEFAULT_CALENDAR_LOGGED_PERIODS,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
     DEFAULT_PILL_PAUSE_DAYS,
     ICS_HORIZON_MONTHS_DEFAULT,
@@ -19,6 +22,7 @@ from .const import (
     NONCYCLE_CONTRACEPTION_RENEWED,
 )
 from .model import (
+    bleeding_blocks,
     compute_contraception_status,
     contraception_rhythm_schedule,
     pill_pack_end,
@@ -49,6 +53,8 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_remove": "Remove ring",
         "ring_insert": "Insert new ring",
         "source_predicted": "Source: predicted",
+        "period_logged": "Period",
+        "source_logged": "Source: logged",
         "source_prefix": "Source",
         "confidence": "confidence",
     },
@@ -67,6 +73,8 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_remove": "Ring entfernen",
         "ring_insert": "Neuen Ring einsetzen",
         "source_predicted": "Quelle: Vorhersage",
+        "period_logged": "Periode",
+        "source_logged": "Quelle: erfasst",
         "source_prefix": "Quelle",
         "confidence": "Konfidenz",
     },
@@ -85,6 +93,8 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_remove": "Retirer l'anneau",
         "ring_insert": "Insérer un nouvel anneau",
         "source_predicted": "Source : prévision",
+        "period_logged": "Règles",
+        "source_logged": "Source : enregistré",
         "source_prefix": "Source",
         "confidence": "confiance",
     },
@@ -103,6 +113,8 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_remove": "Quitar el anillo",
         "ring_insert": "Colocar un anillo nuevo",
         "source_predicted": "Fuente: predicción",
+        "period_logged": "Menstruación",
+        "source_logged": "Fuente: registrado",
         "source_prefix": "Fuente",
         "confidence": "confianza",
     },
@@ -121,6 +133,8 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "ring_remove": "Ta bort ringen",
         "ring_insert": "Sätt in ny ring",
         "source_predicted": "Källa: prognos",
+        "period_logged": "Mens",
+        "source_logged": "Källa: loggad",
         "source_prefix": "Källa",
         "confidence": "konfidens",
     },
@@ -141,18 +155,19 @@ def collect_extra_events(
     due_date: str | None,
     lang: str | None,
     today: date,
-) -> list[tuple[str, date, str]]:
-    """Opt-in all-day events for the calendar entity and the ICS feed: (kind, day, summary).
+) -> list[tuple[str, date, date, str]]:
+    """Opt-in all-day events for the calendar entity and the ICS feed: (kind, first day, last day, summary).
 
     Pregnancy due date (only while pregnancy mode is on) and contraception dates (renewal due, end of the pill
     pack, next patch/ring steps) each follow their own option and are off by default. Summaries stay generic
     (no method name) because the ICS feed is shared via token.
     """
     strings = _ics_strings(lang)
-    events: list[tuple[str, date, str]] = []
+    events: list[tuple[str, date, date, str]] = []
     if options.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS) and due_date and runtime.pregnancy_data.get("is_pregnant"):
         try:
-            events.append(("pregnancy_due", date.fromisoformat(due_date), strings["pregnancy_due"]))
+            due = date.fromisoformat(due_date)
+            events.append(("pregnancy_due", due, due, strings["pregnancy_due"]))
         except ValueError:
             pass
     if options.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS):
@@ -160,13 +175,20 @@ def collect_extra_events(
             runtime.symptom_history, today=today, renewed=runtime.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED)
         )
         if status["renewal_due_date"]:
-            events.append(("contraception_renewal", date.fromisoformat(status["renewal_due_date"]), strings["contraception_renewal"]))
+            renewal = date.fromisoformat(status["renewal_due_date"])
+            events.append(("contraception_renewal", renewal, renewal, strings["contraception_renewal"]))
         if status["current_method"] == CONTRACEPTION_METHOD_PILL:
             end = pill_pack_end(status, int(options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
             if end is not None:
-                events.append(("pill_pack_end", end, strings["pill_pack_end"]))
+                events.append(("pill_pack_end", end, end, strings["pill_pack_end"]))
         for day, event in contraception_rhythm_schedule(status, today):
-            events.append((event, day, strings[event]))
+            events.append((event, day, day, strings[event]))
+    if options.get(CONF_CALENDAR_LOGGED_PERIODS, DEFAULT_CALENDAR_LOGGED_PERIODS):
+        cutoff = today - timedelta(days=CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS)
+        for block in bleeding_blocks(sorted(set(runtime.history))):
+            start, end = date.fromisoformat(block[0]), date.fromisoformat(block[-1])
+            if end >= cutoff:
+                events.append(("period_logged", start, end, strings["period_logged"]))
     return events
 
 
@@ -260,7 +282,7 @@ def generate_ics(
     period_alarm_days_before: int | None = None,
     checkup_due: date | None = None,
     today: date | None = None,
-    extra_events: list[tuple[str, date, str]] | None = None,
+    extra_events: list[tuple[str, date, date, str]] | None = None,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -314,7 +336,7 @@ def generate_ics(
             )
         )
 
-    for kind, day, summary in extra_events or []:
+    for kind, day, last_day, summary in extra_events or []:
         if day > range_end:
             continue
         lines.extend(
@@ -323,7 +345,8 @@ def generate_ics(
                 dtstamp=dtstamp,
                 summary=summary,
                 start=day,
-                end_exclusive=day + timedelta(days=1),
+                end_exclusive=last_day + timedelta(days=1),
+                description=strings["source_logged"] if kind == "period_logged" else "",
             )
         )
 
