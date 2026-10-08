@@ -1004,6 +1004,8 @@
   "dashboard_last_cycle_tag": "Último ciclo completado",
   "dashboard_last_cycle_label": "{length} días (promedio {average}) · período {period} días · días de dolor {pain}",
   "dashboard_last_cycle_trend_label": "Duración de los últimos ciclos en días: {values}",
+  "dashboard_prediction_accuracy_tag": "Precisión de la predicción",
+  "dashboard_prediction_accuracy_label": "El periodo empezó de media a {mean} días del día previsto en los últimos {cycles} ciclos ({within} con una desviación de hasta 2 días)",
   "dashboard_chat_wellness_score": "Tu puntuación de bienestar es {score}/100 ({regularity}% regularidad, {pain}% componente de dolor, {history}% base de datos).",
   "dashboard_chat_pain_days_comparison": "Días de dolor hasta ahora: {current} (promedio {avg} por ciclo).",
   "dashboard_chat_q_wellness": "¿Cuál es mi puntuación de bienestar?",

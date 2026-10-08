@@ -80,6 +80,7 @@ The integration can notify you itself (**Configure → Notifications**), no auto
 | Pill hint | 2 or more days in a row without a logged pill (neutral hint to check the leaflet) | Hint when pill intakes are missing | off |
 | Patch / ring | on each step of the usual 28-day rhythm (patch: change on days 7 and 14, remove on day 21, new patch on day 28; ring: remove on day 21, new ring on day 28), sent with the pill reminder time | Pill reminder (also covers patch and ring) | off |
 | Pregnancy week | pregnancy mode is on: one short, neutral message per week on the weekday of the pregnancy start (current week and calculated due date), with a trimester note when the 2nd or 3rd trimester begins (no medical advice) | Weekly pregnancy message | off |
+| Unusual cycle length | with a new period start: the last three cycles were all shorter than 21 or all longer than 38 days, or the last cycle was 10+ days off your average; one neutral hint to mention it at the next check-up (no diagnosis; a streak is announced once) | Hint for an unusual cycle length | off |
 | Unprotected intercourse | unprotected intercourse was logged for today or one of the last 5 days: one neutral hint to ask a pharmacy or doctor about emergency contraception (no dosing or medical advice; not during pregnancy or menopause) | Hint after unprotected intercourse | off |
 | Badges | a new progress badge was unlocked | part of the date reminders | with notifications |
 

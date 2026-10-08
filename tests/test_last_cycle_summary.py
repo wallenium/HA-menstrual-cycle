@@ -121,5 +121,72 @@ class LastCycleSummaryTests(unittest.TestCase):
         self.assertEqual(source.count("SERVICE_GET_LAST_CYCLE_SUMMARY"), 3)  # import, register, unload
 
 
+def _every(days: int, count: int, first: str = "2026-01-01") -> list[str]:
+    start = date.fromisoformat(first)
+    return [(start + timedelta(days=days * i)).isoformat() for i in range(count)]
+
+
+class PredictionAccuracyTests(unittest.TestCase):
+    def test_a_regular_cycle_is_predicted_to_the_day(self) -> None:
+        accuracy = statistics.compute_prediction_accuracy(_bleeding(*_every(28, 7)))
+        self.assertEqual((accuracy["cycles"], accuracy["mean_abs_error_days"], accuracy["within_2_days"]), (5, 0.0, 5))
+        self.assertTrue(all(item["diff"] == 0 for item in accuracy["errors"]))
+
+    def test_a_late_period_is_measured_against_what_was_known_before_it(self) -> None:
+        # six regular 28-day cycles, then one that comes after 60 days: the prediction must not know about the 60
+        starts = _every(28, 6)
+        late = (date.fromisoformat(starts[-1]) + timedelta(days=60)).isoformat()
+        accuracy = statistics.compute_prediction_accuracy(_bleeding(*starts, late))
+        last = accuracy["errors"][-1]
+        self.assertEqual(last["actual"], late)
+        self.assertEqual(last["predicted"], (date.fromisoformat(starts[-1]) + timedelta(days=28)).isoformat())
+        self.assertEqual(last["diff"], 32)  # positive: later than predicted
+        self.assertEqual(accuracy["within_2_days"], accuracy["cycles"] - 1)
+        self.assertGreater(accuracy["mean_abs_error_days"], 5)
+
+    def test_an_early_period_has_a_negative_diff(self) -> None:
+        starts = _every(28, 5)
+        early = (date.fromisoformat(starts[-1]) + timedelta(days=21)).isoformat()
+        self.assertEqual(statistics.compute_prediction_accuracy(_bleeding(*starts, early))["errors"][-1]["diff"], -7)
+
+    def test_mean_and_hit_count_use_absolute_differences(self) -> None:
+        starts = [date(2026, 1, 1)]
+        for length in (28, 28, 28, 25, 31, 28, 28):
+            starts.append(starts[-1] + timedelta(days=length))
+        accuracy = statistics.compute_prediction_accuracy(_bleeding(*(d.isoformat() for d in starts)))
+        self.assertEqual([item["diff"] for item in accuracy["errors"]], [0, 0, -3, 4, 0, 0])
+        self.assertEqual(accuracy["mean_abs_error_days"], 1.2)  # 7 / 6; the signed mean would be 0.2
+        self.assertEqual(accuracy["within_2_days"], 4)  # a miss of exactly 3 days does not count
+
+    def test_needs_two_cycles_before_the_first_check_and_keeps_only_the_latest(self) -> None:
+        self.assertIsNone(statistics.compute_prediction_accuracy(_bleeding(*_every(28, 2))))
+        self.assertIsNone(statistics.compute_prediction_accuracy([]))
+        self.assertEqual(statistics.compute_prediction_accuracy(_bleeding(*_every(28, 3)))["cycles"], 1)
+        many = statistics.compute_prediction_accuracy(_bleeding(*_every(28, 15)))
+        self.assertEqual(many["cycles"], const.PREDICTION_ACCURACY_CYCLES)
+        self.assertEqual(many["errors"][-1]["actual"], _every(28, 15)[-1])
+
+    def test_only_the_service_summary_and_the_report_statistics_carry_it(self) -> None:
+        history = _bleeding(*_every(28, 7))
+        self.assertIsNone(statistics.compute_last_cycle_summary(history, [])["prediction_accuracy"])
+        self.assertEqual(statistics.compute_last_cycle_summary(history, [], 5)["prediction_accuracy"]["cycles"], 5)
+        stats = statistics.compute_statistics(history, [], days_back=365, today=date(2026, 8, 1))
+        self.assertEqual(stats["prediction_accuracy"]["mean_abs_error_days"], 0.0)
+
+    def test_report_section_in_every_language_only_with_data(self) -> None:
+        import html as html_lib
+
+        stats = statistics.compute_statistics(_bleeding(*_every(28, 7)), [], days_back=365, today=date(2026, 8, 1))
+        empty = statistics.compute_statistics(_bleeding(*_every(28, 2)), [], days_back=365, today=date(2026, 8, 1))
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            title = html_lib.escape(statistics._REPORT_TEXT[lang]["prediction_accuracy"])
+            kwargs = dict(history=[], symptom_history=[], profile="a", patient_name=None, patient_birthdate=None,
+                          language=lang, report_date="2026-08-01")
+            report = statistics.generate_doctor_report_html(stats=stats, **kwargs)
+            self.assertIn(title, report, lang)
+            self.assertNotIn("{mean}", report)
+            self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -90,9 +90,11 @@ from .const import (
     NONCYCLE_CONTRACEPTION_RENEWED,
     CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
     CONF_NOTIFY_UNPROTECTED_HINT,
+    CONF_NOTIFY_CYCLE_HINT,
     CONF_NOTIFY_PREGNANCY_UPDATES,
     DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
+    DEFAULT_NOTIFY_CYCLE_HINT,
     DEFAULT_NOTIFY_PREGNANCY_UPDATES,
     UNPROTECTED_HINT_MAX_DAYS,
     NOTIFY_ACTION_RENEWED_PREFIX,
@@ -1144,6 +1146,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "recap_shorter": "That is {days} days shorter than the average ({average} days).",
         "recap_in_line": "In line with the average ({average} days).",
         "recap_pain": "Pain days: {pain_days}.",
+        "cyclehint_title": "Cycle length",
+        "cyclehint_short": "{name}: the last 3 cycles were each shorter than {limit} days ({lengths} days). This is not a diagnosis; you could mention it at your next check-up.",
+        "cyclehint_long": "{name}: the last 3 cycles were each longer than {limit} days ({lengths} days). This is not a diagnosis; you could mention it at your next check-up.",
+        "cyclehint_longer": "{name}: the last cycle was {days} days longer than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
+        "cyclehint_shorter": "{name}: the last cycle was {days} days shorter than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
         "overdue_title": "Period overdue",
         "overdue_message": "{name}: the period is {days} days past the predicted start ({date}). If it has started, please log it.",
         "checkup_title": "Checkup reminder",
@@ -1186,6 +1193,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "recap_shorter": "Das sind {days} Tage weniger als der Durchschnitt ({average} Tage).",
         "recap_in_line": "Entspricht dem Durchschnitt ({average} Tage).",
         "recap_pain": "Schmerztage: {pain_days}.",
+        "cyclehint_title": "Zykluslänge",
+        "cyclehint_short": "{name}: Die letzten 3 Zyklen waren jeweils kürzer als {limit} Tage ({lengths} Tage). Das ist keine Diagnose; du kannst es beim nächsten Vorsorgetermin erwähnen.",
+        "cyclehint_long": "{name}: Die letzten 3 Zyklen waren jeweils länger als {limit} Tage ({lengths} Tage). Das ist keine Diagnose; du kannst es beim nächsten Vorsorgetermin erwähnen.",
+        "cyclehint_longer": "{name}: Der letzte Zyklus war {days} Tage länger als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
+        "cyclehint_shorter": "{name}: Der letzte Zyklus war {days} Tage kürzer als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
         "overdue_title": "Periode überfällig",
         "overdue_message": "{name}: Die Periode ist {days} Tage nach dem vorhergesagten Beginn ({date}) noch nicht eingetragen. Falls sie begonnen hat, bitte eintragen.",
         "checkup_title": "Kontrolltermin-Erinnerung",
@@ -1228,6 +1240,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "recap_shorter": "C'est {days} jours de moins que la moyenne ({average} jours).",
         "recap_in_line": "Conforme à la moyenne ({average} jours).",
         "recap_pain": "Jours de douleur : {pain_days}.",
+        "cyclehint_title": "Durée du cycle",
+        "cyclehint_short": "{name} : les 3 derniers cycles duraient chacun moins de {limit} jours ({lengths} jours). Ce n'est pas un diagnostic ; vous pouvez en parler lors de votre prochain suivi.",
+        "cyclehint_long": "{name} : les 3 derniers cycles duraient chacun plus de {limit} jours ({lengths} jours). Ce n'est pas un diagnostic ; vous pouvez en parler lors de votre prochain suivi.",
+        "cyclehint_longer": "{name} : le dernier cycle était plus long de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
+        "cyclehint_shorter": "{name} : le dernier cycle était plus court de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
         "overdue_title": "Règles en retard",
         "overdue_message": "{name} : les règles ont {days} jours de retard sur le début prévu ({date}). Si elles ont commencé, merci de les saisir.",
         "checkup_title": "Rappel de contrôle",
@@ -1270,6 +1287,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "recap_shorter": "Son {days} días menos que la media ({average} días).",
         "recap_in_line": "En línea con la media ({average} días).",
         "recap_pain": "Días con dolor: {pain_days}.",
+        "cyclehint_title": "Duración del ciclo",
+        "cyclehint_short": "{name}: los últimos 3 ciclos duraron cada uno menos de {limit} días ({lengths} días). No es un diagnóstico; puedes mencionarlo en tu próxima revisión.",
+        "cyclehint_long": "{name}: los últimos 3 ciclos duraron cada uno más de {limit} días ({lengths} días). No es un diagnóstico; puedes mencionarlo en tu próxima revisión.",
+        "cyclehint_longer": "{name}: el último ciclo fue {days} días más largo que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
+        "cyclehint_shorter": "{name}: el último ciclo fue {days} días más corto que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
         "overdue_title": "Menstruación retrasada",
         "overdue_message": "{name}: la menstruación lleva {days} días de retraso sobre el inicio previsto ({date}). Si ya empezó, por favor regístrala.",
         "checkup_title": "Recordatorio de revisión",
@@ -1312,6 +1334,11 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "recap_shorter": "Det är {days} dagar kortare än genomsnittet ({average} dagar).",
         "recap_in_line": "I linje med genomsnittet ({average} dagar).",
         "recap_pain": "Smärtdagar: {pain_days}.",
+        "cyclehint_title": "Cykellängd",
+        "cyclehint_short": "{name}: de tre senaste cyklerna var var och en kortare än {limit} dagar ({lengths} dagar). Det är ingen diagnos; du kan nämna det vid nästa kontroll.",
+        "cyclehint_long": "{name}: de tre senaste cyklerna var var och en längre än {limit} dagar ({lengths} dagar). Det är ingen diagnos; du kan nämna det vid nästa kontroll.",
+        "cyclehint_longer": "{name}: den senaste cykeln var {days} dagar längre än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
+        "cyclehint_shorter": "{name}: den senaste cykeln var {days} dagar kortare än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
         "overdue_title": "Mensen är försenad",
         "overdue_message": "{name}: mensen är {days} dagar efter beräknad start ({date}). Om den har börjat, logga den gärna nu.",
         "checkup_title": "Påminnelse om kontroll",
@@ -1366,6 +1393,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     overdue_notify_enabled = bool(entry.options.get(CONF_NOTIFY_OVERDUE_ENABLED, DEFAULT_NOTIFY_OVERDUE_ENABLED))
     checkup_notify_enabled = bool(entry.options.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED))
     pregnancy_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES))
+    cycle_hint_enabled = bool(entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT))
     if not any(
         (
             period_notify_enabled,
@@ -1375,6 +1403,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             overdue_notify_enabled,
             checkup_notify_enabled,
             pregnancy_notify_enabled,
+            cycle_hint_enabled,
         )
     ):
         return
@@ -1388,7 +1417,13 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         0, min(NOTIFY_LEAD_DAYS_MAX, int(entry.options.get(CONF_NOTIFY_OVULATION_LEAD_DAYS, DEFAULT_NOTIFY_OVULATION_LEAD_DAYS)))
     )
 
-    from .model import build_cycle_model, compute_contraception_status, next_checkup_due, pregnancy_week_notification
+    from .model import (
+        build_cycle_model,
+        compute_contraception_status,
+        cycle_length_hint,
+        next_checkup_due,
+        pregnancy_week_notification,
+    )
 
     today = dt_util.now().date()
     model = build_cycle_model(
@@ -1508,6 +1543,26 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 message += " " + strings["recap_pain"].format(pain_days=summary["pain_days"])
             await _send(strings["recap_title"], message)
             runtime.noncycle_data["notified_cycle_recap"] = latest
+            notified_something = True
+
+    # Unusual cycle length: only when it newly shows up with this period start (not again for every further cycle of a
+    # streak), once per start, own target only, neutral wording.
+    if cycle_hint_enabled and len(model.grouped_starts) >= 2:
+        latest = model.grouped_starts[-1]
+        days_since_start = (today - date.fromisoformat(latest)).days
+        if runtime.noncycle_data.get("notified_cycle_hint") != latest and 0 <= days_since_start <= 7:
+            hint = cycle_length_hint(model.grouped_starts)
+            before = cycle_length_hint(model.grouped_starts[:-1])
+            if hint is not None and (before is None or before["kind"] != hint["kind"]):
+                message = strings[f"cyclehint_{hint['kind']}"].format(
+                    name=runtime.friendly_name,
+                    limit=hint.get("limit"),
+                    lengths=", ".join(str(days) for days in hint.get("lengths", [])),
+                    days=hint.get("days"),
+                    average=hint.get("average"),
+                )
+                await _send(strings["cyclehint_title"], message)
+            runtime.noncycle_data["notified_cycle_hint"] = latest
             notified_something = True
 
     # Overdue period: same gate as the repair issue (repairs.py::async_check_period_overdue); once per predicted start, own target only.
@@ -5139,7 +5194,7 @@ async def _async_handle_compare_current_cycle(hass: HomeAssistant, call: Service
 async def _async_handle_get_last_cycle_summary(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Summary of the last completed cycle (read-only), see statistics.py::compute_last_cycle_summary."""
     runtime = _runtime_for_call(hass, call)
-    summary = compute_last_cycle_summary(runtime.history, runtime.symptom_history)
+    summary = compute_last_cycle_summary(runtime.history, runtime.symptom_history, runtime.period_duration_days)
     if summary is None:
         raise HomeAssistantError("At least two cycle starts are needed for a completed cycle.")
     return summary

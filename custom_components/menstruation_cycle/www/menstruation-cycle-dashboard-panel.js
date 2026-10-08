@@ -5899,6 +5899,18 @@
         });
       }
 
+      const accuracy = lastCycle?.prediction_accuracy;
+      if (accuracy && Number.isFinite(accuracy.mean_abs_error_days)) {
+        items.push({
+          severity: 'info',
+          tag: this._t('dashboard_prediction_accuracy_tag'),
+          label: this._t('dashboard_prediction_accuracy_label')
+            .replace('{mean}', String(accuracy.mean_abs_error_days))
+            .replace('{cycles}', String(accuracy.cycles))
+            .replace('{within}', String(accuracy.within_2_days)),
+        });
+      }
+
       if (!items.length) {
         return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       }

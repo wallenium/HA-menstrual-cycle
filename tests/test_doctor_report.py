@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html as html_lib
 import importlib.util
 import sys
 import types
@@ -204,6 +205,68 @@ class IntermenstrualBleedingTests(unittest.TestCase):
             self.assertIn(title, html, lang)
             self.assertIn("2026-10-02", html, lang)
             self.assertNotIn("{count}", html)
+            self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+
+
+class LutealPhaseTests(unittest.TestCase):
+    TODAY = date(2026, 7, 20)
+
+    @staticmethod
+    def _temps(first_day, low_days, high_days):
+        """Daily readings: low_days at 36.3, then high_days at 36.6."""
+        out = []
+        for i in range(low_days + high_days):
+            day = date.fromisoformat(first_day).toordinal() + i
+            out.append({"date": date.fromordinal(day).isoformat(), "basal_temp": 36.3 if i < low_days else 36.6})
+        return out
+
+    def _stats(self, history, temps):
+        return statistics.compute_statistics(history, temps, days_back=180, today=self.TODAY, period_duration_days=5)
+
+    def test_luteal_length_counts_from_first_raised_reading_to_the_day_before_the_next_period(self) -> None:
+        # cycle 1: 05-01..05-28 (rise 05-15 -> 14 days), cycle 2: 05-29..06-26 (rise 06-12 -> 15 days), cycle 3 running
+        temps = self._temps("2026-05-01", 14, 14) + self._temps("2026-05-29", 14, 15)
+        stats = self._stats(["2026-05-01", "2026-05-29", "2026-06-27"], temps)
+        self.assertEqual(
+            (stats["luteal_phase_cycles"], stats["luteal_phase_avg"], stats["luteal_phase_min"], stats["luteal_phase_max"]),
+            (2, 14.5, 14, 15),
+        )
+
+    def test_the_running_cycle_and_implausible_lengths_are_left_out(self) -> None:
+        # a rise in the running cycle has no end yet
+        running = self._temps("2026-06-27", 5, 8)
+        stats = self._stats(["2026-05-01", "2026-05-29", "2026-06-27"], running)
+        self.assertEqual(stats["luteal_phase_cycles"], 0)
+        self.assertIsNone(stats["luteal_phase_avg"])
+        # rise one day before the next period: 1 day is not a luteal phase
+        short = self._temps("2026-05-01", 27, 1) + self._temps("2026-05-29", 0, 0)
+        self.assertEqual(self._stats(["2026-05-01", "2026-05-29"], short)["luteal_phase_cycles"], 0)
+
+    def test_plausible_range_boundaries(self) -> None:
+        # a 34-day cycle whose raised phase lasts `length` days
+        for length, counted in ((4, 0), (5, 1), (25, 1), (26, 0)):
+            temps = self._temps("2026-05-01", 34 - length, length)
+            stats = self._stats(["2026-05-01", "2026-06-04"], temps)
+            self.assertEqual(stats["luteal_phase_cycles"], counted, length)
+            if counted:
+                self.assertEqual(stats["luteal_phase_avg"], float(length))
+
+    def test_no_temperatures_means_no_value(self) -> None:
+        stats = self._stats(["2026-05-01", "2026-05-29", "2026-06-27"], [])
+        self.assertEqual(stats["luteal_phase_cycles"], 0)
+
+    def test_report_line_in_every_language_only_with_data(self) -> None:
+        temps = self._temps("2026-05-01", 14, 14) + self._temps("2026-05-29", 14, 15)
+        stats = self._stats(["2026-05-01", "2026-05-29", "2026-06-27"], temps)
+        empty = self._stats(["2026-05-01", "2026-05-29", "2026-06-27"], [])
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            title = html_lib.escape(statistics._REPORT_TEXT[lang]["luteal_phase"])
+            kwargs = dict(history=[], symptom_history=[], profile="a", patient_name=None, patient_birthdate=None,
+                          language=lang, report_date=self.TODAY.isoformat())
+            html = statistics.generate_doctor_report_html(stats=stats, **kwargs)
+            self.assertIn(title, html, lang)
+            self.assertIn("14.5", html, lang)
+            self.assertNotIn("{avg}", html)
             self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
 
 

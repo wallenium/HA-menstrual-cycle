@@ -1004,6 +1004,8 @@
   "dashboard_last_cycle_tag": "Senast avslutade cykel",
   "dashboard_last_cycle_label": "{length} dagar (snitt {average}) · mens {period} dagar · smärtdagar {pain}",
   "dashboard_last_cycle_trend_label": "Cykellängd för de senaste cyklerna i dagar: {values}",
+  "dashboard_prediction_accuracy_tag": "Prognosens träffsäkerhet",
+  "dashboard_prediction_accuracy_label": "Menstruationen började i snitt {mean} dagar från den förutspådda dagen över de senaste {cycles} cyklerna ({within} högst 2 dagar fel)",
   "dashboard_chat_wellness_score": "Din välmåendepoäng är {score}/100 ({regularity}% regelbundenhet, {pain}% smärtkomponent, {history}% databas).",
   "dashboard_chat_pain_days_comparison": "Smärtdagar hittills: {current} (snitt {avg} per cykel).",
   "dashboard_chat_q_wellness": "Vad är min välmåendepoäng?",

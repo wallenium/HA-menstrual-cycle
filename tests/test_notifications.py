@@ -392,6 +392,92 @@ class PregnancyUpdateTests(unittest.TestCase):
             strings["pregnancy_trimester_message"].format(name="A", week=15, date="x", trimester=2)
 
 
+class CycleHintTests(unittest.TestCase):
+    """Opt-in neutral hint for an unusual cycle length, sent with the period start that makes it visible."""
+
+    def _send(self, lengths, *, latest_offset=-2, option=True, noncycle=None, language="en"):
+        """lengths: completed cycle lengths, oldest first; the newest period started latest_offset days from today."""
+        starts = [latest_offset]
+        for length in reversed(lengths):
+            starts.append(starts[-1] - length)
+        runtime = _runtime(history=[_iso(o + k) for o in sorted(starts) for k in range(3)], noncycle_data=dict(noncycle or {}))
+        options = {
+            const.CONF_NOTIFY_PERIOD_ENABLED: False,
+            const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False,
+            const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False,
+            const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            const.CONF_NOTIFY_CYCLE_HINT: option,
+        }
+        entry, hass, sent = _entry(**options), _hass(), _Sent()
+        hass.config.language = language
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        self.runtime = runtime
+        return [(title, message) for title, message, _ in sent.calls]
+
+    def test_three_short_cycles_in_a_row_send_one_neutral_hint(self) -> None:
+        (title, message), = self._send([28, 20, 19, 18])
+        self.assertEqual(title, "Cycle length")
+        self.assertEqual(
+            message,
+            "Test: the last 3 cycles were each shorter than 21 days (20, 19, 18 days). "
+            "This is not a diagnosis; you could mention it at your next check-up.",
+        )
+        self.assertEqual(self.runtime.noncycle_data["notified_cycle_hint"], _iso(-2))
+
+    def test_three_long_cycles_and_the_limits(self) -> None:
+        self.assertIn("longer than 38 days (39, 45, 50 days)", self._send([28, 39, 45, 50])[0][1])
+        self.assertEqual(self._send([28, 21, 21, 21]), [])  # 21 is not shorter than 21
+        self.assertEqual(self._send([28, 38, 38, 38]), [])  # 38 is not longer than 38
+        self.assertEqual(self._send([28, 28, 19, 18]), [])  # only two in a row
+
+    def test_a_streak_is_announced_once_not_with_every_further_cycle(self) -> None:
+        self.assertEqual(len(self._send([20, 19, 18])), 1)
+        self.assertEqual(self._send([20, 19, 18, 17]), [])
+
+    def test_single_deviation_from_the_average(self) -> None:
+        (_, longer), = self._send([28, 28, 28, 38])
+        self.assertIn("10 days longer than your previous average (28 days)", longer)
+        (_, shorter), = self._send([28, 28, 28, 18])
+        self.assertIn("10 days shorter than your previous average (28 days)", shorter)
+        self.assertEqual(self._send([28, 28, 28, 37]), [])
+        self.assertEqual(self._send([28, 28, 38]), [])  # fewer than three earlier cycles: no average yet
+
+    def test_off_by_default_once_per_start_and_only_for_a_fresh_start(self) -> None:
+        self.assertEqual(self._send([28, 20, 19, 18], option=False), [])
+        self.assertEqual(self._send([28, 20, 19, 18], noncycle={"notified_cycle_hint": _iso(-2)}), [])
+        self.assertEqual(self._send([28, 20, 19, 18], latest_offset=-9), [])  # start is more than 7 days ago
+        self.assertEqual(len(self._send([28, 20, 19, 18], latest_offset=-7)), 1)
+
+    def test_the_option_alone_decides_even_when_other_messages_run(self) -> None:
+        starts = [-2, -22, -41, -59]
+        runtime = _runtime(history=[_iso(o + k) for o in starts for k in range(3)])
+        entry = _entry(**{const.CONF_NOTIFY_RECAP_ENABLED: True, const.CONF_NOTIFY_CYCLE_HINT: False})
+        titles = [title for title, _, _ in _run_notifications(entry, runtime).calls]
+        self.assertEqual(titles, ["Cycle recap"])
+
+    def test_lengths_that_are_no_cycles_are_ignored(self) -> None:
+        model_mod = sys.modules[f"{_PKG}.model"]
+        base = date.fromisoformat(_iso(-100))
+        iso = lambda days: (base + timedelta(days=days)).isoformat()  # noqa: E731
+        # 40, 40, a 10-day "cycle" (a stray start), 40: still three long cycles in a row; 11 days would count
+        self.assertEqual(model_mod.cycle_length_hint([iso(0), iso(40), iso(80), iso(90), iso(130)])["kind"], "long")
+        self.assertNotEqual(model_mod.cycle_length_hint([iso(0), iso(40), iso(80), iso(91), iso(131)])["kind"], "long")
+        # a 150-day pause is not a cycle either: 28, 28, 150, 28 has no streak and no average to deviate from
+        self.assertIsNone(model_mod.cycle_length_hint([iso(0), iso(28), iso(56), iso(206), iso(234)]))
+        self.assertIsNone(model_mod.cycle_length_hint([]))
+        self.assertIsNone(model_mod.cycle_length_hint(["2026-01-01", "garbage"]))
+
+    def test_follows_the_language_and_marks_a_quiet_start_as_handled(self) -> None:
+        self.assertEqual(self._send([20, 19, 18], language="de")[0][0], "Zykluslänge")
+        self.assertEqual(self._send([28, 28, 28, 28]), [])
+        self.assertEqual(self.runtime.noncycle_data["notified_cycle_hint"], _iso(-2))
+
+
 class BleedingStartsPeriodTests(unittest.TestCase):
     """Logging bleeding as a symptom starts a period when none is running (the dashboard has no separate start button)."""
 

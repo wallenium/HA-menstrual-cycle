@@ -9,8 +9,14 @@ from datetime import date, timedelta
 from statistics import mean, stdev
 from typing import Any
 
-from .const import DOCTOR_REPORT_LANGUAGES, NEW_PERIOD_MIN_GAP_DAYS, SYMPTOM_CONTRACEPTION_METHOD
-from .model import analyze_nfp_cycle, bleeding_blocks, grouped_cycle_starts, normalize_history
+from .const import (
+    DOCTOR_REPORT_LANGUAGES,
+    LUTEAL_PHASE_PLAUSIBLE_DAYS,
+    NEW_PERIOD_MIN_GAP_DAYS,
+    PREDICTION_ACCURACY_CYCLES,
+    SYMPTOM_CONTRACEPTION_METHOD,
+)
+from .model import analyze_nfp_cycle, bleeding_blocks, build_cycle_model, grouped_cycle_starts, normalize_history
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -298,10 +304,52 @@ def compute_contraception_timeline(
     return runs[-limit:]
 
 
-def compute_last_cycle_summary(history: list[str], symptom_history: list[dict[str, Any]]) -> dict[str, Any] | None:
+def compute_prediction_accuracy(
+    history: list[str],
+    period_duration_days: int = 5,
+    last_n: int = PREDICTION_ACCURACY_CYCLES,
+) -> dict[str, Any] | None:
+    """How far off the next-period prediction was for the last completed cycles (None without a basis).
+
+    Looks back: for each cycle start with at least two cycles of history before it, the model is rebuilt
+    with only the period days up to the end of the preceding cycle, as of the day its period was over, and
+    its predicted next start is compared with the real one. Uses the statistical prediction from the period
+    history alone (temperature data is not replayed). diff > 0: the period came later than predicted.
+    """
+    starts = [d for d in (_parse_iso(s) for s in grouped_cycle_starts(history)) if d is not None]
+    errors: list[dict[str, Any]] = []
+    for i in range(2, len(starts)):
+        actual = starts[i]
+        known = [day for day in normalize_history(history) if day < actual.isoformat()]
+        as_of = min(starts[i - 1] + timedelta(days=max(1, int(period_duration_days))), actual - timedelta(days=1))
+        try:
+            model = build_cycle_model(history=known, period_duration_days=period_duration_days, today=as_of)
+        except Exception:  # noqa: BLE001 - one cycle failing must not break the summary
+            _LOGGER.debug("Skipping prediction replay for the cycle starting %s", actual, exc_info=True)
+            continue
+        predicted = _parse_iso(model.next_predicted_start)
+        if predicted is None:
+            continue
+        errors.append({"actual": actual.isoformat(), "predicted": predicted.isoformat(), "diff": (actual - predicted).days})
+    errors = errors[-max(1, last_n):]
+    if not errors:
+        return None
+    absolute = [abs(item["diff"]) for item in errors]
+    return {
+        "cycles": len(errors),
+        "mean_abs_error_days": round(float(mean(absolute)), 1),
+        "within_2_days": sum(1 for value in absolute if value <= 2),
+        "errors": errors,
+    }
+
+
+def compute_last_cycle_summary(
+    history: list[str], symptom_history: list[dict[str, Any]], period_duration_days: int | None = None
+) -> dict[str, Any] | None:
     """Summary of the last completed cycle (between the two newest cycle starts); None before two starts are logged.
 
     recent_cycle_lengths holds up to six completed cycle lengths, oldest first, the last one being cycle_length (unfiltered).
+    prediction_accuracy (see compute_prediction_accuracy) is only computed when period_duration_days is given.
     """
     starts = [d for d in (_parse_iso(s) for s in grouped_cycle_starts(history)) if d is not None]
     if len(starts) < 2:
@@ -328,6 +376,9 @@ def compute_last_cycle_summary(history: list[str], symptom_history: list[dict[st
         "logged_days": len(_symptom_entries_in_range(symptom_history, start, end)),
         "top_symptoms": [{"key": t["key"], "count": t["count"]} for t in stats["top_symptoms"][:5]],
         "bleeding_strength_distribution": stats["bleeding_strength_distribution"],
+        "prediction_accuracy": (
+            compute_prediction_accuracy(history, period_duration_days) if period_duration_days is not None else None
+        ),
     }
 
 
@@ -335,6 +386,7 @@ def _compute_nfp_confirmation_stats(
     symptom_history: list[dict[str, Any]],
     periods: list[tuple[date, date, str]],
     period_duration_days: int,
+    today: date,
 ) -> dict[str, Any]:
     """How many of the analyzed cycles had ovulation confirmed via the
     3-over-6 (Roetzer) temperature-rise rule, and the average cycle-day
@@ -342,7 +394,8 @@ def _compute_nfp_confirmation_stats(
     doctor much without this interpretation layer."""
     confirmed_count = 0
     day_offsets: list[int] = []
-    for start_d, _end_d, start_iso in periods:
+    luteal_lengths: list[int] = []
+    for start_d, end_d, start_iso in periods:
         try:
             result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
         except Exception:  # noqa: BLE001 — one malformed cycle's analysis
@@ -354,11 +407,20 @@ def _compute_nfp_confirmation_stats(
             rise_day = _parse_iso(result.get("temperature_rise_day"))
             if rise_day is not None:
                 day_offsets.append((rise_day - start_d).days + 1)
+                # Luteal phase = first raised reading up to the day before the next period; only finished cycles
+                # (end_d < today) and plausible lengths count, so a rise found in a later cycle is ignored.
+                luteal = (end_d - rise_day).days + 1
+                if end_d < today and LUTEAL_PHASE_PLAUSIBLE_DAYS[0] <= luteal <= LUTEAL_PHASE_PLAUSIBLE_DAYS[1]:
+                    luteal_lengths.append(luteal)
 
     return {
         "nfp_cycles_analyzed": len(periods),
         "nfp_confirmed_count": confirmed_count,
         "nfp_avg_confirmation_day": round(mean(day_offsets)) if day_offsets else None,
+        "luteal_phase_cycles": len(luteal_lengths),
+        "luteal_phase_avg": round(mean(luteal_lengths), 1) if luteal_lengths else None,
+        "luteal_phase_min": min(luteal_lengths) if luteal_lengths else None,
+        "luteal_phase_max": max(luteal_lengths) if luteal_lengths else None,
     }
 
 
@@ -427,7 +489,7 @@ def compute_statistics(
     symptom_stats = _compute_symptom_stats(symptom_history, periods)
     pain_trend = _compute_pain_trend(symptom_history, periods)
     basal_temp_stats = _compute_basal_temp_stats(symptom_history, cutoff, today)
-    nfp_stats = _compute_nfp_confirmation_stats(symptom_history, periods, period_duration_days)
+    nfp_stats = _compute_nfp_confirmation_stats(symptom_history, periods, period_duration_days, today)
     intermenstrual = _compute_intermenstrual_bleeding(usable, symptom_history, cutoff, today)
 
     return {
@@ -437,6 +499,7 @@ def compute_statistics(
         **basal_temp_stats,
         **nfp_stats,
         **intermenstrual,
+        "prediction_accuracy": compute_prediction_accuracy(usable, period_duration_days),
         "pain_trend": pain_trend,
         "days_back": days_back,
         "report_date": today.isoformat(),
@@ -543,6 +606,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "std": "Stabw.",
         "days": "Tage",
         "regularity": "Regelmäßigkeit",
+        "prediction_accuracy": "Trefferquote der Vorhersage (rückblickend)",
+        "prediction_accuracy_summary": "Die Periode begann im Schnitt {mean} Tage neben dem vorhergesagten Tag; {within} von {cycles} Zyklen lagen höchstens 2 Tage daneben.",
         "bleeding_duration": "Blutungsdauer",
         "bleeding_strength": "Blutungsstärke-Verteilung",
         "bleeding_strength_single": "Stärke",
@@ -556,6 +621,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation": "Eisprung bestätigt (3-über-6-Regel)",
         "nfp_confirmation_summary": "In {confirmed} von {total} analysierten Zyklen bestätigt.",
         "nfp_confirmation_day": "Durchschnittlich bestätigt an Zyklustag",
+        "luteal_phase": "Lutealphase (erster erhöhter Messwert bis Periodenbeginn)",
+        "luteal_phase_summary": "Ø {avg} Tage (Min {min}, Max {max}) in {cycles} abgeschlossenen Zyklen.",
         "current_status": "Aktueller Status",
         "current_contraception": "Aktuelle Verhütungsmethode",
         "contraception_history": "Verlauf der Verhütung",
@@ -589,6 +656,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "std": "Std Dev",
         "days": "days",
         "regularity": "Regularity",
+        "prediction_accuracy": "Prediction accuracy (looking back)",
+        "prediction_accuracy_summary": "The period started {mean} days away from the predicted day on average; {within} of {cycles} cycles were off by at most 2 days.",
         "bleeding_duration": "Bleeding Duration",
         "bleeding_strength": "Bleeding Strength Distribution",
         "bleeding_strength_single": "Strength",
@@ -602,6 +671,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation": "Ovulation Confirmed (3-over-6 Rule)",
         "nfp_confirmation_summary": "Confirmed in {confirmed} of {total} analyzed cycles.",
         "nfp_confirmation_day": "Average confirmation on cycle day",
+        "luteal_phase": "Luteal phase (first raised reading until the next period)",
+        "luteal_phase_summary": "Avg {avg} days (min {min}, max {max}) over {cycles} completed cycles.",
         "current_status": "Current Status",
         "current_contraception": "Current Contraception Method",
         "contraception_history": "Contraception history",
@@ -635,6 +706,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "std": "Desv. est.",
         "days": "días",
         "regularity": "Regularidad",
+        "prediction_accuracy": "Precisión de la predicción (retrospectiva)",
+        "prediction_accuracy_summary": "El periodo empezó de media a {mean} días del día previsto; {within} de {cycles} ciclos se desviaron como máximo 2 días.",
         "bleeding_duration": "Duración del sangrado",
         "bleeding_strength": "Distribución de la intensidad del sangrado",
         "bleeding_strength_single": "Intensidad",
@@ -648,6 +721,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation": "Ovulación confirmada (regla de 3 sobre 6)",
         "nfp_confirmation_summary": "Confirmada en {confirmed} de {total} ciclos analizados.",
         "nfp_confirmation_day": "Confirmada de media en el día del ciclo",
+        "luteal_phase": "Fase lútea (primera lectura elevada hasta el siguiente periodo)",
+        "luteal_phase_summary": "Media de {avg} días (mín. {min}, máx. {max}) en {cycles} ciclos completos.",
         "current_status": "Estado actual",
         "current_contraception": "Método anticonceptivo actual",
         "contraception_history": "Historial anticonceptivo",
@@ -681,6 +756,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "std": "Écart type",
         "days": "jours",
         "regularity": "Régularité",
+        "prediction_accuracy": "Précision de la prévision (rétrospective)",
+        "prediction_accuracy_summary": "Les règles ont commencé en moyenne à {mean} jours du jour prévu ; {within} cycles sur {cycles} s'écartaient d'au plus 2 jours.",
         "bleeding_duration": "Durée des saignements",
         "bleeding_strength": "Répartition de l'intensité des saignements",
         "bleeding_strength_single": "Intensité",
@@ -694,6 +771,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation": "Ovulation confirmée (règle des 3 sur 6)",
         "nfp_confirmation_summary": "Confirmée dans {confirmed} cycle(s) sur {total} analysé(s).",
         "nfp_confirmation_day": "Confirmée en moyenne au jour du cycle",
+        "luteal_phase": "Phase lutéale (première mesure élevée jusqu'aux règles suivantes)",
+        "luteal_phase_summary": "Moyenne de {avg} jours (min {min}, max {max}) sur {cycles} cycles terminés.",
         "current_status": "Statut actuel",
         "current_contraception": "Méthode de contraception actuelle",
         "contraception_history": "Historique de contraception",
@@ -727,6 +806,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "std": "Standardavv.",
         "days": "dagar",
         "regularity": "Regelbundenhet",
+        "prediction_accuracy": "Prognosens träffsäkerhet (i efterhand)",
+        "prediction_accuracy_summary": "Menstruationen började i genomsnitt {mean} dagar från den förutspådda dagen; {within} av {cycles} cykler låg högst 2 dagar fel.",
         "bleeding_duration": "Blödningens längd",
         "bleeding_strength": "Fördelning av blödningens styrka",
         "bleeding_strength_single": "Styrka",
@@ -740,6 +821,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation": "Ägglossning bekräftad (3-över-6-regeln)",
         "nfp_confirmation_summary": "Bekräftad i {confirmed} av {total} analyserade cykler.",
         "nfp_confirmation_day": "Bekräftad i genomsnitt på cykeldag",
+        "luteal_phase": "Lutealfas (första förhöjda mätningen till nästa menstruation)",
+        "luteal_phase_summary": "Medel {avg} dagar (min {min}, max {max}) över {cycles} avslutade cykler.",
         "current_status": "Aktuell status",
         "current_contraception": "Aktuellt preventivmedel",
         "contraception_history": "Preventivmedelshistorik",
@@ -822,6 +905,13 @@ def generate_doctor_report_html(
             <td>{_h(regularity_label)}</td>
           </tr>
         </table>"""
+
+    accuracy = stats.get("prediction_accuracy")
+    if accuracy:
+        cycle_length_html += f"""
+        <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['prediction_accuracy'])}</h3>
+        <p>{_h(T['prediction_accuracy_summary'].format(
+            mean=accuracy['mean_abs_error_days'], within=accuracy['within_2_days'], cycles=accuracy['cycles']))}</p>"""
 
     # Bleeding duration
     bleeding_dur_html = T["no_data"]
@@ -915,6 +1005,14 @@ def generate_doctor_report_html(
         <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['nfp_confirmation'])}</h3>
         <p>{_h(nfp_summary)}</p>
         {nfp_day_line}"""
+    if stats.get("luteal_phase_cycles"):
+        luteal_summary = T["luteal_phase_summary"].format(
+            avg=stats["luteal_phase_avg"], min=stats["luteal_phase_min"], max=stats["luteal_phase_max"],
+            cycles=stats["luteal_phase_cycles"],
+        )
+        basal_temp_html += f"""
+        <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['luteal_phase'])}</h3>
+        <p>{_h(luteal_summary)}</p>"""
 
     # Bleeding outside the period (neutral listing, no assessment)
     intermenstrual_html = ""

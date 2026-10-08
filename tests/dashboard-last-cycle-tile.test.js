@@ -87,6 +87,7 @@ const summary = {
   cycle_length: 29, average_cycle_length: 28, days_relative_to_average: 1,
   period_days: 5, pain_days: 3,
   recent_cycle_lengths: [27, 30, 28, 29],
+  prediction_accuracy: { cycles: 4, mean_abs_error_days: 1.5, within_2_days: 3, errors: [] },
 };
 
 (async () => {
@@ -99,6 +100,15 @@ const summary = {
   assert.ok(html.includes('29 days (avg 28) · period 5 days · pain days 3'), html);
   assert.ok(!/\{(length|average|period|pain)\}/.test(html), 'no placeholder left over');
   assert.ok(!html.includes('dashboard_last_cycle'), 'no raw translation key shown');
+
+  // Prediction accuracy: its own entry, all placeholders filled, absent without data.
+  assert.ok(html.includes('Prediction accuracy'), html);
+  assert.ok(html.includes('1.5 days from the predicted day on average over the last 4 cycles (3 within 2 days)'), html);
+  assert.ok(!html.includes('dashboard_prediction_accuracy') && !/\{(mean|cycles|within)\}/.test(html));
+  const noAccuracy = makePanel(async () => ({ response: { ...summary, prediction_accuracy: null } }));
+  noAccuracy.panel._lastCycleSummary(stateObj);
+  await flushPromises();
+  assert.ok(!noAccuracy.panel._renderCycleInsights(stateObj).includes('Prediction accuracy'), 'no entry without accuracy data');
 
   // Trend bars: one per cycle, newest highlighted, heights relative to the longest, numbers in the aria-label.
   assert.strictEqual((html.match(/class="cycle-bar( latest)?"/g) || []).length, 4, 'one bar per cycle');

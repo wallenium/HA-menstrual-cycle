@@ -163,6 +163,13 @@ UNPROTECTED_HINT_MAX_DAYS = 5
 # Weekly "week N" message (same weekday as the pregnancy start, trimester text on week 14 and 28) while pregnancy mode is on.
 CONF_NOTIFY_PREGNANCY_UPDATES = "notify_pregnancy_updates"
 DEFAULT_NOTIFY_PREGNANCY_UPDATES = False
+# One neutral hint (no diagnosis) when the last 3 cycles were all shorter than CYCLE_HINT_SHORT_DAYS or all longer
+# than CYCLE_HINT_LONG_DAYS, or the last cycle is CYCLE_HINT_DEVIATION_DAYS off the average of the earlier ones.
+CONF_NOTIFY_CYCLE_HINT = "notify_cycle_hint"
+DEFAULT_NOTIFY_CYCLE_HINT = False
+CYCLE_HINT_SHORT_DAYS = 21
+CYCLE_HINT_LONG_DAYS = 38
+CYCLE_HINT_DEVIATION_DAYS = 10
 # Days since the pregnancy start at which the 2nd (14+0) and 3rd (28+0) trimester begin.
 PREGNANCY_TRIMESTER_START_DAYS = (98, 196)
 # Extra all-day events in the cycle calendar and the ICS feed (both off by default: the feed is shared by token, e.g. with a partner).
@@ -201,6 +208,10 @@ PERIOD_PROLONGED_DAYS = 8
 # A logged bleeding strength starts a new period only if no period day was recorded in the days before it;
 # closer to the last period it counts as intermenstrual bleeding (the shortest plausible cycle is ~21 days).
 NEW_PERIOD_MIN_GAP_DAYS = 14
+# Luteal phase lengths (days) outside this range are treated as a misdetected temperature rise and ignored.
+LUTEAL_PHASE_PLAUSIBLE_DAYS = (5, 25)
+# Completed cycles used for the look-back prediction accuracy.
+PREDICTION_ACCURACY_CYCLES = 6
 # Months since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup (0 = off).
 CONF_CHECKUP_INTERVAL_MONTHS = "checkup_interval_months"
 DEFAULT_CHECKUP_INTERVAL_MONTHS = 12

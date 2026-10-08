@@ -87,7 +87,8 @@
               "notify_checkup_enabled": "Meddela före en kontroll",
               "notify_fertile_mute_hormonal": "Inga fertilitetsaviseringar vid hormonell preventivmetod",
               "notify_unprotected_hint": "Tips efter oskyddat samlag",
-              "notify_pregnancy_updates": "Veckomeddelande om graviditet"
+              "notify_pregnancy_updates": "Veckomeddelande om graviditet",
+              "notify_cycle_hint": "Påminnelse vid ovanlig cykellängd"
             },
             "data_description": {
               "notifications_enabled": "Skickar en avisering när mensen väntas börja imorgon, eller när det fertila fönstret börjar idag.",
@@ -107,7 +108,8 @@
               "notify_checkup_enabled": "Skickar en avisering 14 dagar före nästa kontroll (senast loggade kontroll plus intervallet nedan), eller en gång om den redan är försenad. Kräver ett intervall över 0. Av som standard. Kräver ”Aktivera aviseringar” ovan.",
               "notify_fertile_mute_hormonal": "Hoppar över aviseringar om fertilt fönster och ägglossning så länge den nuvarande preventivmetoden är hormonell (p-piller, hormonspiral, implantat, plåster, ring, spruta), eftersom cykeln då oftast är hämmad. Sensorns tillstånd och instrumentpanelen förblir oförändrade. Av som standard.",
               "notify_unprotected_hint": "När oskyddat samlag loggas för idag eller någon av de senaste 5 dagarna skickas ett neutralt tips: om graviditet inte önskas kan ett apotek eller en läkare ge råd om akut preventivmedel, ju tidigare desto bättre. Ingen dosering och ingen medicinsk rådgivning. Skickas inte under graviditet eller klimakteriet. Av som standard. Kräver 'Aktivera aviseringar' ovan.",
-              "notify_pregnancy_updates": "Medan graviditetsläget är på skickas en gång i veckan (samma veckodag som graviditeten började) ett kort, neutralt meddelande med aktuell vecka samt en notis när andra och tredje trimestern börjar. Inga medicinska råd."
+              "notify_pregnancy_updates": "Medan graviditetsläget är på skickas en gång i veckan (samma veckodag som graviditeten började) ett kort, neutralt meddelande med aktuell vecka samt en notis när andra och tredje trimestern börjar. Inga medicinska råd.",
+              "notify_cycle_hint": "Skickar efter en ny menstruationsstart en neutral påminnelse när de tre senaste cyklerna alla var kortare än 21 eller alla längre än 38 dagar, eller när den senaste cykeln avvek 10 dagar eller mer från ditt genomsnitt. Det är ingen diagnos; det föreslår bara att nämna det vid nästa kontroll."
             }
           },
           "pill": {

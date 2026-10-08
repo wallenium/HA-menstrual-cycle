@@ -8,6 +8,9 @@ from typing import Any
 
 from .const import (
     CONTRACEPTION_HORMONAL_METHODS,
+    CYCLE_HINT_DEVIATION_DAYS,
+    CYCLE_HINT_LONG_DAYS,
+    CYCLE_HINT_SHORT_DAYS,
     CONTRACEPTION_METHOD_PILL,
     PILL_ACTIVE_DAYS_MIN,
     CHECKUP_APPOINTMENT_TYPES,
@@ -934,6 +937,38 @@ def calculate_pregnancy_info(pregnancy_start_date: str | None, today: date | Non
     due = start + timedelta(days=PREGNANCY_DAYS)
 
     return weeks, due.isoformat()
+
+
+def cycle_length_hint(grouped_starts: list[str]) -> dict[str, Any] | None:
+    """Neutral hint about an unusual cycle length, based on the completed cycles between the period starts.
+
+    kind "short"/"long": the last three cycles were all shorter/longer than the limits in const.py.
+    kind "longer"/"shorter": the last cycle is CYCLE_HINT_DEVIATION_DAYS or more off the average of up to six
+    cycles before it (needs three of them). Lengths of 10 days or less and above 120 days are start
+    typos or a long break, not cycles, and are skipped. None when nothing stands out.
+    """
+    parsed: list[date] = []
+    for item in grouped_starts:
+        try:
+            parsed.append(date.fromisoformat(str(item)))
+        except ValueError:
+            continue
+    lengths = [days for days in ((b - a).days for a, b in zip(parsed, parsed[1:])) if 10 < days <= 120]
+    if not lengths:
+        return None
+    last_three = lengths[-3:]
+    if len(last_three) == 3:
+        if all(days < CYCLE_HINT_SHORT_DAYS for days in last_three):
+            return {"kind": "short", "lengths": last_three, "limit": CYCLE_HINT_SHORT_DAYS}
+        if all(days > CYCLE_HINT_LONG_DAYS for days in last_three):
+            return {"kind": "long", "lengths": last_three, "limit": CYCLE_HINT_LONG_DAYS}
+    earlier = lengths[-7:-1]
+    if len(earlier) >= 3:
+        average = round(sum(earlier) / len(earlier))
+        diff = lengths[-1] - average
+        if abs(diff) >= CYCLE_HINT_DEVIATION_DAYS:
+            return {"kind": "longer" if diff > 0 else "shorter", "days": abs(diff), "average": average}
+    return None
 
 
 def pregnancy_week_notification(
