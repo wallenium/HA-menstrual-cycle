@@ -538,6 +538,13 @@ class CalendarEventBuildTests(unittest.TestCase):
         self.assertEqual((event.start, event.end, event.summary, event.description, event.uid),
                          (date(2026, 10, 1), date(2026, 10, 4), "Period", "Source: logged", "period_logged-2026-10-01"))
 
+    def test_ovulation_events_carry_their_source_note(self) -> None:
+        extra = [("ovulation_temp", date(2026, 10, 1), date(2026, 10, 1), "Ovulation (from your logs)"),
+                 ("ovulation_lh", date(2026, 10, 2), date(2026, 10, 2), "Ovulation (from your logs)")]
+        events = calendar._build_events({}, "en", extra_events=extra)
+        self.assertEqual([e.description for e in events], ["Source: temperature", "Source: ovulation test"])
+        self.assertEqual([e.uid for e in events], ["ovulation_temp-2026-10-01", "ovulation_lh-2026-10-02"])
+
     def test_titles_follow_the_language(self) -> None:
         self.assertEqual(calendar._build_events(_windows(), "de")[0].summary, "Periode (vorhergesagt)")
         self.assertEqual(calendar._build_events(_windows(), "zz")[0].summary, "Period (predicted)")

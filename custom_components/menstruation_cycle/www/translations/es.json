@@ -767,6 +767,7 @@
   "dashboard_days_ago_prefix": "hace",
   "dashboard_ovulation_temp_confirmed": "Aumento térmico confirmado",
   "dashboard_ovulation_calendar_based": "calculado según el método del calendario",
+  "dashboard_ovulation_lh_based": "Prueba de ovulación positiva el {date}",
   "dashboard_cycle_variability": "Variabilidad del ciclo",
   "dashboard_regularity_high": "muy regular",
   "dashboard_regularity_medium": "regular",

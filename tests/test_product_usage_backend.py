@@ -895,6 +895,20 @@ class ProductUsageBackendTests(unittest.TestCase):
         negative = self._lh_cycle([{"date": "2026-06-30", "test": "negative_ovulation"}])
         self.assertEqual(negative.fertility_forecast["source"], "estimated")
 
+    def test_nfp_analysis_names_the_first_positive_test_and_whether_it_anchors(self) -> None:
+        both = self._lh_cycle(
+            [{"date": "2026-06-30", "test": "positive_ovulation"}, {"date": "2026-07-01", "test": "positive_ovulation"}]
+        )
+        self.assertEqual((both.nfp_analysis["lh_first_positive_day"], both.nfp_analysis["lh_anchored"]), ("2026-06-30", True))
+        negative = self._lh_cycle([{"date": "2026-06-30", "test": "negative_ovulation"}])
+        self.assertEqual((negative.nfp_analysis["lh_first_positive_day"], negative.nfp_analysis["lh_anchored"]), (None, False))
+        # a positive test of the previous cycle (before the start 2026-06-29) is not this cycle's
+        previous = self._lh_cycle([{"date": "2026-06-20", "test": "positive_ovulation"}])
+        self.assertIsNone(previous.nfp_analysis["lh_first_positive_day"])
+        # strict mode reports the test but never anchors on it
+        strict = self._lh_cycle([{"date": "2026-06-30", "test": "positive_ovulation"}], nfp_mode="strict")
+        self.assertEqual((strict.nfp_analysis["lh_first_positive_day"], strict.nfp_analysis["lh_anchored"]), ("2026-06-30", False))
+
     def test_compute_fertility_forecast_source_lh_needs_the_anchor_and_loses_to_nfp(self) -> None:
         args = ("2026-07-27", None, "2026-06-26", "2026-07-02", "2026-07-01")
         self.assertEqual(model.compute_fertility_forecast(*args, None, True)["source"], "lh")
@@ -951,6 +965,8 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(with_lh.fertile_window_start, without.fertile_window_start)
         self.assertNotEqual(with_lh.ovulation_day, "2026-06-09")
         self.assertEqual(with_lh.fertility_forecast["source"], "nfp")
+        # the test is reported, but the confirmed temperature analysis keeps the anchor
+        self.assertEqual((with_lh.nfp_analysis["lh_first_positive_day"], with_lh.nfp_analysis["lh_anchored"]), ("2026-06-08", False))
 
     def test_build_cycle_model_strict_mode_hides_ovulation_without_confirmed_temperature_rise(self) -> None:
         # Strict mode: no temperature rise logged → ovulation/fertile window must be None.

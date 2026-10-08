@@ -9,6 +9,7 @@ import unittest
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 COMPONENT_ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "menstruation_cycle"
 
@@ -147,6 +148,98 @@ class LutealPeriodEventTests(unittest.TestCase):
         ics = ical.generate_ics("e1", None, None, 28, 6, "en", None, None, TODAY, _luteal(LUTEAL_ON, 5)).decode()
         self.assertIn("SUMMARY:Period (luteal phase forecast)", ics)
         self.assertIn("DTSTART;VALUE=DATE:20261009", ics)
+
+
+OVULATION_ON = {const.CONF_CALENDAR_OVULATION_EVENTS: True}
+
+
+def _cycle_runtime(starts, symptoms):
+    days = [(TODAY + timedelta(days=o + k)).isoformat() for o in starts for k in range(3)]
+    return SimpleNamespace(pregnancy_data={}, noncycle_data={}, history=days, symptom_history=symptoms, period_duration_days=3)
+
+
+def _temperature_cycle(start_offset, rise_index=14, days=20):
+    """Daily readings from a cycle start: low until rise_index, then raised, with mucus before the rise."""
+    entries = []
+    for i in range(days):
+        entry = {"date": (TODAY + timedelta(days=start_offset + i)).isoformat(), "basal_temp": 36.5 if i < rise_index else 36.85}
+        if rise_index - 3 <= i < rise_index:
+            entry["cervical_mucus"] = "fadenziehend"
+        entries.append(entry)
+    return entries
+
+
+class OvulationFromLogsEventTests(unittest.TestCase):
+    def _events(self, runtime, options=OVULATION_ON):
+        return [e for e in ical.collect_extra_events(options, runtime, None, "en", TODAY) if e[0].startswith("ovulation")]
+
+    def test_off_by_default(self) -> None:
+        runtime = _cycle_runtime([-50], _temperature_cycle(-50))
+        self.assertEqual(self._events(runtime, {}), [])
+
+    def test_temperature_analysis_gives_an_event_per_cycle_with_its_source(self) -> None:
+        symptoms = _temperature_cycle(-60) + _temperature_cycle(-30)
+        runtime = _cycle_runtime([-60, -30, -2], symptoms)
+        events = self._events(runtime)
+        self.assertEqual([e[0] for e in events], ["ovulation_temp", "ovulation_temp"])
+        self.assertTrue(all(e[1] == e[2] and e[3] == "Ovulation (from your logs)" for e in events))
+        first = [e for e in events if e[1] < TODAY - timedelta(days=40)]
+        self.assertEqual(len(first), 1)
+        # the first cycle's rise is on cycle day 15 (index 14); the event lies before that rise, inside that cycle
+        self.assertTrue(TODAY - timedelta(days=60) < first[0][1] <= TODAY - timedelta(days=60) + timedelta(days=15))
+
+    def test_a_positive_test_is_the_fallback_one_day_later(self) -> None:
+        symptoms = [{"date": (TODAY - timedelta(days=40)).isoformat(), "test": "positive_ovulation"}]
+        runtime = _cycle_runtime([-50, -20], symptoms)
+        (event,) = self._events(runtime)
+        self.assertEqual(event[:3], ("ovulation_lh", TODAY - timedelta(days=39), TODAY - timedelta(days=39)))
+
+    def test_temperature_wins_over_a_test_in_the_same_cycle(self) -> None:
+        symptoms = _temperature_cycle(-60)
+        symptoms[8] = {**symptoms[8], "test": "positive_ovulation"}
+        events = self._events(_cycle_runtime([-60, -30], symptoms))
+        self.assertEqual([e[0] for e in events], ["ovulation_temp"])
+
+    def test_other_cycles_data_and_empty_cycles_are_ignored(self) -> None:
+        # the rise belongs to the cycle starting at -60; the cycle at -30 has no data of its own
+        runtime = _cycle_runtime([-60, -30], _temperature_cycle(-60))
+        self.assertEqual(len(self._events(runtime)), 1)
+        self.assertEqual(self._events(_cycle_runtime([], [])), [])
+        self.assertEqual(self._events(_cycle_runtime([-60], [])), [])
+
+    def test_cycles_that_ended_before_the_last_year_are_left_out(self) -> None:
+        old = _cycle_runtime([-500, -460, -10], _temperature_cycle(-500))
+        self.assertEqual(self._events(old), [])
+        # a cycle that ends exactly at the one-year mark still counts, one day earlier it does not
+        edge = lambda end: _cycle_runtime([-400, end], _temperature_cycle(-400, days=25))  # noqa: E731
+        self.assertEqual(len(self._events(edge(-const.CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS))), 1)
+        self.assertEqual(self._events(edge(-const.CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS - 1)), [])
+
+    def test_the_profiles_period_length_is_handed_to_the_analysis(self) -> None:
+        runtime = _cycle_runtime([-60], [])
+        runtime.period_duration_days = 7
+        with patch.object(ical, "analyze_nfp_cycle", wraps=ical.analyze_nfp_cycle) as analyze:
+            self._events(runtime)
+        self.assertEqual(analyze.call_args.args[2], 7)
+        del runtime.period_duration_days  # runtimes without the field fall back to 5 days
+        with patch.object(ical, "analyze_nfp_cycle", wraps=ical.analyze_nfp_cycle) as analyze:
+            self._events(runtime)
+        self.assertEqual(analyze.call_args.args[2], 5)
+
+    def test_ics_and_calendar_names_the_source(self) -> None:
+        for symptoms, source in (
+            (_temperature_cycle(-60), "Source: temperature"),
+            ([{"date": (TODAY - timedelta(days=40)).isoformat(), "test": "positive_ovulation"}], "Source: ovulation test"),
+        ):
+            events = self._events(_cycle_runtime([-60, -30], symptoms))
+            ics = ical.generate_ics("e1", None, None, 28, 6, "en", None, None, TODAY, events).decode()
+            self.assertIn("SUMMARY:Ovulation (from your logs)", ics)
+            self.assertIn(f"DESCRIPTION:{source}", ics)
+
+    def test_summaries_and_sources_exist_in_every_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            strings = ical._ics_strings(lang)
+            self.assertTrue(strings["ovulation_logged"] and strings["source_temp"] and strings["source_lh"], lang)
 
 
 class LoggedPeriodEventsTests(unittest.TestCase):

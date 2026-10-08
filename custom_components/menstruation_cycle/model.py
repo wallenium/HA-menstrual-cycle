@@ -3043,6 +3043,11 @@ def build_cycle_model(
                 fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
                 fertile_end = (ovulation_day + timedelta(days=1)).isoformat()
 
+        # For templates and the dashboard: the first positive ovulation test of this cycle and whether it anchors the forecast.
+        lh_first = first_positive_lh_day(symptoms, current_cycle_start, now)
+        nfp_result["lh_first_positive_day"] = lh_first.isoformat() if lh_first else None
+        nfp_result["lh_anchored"] = lh_anchored
+
         nfp_result["conception_likelihood"] = compute_cycle_conception_likelihood(
             history=normalized,
             symptom_history=symptoms,

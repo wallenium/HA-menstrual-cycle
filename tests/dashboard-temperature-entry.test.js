@@ -118,6 +118,42 @@ const withInput = (panel, value) => {
   assert.ok(html('neutral', [{ date: iso(0), basal_temp: 36.55 }]).includes('value="36.55"'));
   assert.ok(html('neutral', [{ date: iso(-1), basal_temp: 36.55 }]).includes('value=""'));
 
+  // the profile's unit (sensor attribute temperature_unit) is shown after the field; today's value is converted for display
+  {
+    const fahrenheit = (attrs, history) => {
+      const { panel } = makePanel('neutral', attrs, history);
+      return panel._renderTemperatureAction(panel._hass.states['sensor.menstruation_berta'], false);
+    };
+    const today = [{ date: iso(0), basal_temp: 36.55 }];
+    const f = fahrenheit({ temperature_unit: 'fahrenheit' }, today);
+    assert.ok(f.includes('value="97.79"') && f.includes('<span>°F</span>') && !f.includes('°C'), f);
+    const c = fahrenheit({ temperature_unit: 'celsius' }, today);
+    assert.ok(c.includes('value="36.55"') && c.includes('<span>°C</span>'), c);
+    assert.ok(fahrenheit({}, today).includes('<span>°C</span>'), 'unit missing -> Celsius');
+  }
+
+  // KPI tile and chart axis follow the unit; the stored Celsius values drive the chart geometry either way
+  {
+    const panel = new Panel();
+    panel._lang = 'en';
+    const kpi = (unit) => panel._renderSymptomStatHeader({ symptom_statistics: { cycles_analyzed: 3, average_basal_temp: 36.5 }, ...(unit ? { temperature_unit: unit } : {}) });
+    assert.ok(kpi().includes('>36.5°C<'), kpi());
+    assert.ok(kpi('fahrenheit').includes('>97.7°F<'), kpi('fahrenheit'));
+    const chart = (unit) => {
+      const { panel: p } = makePanel('neutral', unit ? { temperature_unit: unit } : {}, [
+        { date: iso(-2), basal_temp: 36.4 }, { date: iso(-1), basal_temp: 36.5 }, { date: iso(0), basal_temp: 36.9 },
+      ]);
+      return p._renderBasalTempChart(p._hass.states['sensor.menstruation_berta']);
+    };
+    const labels = (svg) => [...svg.matchAll(/font-size="9"[^>]*>([\d.]+)<\/text>/g)].map((m) => Number(m[1])).filter((n) => n > 30);
+    const celsius = labels(chart());
+    const fahr = labels(chart('fahrenheit'));
+    assert.strictEqual(celsius.length, 4);
+    assert.ok(celsius.every((n) => n > 36 && n < 37.1), celsius.join());
+    assert.ok(fahr.every((n) => n > 97 && n < 99), fahr.join());
+    assert.deepStrictEqual(chart().replace(/>[\d.]+<\/text>/g, '><'), chart('fahrenheit').replace(/>[\d.]+<\/text>/g, '><'), 'only the labels differ');
+  }
+
   // saving: the click reads the field and calls add_symptom for today (comma decimal accepted)
   for (const [typed, expected] of [['36.45', 36.45], [' 36,5 ', 36.5], ['97.8', 97.8]]) {
     const { panel, calls } = makePanel('neutral', {}, [{ date: iso(-1), basal_temp: 36.4 }]);

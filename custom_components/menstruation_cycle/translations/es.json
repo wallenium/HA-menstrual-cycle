@@ -51,6 +51,7 @@
           "calendar_contraception_events": "Calendario: fechas de anticoncepción",
           "calendar_logged_periods": "Calendario: periodos registrados",
           "calendar_luteal_forecast": "Calendario: regla según la fase lútea",
+          "calendar_ovulation_events": "Calendario: ovulación según tus registros",
           "visibility_level": "Nivel de visibilidad"
         },
         "data_description": {
@@ -64,6 +65,7 @@
           "calendar_contraception_events": "Añade las fechas de renovación (DIU, implante, inyección), el final del envase de la píldora y los próximos pasos del parche/anillo al calendario del ciclo y al feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "calendar_logged_periods": "Muestra los periodos registrados (de los últimos 12 meses) como eventos en el calendario del ciclo y en el feed ICS, no solo las predicciones. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "calendar_luteal_forecast": "Muestra la fecha de la regla calculada con tu propia duración de fase lútea (ovulación más fase lútea aprendida) como evento en el calendario del ciclo y en el feed ICS, en cuanto exista y mientras esté en el futuro. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
+          "calendar_ovulation_events": "Muestra, para cada ciclo de los últimos 12 meses, el día de ovulación al que apuntan tus registros (aumento de temperatura confirmado; si no, el día después de la primera prueba de ovulación positiva) como evento en el calendario del ciclo y en el feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
         },

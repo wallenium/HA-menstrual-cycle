@@ -51,6 +51,7 @@
           "calendar_contraception_events": "Calendar: contraception dates",
           "calendar_logged_periods": "Calendar: logged periods",
           "calendar_luteal_forecast": "Calendar: period from the luteal phase",
+          "calendar_ovulation_events": "Calendar: ovulation from your logs",
           "visibility_level": "Visibility level"
         },
         "data_description": {
@@ -64,6 +65,7 @@
           "calendar_contraception_events": "Adds renewal dates (IUD, implant, injection), the end of the pill pack and the next patch/ring steps to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_logged_periods": "Shows your logged periods (the last 12 months) as events in the cycle calendar and the ICS feed, not only the predictions. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_luteal_forecast": "Shows the period date calculated from your own luteal phase length (ovulation plus learned luteal phase) as an event in the cycle calendar and the ICS feed, as soon as it exists and while it lies in the future. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
+          "calendar_ovulation_events": "Shows, for each cycle of the last 12 months, the ovulation day your own logs point to (confirmed temperature rise, otherwise the day after the first positive ovulation test) as an event in the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
         },

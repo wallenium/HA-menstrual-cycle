@@ -69,6 +69,8 @@ from .const import (
     ATTR_FERTILITY_FORECAST,
     ATTR_LEARNING_PHASE,
     ATTR_VISIBILITY_LEVEL,
+    CONF_TEMPERATURE_UNIT,
+    DEFAULT_TEMPERATURE_UNIT,
     ATTR_LINKED_PERSON_ENTITY_ID,
     ATTR_PROFILE_PICTURE,
     ATTR_CYCLE_PHASE,
@@ -1409,6 +1411,8 @@ class MenstruationGaugeSensor(SensorEntity):
             "entry_id": self._entry.entry_id,
             "friendly_name": runtime.friendly_name,
             ATTR_VISIBILITY_LEVEL: getattr(runtime, "visibility_level", DEFAULT_VISIBILITY_LEVEL),
+            # Display unit of the profile for the dashboard; values are stored in Celsius either way.
+            "temperature_unit": self._entry.options.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT),
             ATTR_LINKED_PERSON_ENTITY_ID: linked_person_entity_id,
             ATTR_PROFILE_PICTURE: profile_picture,
             # Explicit marker so consumers (e.g. the dashboard panel's entity/profile

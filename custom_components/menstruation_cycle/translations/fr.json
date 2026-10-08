@@ -51,6 +51,7 @@
           "calendar_contraception_events": "Calendrier : dates de contraception",
           "calendar_logged_periods": "Calendrier : règles enregistrées",
           "calendar_luteal_forecast": "Calendrier : règles selon la phase lutéale",
+          "calendar_ovulation_events": "Calendrier : ovulation d'après tes saisies",
           "visibility_level": "Niveau de visibilité"
         },
         "data_description": {
@@ -64,6 +65,7 @@
           "calendar_contraception_events": "Ajoute les dates de renouvellement (stérilet, implant, injection), la fin de la plaquette de pilule et les prochaines étapes du patch/anneau au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_logged_periods": "Affiche les règles enregistrées (des 12 derniers mois) comme événements dans le calendrier du cycle et le flux ICS, et pas seulement les prévisions. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_luteal_forecast": "Affiche la date des règles calculée avec ta propre durée de phase lutéale (ovulation plus phase lutéale apprise) comme événement dans le calendrier du cycle et le flux ICS, dès qu'elle existe et tant qu'elle est dans le futur. Désactivé par défaut : le flux ICS est partagé via son jeton (p. ex. avec l'agenda du ou de la partenaire).",
+          "calendar_ovulation_events": "Affiche, pour chaque cycle des 12 derniers mois, le jour d'ovulation indiqué par tes saisies (hausse de température confirmée, sinon le lendemain du premier test d'ovulation positif) comme événement dans le calendrier du cycle et le flux ICS. Désactivé par défaut : le flux ICS est partagé via son jeton (p. ex. avec l'agenda du ou de la partenaire).",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
         },

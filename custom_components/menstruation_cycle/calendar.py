@@ -58,7 +58,7 @@ from .const import (
     VISIBILITY_LEVEL_STATUS_ONLY,
     menstruation_object_ids_for_profile,
 )
-from .ical import _ics_strings, collect_extra_events
+from .ical import _EVENT_SOURCE_KEYS, _ics_strings, collect_extra_events
 from .model import build_cycle_model, next_checkup_due, project_range_windows
 from .sensor import _device_info_for_entry
 
@@ -259,7 +259,7 @@ def _build_events(
                     start=day,
                     end=last_day + timedelta(days=1),
                     summary=summary,
-                    description=strings["source_logged"] if kind == "period_logged" else None,
+                    description=strings[_EVENT_SOURCE_KEYS[kind]] if kind in _EVENT_SOURCE_KEYS else None,
                     uid=f"{kind}-{day.isoformat()}",
                 )
             )

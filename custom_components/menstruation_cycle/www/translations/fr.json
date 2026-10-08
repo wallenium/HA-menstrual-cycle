@@ -767,6 +767,7 @@
   "dashboard_days_ago_prefix": "il y a",
   "dashboard_ovulation_temp_confirmed": "Hausse thermique confirmée",
   "dashboard_ovulation_calendar_based": "calculé selon la méthode du calendrier",
+  "dashboard_ovulation_lh_based": "Test d'ovulation positif le {date}",
   "dashboard_cycle_variability": "Variabilité du cycle",
   "dashboard_regularity_high": "très régulier",
   "dashboard_regularity_medium": "régulier",

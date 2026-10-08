@@ -800,6 +800,7 @@
   "dashboard_days_ago_prefix": "ago",
   "dashboard_ovulation_temp_confirmed": "Temperature rise confirmed",
   "dashboard_ovulation_calendar_based": "calculated using the calendar method",
+  "dashboard_ovulation_lh_based": "Positive ovulation test on {date}",
   "dashboard_cycle_variability": "Cycle variability",
   "dashboard_regularity_high": "very regular",
   "dashboard_regularity_medium": "regular",

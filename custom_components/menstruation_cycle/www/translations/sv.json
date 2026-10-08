@@ -767,6 +767,7 @@
   "dashboard_days_ago_prefix": "för",
   "dashboard_ovulation_temp_confirmed": "Temperaturhöjning bekräftad",
   "dashboard_ovulation_calendar_based": "beräknad enligt kalendermetoden",
+  "dashboard_ovulation_lh_based": "Positivt ägglossningstest den {date}",
   "dashboard_cycle_variability": "Cykelvariabilitet",
   "dashboard_regularity_high": "mycket regelbunden",
   "dashboard_regularity_medium": "regelbunden",

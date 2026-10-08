@@ -4694,7 +4694,9 @@
           }
           ovFoot = nfpAnalysis?.temperature_rise_detected
             ? (this._t('dashboard_ovulation_temp_confirmed') || 'Temperaturanstieg bestätigt')
-            : (this._t('dashboard_ovulation_calendar_based') || 'berechnet nach Kalendermethode');
+            : nfpAnalysis?.lh_anchored && nfpAnalysis.lh_first_positive_day
+              ? this._t('dashboard_ovulation_lh_based').replace('{date}', escapeHtml(this._formatDate(nfpAnalysis.lh_first_positive_day)))
+              : (this._t('dashboard_ovulation_calendar_based') || 'berechnet nach Kalendermethode');
         }
         stat2 = `
           <div class="stat">
@@ -5775,6 +5777,16 @@
     }
 
 
+    // Temperatures are stored in Celsius; the profile's display unit comes from the sensor attribute temperature_unit.
+    _temperatureUnit(attrs) {
+      return attrs?.temperature_unit === 'fahrenheit' ? '°F' : '°C';
+    }
+
+    _displayTemperature(celsius, unit, digits = 1) {
+      const value = unit === '°F' ? Number(celsius) * 9 / 5 + 32 : Number(celsius);
+      return String(Math.round(value * 10 ** digits) / 10 ** digits);
+    }
+
     _renderBasalTempChart(stateObj) {
       const attrs = stateObj?.attributes || {};
       const history = this._getFullSymptomHistory(stateObj);
@@ -5833,11 +5845,12 @@
         : '';
 
       // Real gridlines (not just axis text) at 4 evenly-spaced temperature levels.
+      const tempUnit = this._temperatureUnit(attrs);
       const gridSteps = 4;
       const gridLines = Array.from({ length: gridSteps }, (_, i) => minV + (i / (gridSteps - 1)) * yRange).map((v) => {
         const y = Math.round(toY(v));
         return `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/>
-                <text x="6" y="${y + 3}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${v.toFixed(1)}</text>`;
+                <text x="6" y="${y + 3}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${this._displayTemperature(v, tempUnit)}</text>`;
       }).join('');
 
       const pathD = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
@@ -5957,7 +5970,7 @@
         tiles.push(`<div class="kpi-item mc-rose"><span class="kpi-icon" aria-hidden="true">🩸</span><span class="kpi-value">${escapeHtml(label)}</span><span class="kpi-label">${this._t('dashboard_typical_bleeding') || 'typische Stärke'}</span></div>`);
       }
       if (stats.average_basal_temp !== undefined && stats.average_basal_temp !== null) {
-        tiles.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(stats.average_basal_temp)}°C</span><span class="kpi-label">${this._t('dashboard_avg_basal_temp') || 'Ø Basaltemperatur'}</span></div>`);
+        tiles.push(`<div class="kpi-item"><span class="kpi-icon" aria-hidden="true">🌡️</span><span class="kpi-value">${escapeHtml(this._displayTemperature(stats.average_basal_temp, this._temperatureUnit(attrs)))}${escapeHtml(this._temperatureUnit(attrs))}</span><span class="kpi-label">${this._t('dashboard_avg_basal_temp') || 'Ø Basaltemperatur'}</span></div>`);
       }
 
       if (!tiles.length) return '';
@@ -6899,10 +6912,12 @@
         .filter((item) => item && item.basal_temp != null && item.date >= sinceIso && item.date <= today);
       if (!logged.length) return '';
       const current = logged.find((item) => item.date === today);
+      const unit = this._temperatureUnit(stateObj.attributes);
       const label = this._t('dashboard_temp_label');
       return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" role="group" aria-label="${escapeHtml(label)}">
         <span>${escapeHtml(label)}</span>
-        <input type="text" inputmode="decimal" size="6" data-action="temp-input" value="${escapeHtml(current ? String(current.basal_temp) : '')}" aria-label="${escapeHtml(label)}" />
+        <input type="text" inputmode="decimal" size="6" data-action="temp-input" value="${escapeHtml(current ? this._displayTemperature(current.basal_temp, unit, 2) : '')}" aria-label="${escapeHtml(label)} ${escapeHtml(unit)}" />
+        <span>${escapeHtml(unit)}</span>
         <button type="button" data-action="temp-save">${escapeHtml(this._t('dashboard_temp_save'))}</button>
       </div>`;
     }

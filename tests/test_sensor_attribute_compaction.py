@@ -163,6 +163,20 @@ class TestSensorAttributeCompaction(unittest.TestCase):
         self.assertIn(const.ATTR_NEXT_PREDICTED_START, compact)
         self.assertIn("profile", compact)
 
+    def test_temperature_unit_reaches_the_dashboard_only_at_full_visibility(self) -> None:
+        attrs = {**self._base_attrs(), "temperature_unit": "fahrenheit"}
+        full = sensor_module._filter_attributes_for_visibility(attrs, const.VISIBILITY_LEVEL_FULL)
+        self.assertEqual(sensor_module._build_compact_sensor_attributes(full)["temperature_unit"], "fahrenheit")
+        for level in (const.VISIBILITY_LEVEL_STATUS_ONLY, const.VISIBILITY_LEVEL_PRIVATE):
+            self.assertNotIn("temperature_unit", sensor_module._filter_attributes_for_visibility(attrs, level))
+
+    def test_sensor_publishes_the_profile_option_as_temperature_unit(self) -> None:
+        # ponytail: source check instead of running the whole sensor update
+        source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")
+        self.assertEqual(
+            source.count('"temperature_unit": self._entry.options.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)'), 1
+        )
+
     def test_payload_is_json_serializable_and_below_size_target(self) -> None:
         attrs = self._base_attrs()
         attrs[const.ATTR_HISTORY] = [f"2025-01-{(idx % 28) + 1:02d}" for idx in range(1200)]

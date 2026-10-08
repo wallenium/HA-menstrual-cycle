@@ -51,6 +51,7 @@
           "calendar_contraception_events": "Kalender: preventivmedelsdatum",
           "calendar_logged_periods": "Kalender: loggade menstruationer",
           "calendar_luteal_forecast": "Kalender: mens enligt lutealfasen",
+          "calendar_ovulation_events": "Kalender: ägglossning enligt dina loggar",
           "visibility_level": "Synlighetsnivå"
         },
         "data_description": {
@@ -64,6 +65,7 @@
           "calendar_contraception_events": "Lägger till förnyelsedatum (spiral, implantat, spruta), slutet på p-pillerkartan och nästa steg för plåster/ring i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_logged_periods": "Visar loggade menstruationer (de senaste 12 månaderna) som händelser i cykelkalendern och ICS-flödet, inte bara prognoserna. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_luteal_forecast": "Visar mensdatumet beräknat från din egen lutealfaslängd (ägglossning plus inlärd lutealfas) som händelse i cykelkalendern och ICS-flödet så snart det finns och så länge det ligger i framtiden. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
+          "calendar_ovulation_events": "Visar för varje cykel de senaste 12 månaderna den ägglossningsdag som dina loggar pekar på (bekräftad temperaturhöjning, annars dagen efter det första positiva ägglossningstestet) som händelse i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "nfp_analysis_mode": "Styr hur ägglossning och fertilt fönster beräknas. 'hybrid' (standard) lär sig från observerad temperaturdata och faller tillbaka på den statistiska formeln. 'strict' visar bara ägglossning och fertilt fönster när en temperaturhöjning bekräftats i den aktuella cykeln.",
           "visibility_level": "Styr hur mycket av profilens data som visas i sensorattributen (paneler, kort och companion-appens översiktsvyer). 'Fullständig' (standard) visar allt som tidigare. 'Endast status' visar bara grova, prediktionsnära värden (nästa mens/aktuell fas), inga symtom- eller hälsodetaljer. 'Privat' visar i princip inget mer än att profilen existerar. Gäller endast sensorattribut — tjänster som anropas direkt (t.ex. get_full_history) påverkas inte, eftersom integrationen inte kan avgöra vilken enhet eller person som anropar."
         },

@@ -69,6 +69,7 @@ from .const import (
     CONF_CALENDAR_CONTRACEPTION_EVENTS,
     CONF_CALENDAR_LOGGED_PERIODS,
     CONF_CALENDAR_LUTEAL_FORECAST,
+    CONF_CALENDAR_OVULATION_EVENTS,
     CONF_CHECKUP_INTERVAL_MONTHS,
     CONF_NOTIFY_OVULATION_LEAD_DAYS,
     CONF_NOTIFY_PARTNER_SERVICE,
@@ -110,6 +111,7 @@ from .const import (
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
     DEFAULT_CALENDAR_LOGGED_PERIODS,
     DEFAULT_CALENDAR_LUTEAL_FORECAST,
+    DEFAULT_CALENDAR_OVULATION_EVENTS,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     CHECKUP_INTERVAL_MONTHS_MAX,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
@@ -225,6 +227,7 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_CALENDAR_CONTRACEPTION_EVENTS,
             CONF_CALENDAR_LOGGED_PERIODS,
             CONF_CALENDAR_LUTEAL_FORECAST,
+            CONF_CALENDAR_OVULATION_EVENTS,
             CONF_NFP_ANALYSIS_MODE,
             CONF_TEMPERATURE_UNIT,
             CONF_VISIBILITY_LEVEL,
@@ -651,6 +654,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "calendar_luteal_forecast": bool(
                 self._entry.options.get(CONF_CALENDAR_LUTEAL_FORECAST, DEFAULT_CALENDAR_LUTEAL_FORECAST)
             ),
+            "calendar_ovulation_events": bool(
+                self._entry.options.get(CONF_CALENDAR_OVULATION_EVENTS, DEFAULT_CALENDAR_OVULATION_EVENTS)
+            ),
             "checkup_interval_months": int(
                 self._entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
             ),
@@ -745,6 +751,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             lines.append("- Calendar and ICS feed: logged periods")
         if d.get(CONF_CALENDAR_LUTEAL_FORECAST, DEFAULT_CALENDAR_LUTEAL_FORECAST):
             lines.append("- Calendar and ICS feed: period from the luteal phase")
+        if d.get(CONF_CALENDAR_OVULATION_EVENTS, DEFAULT_CALENDAR_OVULATION_EVENTS):
+            lines.append("- Calendar and ICS feed: ovulation from your logs")
 
         if d.get(CONF_NOTIFICATIONS_ENABLED):
             lines.append("- Notifications: enabled")
@@ -893,6 +901,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
                 self._data[CONF_CALENDAR_LUTEAL_FORECAST] = bool(
                     user_input.get(CONF_CALENDAR_LUTEAL_FORECAST, DEFAULT_CALENDAR_LUTEAL_FORECAST)
+                )
+                self._data[CONF_CALENDAR_OVULATION_EVENTS] = bool(
+                    user_input.get(CONF_CALENDAR_OVULATION_EVENTS, DEFAULT_CALENDAR_OVULATION_EVENTS)
                 )
                 self._data[CONF_NOTIFICATIONS_ENABLED] = bool(user_input.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED))
                 self._data[CONF_NOTIFY_SERVICE] = str(user_input.get(CONF_NOTIFY_SERVICE, "")).strip()
@@ -1084,6 +1095,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_CALENDAR_CONTRACEPTION_EVENTS, default=c["calendar_contraception_events"]): bool,
                 vol.Optional(CONF_CALENDAR_LOGGED_PERIODS, default=c["calendar_logged_periods"]): bool,
                 vol.Optional(CONF_CALENDAR_LUTEAL_FORECAST, default=c["calendar_luteal_forecast"]): bool,
+                vol.Optional(CONF_CALENDAR_OVULATION_EVENTS, default=c["calendar_ovulation_events"]): bool,
                 vol.Optional(CONF_NOTIFICATIONS_ENABLED, default=c["notifications_enabled"]): bool,
                 # HA-2 (M-Cycle_HA-Component-Roadmap.md): war ein reines
                 # Freitextfeld - ein Tippfehler im Servicenamen scheiterte damit
@@ -1473,6 +1485,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_CALENDAR_CONTRACEPTION_EVENTS: d[CONF_CALENDAR_CONTRACEPTION_EVENTS],
                 CONF_CALENDAR_LOGGED_PERIODS: d[CONF_CALENDAR_LOGGED_PERIODS],
                 CONF_CALENDAR_LUTEAL_FORECAST: d[CONF_CALENDAR_LUTEAL_FORECAST],
+                CONF_CALENDAR_OVULATION_EVENTS: d[CONF_CALENDAR_OVULATION_EVENTS],
                 CONF_NOTIFICATIONS_ENABLED: d[CONF_NOTIFICATIONS_ENABLED],
                 CONF_NOTIFY_SERVICE: d[CONF_NOTIFY_SERVICE],
                 CONF_NOTIFY_PARTNER_SERVICE: d[CONF_NOTIFY_PARTNER_SERVICE],

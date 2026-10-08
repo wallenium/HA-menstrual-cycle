@@ -101,10 +101,32 @@ for (const nfp of [null, { temperature_rise_detected: true }, { luteal_forecast:
 }
 assert.ok(!hero(forecast(), true).includes('From temperature'));
 
+// ovulation foot line: temperature wins, then an anchoring LH test (with its escaped date), else the calendar text
+const ovFoot = (nfp) => {
+  const panel = new Panel();
+  panel._lang = 'en';
+  panel._selectedEntityId = 'sensor.menstruation_berta';
+  const stateObj = {
+    state: 'neutral',
+    attributes: {
+      profile: 'berta', cycle_day: 20, avg_cycle_length: 29, days_until_next_start: 10, ovulation_day: '2026-06-17',
+      next_predicted_start: '2026-06-27', period_forecast: { predicted_start: '2026-06-27' }, nfp_analysis: nfp,
+    },
+  };
+  return panel._renderCycleHero(stateObj, false);
+};
+assert.ok(ovFoot({ lh_anchored: true, lh_first_positive_day: '2026-06-16' }).includes('Positive ovulation test on'));
+assert.ok(!ovFoot({ lh_anchored: false, lh_first_positive_day: '2026-06-16' }).includes('Positive ovulation test on'));
+assert.ok(!ovFoot({ lh_anchored: true, lh_first_positive_day: null }).includes('Positive ovulation test on'));
+assert.ok(!ovFoot({ lh_anchored: true, lh_first_positive_day: '2026-06-16', temperature_rise_detected: true }).includes('Positive ovulation test on'));
+assert.ok(!ovFoot({ lh_anchored: true, lh_first_positive_day: '<img src=x>' }).includes('<img src=x>'));
+assert.ok(!ovFoot(null).includes('Positive ovulation test on'));
+
 // every language has both texts
 for (const lang of ['de', 'en', 'es', 'fr', 'sv']) {
   const t = JSON.parse(fs.readFileSync(path.join(__dirname, `../custom_components/menstruation_cycle/www/translations/${lang}.json`), 'utf8'));
   assert.ok(t.dashboard_luteal_forecast.includes('{date}') && t.dashboard_luteal_forecast.includes('{diff}'), lang);
   assert.ok(t.luteal_forecast_hint.length > 5, lang);
+  assert.ok(t.dashboard_ovulation_lh_based.includes('{date}'), lang);
 }
 console.log('luteal forecast in the panel: ok');

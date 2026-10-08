@@ -51,6 +51,7 @@
           "calendar_contraception_events": "Kalender: Verhütungstermine",
           "calendar_logged_periods": "Kalender: erfasste Perioden",
           "calendar_luteal_forecast": "Kalender: Periode aus der Lutealphase",
+          "calendar_ovulation_events": "Kalender: Eisprung aus deinen Einträgen",
           "visibility_level": "Sichtbarkeitsstufe"
         },
         "data_description": {
@@ -64,6 +65,7 @@
           "calendar_contraception_events": "Fügt Erneuerungstermine (Spirale, Implantat, Spritze), das Ende der Pillenpackung und die nächsten Pflaster-/Ring-Schritte zum Zykluskalender und zum ICS-Feed hinzu. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
           "calendar_logged_periods": "Zeigt die erfassten Perioden (der letzten 12 Monate) als Termine im Zykluskalender und im ICS-Feed, nicht nur die Vorhersagen. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender des Partners).",
           "calendar_luteal_forecast": "Zeigt das aus der eigenen Lutealphasenlänge berechnete Perioden-Datum (Eisprung plus gelernte Lutealphase) als Termin im Zykluskalender und im ICS-Feed, sobald es existiert und solange es in der Zukunft liegt. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender einer Partnerperson).",
+          "calendar_ovulation_events": "Zeigt für jeden Zyklus der letzten 12 Monate den Eisprungtag, auf den deine Einträge hinweisen (bestätigter Temperaturanstieg, sonst der Tag nach dem ersten positiven Ovulationstest), als Termin im Zykluskalender und im ICS-Feed. Standardmäßig aus - der ICS-Feed wird über seinen Token geteilt (z. B. mit dem Kalender einer Partnerperson).",
           "nfp_analysis_mode": "Legt fest, wie Eisprung und Fruchtbarkeitsfenster berechnet werden. 'hybrid' (Standard) lernt aus Temperaturmessungen und verwendet die statistische Formel als Fallback. 'strict' zeigt Eisprung und Fruchtbarkeitsfenster nur an, wenn im aktuellen Zyklus ein Temperaturanstieg bestätigt wurde.",
           "visibility_level": "Legt fest, wie viel von den Daten dieses Profils in den Sensor-Attributen erscheint (Dashboards, Karten und die Übersichts-Ansichten der Companion-App). 'Voll' (Standard) zeigt alles wie bisher. 'Nur Status' zeigt nur grobe, vorhersagenahe Werte (nächste Periode/aktuelle Phase), keine Symptom- oder Gesundheitsdetails. 'Privat' zeigt praktisch nichts außer der Tatsache, dass das Profil existiert. Betrifft nur die Sensor-Attribute — direkt aufgerufene Services (z. B. get_full_history) bleiben unverändert, da die Integration nicht unterscheiden kann, welches Gerät oder welche Person aufruft."
         },

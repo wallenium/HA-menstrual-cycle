@@ -210,6 +210,8 @@ CONF_CALENDAR_LOGGED_PERIODS = "calendar_logged_periods"
 DEFAULT_CALENDAR_LOGGED_PERIODS = False
 CONF_CALENDAR_LUTEAL_FORECAST = "calendar_luteal_forecast"
 DEFAULT_CALENDAR_LUTEAL_FORECAST = False
+CONF_CALENDAR_OVULATION_EVENTS = "calendar_ovulation_events"
+DEFAULT_CALENDAR_OVULATION_EVENTS = False
 CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS = 365
 # To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
 PILL_REFILL_LEAD_DAYS = 5
