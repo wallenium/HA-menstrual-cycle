@@ -1116,5 +1116,6 @@
   "dashboard_period_end_today": "El sangrado ha terminado",
   "dashboard_period_started_done": "Inicio de la regla guardado.",
   "dashboard_period_ended_done": "Guardado. La regla se da por terminada.",
-  "dashboard_period_action_error": "No se pudo guardar."
+  "dashboard_period_action_error": "No se pudo guardar.",
+  "bleeding_outside_period": "Sangrado fuera del periodo"
 }

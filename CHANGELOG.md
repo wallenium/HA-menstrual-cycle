@@ -34,6 +34,7 @@
 - New repair finding in `repair_storage` / the storage repair: "bleeding without a period" (logged bleeding that never became a period) and the new service `create_periods_from_bleeding`, which adds those days with the same 14-day rule as logging bleeding (returns the added dates).
 - New option "Calendar: logged periods" (off by default): your logged periods of the last 12 months appear as multi-day events in the calendar entity (visibility "Full") and in the ICS feed, not only the predictions.
 - Doctor report: new section "Bleeding outside the period" (date and strength, no assessment) for bleeding logged within 14 days after a period day; `compute_statistics` returns `intermenstrual_bleeding` and `intermenstrual_bleeding_days`. Only shown when there is such bleeding.
+- Calendar card (and the calendar in the dashboard): days with bleeding outside the period (within 14 days after a period day) get a small red ring and a tooltip; no judgement.
 
 ### Changed
 - Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
@@ -54,6 +55,7 @@
 - The harmless Lovelace-helper import message in the debug log no longer prints a traceback.
 - Logging a bleeding strength as a symptom (the only way in the dashboard panel) only continued a running period and never started a new one, so a bleeding without a logged period start stayed without a period. It now starts a period when no period day was recorded in the 14 days before and the profile is not pregnant; bleeding closer to the last period still counts as intermenstrual.
 - The countdown/product timer card in the dashboard panel stayed empty ("IDLE") because the panel passed no entity to it; it now gets the selected profile's main cycle sensor.
+- The calendar card read the symptom entries as nested objects although they are stored flat, so the dot for days with logged symptoms never appeared (and the edit dialog's fallback was empty); both shapes are accepted now.
 - Crash in profile label sync (wrong LabelRegistry API).
 - "Day of the week" off-by-one bug (#255).
 - Stale translation cache in the household summary.

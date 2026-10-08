@@ -1116,5 +1116,6 @@
   "dashboard_period_end_today": "Bleeding is over",
   "dashboard_period_started_done": "Period start saved.",
   "dashboard_period_ended_done": "Saved. The period counts as ended.",
-  "dashboard_period_action_error": "Could not save."
+  "dashboard_period_action_error": "Could not save.",
+  "bleeding_outside_period": "Bleeding outside the period"
 }

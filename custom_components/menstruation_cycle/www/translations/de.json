@@ -1116,5 +1116,6 @@
   "dashboard_period_end_today": "Blutung ist vorbei",
   "dashboard_period_started_done": "Periodenstart gespeichert.",
   "dashboard_period_ended_done": "Gespeichert. Die Periode gilt als beendet.",
-  "dashboard_period_action_error": "Konnte nicht gespeichert werden."
+  "dashboard_period_action_error": "Konnte nicht gespeichert werden.",
+  "bleeding_outside_period": "Blutung außerhalb der Periode"
 }

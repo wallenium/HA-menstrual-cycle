@@ -1116,5 +1116,6 @@
   "dashboard_period_end_today": "Les saignements sont terminés",
   "dashboard_period_started_done": "Début des règles enregistré.",
   "dashboard_period_ended_done": "Enregistré. Les règles sont considérées comme terminées.",
-  "dashboard_period_action_error": "Enregistrement impossible."
+  "dashboard_period_action_error": "Enregistrement impossible.",
+  "bleeding_outside_period": "Saignement en dehors des règles"
 }

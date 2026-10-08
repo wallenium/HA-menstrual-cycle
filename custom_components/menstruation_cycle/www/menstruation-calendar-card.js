@@ -112,6 +112,7 @@ class MenstruationCalendarCard extends HTMLElement {
         period: 'Period',
         ovulation: 'Ovulation',
         bleeding_strength: 'Bleeding strength',
+        bleeding_outside_period: 'Bleeding outside the period',
         spotting: 'Spotting',
         pain: 'Pain',
         none: 'None',
@@ -584,6 +585,7 @@ class MenstruationCalendarCard extends HTMLElement {
       sensorOvulation: this._normalizeISO(attrs.ovulation_day),
       todayIso: this._isoFromDate(new Date()),
       symptomByDate: this._symptomMap(attrs),
+      intermenstrualByDate: this._intermenstrualDays(this._symptomMap(attrs), this._periodHistorySet(attrs)),
       predictedStartSet,
       predictedPeriodSet,
       extraPredictedStartSet,
@@ -603,9 +605,36 @@ class MenstruationCalendarCard extends HTMLElement {
     history.forEach((entry) => {
       const iso = this._normalizeISO(entry?.date);
       if (!iso) return;
-      map[iso] = entry?.symptom_data && typeof entry.symptom_data === 'object' ? entry.symptom_data : {};
+      // The stored entries are flat ({date, bleeding_strength, ...}); a nested symptom_data object is also accepted.
+      if (entry?.symptom_data && typeof entry.symptom_data === 'object') {
+        map[iso] = entry.symptom_data;
+      } else {
+        const { date, ...rest } = entry || {};
+        map[iso] = rest;
+      }
     });
     return map;
+  }
+
+  /**
+   * Days with logged bleeding that are no period day but start less than 14 days after one
+   * (same rule as the backend: NEW_PERIOD_MIN_GAP_DAYS) - shown as bleeding outside the period.
+   * Returns {iso: strength}.
+   */
+  _intermenstrualDays(symptomByDate, periodSet) {
+    const MIN_GAP_DAYS = 14;
+    const result = {};
+    Object.keys(symptomByDate || {}).forEach((iso) => {
+      const strength = String(symptomByDate[iso]?.bleeding_strength ?? '').trim().toLowerCase();
+      if (!strength || strength === 'none' || strength === 'keine' || periodSet.has(iso)) return;
+      for (let back = 1; back <= MIN_GAP_DAYS; back += 1) {
+        if (periodSet.has(this._addDaysToISO(iso, -back))) {
+          result[iso] = strength;
+          return;
+        }
+      }
+    });
+    return result;
   }
 
   _resolvePeriodDuration(attrs) {
@@ -1075,6 +1104,7 @@ class MenstruationCalendarCard extends HTMLElement {
       const confidenceLevel = String(predictedConfidence?.level || 'low').toLowerCase();
       const hasSymptoms = model.symptomByDate && Object.keys(model.symptomByDate[iso] || {}).length > 0;
       const isModalOpen = this._modalIso === iso;
+      const intermenstrual = model.intermenstrualByDate?.[iso];
 
       const classes = [
         'day',
@@ -1089,13 +1119,15 @@ class MenstruationCalendarCard extends HTMLElement {
         (isPregnant && !st.isPeriod) ? 'is-pregnancy-day' : '',
         (isPreMenarche && !st.isPeriod) ? 'is-premenarche-day' : '',
         (isMenopause && !st.isPeriod) ? 'is-menopause-day' : '',
+        intermenstrual ? 'is-intermenstrual' : '',
         isToday ? 'today' : '',
         isModalOpen ? 'selected' : '',
       ].filter(Boolean).join(' ');
 
-      const cycleHint = Number.isFinite(st.cycleDay)
+      const baseHint = Number.isFinite(st.cycleDay)
         ? `${this._t('cycle_day')}: ${st.cycleDay}${isPredictedDay ? ` (${this._t('predicted')}, ${this._t(`confidence_${confidenceLevel}`)})` : ''}`
         : this._t('no_data');
+      const cycleHint = intermenstrual ? `${baseHint} · ${this._t('bleeding_outside_period')}` : baseHint;
       items.push(`
         <button
           class="${classes}"
@@ -1110,6 +1142,7 @@ class MenstruationCalendarCard extends HTMLElement {
             ? `<span class="cycle-day">${st.cycleDay}</span>`
             : ''}
           ${hasSymptoms ? '<span class="sym-dot" aria-hidden="true"></span>' : ''}
+          ${intermenstrual ? '<span class="im-mark" aria-hidden="true"></span>' : ''}
           ${isPredictedDay ? `<span class="confidence-chip" aria-hidden="true">${confidenceLevel === 'high' ? 'H' : confidenceLevel === 'medium' ? 'M' : 'L'}</span>` : ''}
           ${(this._config?.show_ovulation_marker !== false && (st.isOvulation || st.isPredictedOvulation))
             ? `<span class="ovulation-dot${st.isPredictedOvulation ? ' predicted' : ''}" aria-hidden="true"></span>`
@@ -1363,6 +1396,16 @@ class MenstruationCalendarCard extends HTMLElement {
           border-radius: 50%;
           background: var(--warning-color, #d97706);
           opacity: .85;
+        }
+        .im-mark {
+          position: absolute;
+          left: 7px;
+          top: 7px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          border: 1.5px solid var(--error-color, #dc2626);
+          box-sizing: border-box;
         }
         .confidence-chip {
           position: absolute;

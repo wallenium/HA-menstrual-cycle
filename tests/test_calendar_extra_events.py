@@ -153,5 +153,15 @@ class IcsExtraEventsTests(unittest.TestCase):
         self.assertNotIn("BEGIN:VEVENT", self._ics(None))
 
 
+class FrontendRuleTests(unittest.TestCase):
+    def test_calendar_card_uses_the_backend_gap_for_bleeding_outside_the_period(self) -> None:
+        import re
+
+        source = (COMPONENT_ROOT / "www" / "menstruation-calendar-card.js").read_text(encoding="utf-8")
+        match = re.search(r"const MIN_GAP_DAYS = (\d+);", source)
+        self.assertIsNotNone(match)
+        self.assertEqual(int(match.group(1)), const.NEW_PERIOD_MIN_GAP_DAYS)
+
+
 if __name__ == "__main__":
     unittest.main()

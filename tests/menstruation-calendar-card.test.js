@@ -123,6 +123,37 @@ function makeHassWithPredictions() {
   };
 }
 
+function testBleedingOutsideThePeriod() {
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.symptom_history = [
+    { date: '2026-07-03', bleeding_strength: 'heavy' }, // a period day itself
+    { date: '2026-07-08', bleeding_strength: 'Light' }, // 5 days after: outside the period
+    { date: '2026-07-09', bleeding_strength: 'none' },
+    { date: '2026-07-17', bleeding_strength: 'medium' }, // exactly 14 days after the last period day: still outside
+    { date: '2026-07-18', bleeding_strength: 'medium' }, // 15 days: a missing period start, not marked
+    { date: '2026-07-20', pain: ['cramps'] }, // no bleeding
+  ];
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card.hass = hass;
+  card._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0);
+  const model = card._buildModel();
+  assert.deepStrictEqual(model.intermenstrualByDate, { '2026-07-08': 'light', '2026-07-17': 'medium' });
+  // flat entries (the stored shape) now count as logged symptoms: dot on every day with an entry
+  assert.strictEqual(model.symptomByDate['2026-07-20'].pain[0], 'cramps');
+  assert.strictEqual('date' in model.symptomByDate['2026-07-20'], false);
+  const html = card._calendarGrid(model, 'en');
+  assert.strictEqual((html.match(/class="im-mark"/g) || []).length, 2, 'marker on both days');
+  assert.strictEqual((html.match(/is-intermenstrual/g) || []).length, 2);
+  assert.strictEqual((html.match(/class="sym-dot"/g) || []).length, 6, 'one dot per day with an entry');
+  assert.ok(html.includes('Bleeding outside the period'), 'tooltip names it');
+  // nothing marked without a period day before it
+  hass.states['sensor.menstruation'].attributes.history = [];
+  card.hass = { ...hass };
+  assert.deepStrictEqual(card._buildModel().intermenstrualByDate, {});
+  console.log('  ✓ marks bleeding outside the period (14-day rule) and reads flat symptom entries');
+}
+
 function testRegistration() {
   assert.ok(CardClass, 'calendar card is registered');
   assert.ok(EditorClass, 'calendar card editor is registered');
@@ -749,6 +780,7 @@ let failed = 0;
   testCurrentPeriodTailDisappearsWhenPeriodEnds,
   testCurrentPeriodTailNoCbb,
   testCurrentPeriodTailLegendEntry,
+  testBleedingOutsideThePeriod,
 ].forEach((fn) => {
   try {
     fn();

@@ -1116,5 +1116,6 @@
   "dashboard_period_end_today": "Blödningen är över",
   "dashboard_period_started_done": "Menstart sparad.",
   "dashboard_period_ended_done": "Sparat. Mensen räknas som avslutad.",
-  "dashboard_period_action_error": "Kunde inte sparas."
+  "dashboard_period_action_error": "Kunde inte sparas.",
+  "bleeding_outside_period": "Blödning utanför menstruationen"
 }
