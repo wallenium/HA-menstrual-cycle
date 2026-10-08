@@ -49,6 +49,7 @@
           "calendar_enabled": "Show cycle calendar entity",
           "calendar_pregnancy_events": "Calendar: pregnancy due date",
           "calendar_contraception_events": "Calendar: contraception dates",
+          "calendar_logged_periods": "Calendar: logged periods",
           "visibility_level": "Visibility level"
         },
         "data_description": {
@@ -60,6 +61,7 @@
           "calendar_enabled": "Creates a native calendar.profile_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
           "calendar_pregnancy_events": "Adds the calculated due date as an all-day event to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_contraception_events": "Adds renewal dates (IUD, implant, injection), the end of the pill pack and the next patch/ring steps to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
+          "calendar_logged_periods": "Shows your logged periods (the last 12 months) as events in the cycle calendar and the ICS feed, not only the predictions. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "nfp_analysis_mode": "Controls how ovulation and the fertile window are calculated. 'hybrid' (default) learns from observed temperature data and falls back to the statistical formula. 'strict' only shows ovulation and the fertile window when a temperature rise is confirmed in the current cycle.",
           "visibility_level": "Controls how much of this profile's data appears in sensor attributes (dashboards, cards, and the companion app's overview screens). 'Full' (default) shows everything as before. 'Status only' shows just coarse, prediction-near values (next period / current phase), no symptom or health details. 'Private' shows almost nothing beyond the fact that the profile exists. Applies only to sensor attributes — services called directly (e.g. get_full_history) are unaffected, since the integration has no way to distinguish which device or person is calling."
         },
@@ -743,6 +745,24 @@
         "date": {
           "name": "Date",
           "description": "Day of the renewal or of the new pack (YYYY-MM-DD). Defaults to today."
+        }
+      }
+    },
+    "create_periods_from_bleeding": {
+      "name": "Create periods from bleeding",
+      "description": "Adds period days for logged bleeding that never became a period. Bleeding within 14 days after a period day counts as intermenstrual bleeding and is not turned into a period. Returns the added dates.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Target menstruation gauge sensor."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Configured profile slug."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Config entry identifier."
         }
       }
     },

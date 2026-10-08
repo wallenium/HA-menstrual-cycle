@@ -1110,5 +1110,11 @@
   "show_glossary": "Ordlista",
   "show_phases_graphic": "Grafik över cykelfaserna",
   "show_hygiene_cards": "Hygienguider",
-  "show_reassurance_cards": "Lugnande kort"
+  "show_reassurance_cards": "Lugnande kort",
+  "dashboard_period_start_today": "Mensen startade idag",
+  "dashboard_period_start_yesterday": "Mensen startade igår",
+  "dashboard_period_end_today": "Blödningen är över",
+  "dashboard_period_started_done": "Menstart sparad.",
+  "dashboard_period_ended_done": "Sparat. Mensen räknas som avslutad.",
+  "dashboard_period_action_error": "Kunde inte sparas."
 }

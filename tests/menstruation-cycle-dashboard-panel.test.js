@@ -426,6 +426,11 @@ const makeHass = (stateObj) => ({
   // Up to five profiles render as a button group, a dropdown (class="entity-picker") only beyond that.
   assert.ok(panelEntityFilter.shadowRoot.innerHTML.includes('data-action="select-entity" data-entity-id="sensor.menstruation_anna"'), 'entity picker should remain visible with one entity');
 
+  // the countdown card is configured with the main sensor (its state picks the mode), not with the timer-state entity
+  const timerMount = source.slice(source.indexOf('data-mount="timer-card"'), source.indexOf('data-mount="statistics-card"'));
+  assert.ok(timerMount.includes('{ entity: this._selectedEntityId }'), 'timer card must get the profile sensor');
+  assert.ok(!timerMount.includes('entity: `menstruation_cycle_timer'), 'timer card must not get the timer-state entity');
+
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {
   console.error(error);

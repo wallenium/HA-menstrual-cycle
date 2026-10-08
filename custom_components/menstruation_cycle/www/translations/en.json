@@ -1110,5 +1110,11 @@
   "show_glossary": "Glossary",
   "show_phases_graphic": "Cycle phases graphic",
   "show_hygiene_cards": "Hygiene guides",
-  "show_reassurance_cards": "Reassurance cards"
+  "show_reassurance_cards": "Reassurance cards",
+  "dashboard_period_start_today": "Period started today",
+  "dashboard_period_start_yesterday": "Period started yesterday",
+  "dashboard_period_end_today": "Bleeding is over",
+  "dashboard_period_started_done": "Period start saved.",
+  "dashboard_period_ended_done": "Saved. The period counts as ended.",
+  "dashboard_period_action_error": "Could not save."
 }

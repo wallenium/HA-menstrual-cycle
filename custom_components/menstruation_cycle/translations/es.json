@@ -49,6 +49,7 @@
           "calendar_enabled": "Mostrar la entidad de calendario del ciclo",
           "calendar_pregnancy_events": "Calendario: fecha prevista de parto",
           "calendar_contraception_events": "Calendario: fechas de anticoncepción",
+          "calendar_logged_periods": "Calendario: periodos registrados",
           "visibility_level": "Nivel de visibilidad"
         },
         "data_description": {
@@ -60,6 +61,7 @@
           "calendar_enabled": "Crea una entidad nativa calendar.PERFIL_cycle con eventos previstos de periodo, ventana fértil y ovulación, utilizable en el propio panel de calendario de Home Assistant y en disparadores de automatización calendar.*. Desactívalo si no lo necesitas: los mismos eventos siguen disponibles a través de la fuente ICS independiente.",
           "calendar_pregnancy_events": "Añade la fecha prevista de parto calculada como evento de día completo al calendario del ciclo y al feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "calendar_contraception_events": "Añade las fechas de renovación (DIU, implante, inyección), el final del envase de la píldora y los próximos pasos del parche/anillo al calendario del ciclo y al feed ICS. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
+          "calendar_logged_periods": "Muestra los periodos registrados (de los últimos 12 meses) como eventos en el calendario del ciclo y en el feed ICS, no solo las predicciones. Desactivado por defecto: el feed ICS se comparte mediante su token (p. ej. con el calendario de la pareja).",
           "nfp_analysis_mode": "Controla cómo se calculan la ovulación y la ventana fértil. 'hybrid' (predeterminado) aprende de los datos de temperatura observados y recurre a la fórmula estadística como respaldo. 'strict' solo muestra la ovulación y la ventana fértil cuando se confirma un aumento de temperatura en el ciclo actual.",
           "visibility_level": "Controla cuánto de los datos de este perfil aparece en los atributos del sensor (paneles, tarjetas y las pantallas de resumen de la app complementaria). 'Completo' (predeterminado) muestra todo como antes. 'Solo estado' muestra únicamente valores generales cercanos a la predicción (próxima menstruación/fase actual), sin detalles de síntomas o de salud. 'Privado' no muestra casi nada más allá del hecho de que el perfil existe. Solo afecta a los atributos del sensor — los servicios llamados directamente (p. ej. get_full_history) no se ven afectados, ya que la integración no puede distinguir qué dispositivo o persona realiza la llamada."
         },
@@ -743,6 +745,24 @@
         "date": {
           "name": "Fecha",
           "description": "Día de la renovación o del nuevo envase (AAAA-MM-DD). Por defecto, hoy."
+        }
+      }
+    },
+    "create_periods_from_bleeding": {
+      "name": "Crear periodos a partir de sangrados",
+      "description": "Añade días de periodo para los sangrados registrados que nunca se convirtieron en un periodo. Un sangrado en los 14 días posteriores a un día de periodo se considera sangrado intermenstrual y no se convierte en periodo. Devuelve las fechas añadidas.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Sensor del indicador de menstruación de destino."
+        },
+        "profile": {
+          "name": "Perfil",
+          "description": "Slug del perfil configurado."
+        },
+        "entry_id": {
+          "name": "ID de entrada",
+          "description": "Identificador de la entrada de configuración."
         }
       }
     },

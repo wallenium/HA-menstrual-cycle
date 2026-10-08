@@ -170,6 +170,10 @@ CONF_CALENDAR_PREGNANCY_EVENTS = "calendar_pregnancy_events"
 DEFAULT_CALENDAR_PREGNANCY_EVENTS = False
 CONF_CALENDAR_CONTRACEPTION_EVENTS = "calendar_contraception_events"
 DEFAULT_CALENDAR_CONTRACEPTION_EVENTS = False
+# Real logged periods (not only predictions) as events; shown for this many days back.
+CONF_CALENDAR_LOGGED_PERIODS = "calendar_logged_periods"
+DEFAULT_CALENDAR_LOGGED_PERIODS = False
+CALENDAR_LOGGED_PERIODS_LOOKBACK_DAYS = 365
 # To-do item this many days before the running pill pack ends (needs a configured pack break, see pill_pack_end).
 PILL_REFILL_LEAD_DAYS = 5
 # "Remind me in 1 hour" button on the pill and evening log reminders (in-memory timer).
@@ -400,6 +404,7 @@ SERVICE_COMPARE_CURRENT_CYCLE = "compare_current_cycle"
 # Read-only summary of the last completed cycle (length, period/pain days, top symptoms).
 SERVICE_GET_LAST_CYCLE_SUMMARY = "get_last_cycle_summary"
 SERVICE_CONFIRM_CONTRACEPTION_RENEWAL = "confirm_contraception_renewal"
+SERVICE_CREATE_PERIODS_FROM_BLEEDING = "create_periods_from_bleeding"
 # HA-Idee 4 ("weitere Ideen?", 27.09.2026): read-only, household-wide (not
 # per-profile, like repair_storage/export_full_backup above) - one call
 # across every currently loaded profile instead of a client having to call

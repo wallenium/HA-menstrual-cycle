@@ -162,5 +162,50 @@ class ContraceptionTimelineTests(unittest.TestCase):
             self.assertNotIn("<td>diaphragm</td>", html if lang != "en" else "")
 
 
+class IntermenstrualBleedingTests(unittest.TestCase):
+    PERIOD = ["2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24"]
+
+    def _stats(self, bleeding, history=None, days_back=180):
+        symptoms = [{"date": d, "bleeding_strength": s} for d, s in bleeding]
+        return statistics.compute_statistics(history or self.PERIOD, symptoms, days_back=days_back, today=TODAY)
+
+    def test_bleeding_shortly_after_a_period_is_listed_with_its_strength(self) -> None:
+        stats = self._stats([("2026-09-22", "heavy"), ("2026-10-02", "Light"), ("2026-10-04", "medium")])
+        self.assertEqual(
+            stats["intermenstrual_bleeding"],
+            [{"date": "2026-10-02", "strength": "light"}, {"date": "2026-10-04", "strength": "medium"}],
+        )
+        self.assertEqual(stats["intermenstrual_bleeding_days"], 2)
+
+    def test_the_14_day_boundary_none_future_and_range(self) -> None:
+        stats = self._stats([("2026-10-06", "light"), ("2026-10-05", "none"), ("2026-10-04", "keine")])
+        self.assertEqual([i["date"] for i in stats["intermenstrual_bleeding"]], ["2026-10-06"])
+        # a period day exactly 14 days before still counts as "too close" (intermenstrual); 15 days is a missing period start
+        self.assertEqual(len(self._stats([("2026-10-06", "light")], history=["2026-09-22"])["intermenstrual_bleeding"]), 1)
+        self.assertEqual(self._stats([("2026-10-06", "light")], history=["2026-09-21"])["intermenstrual_bleeding"], [])
+        # only the analysis range counts (cutoff 2026-10-03)
+        self.assertEqual(self._stats([("2026-10-04", "light")], days_back=3)["intermenstrual_bleeding_days"], 1)
+        self.assertEqual(self._stats([("2026-10-02", "light")], days_back=3)["intermenstrual_bleeding_days"], 0)
+        # a future entry is ignored
+        self.assertEqual(self._stats([("2026-10-07", "light")])["intermenstrual_bleeding_days"], 0)
+
+    def test_no_history_and_no_bleeding(self) -> None:
+        self.assertEqual(self._stats([], history=[])["intermenstrual_bleeding_days"], 0)
+        self.assertEqual(self._stats([("2026-10-02", "")])["intermenstrual_bleeding"], [])
+
+    def test_report_section_only_with_findings_in_every_language(self) -> None:
+        stats = self._stats([("2026-10-02", "light")])
+        empty = self._stats([])
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            title = statistics._REPORT_TEXT[lang]["intermenstrual"]
+            kwargs = dict(history=self.PERIOD, symptom_history=[], profile="a", patient_name=None, patient_birthdate=None,
+                          language=lang, report_date=TODAY.isoformat())
+            html = statistics.generate_doctor_report_html(stats=stats, **kwargs)
+            self.assertIn(title, html, lang)
+            self.assertIn("2026-10-02", html, lang)
+            self.assertNotIn("{count}", html)
+            self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+
+
 if __name__ == "__main__":
     unittest.main()

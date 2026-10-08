@@ -1110,5 +1110,11 @@
   "show_glossary": "Glosario",
   "show_phases_graphic": "Gráfico de las fases del ciclo",
   "show_hygiene_cards": "Guías de higiene",
-  "show_reassurance_cards": "Tarjetas tranquilizadoras"
+  "show_reassurance_cards": "Tarjetas tranquilizadoras",
+  "dashboard_period_start_today": "La regla empezó hoy",
+  "dashboard_period_start_yesterday": "La regla empezó ayer",
+  "dashboard_period_end_today": "El sangrado ha terminado",
+  "dashboard_period_started_done": "Inicio de la regla guardado.",
+  "dashboard_period_ended_done": "Guardado. La regla se da por terminada.",
+  "dashboard_period_action_error": "No se pudo guardar."
 }

@@ -88,6 +88,9 @@
     "confirm_contraception_renewal": {
       "service": "mdi:autorenew"
     },
+    "create_periods_from_bleeding": {
+      "service": "mdi:calendar-plus"
+    },
     "set_pregnancy_mode": {
       "service": "mdi:baby-carriage"
     },

@@ -1755,6 +1755,34 @@
       this.render();
     }
 
+    // Period start / end without going through the symptom form: a start is the add_cycle_start service,
+    // "bleeding is over" is a logged bleeding strength of "none" (which ends the running period).
+    async _logPeriodAction(kind, daysAgo) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      const day = new Date();
+      day.setDate(day.getDate() - (Number(daysAgo) || 0));
+      const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      const target = { entity_id: this._selectedEntityId, ...(attrs.profile ? { profile: attrs.profile } : {}), date };
+      try {
+        if (kind === 'start') {
+          await this._hass.callService('menstruation_cycle', 'add_cycle_start', target);
+          this._message = this._t('dashboard_period_started_done');
+        } else {
+          await this._hass.callService('menstruation_cycle', 'add_symptom', { ...target, symptom_data: { bleeding_strength: 'none' } });
+          this._message = this._t('dashboard_period_ended_done');
+        }
+      } catch (_error) {
+        this._message = this._t('dashboard_period_action_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     async _confirmContraceptionRenewal() {
       if (!this._hass || !this._selectedEntityId) return;
       const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
@@ -3591,6 +3619,11 @@
 
       if (action === 'quick-log-save') {
         this._handleQuickLogSave();
+        return;
+      }
+
+      if (action === 'period-start' || action === 'period-end') {
+        this._logPeriodAction(action === 'period-start' ? 'start' : 'end', target.dataset.daysAgo);
         return;
       }
 
@@ -6557,6 +6590,19 @@
      * sensitive personal info, consistent with how other identifying details
      * are suppressed there.
      */
+    _renderPeriodActions(stateObj, discreetMode) {
+      if (discreetMode || !stateObj) return '';
+      const state = String(stateObj.state || '');
+      if (['pregnant', 'pre_menarche', 'menarche', 'menopause', 'postpartum', 'private', 'unavailable', 'unknown'].includes(state)) return '';
+      const running = state === 'period' || stateObj.attributes?.current_bleeding_block?.is_active === true;
+      const button = (action, days, key) =>
+        `<button type="button" data-action="${action}" data-days-ago="${days}">${escapeHtml(this._t(key))}</button>`;
+      const buttons = running
+        ? button('period-end', 0, 'dashboard_period_end_today')
+        : `${button('period-start', 0, 'dashboard_period_start_today')} ${button('period-start', 1, 'dashboard_period_start_yesterday')}`;
+      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
+    }
+
     _renderContraceptionWarning(stateObj, discreetMode) {
       if (discreetMode) return '';
       const status = stateObj?.attributes?.contraception_status;
@@ -7686,6 +7732,7 @@
           </header>
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
+          ${this._renderPeriodActions(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}
@@ -7706,9 +7753,6 @@
      */
     _mountEmbeddedCards() {
       if (!this._hass) return;
-      const stateObj = this._selectedEntityId ? this._hass.states?.[this._selectedEntityId] : null;
-      const profile = stateObj?.attributes?.profile;
-
       const mounts = [
         {
           selector: '[data-mount="calendar-card"]', tag: 'menstruation-calendar-card',
@@ -7733,11 +7777,11 @@
           config: () => ({}),
         },
         {
-          // The countdown timer is keyed to a *different* entity than the main
-          // profile sensor: menstruation_cycle_timer.{profile}, set up by the
-          // save_timer_state service.
+          // The card is configured with the main profile sensor (its state picks the mode: period,
+          // pregnancy, ...). It finds the saved timer state (menstruation_cycle_timer.{profile},
+          // written by save_timer_state) through the sensor's profile attribute itself.
           selector: '[data-mount="timer-card"]', tag: 'menstruation-countdown-timer',
-          config: () => (profile ? { entity: `menstruation_cycle_timer.${profile}` } : null),
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
         },
         {
           selector: '[data-mount="statistics-card"]', tag: 'menstruation-statistics-card',

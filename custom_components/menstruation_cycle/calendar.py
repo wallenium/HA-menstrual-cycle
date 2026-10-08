@@ -213,7 +213,7 @@ def _build_events(
     lang: str | None,
     visibility_level: str = VISIBILITY_LEVEL_FULL,
     checkup_due: date | None = None,
-    extra_events: list[tuple[str, date, str]] | None = None,
+    extra_events: list[tuple[str, date, date, str]] | None = None,
 ) -> list[CalendarEvent]:
     """Turn project_range_windows()'s output into CalendarEvent objects.
 
@@ -250,9 +250,15 @@ def _build_events(
 
     # Opt-in pregnancy / contraception dates; health details, so full visibility only (like the checkup).
     if visibility_level == VISIBILITY_LEVEL_FULL:
-        for kind, day, summary in extra_events or []:
+        for kind, day, last_day, summary in extra_events or []:
             events.append(
-                CalendarEvent(start=day, end=day + timedelta(days=1), summary=summary, uid=f"{kind}-{day.isoformat()}")
+                CalendarEvent(
+                    start=day,
+                    end=last_day + timedelta(days=1),
+                    summary=summary,
+                    description=strings["source_logged"] if kind == "period_logged" else None,
+                    uid=f"{kind}-{day.isoformat()}",
+                )
             )
 
     for window in windows.get("period_windows", []):

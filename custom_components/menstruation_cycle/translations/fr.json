@@ -49,6 +49,7 @@
           "calendar_enabled": "Afficher l'entité calendrier du cycle",
           "calendar_pregnancy_events": "Calendrier : date prévue d'accouchement",
           "calendar_contraception_events": "Calendrier : dates de contraception",
+          "calendar_logged_periods": "Calendrier : règles enregistrées",
           "visibility_level": "Niveau de visibilité"
         },
         "data_description": {
@@ -60,6 +61,7 @@
           "calendar_enabled": "Crée une entité native calendar.PROFIL_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
           "calendar_pregnancy_events": "Ajoute la date prévue d'accouchement calculée comme événement sur la journée au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_contraception_events": "Ajoute les dates de renouvellement (stérilet, implant, injection), la fin de la plaquette de pilule et les prochaines étapes du patch/anneau au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
+          "calendar_logged_periods": "Affiche les règles enregistrées (des 12 derniers mois) comme événements dans le calendrier du cycle et le flux ICS, et pas seulement les prévisions. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "nfp_analysis_mode": "Contrôle la façon dont l'ovulation et la fenêtre de fertilité sont calculées. « hybride » (par défaut) apprend à partir des données de température observées et utilise la formule statistique en secours. « strict » n'affiche l'ovulation et la fenêtre de fertilité que lorsqu'une hausse de température est confirmée dans le cycle en cours.",
           "visibility_level": "Contrôle la quantité de données de ce profil apparaissant dans les attributs du capteur (tableaux de bord, cartes et écrans de synthèse de l'application compagnon). « Complet » (par défaut) affiche tout comme avant. « Statut uniquement » n'affiche que des valeurs générales proches de la prédiction (prochaines règles/phase actuelle), sans détails de symptômes ni de santé. « Privé » n'affiche presque rien, hormis le fait que le profil existe. S'applique uniquement aux attributs du capteur — les services appelés directement (p. ex. get_full_history) ne sont pas affectés, l'intégration ne pouvant pas distinguer quel appareil ou quelle personne effectue l'appel."
         },
@@ -743,6 +745,24 @@
         "date": {
           "name": "Date",
           "description": "Jour du renouvellement ou de la nouvelle boîte (AAAA-MM-JJ). Par défaut : aujourd’hui."
+        }
+      }
+    },
+    "create_periods_from_bleeding": {
+      "name": "Créer des règles à partir des saignements",
+      "description": "Ajoute des jours de règles pour les saignements enregistrés qui n'ont jamais donné lieu à une période. Un saignement dans les 14 jours suivant un jour de règles est considéré comme un saignement intermenstruel et n'est pas converti en règles. Renvoie les dates ajoutées.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "Capteur de jauge de menstruation ciblé."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Identifiant (slug) du profil configuré."
+        },
+        "entry_id": {
+          "name": "ID d'entrée",
+          "description": "Identifiant de l'entrée de configuration."
         }
       }
     },

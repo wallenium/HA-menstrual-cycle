@@ -51,7 +51,7 @@ class CollectExtraEventsTests(unittest.TestCase):
     def test_due_date_needs_option_pregnancy_and_a_valid_date(self) -> None:
         self.assertEqual(
             _collect(PREG_ON, _runtime(pregnant=True)),
-            [("pregnancy_due", date(2027, 1, 10), "Due date (calculated)")],
+            [("pregnancy_due", date(2027, 1, 10), date(2027, 1, 10), "Due date (calculated)")],
         )
         self.assertEqual(_collect(PREG_ON, _runtime(pregnant=False)), [])
         self.assertEqual(_collect(PREG_ON, _runtime(pregnant=True), due=None), [])
@@ -63,7 +63,8 @@ class CollectExtraEventsTests(unittest.TestCase):
         status = model.compute_contraception_status(_runtime("hormonal_iud").symptom_history, today=TODAY)
         events = _collect(CONTRA_ON, _runtime("hormonal_iud"))
         self.assertEqual(
-            events, [("contraception_renewal", date.fromisoformat(status["renewal_due_date"]), "Contraception: renewal due")]
+            events,
+            [("contraception_renewal", date.fromisoformat(status["renewal_due_date"]), date.fromisoformat(status["renewal_due_date"]), "Contraception: renewal due")],
         )
         self.assertEqual(_collect(PREG_ON, _runtime("hormonal_iud")), [])
 
@@ -95,6 +96,42 @@ class CollectExtraEventsTests(unittest.TestCase):
             for key in ("pregnancy_due", "contraception_renewal", "pill_pack_end", "patch_change", "patch_remove",
                         "patch_new", "ring_remove", "ring_insert"):
                 self.assertTrue(strings[key], (lang, key))
+            self.assertTrue(strings["period_logged"] and strings["source_logged"], lang)
+
+
+LOGGED_ON = {const.CONF_CALENDAR_LOGGED_PERIODS: True}
+
+
+def _with_history(*offsets_ranges):
+    days = []
+    for first, last in offsets_ranges:
+        days += [(TODAY + timedelta(days=o)).isoformat() for o in range(first, last + 1)]
+    return SimpleNamespace(pregnancy_data={}, symptom_history=[], noncycle_data={}, history=days)
+
+
+class LoggedPeriodEventsTests(unittest.TestCase):
+    def test_off_by_default(self) -> None:
+        self.assertEqual(_collect({}, _with_history((-5, -1))), [])
+
+    def test_each_logged_period_is_one_multi_day_event(self) -> None:
+        events = _collect(LOGGED_ON, _with_history((-60, -56), (-31, -27), (-3, -1)))
+        self.assertEqual(
+            [(e[0], e[1], e[2]) for e in events],
+            [("period_logged", TODAY + timedelta(days=a), TODAY + timedelta(days=b)) for a, b in ((-60, -56), (-31, -27), (-3, -1))],
+        )
+        self.assertEqual({e[3] for e in events}, {"Period"})
+
+    def test_periods_older_than_a_year_are_left_out_and_empty_history_is_fine(self) -> None:
+        events = _collect(LOGGED_ON, _with_history((-400, -396), (-366, -364)))
+        self.assertEqual([e[1] for e in events], [TODAY - timedelta(days=366)])  # block ends inside the year
+        self.assertEqual(_collect(LOGGED_ON, _with_history()), [])
+
+    def test_ics_has_the_whole_range_and_a_source_note(self) -> None:
+        events = _collect(LOGGED_ON, _with_history((-3, -1)))
+        ics = ical.generate_ics("e1", None, None, 28, 6, "en", None, None, TODAY, events).decode()
+        self.assertIn("DTSTART;VALUE=DATE:20261001", ics)
+        self.assertIn("DTEND;VALUE=DATE:20261004", ics)
+        self.assertIn("Source: logged", ics)
 
 
 class IcsExtraEventsTests(unittest.TestCase):
@@ -102,7 +139,7 @@ class IcsExtraEventsTests(unittest.TestCase):
         return ical.generate_ics("e1", None, None, 28, 6, "en", None, None, TODAY, extra).decode()
 
     def test_events_are_written_with_stable_uids(self) -> None:
-        extra = [("pregnancy_due", date(2027, 1, 10), "Due date (calculated)")]
+        extra = [("pregnancy_due", date(2027, 1, 10), date(2027, 1, 10), "Due date (calculated)")]
         first, second = self._ics(extra), self._ics(extra)
         self.assertIn("SUMMARY:Due date (calculated)", first)
         self.assertIn("DTSTART;VALUE=DATE:20270110", first)
@@ -111,7 +148,7 @@ class IcsExtraEventsTests(unittest.TestCase):
         self.assertEqual(len(uid), 1)
 
     def test_events_behind_the_horizon_are_dropped_and_none_means_nothing(self) -> None:
-        far = [("pregnancy_due", TODAY + timedelta(days=400), "late")]
+        far = [("pregnancy_due", TODAY + timedelta(days=400), TODAY + timedelta(days=400), "late")]
         self.assertNotIn("SUMMARY:late", self._ics(far))
         self.assertNotIn("BEGIN:VEVENT", self._ics(None))
 

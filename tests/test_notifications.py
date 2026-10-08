@@ -443,6 +443,77 @@ class BleedingStartsPeriodTests(unittest.TestCase):
         self.assertEqual(sorted(runtime.history), [_iso(-3), _iso(-2), _iso(-1), _iso(0)])
 
 
+class BleedingWithoutPeriodTests(unittest.TestCase):
+    """Repair finding and service for logged bleeding that never became a period."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    @staticmethod
+    def _bleeding(*offsets, strength="medium"):
+        return [{"date": _iso(o), "bleeding_strength": strength} for o in offsets]
+
+    def _additions(self, history_offsets, bleeding_offsets, **overrides):
+        runtime = _runtime(
+            history=[_iso(o) for o in history_offsets], symptom_history=self._bleeding(*bleeding_offsets), **overrides
+        )
+        return runtime, integration._bleeding_history_additions(runtime, NOW[0].date())
+
+    def test_bleeding_without_any_period_is_found_and_runtime_untouched(self) -> None:
+        runtime, added = self._additions([], [-3, -2, -1])
+        self.assertEqual(added, [_iso(-3), _iso(-2), _iso(-1)])
+        self.assertEqual(runtime.history, [])
+
+    def test_intermenstrual_bleeding_is_not_a_period(self) -> None:
+        # period ended 8 days before the bleeding
+        self.assertEqual(self._additions([-13, -12, -11, -10, -9], [-1])[1], [])
+
+    def test_a_gap_inside_a_running_period_is_filled(self) -> None:
+        self.assertEqual(self._additions([-3], [-3, -1])[1], [_iso(-2), _iso(-1)])
+
+    def test_no_bleeding_entries_and_old_entries_are_ignored(self) -> None:
+        self.assertEqual(self._additions([], [-1], )[1], [_iso(-1)])
+        runtime = _runtime(symptom_history=self._bleeding(-1, strength="none") + self._bleeding(-200))
+        self.assertEqual(integration._bleeding_history_additions(runtime, NOW[0].date()), [])
+
+    def test_nothing_while_pregnant(self) -> None:
+        pregnant = {"is_pregnant": True, "start_date": _iso(-60)}
+        self.assertEqual(self._additions([], [-1], pregnancy_data=pregnant)[1], [])
+        self.assertEqual(self._additions([-3], [-3, -1], pregnancy_data=pregnant)[1], [])
+
+    def test_diagnosis_reports_it_and_stays_quiet_otherwise(self) -> None:
+        class _Storage:
+            async def async_load_raw(self):
+                return {}
+
+            async def async_load(self):
+                return {
+                    "pregnancy_data": {}, "menarche_data": {}, "menopause_data": {},
+                    "ics_token": None, "ics_token_created_at": None, "hospital_bag_items": [],
+                }
+
+        for bleeding, expected in (([-2, -1], 1), ([], 0)):
+            runtime = _runtime(symptom_history=self._bleeding(*bleeding), storage=_Storage())
+            with patch.object(integration.dt_util, "now", lambda: NOW[0]):
+                issues = _run(integration._async_diagnose_profile_storage(runtime))
+            self.assertEqual(len(issues), expected, issues)
+            if expected:
+                self.assertIn("create_periods_from_bleeding", issues[0])
+
+    def test_service_adds_the_days_and_saves_once(self) -> None:
+        runtime = _runtime(symptom_history=self._bleeding(-2, -1))
+        save = AsyncMock()
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_async_save_and_notify", save
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            result = _run(integration._async_handle_create_periods_from_bleeding(_hass(), SimpleNamespace(data={})))
+            again = _run(integration._async_handle_create_periods_from_bleeding(_hass(), SimpleNamespace(data={})))
+        self.assertEqual(result, {"added_dates": [_iso(-2), _iso(-1)], "count": 2})
+        self.assertEqual(sorted(runtime.history), [_iso(-2), _iso(-1)])
+        self.assertEqual(again["count"], 0)
+        self.assertEqual(save.await_count, 1)
+
+
 class UnprotectedHintTests(unittest.TestCase):
     """Opt-in hint after unprotected intercourse is logged."""
 

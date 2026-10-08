@@ -507,12 +507,18 @@ class CalendarEventBuildTests(unittest.TestCase):
         self.assertEqual(calendar._build_events({}, "en", "status_only", due), [])
 
     def test_extra_events_only_at_full_visibility(self) -> None:
-        extra = [("pregnancy_due", date(2027, 1, 10), "Due date (calculated)")]
+        extra = [("pregnancy_due", date(2027, 1, 10), date(2027, 1, 10), "Due date (calculated)")]
         events = calendar._build_events({}, "en", extra_events=extra)
         self.assertEqual([(e.summary, e.start, e.end, e.uid) for e in events],
                          [("Due date (calculated)", date(2027, 1, 10), date(2027, 1, 11), "pregnancy_due-2027-01-10")])
         for level in ("status_only", "private"):
             self.assertEqual(calendar._build_events({}, "en", level, None, extra), [])
+
+    def test_logged_period_spans_all_its_days(self) -> None:
+        extra = [("period_logged", date(2026, 10, 1), date(2026, 10, 3), "Period")]
+        event = calendar._build_events({}, "en", extra_events=extra)[0]
+        self.assertEqual((event.start, event.end, event.summary, event.description, event.uid),
+                         (date(2026, 10, 1), date(2026, 10, 4), "Period", "Source: logged", "period_logged-2026-10-01"))
 
     def test_titles_follow_the_language(self) -> None:
         self.assertEqual(calendar._build_events(_windows(), "de")[0].summary, "Periode (vorhergesagt)")

@@ -1110,5 +1110,11 @@
   "show_glossary": "Glossar",
   "show_phases_graphic": "Grafik der Zyklusphasen",
   "show_hygiene_cards": "Hygiene-Ratgeber",
-  "show_reassurance_cards": "Beruhigungskarten"
+  "show_reassurance_cards": "Beruhigungskarten",
+  "dashboard_period_start_today": "Periode heute gestartet",
+  "dashboard_period_start_yesterday": "Periode gestern gestartet",
+  "dashboard_period_end_today": "Blutung ist vorbei",
+  "dashboard_period_started_done": "Periodenstart gespeichert.",
+  "dashboard_period_ended_done": "Gespeichert. Die Periode gilt als beendet.",
+  "dashboard_period_action_error": "Konnte nicht gespeichert werden."
 }

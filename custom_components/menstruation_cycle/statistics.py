@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from statistics import mean, stdev
 from typing import Any
 
-from .const import DOCTOR_REPORT_LANGUAGES, SYMPTOM_CONTRACEPTION_METHOD
+from .const import DOCTOR_REPORT_LANGUAGES, NEW_PERIOD_MIN_GAP_DAYS, SYMPTOM_CONTRACEPTION_METHOD
 from .model import analyze_nfp_cycle, bleeding_blocks, grouped_cycle_starts, normalize_history
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,6 +145,31 @@ def _compute_bleeding_duration_stats(
         "min_bleeding_duration": min(durations),
         "max_bleeding_duration": max(durations),
     }
+
+
+def _compute_intermenstrual_bleeding(
+    period_days: list[str],
+    symptom_history: list[dict[str, Any]],
+    cutoff: date,
+    today: date,
+) -> dict[str, Any]:
+    """Bleeding logged outside the period: no period day, but one in the NEW_PERIOD_MIN_GAP_DAYS before it.
+
+    Same rule as when logging bleeding (shortly after a period it does not start a new one). Bleeding
+    further away than that is a missing period start, not intermenstrual bleeding, and is left out here.
+    """
+    logged = set(period_days)
+    days = [d for d in map(_parse_iso, period_days) if d is not None]
+    found: dict[str, str] = {}
+    for entry in symptom_history:
+        day = _parse_iso(entry.get("date"))
+        strength = str(entry.get("bleeding_strength", "")).strip().lower()
+        if day is None or not (cutoff <= day <= today) or strength in {"", "none", "keine"} or day.isoformat() in logged:
+            continue
+        if any(day - timedelta(days=NEW_PERIOD_MIN_GAP_DAYS) <= d < day for d in days):
+            found[day.isoformat()] = strength
+    items = [{"date": d, "strength": s} for d, s in sorted(found.items())]
+    return {"intermenstrual_bleeding_days": len(items), "intermenstrual_bleeding": items}
 
 
 def _compute_symptom_stats(
@@ -403,6 +428,7 @@ def compute_statistics(
     pain_trend = _compute_pain_trend(symptom_history, periods)
     basal_temp_stats = _compute_basal_temp_stats(symptom_history, cutoff, today)
     nfp_stats = _compute_nfp_confirmation_stats(symptom_history, periods, period_duration_days)
+    intermenstrual = _compute_intermenstrual_bleeding(usable, symptom_history, cutoff, today)
 
     return {
         **cycle_stats,
@@ -410,6 +436,7 @@ def compute_statistics(
         **symptom_stats,
         **basal_temp_stats,
         **nfp_stats,
+        **intermenstrual,
         "pain_trend": pain_trend,
         "days_back": days_back,
         "report_date": today.isoformat(),
@@ -518,6 +545,9 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "regularity": "Regelmäßigkeit",
         "bleeding_duration": "Blutungsdauer",
         "bleeding_strength": "Blutungsstärke-Verteilung",
+        "bleeding_strength_single": "Stärke",
+        "intermenstrual": "Blutungen außerhalb der Periode",
+        "intermenstrual_summary": "{count} Tag(e) mit erfasster Blutung außerhalb der Periode im Analysezeitraum.",
         "top_symptoms": "Häufigste Symptome (Häufigkeit)",
         "basal_temp": "Basaltemperatur",
         "basal_temp_avg": "Durchschnitt",
@@ -561,6 +591,9 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "regularity": "Regularity",
         "bleeding_duration": "Bleeding Duration",
         "bleeding_strength": "Bleeding Strength Distribution",
+        "bleeding_strength_single": "Strength",
+        "intermenstrual": "Bleeding outside the period",
+        "intermenstrual_summary": "{count} day(s) with logged bleeding outside the period in the analysis period.",
         "top_symptoms": "Top Symptoms (frequency)",
         "basal_temp": "Basal Body Temperature",
         "basal_temp_avg": "Average",
@@ -604,6 +637,9 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "regularity": "Regularidad",
         "bleeding_duration": "Duración del sangrado",
         "bleeding_strength": "Distribución de la intensidad del sangrado",
+        "bleeding_strength_single": "Intensidad",
+        "intermenstrual": "Sangrado fuera del periodo",
+        "intermenstrual_summary": "{count} día(s) con sangrado registrado fuera del periodo en el periodo analizado.",
         "top_symptoms": "Síntomas más frecuentes (frecuencia)",
         "basal_temp": "Temperatura basal",
         "basal_temp_avg": "Promedio",
@@ -647,6 +683,9 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "regularity": "Régularité",
         "bleeding_duration": "Durée des saignements",
         "bleeding_strength": "Répartition de l'intensité des saignements",
+        "bleeding_strength_single": "Intensité",
+        "intermenstrual": "Saignements en dehors des règles",
+        "intermenstrual_summary": "{count} jour(s) avec saignement enregistré en dehors des règles sur la période analysée.",
         "top_symptoms": "Symptômes les plus fréquents (fréquence)",
         "basal_temp": "Température basale",
         "basal_temp_avg": "Moyenne",
@@ -690,6 +729,9 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "regularity": "Regelbundenhet",
         "bleeding_duration": "Blödningens längd",
         "bleeding_strength": "Fördelning av blödningens styrka",
+        "bleeding_strength_single": "Styrka",
+        "intermenstrual": "Blödning utanför menstruationen",
+        "intermenstrual_summary": "{count} dag(ar) med loggad blödning utanför menstruationen under analysperioden.",
         "top_symptoms": "Vanligaste symtom (frekvens)",
         "basal_temp": "Basaltemperatur",
         "basal_temp_avg": "Genomsnitt",
@@ -874,6 +916,23 @@ def generate_doctor_report_html(
         <p>{_h(nfp_summary)}</p>
         {nfp_day_line}"""
 
+    # Bleeding outside the period (neutral listing, no assessment)
+    intermenstrual_html = ""
+    if stats.get("intermenstrual_bleeding"):
+        im_rows = "".join(
+            f"<tr><td>{_h(item['date'])}</td><td>{_h(_label(item['strength'], _BLEEDING_STRENGTH_LABELS, lang, item['strength']))}</td></tr>"
+            for item in stats["intermenstrual_bleeding"]
+        )
+        intermenstrual_html = f"""
+  <section class="section">
+    <h2>{_h(T['intermenstrual'])}</h2>
+    <p>{_h(T['intermenstrual_summary'].format(count=stats.get('intermenstrual_bleeding_days', 0)))}</p>
+    <table class='stats-table'>
+      <tr><th>{_h(T['date'])}</th><th>{_h(T['bleeding_strength_single'])}</th></tr>
+      {im_rows}
+    </table>
+  </section>"""
+
     # Top symptoms
     top_syms = stats.get("top_symptoms", [])
     sym_rows = ""
@@ -980,6 +1039,8 @@ def generate_doctor_report_html(
     <h2>{_h(T['bleeding_strength'])}</h2>
     {bleeding_strength_html}
   </section>
+
+  {intermenstrual_html}
 
   <section class="section">
     <h2>{_h(T['top_symptoms'])}</h2>

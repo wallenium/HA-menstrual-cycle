@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import json
 import logging
@@ -99,6 +100,7 @@ from .const import (
     CONTRACEPTION_RHYTHM_EVENTS,
     CONTRACEPTION_RHYTHM_START_EVENTS,
     SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
+    SERVICE_CREATE_PERIODS_FROM_BLEEDING,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
     CONF_PILL_PAUSE_DAYS,
     DEFAULT_PILL_PAUSE_DAYS,
@@ -2592,6 +2594,16 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({**common_profile_field, vol.Optional(SERVICE_FIELD_DATE): cv.string}),
     )
 
+    async def async_create_periods_from_bleeding(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_create_periods_from_bleeding(hass, call)
+
+    _create_periods_register_kwargs: dict[str, Any] = {"schema": vol.Schema({**common_profile_field})}
+    if SupportsResponse is not None:
+        _create_periods_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_CREATE_PERIODS_FROM_BLEEDING, async_create_periods_from_bleeding, **_create_periods_register_kwargs
+    )
+
     async def async_get_last_cycle_summary(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_get_last_cycle_summary(hass, call)
 
@@ -3489,6 +3501,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_COMPARE_CURRENT_CYCLE,
             SERVICE_GET_LAST_CYCLE_SUMMARY,
             SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
+            SERVICE_CREATE_PERIODS_FROM_BLEEDING,
             SERVICE_EXPORT_DOCTOR_REPORT,
             SERVICE_GET_CYCLE_PREDICTIONS,
             SERVICE_GET_DASHBOARD_PREFS,
@@ -3704,6 +3717,47 @@ def _bleeding_may_start_period(runtime: MenstruationRuntime, date_iso: str) -> b
         return False
     window_start = (date.fromisoformat(date_iso) - timedelta(days=NEW_PERIOD_MIN_GAP_DAYS)).isoformat()
     return not any(window_start <= item < date_iso for item in runtime.history)
+
+
+def _log_bleeding_in_history(runtime: MenstruationRuntime, date_iso: str) -> list[str]:
+    """Record logged bleeding on date_iso as period day(s); returns the dates actually added."""
+    added: list[str] = []
+    for history_date in _smart_period_history_dates(
+        runtime, date_iso, allow_new_period=_bleeding_may_start_period(runtime, date_iso)
+    ):
+        if history_date not in runtime.history:
+            runtime.history.append(history_date)
+            added.append(history_date)
+    return added
+
+
+BLEEDING_REPLAY_DAYS = 120
+
+
+def _bleeding_history_additions(runtime: MenstruationRuntime, today: date) -> list[str]:
+    """Period days that logged bleeding of the last BLEEDING_REPLAY_DAYS would add today.
+
+    Replays the bleeding days in order on a throwaway copy of the history with the same
+    rule as add_symptom (new period only without a period day in the 14 days before),
+    so intermenstrual bleeding is not counted. Does not touch the runtime.
+    """
+    start = (today - timedelta(days=BLEEDING_REPLAY_DAYS)).isoformat()
+    days = sorted(
+        {
+            str(item.get("date"))
+            for item in runtime.symptom_history
+            if isinstance(item, dict)
+            and start <= str(item.get("date", "")) <= today.isoformat()
+            and str(item.get("bleeding_strength", "")).strip().lower() not in {"", "none", "keine"}
+        }
+    )
+    probe = copy.copy(runtime)
+    probe.history = list(runtime.history)
+    original = set(runtime.history)
+    for day in days:
+        if day not in probe.history:
+            _log_bleeding_in_history(probe, day)
+    return sorted(set(probe.history) - original)
 
 
 async def _async_handle_add(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -4047,6 +4101,13 @@ async def _async_diagnose_profile_storage(runtime: MenstruationRuntime) -> list[
         uids = [item["uid"] for item in bag_items]
         if len(uids) != len(set(uids)):
             issues.append("hospital_bag_items: duplicate uid values")
+
+    missing = _bleeding_history_additions(runtime, dt_util.now().date())
+    if missing:
+        issues.append(
+            f"bleeding without a period: {len(missing)} day(s) of logged bleeding are not in the period history "
+            f"(first: {missing[0]}); service create_periods_from_bleeding adds them"
+        )
 
     return issues
 
@@ -4863,11 +4924,7 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
     if bleeding_strength in {"none", "keine"}:
         runtime.history = [item for item in runtime.history if item != date_iso]
     elif "bleeding_strength" in next_symptom_data:
-        for history_date in _smart_period_history_dates(
-            runtime, date_iso, allow_new_period=_bleeding_may_start_period(runtime, date_iso)
-        ):
-            if history_date not in runtime.history:
-                runtime.history.append(history_date)
+        _log_bleeding_in_history(runtime, date_iso)
 
     if save and entry_for_unit is not None and not was_unprotected and _is_unprotected(next_symptom_data.get(SYMPTOM_INTERCOURSE)):
         await _async_send_unprotected_hint(hass, entry_for_unit, runtime, date_iso)
@@ -5086,6 +5143,16 @@ async def _async_handle_get_last_cycle_summary(hass: HomeAssistant, call: Servic
     if summary is None:
         raise HomeAssistantError("At least two cycle starts are needed for a completed cycle.")
     return summary
+
+
+async def _async_handle_create_periods_from_bleeding(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Add period days for logged bleeding that never became a period (same rule as add_symptom)."""
+    runtime = _runtime_for_call(hass, call)
+    added = _bleeding_history_additions(runtime, dt_util.now().date())
+    if added:
+        runtime.history.extend(added)
+        await _async_save_and_notify(hass, runtime)
+    return {"added_dates": added, "count": len(added)}
 
 
 async def _async_handle_confirm_contraception_renewal(hass: HomeAssistant, call: ServiceCall) -> None:
