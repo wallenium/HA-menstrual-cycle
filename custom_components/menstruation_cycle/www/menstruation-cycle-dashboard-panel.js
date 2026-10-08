@@ -4193,7 +4193,11 @@
           const restockHint = (restockDays !== null && restockDays !== undefined)
             ? ` · ${(this._t('restock_days_remaining') || 'about {n} days left').replace('{n}', Math.round(restockDays))}`
             : '';
-          stockBadge = `<span style="font-family:var(--mc-font-mono);font-size:11px;color:${stockColor};font-weight:600;white-space:nowrap;">${this._t('dashboard_stock') || 'Bestand'}: ${escapeHtml(stock)}${restockHint}</span>`;
+          const supplyShort = inventoryState?.attributes?.supply_short?.[key];
+          const supplyHint = supplyShort
+            ? ` · <span title="${escapeHtml((this._t('supply_short_hint') || '').replace('{need}', String(supplyShort.need)))}">⚠ ${escapeHtml(stock)}/${escapeHtml(supplyShort.need)}</span>`
+            : '';
+          stockBadge = `<span style="font-family:var(--mc-font-mono);font-size:11px;color:${stockColor};font-weight:600;white-space:nowrap;">${this._t('dashboard_stock') || 'Bestand'}: ${escapeHtml(stock)}${restockHint}${supplyHint}</span>`;
         }
 
         return `

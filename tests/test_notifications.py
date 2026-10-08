@@ -662,9 +662,45 @@ class HouseholdSupplyTests(unittest.TestCase):
         data["inventory"]["tampon"] = 14
         self.assertEqual(integration._household_supply_shortfalls(data, self.TODAY), [])
 
+    def test_details_per_product_for_the_sensor_attribute(self) -> None:
+        data = {
+            "inventory": {"tampon": 8, "pad": 1, "liner": 0},
+            "consumption_log": self._log("tampon", (-60, 14), (-30, 14)) + self._log("pad", (-60, 6), (-30, 6)),
+        }
+        self.assertEqual(
+            integration._household_supply_short_details(data, self.TODAY),
+            {"tampon": {"stock": 8, "need": 14}, "pad": {"stock": 1, "need": 6}},
+        )
+
+    def test_sensor_attribute_is_filled_only_while_a_period_is_near(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        data = {
+            "inventory": {"tampon": 3, "pad": 5, "liner": 5, "cup": 1, "underwear": 0},
+            "thresholds": {},
+            "consumption_log": [
+                {"product": "tampon", "quantity": 7, "timestamp": f"{(NOW[0].date() + timedelta(days=off)).isoformat()}T08:00:00"}
+                for off in (-60, -30)
+            ],
+            "underwear_settings": {"total_owned": 12, "washing_threshold": 3},
+        }
+
+        def attributes(days):
+            hass = self._hass_with_period_in(days)
+            hass.data[integration.HOUSEHOLD_INVENTORY_DATA_KEY] = data
+            states = []
+            hass.states = SimpleNamespace(async_set=lambda entity_id, state, attrs: states.append(attrs))
+            with patch.object(integration, "MenstruationRuntime", SimpleNamespace), patch.object(
+                integration.dt_util, "now", lambda: NOW[0]
+            ):
+                _run(integration._async_update_household_inventory_state(hass))
+            return states[0]
+
+        self.assertEqual(attributes(3)["supply_short"], {"tampon": {"stock": 3, "need": 7}})
+        self.assertEqual(attributes(15)["supply_short"], {})
+
     def _hass_with_period_in(self, days, *, visibility="full"):
         start = -(28 - days)
-        runtime = _runtime(history=[_iso(start - 28 * k + j) for k in range(5, -1, -1) for j in range(5)], visibility_level=visibility)
+        runtime = _runtime(history=[_iso(start - 28 * k + j) for k in range(5, -1, -1) for j in range(5)], visibility_level=visibility, profile="p1")
         hass = _hass()
         hass.data = {integration.DOMAIN: {"e1": runtime}}
         return hass

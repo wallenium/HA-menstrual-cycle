@@ -596,20 +596,27 @@ def _typical_use_per_period(consumption_log: list, product: str, today: date) ->
     return -(-sum(periods) // len(periods))
 
 
-def _household_supply_shortfalls(household_data: dict[str, Any], today: date) -> list[str]:
-    """"Tampons 8/14" (stock/typical need per period) for purchasable products below their typical need."""
+def _household_supply_short_details(household_data: dict[str, Any], today: date) -> dict[str, dict[str, int]]:
+    """{product: {"stock", "need"}} for purchasable products below their typical need per period."""
     inventory = household_data.get("inventory", {})
     log = household_data.get("consumption_log", [])
-    short: list[str] = []
+    short: dict[str, dict[str, int]] = {}
     for product in HOUSEHOLD_PRODUCTS:
-        name = _SHOPPING_PRODUCT_NAMES.get(product)
-        if product in _SKIP_SHOPPING_PRODUCTS or not name:
+        if product in _SKIP_SHOPPING_PRODUCTS or product not in _SHOPPING_PRODUCT_NAMES:
             continue
         need = _typical_use_per_period(log, product, today)
         stock = max(0, int(inventory.get(product, 0)))
         if need is not None and stock < need:
-            short.append(f"{name} {stock}/{need}")
+            short[product] = {"stock": stock, "need": need}
     return short
+
+
+def _household_supply_shortfalls(household_data: dict[str, Any], today: date) -> list[str]:
+    """"Tampons 8/14" (stock/typical need per period) for purchasable products below their typical need."""
+    return [
+        f"{_SHOPPING_PRODUCT_NAMES[product]} {detail['stock']}/{detail['need']}"
+        for product, detail in _household_supply_short_details(household_data, today).items()
+    ]
 
 
 def _household_period_upcoming(hass: HomeAssistant, today: date) -> bool:
@@ -739,6 +746,8 @@ async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
     inventory["underwear"] = underwear_in_use
     inventory["cup"] = 1
     total_stock = sum(max(0, int(inventory.get(product, 0))) for product in HOUSEHOLD_PRODUCTS)
+    today = dt_util.now().date()
+    supply_short = _household_supply_short_details(household_data, today) if _household_period_upcoming(hass, today) else {}
 
     hass.states.async_set(
         HOUSEHOLD_INVENTORY_STATE_ENTITY_ID,
@@ -765,6 +774,8 @@ async def _async_update_household_inventory_state(hass: HomeAssistant) -> None:
             # Makes this sensor visible to the logbook "continuous domain" filter, suppressing its raw state-change entries in favor of logbook.py's description.
             "unit_of_measurement": "pcs",
             "restock_forecast": _household_restock_forecast(household_data),
+            # Only filled while a period is near; the same rule as the "supplies may not last" repair issue.
+            "supply_short": supply_short,
         },
     )
 

@@ -114,6 +114,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
         in_use: "In use",
         buy_recommendation: "Buy recommendation",
         restock_days_remaining: "about {n} days left",
+        supply_short_hint: "Stock may not last the next period (typically about {need} per period).",
         add_to_shopping: "Add to shopping list",
         recent_usage: "Recent usage",
         no_logs: "No consumption logs",
@@ -474,6 +475,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
         const showUnderwearBuyRecommendation = product === "underwear" && underwearRecommendedBuy > 0;
         const restockDays = attrs.restock_forecast?.[product]?.days_remaining;
         const showRestockForecast = product !== "cup" && restockDays !== null && restockDays !== undefined;
+        const supplyShort = attrs.supply_short?.[product];
 
         return `
           <div class="row">
@@ -486,6 +488,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
             </div>
             ${product === "underwear" ? `<div class="meta-inline">${this._t("in_use")}: ${Math.max(0, Math.min(underwearTotalOwned, underwearInUse))} / ${underwearTotalOwned}</div>` : ""}
             ${showRestockForecast ? `<div class="meta-inline">${this._t("restock_days_remaining").replace("{n}", Math.round(restockDays))}</div>` : ""}
+            ${supplyShort ? `<div class="meta-inline">⚠ ${this._t("supply_short_hint").replace("{need}", String(supplyShort.need))}</div>` : ""}
             ${showWashNeeded ? `<div class="wash-needed">🧺 ${this._t("wash_needed")}</div>` : ""}
             ${showUnderwearBuyRecommendation ? `<div class="meta-inline">${this._t("buy_recommendation")}: ${underwearRecommendedBuy}</div>` : ""}
             <div class="controls">

@@ -1183,5 +1183,6 @@
   "dashboard_open_issues": "Öppna notiser om dina data: {count}",
   "dashboard_doctor_report_create": "Skapa läkarrapport",
   "dashboard_doctor_report_busy": "Skapar…",
-  "dashboard_doctor_report_error": "Rapporten kunde inte skapas."
+  "dashboard_doctor_report_error": "Rapporten kunde inte skapas.",
+  "supply_short_hint": "Förrådet räcker kanske inte till nästa mens (vanligtvis cirka {need} per mens)."
 }

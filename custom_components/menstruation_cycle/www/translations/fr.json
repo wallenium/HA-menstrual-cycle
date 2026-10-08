@@ -1183,5 +1183,6 @@
   "dashboard_open_issues": "Remarques ouvertes sur les données : {count}",
   "dashboard_doctor_report_create": "Créer le rapport médical",
   "dashboard_doctor_report_busy": "Création…",
-  "dashboard_doctor_report_error": "Impossible de créer le rapport."
+  "dashboard_doctor_report_error": "Impossible de créer le rapport.",
+  "supply_short_hint": "Le stock pourrait ne pas suffire pour les prochaines règles (habituellement environ {need} par période)."
 }

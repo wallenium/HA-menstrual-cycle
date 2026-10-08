@@ -1859,6 +1859,21 @@ def compute_period_forecast(
     }
 
 
+def first_positive_lh_day(symptoms: list[dict[str, Any]], cycle_start_iso: str, today: date) -> date | None:
+    """Return the first day of the current cycle with a positive ovulation (LH) test, if any.
+
+    ponytail: first positive wins; a false early positive would shift the anchor,
+    refine to "first of the latest consecutive run" if that shows up in practice.
+    """
+    days = [
+        entry["date"]
+        for entry in symptoms
+        if cycle_start_iso <= str(entry.get("date", "")) <= today.isoformat()
+        and "positive_ovulation" in _entry_value_set(entry, "test")
+    ]
+    return date.fromisoformat(min(days)) if days else None
+
+
 def compute_fertility_forecast(
     next_predicted_start: str | None,
     avg_cycle_length: int | None,
@@ -2960,6 +2975,12 @@ def build_cycle_model(
                 if fw.get("start") and fw.get("end"):
                     fertile_start = fw["start"]
                     fertile_end = fw["end"]
+            elif (lh_day := first_positive_lh_day(symptoms, current_cycle_start, now)) is not None:
+                # No confirmed temperature analysis: a positive LH test puts ovulation ~1 day later.
+                ovulation_day = lh_day + timedelta(days=1)
+                ovulation_day_iso = ovulation_day.isoformat()
+                fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
+                fertile_end = (ovulation_day + timedelta(days=1)).isoformat()
 
         nfp_result["conception_likelihood"] = compute_cycle_conception_likelihood(
             history=normalized,

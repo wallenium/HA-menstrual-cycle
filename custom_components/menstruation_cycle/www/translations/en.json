@@ -1183,5 +1183,6 @@
   "dashboard_open_issues": "Open notes about your data: {count}",
   "dashboard_doctor_report_create": "Create doctor report",
   "dashboard_doctor_report_busy": "Creating…",
-  "dashboard_doctor_report_error": "Could not create the report."
+  "dashboard_doctor_report_error": "Could not create the report.",
+  "supply_short_hint": "Stock may not last the next period (typically about {need} per period)."
 }

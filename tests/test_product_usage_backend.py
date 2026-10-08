@@ -781,6 +781,67 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(cycle.fertile_window_start, "2026-07-07")
         self.assertEqual(cycle.fertile_window_end, "2026-07-13")
 
+    def _lh_cycle(self, symptoms: list[dict], *, nfp_mode: str = "hybrid", today: date = date(2026, 7, 1)):
+        return model.build_cycle_model(
+            history=["2026-06-01", "2026-06-29"],
+            period_duration_days=5,
+            symptom_history=symptoms,
+            today=today,
+            nfp_mode=nfp_mode,
+        )
+
+    def test_positive_lh_test_anchors_ovulation_one_day_later(self) -> None:
+        # Cycle starts 2026-06-29; positive LH on 06-30 -> ovulation 07-01, window = ovulation -5 .. +1.
+        cycle = self._lh_cycle([{"date": "2026-06-30", "test": "positive_ovulation"}])
+        self.assertEqual(cycle.ovulation_day, "2026-07-01")
+        self.assertEqual(cycle.fertile_window_start, "2026-06-26")
+        self.assertEqual(cycle.fertile_window_end, "2026-07-02")
+
+    def test_positive_lh_test_uses_first_positive_of_the_cycle(self) -> None:
+        cycle = self._lh_cycle(
+            [
+                {"date": "2026-06-30", "test": "positive_ovulation"},
+                {"date": "2026-07-01", "test": ["positive_ovulation"]},
+            ]
+        )
+        self.assertEqual(cycle.ovulation_day, "2026-07-01")
+
+    def test_lh_anchor_ignores_negative_previous_cycle_future_and_strict_mode(self) -> None:
+        baseline = self._lh_cycle([]).ovulation_day
+        self.assertEqual(self._lh_cycle([{"date": "2026-06-30", "test": "negative_ovulation"}]).ovulation_day, baseline)
+        # positive test from the previous cycle (before the current cycle start 2026-06-29)
+        self.assertEqual(self._lh_cycle([{"date": "2026-06-20", "test": "positive_ovulation"}]).ovulation_day, baseline)
+        # a positive test dated in the future must not move anything
+        self.assertEqual(self._lh_cycle([{"date": "2026-07-05", "test": "positive_ovulation"}]).ovulation_day, baseline)
+        # strict mode only trusts temperature analysis
+        strict = self._lh_cycle([{"date": "2026-06-30", "test": "positive_ovulation"}], nfp_mode="strict")
+        self.assertIsNone(strict.ovulation_day)
+
+    def test_confirmed_temperature_analysis_beats_lh_anchor(self) -> None:
+        cycle_start = date(2026, 6, 1)
+        symptoms = []
+        for i in range(17):
+            entry: dict = {
+                "date": (cycle_start + timedelta(days=i)).isoformat(),
+                "basal_temp": 36.5 if i < 14 else 36.85,
+            }
+            if 11 <= i < 14:
+                entry["cervical_mucus"] = "fadenziehend"
+            symptoms.append(entry)
+        kwargs = dict(
+            history=["2026-05-01", str(cycle_start)],
+            period_duration_days=5,
+            today=date(2026, 6, 20),
+        )
+        without = model.build_cycle_model(symptom_history=symptoms, **kwargs)
+        # One entry per date: the LH test shares the 2026-06-08 entry with the temperature reading.
+        symptoms_lh = [{**e, "test": "positive_ovulation"} if e["date"] == "2026-06-08" else e for e in symptoms]
+        with_lh = model.build_cycle_model(symptom_history=symptoms_lh, **kwargs)
+        self.assertEqual(without.nfp_analysis["confidence_level"] in ("high", "medium"), True)
+        self.assertEqual(with_lh.ovulation_day, without.ovulation_day)
+        self.assertEqual(with_lh.fertile_window_start, without.fertile_window_start)
+        self.assertNotEqual(with_lh.ovulation_day, "2026-06-09")
+
     def test_build_cycle_model_strict_mode_hides_ovulation_without_confirmed_temperature_rise(self) -> None:
         # Strict mode: no temperature rise logged → ovulation/fertile window must be None.
         cycle = model.build_cycle_model(

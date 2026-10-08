@@ -1183,5 +1183,6 @@
   "dashboard_open_issues": "Avisos abiertos sobre tus datos: {count}",
   "dashboard_doctor_report_create": "Crear informe médico",
   "dashboard_doctor_report_busy": "Creando…",
-  "dashboard_doctor_report_error": "No se pudo crear el informe."
+  "dashboard_doctor_report_error": "No se pudo crear el informe.",
+  "supply_short_hint": "Puede que las existencias no alcancen para la próxima regla (habitual: unas {need} por regla)."
 }

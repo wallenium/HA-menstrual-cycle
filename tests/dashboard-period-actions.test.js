@@ -407,6 +407,28 @@ const mount = (state, attributes = {}, discreet = false) => {
     assert.ok(![...storage.values()].some((value) => value.includes('Berta') || value.includes('Clara')));
   }
 
+  // product usage rows: the household "supply_short" attribute adds a warning with the typical need
+  {
+    const usage = new Panel();
+    usage._lang = 'en';
+    const stateObj = { attributes: { product_usage_today: {}, product_usage_this_cycle: {}, product_usage_stats: { average_per_cycle: {} } } };
+    const render = (supplyShort) => {
+      usage._hass = {
+        states: {
+          'sensor.household_product_stock': {
+            attributes: { inventory: { tampon: 8, pad: 20, cup: 1, liner: 9, underwear: 3 }, thresholds: {}, ...(supplyShort ? { supply_short: supplyShort } : {}) },
+          },
+        },
+      };
+      return usage._renderProductUsage(stateObj);
+    };
+    const withHint = render({ tampon: { stock: 8, need: 14 } });
+    assert.strictEqual((withHint.match(/⚠ 8\/14/g) || []).length, 1, withHint);
+    assert.ok(withHint.includes('title="Stock may not last the next period (typically about 14 per period)."'), withHint);
+    assert.ok(!render().includes('⚠'));
+    assert.ok(!render({}).includes('⚠'));
+  }
+
   console.log('dashboard period actions: ok');
 })().catch((error) => {
   console.error(error);
