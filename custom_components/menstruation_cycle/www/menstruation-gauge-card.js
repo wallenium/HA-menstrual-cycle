@@ -419,7 +419,9 @@ class MenstruationGaugeCard extends HTMLElement {
   _buildModel() {
     const entityId = this._resolveEntityId();
     const stateObj = entityId ? this._hass?.states?.[entityId] : undefined;
-    const attrs = stateObj?.attributes || {};
+    const attrs = stateObj
+      ? (window.MenstruationFunctions?.attributesWithFullHistory?.(this._hass, stateObj, () => this._render()) || stateObj.attributes || {})
+      : {};
     const pregnancyInfo = this._resolvePregnancyInfo({ state: stateObj?.state, ...attrs });
     const historyRaw = JSON.stringify(attrs.history);
     if (historyRaw !== this._lastHistoryRaw) {
@@ -2401,6 +2403,7 @@ class MenstruationGaugeCard extends HTMLElement {
   _buildRenderKey(model, countdown, isOverdueSoon, canEdit, cardTitle, friendlyName) {
     return [
       model.state,
+      window.MenstruationFunctions?.fullHistoryVersion?.(model.stateObj) || 0,
       model.pregnancyInfo?.isPregnant ? 1 : 0,
       model.pregnancyInfo?.week,
       model.pregnancyInfo?.month,

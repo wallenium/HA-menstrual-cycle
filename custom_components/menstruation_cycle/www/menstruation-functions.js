@@ -819,10 +819,77 @@ function renderOptionIcon(categoryKey, optionValue) {
   return `<img src="/menstruation_cycle/assets/buttons/${fileStem}.svg" alt="" class="sym-opt-icon" />`;
 }
 
+/**
+ * The main sensor sheds size-heavy attributes (symptom_history, product_usage_timeline) when a profile has a
+ * lot of data, so cards that read them from the attributes would silently show less. This returns the
+ * attributes with those two lists filled in from the get_full_history service when they are missing.
+ * Stale-while-revalidate, one request per profile and state update; onUpdate runs when new data arrived.
+ * fullHistoryVersion() belongs into the card's render key, so the card redraws once the data is there.
+ */
+const _fullHistoryStore = new Map();
+const FULL_HISTORY_USAGE_DAYS = 30;
+
+function _fullHistoryEntry(profile) {
+  if (!_fullHistoryStore.has(profile)) _fullHistoryStore.set(profile, { stamp: null, data: null, pending: false, version: 0, listeners: new Set() });
+  return _fullHistoryStore.get(profile);
+}
+
+function fullHistoryVersion(stateObj) {
+  const profile = stateObj?.attributes?.profile;
+  return profile && _fullHistoryStore.has(profile) ? _fullHistoryStore.get(profile).version : 0;
+}
+
+function attributesWithFullHistory(hass, stateObj, onUpdate, days = 180) {
+  const attrs = stateObj?.attributes || {};
+  const needSymptoms = !Array.isArray(attrs.symptom_history);
+  const needUsage = !Array.isArray(attrs.product_usage_timeline);
+  const profile = attrs.profile;
+  if (!profile || (!needSymptoms && !needUsage)) return attrs;
+  const entry = _fullHistoryEntry(profile);
+  const stamp = stateObj.last_updated || '';
+  if (typeof onUpdate === 'function') entry.listeners.add(onUpdate); // every card of this profile redraws, not just the one that asked
+  if (entry.stamp !== stamp && !entry.pending && hass?.connection?.sendMessagePromise) {
+    entry.pending = true;
+    hass.connection.sendMessagePromise({
+      type: 'call_service',
+      domain: 'menstruation_cycle',
+      service: 'get_full_history',
+      service_data: { profile, days },
+      return_response: true,
+    }).then((result) => {
+      const response = result?.response;
+      if (response && Array.isArray(response.symptom_history)) {
+        entry.data = {
+          symptom_history: response.symptom_history,
+          product_usage: Array.isArray(response.product_usage) ? response.product_usage : [],
+        };
+        entry.version += 1;
+      }
+    }).catch((err) => {
+      console.warn('[menstruation-cycle] get_full_history failed for', profile, err);
+    }).finally(() => {
+      entry.stamp = stamp; // also after a failure, so a broken service is not retried in a loop
+      entry.pending = false;
+      const listeners = [...entry.listeners];
+      entry.listeners.clear();
+      listeners.forEach((fn) => fn());
+    });
+  }
+  if (!entry.data) return attrs;
+  const cutoff = new Date(Date.now() - FULL_HISTORY_USAGE_DAYS * 86400000).toISOString().slice(0, 10);
+  return {
+    ...attrs,
+    ...(needSymptoms ? { symptom_history: entry.data.symptom_history } : {}),
+    ...(needUsage ? { product_usage_timeline: entry.data.product_usage.filter((e) => String(e?.date || '') >= cutoff) } : {}),
+  };
+}
+
 const MenstruationFunctions = {
   normalizeOptionKey,
   getSymptomConfig,
   fetchFreshSymptomData,
+  attributesWithFullHistory,
+  fullHistoryVersion,
   renderCategoryIcon,
   renderOptionIcon,
   escapeHtmlText,

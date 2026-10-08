@@ -529,7 +529,7 @@ class MenstruationCalendarCard extends HTMLElement {
     const stateObj = this._hass?.states?.[entityId];
     if (!stateObj) return { missing: true, entityId };
 
-    const attrs = stateObj.attributes || {};
+    const attrs = window.MenstruationFunctions?.attributesWithFullHistory?.(this._hass, stateObj, () => this._render()) || stateObj.attributes || {};
     const actualStarts = this._actualCycleStarts(attrs);
     const allPredictedStarts = this._predictedCycleStartsList(attrs);
 
@@ -1241,6 +1241,7 @@ class MenstruationCalendarCard extends HTMLElement {
       state: stateObj?.state || '',
       last_changed: stateObj?.last_changed || '',
       attributes: stateObj?.attributes || null,
+      history_v: window.MenstruationFunctions?.fullHistoryVersion?.(stateObj) || 0,
       view_year: this._viewDate?.getFullYear(),
       view_month: this._viewDate?.getMonth(),
       lang: this._lang(),

@@ -977,7 +977,13 @@ class MenstruationStatisticsCard extends HTMLElement {
     if (!entityId) return null;
     const stateObj = this._hass.states[entityId];
     if (!stateObj) return null;
-    return stateObj.attributes || {};
+    return this._attrsOf(stateObj);
+  }
+
+  // attributes with the size-shed history lists filled in (see menstruation-functions.js)
+  _attrsOf(stateObj) {
+    const fn = window.MenstruationFunctions?.attributesWithFullHistory;
+    return fn ? fn(this._hass, stateObj, () => this._render()) : (stateObj.attributes || {});
   }
 
   _filterOptions() {
@@ -2684,6 +2690,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       state: stateObj?.state || '',
       last_changed: stateObj?.last_changed || '',
       attributes: stateObj?.attributes || null,
+      history_v: window.MenstruationFunctions?.fullHistoryVersion?.(stateObj) || 0,
       tab: this._tab,
       daysBack: this._daysBack,
       settingsOpen: this._settingsOpen ? 1 : 0,
@@ -2712,7 +2719,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       return;
     }
 
-    const attrs = stateObj ? (stateObj.attributes || {}) : {};
+    const attrs = stateObj ? this._attrsOf(stateObj) : {};
     const stats = this._computeStats(attrs);
     const title = this._config.title || this._t('title');
     const tab = this._tab;

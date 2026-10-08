@@ -392,6 +392,57 @@ class PregnancyUpdateTests(unittest.TestCase):
             strings["pregnancy_trimester_message"].format(name="A", week=15, date="x", trimester=2)
 
 
+class BleedingStartsPeriodTests(unittest.TestCase):
+    """Logging bleeding as a symptom starts a period when none is running (the dashboard has no separate start button)."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _log(self, history_offsets, *, day_offset=-1, strength="medium", **runtime_overrides):
+        runtime = _runtime(history=[_iso(o) for o in history_offsets], **runtime_overrides)
+        entry = _entry()
+        hass = _hass()
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        call = SimpleNamespace(
+            data={const.SERVICE_FIELD_DATE: _iso(day_offset), const.SERVICE_FIELD_SYMPTOM_DATA: {"bleeding_strength": strength}}
+        )
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_entry_id_for_runtime", lambda h, r: "e1"
+        ), patch.object(integration, "_async_send_notification", _Sent()), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            _run(integration._async_handle_add_symptom(hass, call))
+        return runtime
+
+    def test_bleeding_without_a_running_period_starts_one(self) -> None:
+        for strength in ("light", "medium", "heavy"):
+            runtime = self._log([-30, -29, -28, -27, -26], strength=strength)
+            self.assertIn(_iso(-1), runtime.history, strength)
+
+    def test_first_ever_bleeding_starts_a_period(self) -> None:
+        self.assertEqual(self._log([]).history, [_iso(-1)])
+
+    def test_no_bleeding_entry_does_not_start_one(self) -> None:
+        self.assertNotIn(_iso(-1), self._log([-30, -29], strength="none").history)
+
+    def test_bleeding_shortly_after_a_period_is_not_a_new_period(self) -> None:
+        # period ended 8 days ago: intermenstrual bleeding, not a new start
+        runtime = self._log([-13, -12, -11, -10, -9])
+        self.assertNotIn(_iso(-1), runtime.history)
+
+    def test_the_gap_boundary_is_14_days(self) -> None:
+        self.assertNotIn(_iso(-1), self._log([-15]).history)  # a period day exactly 14 days before: too close
+        self.assertIn(_iso(-1), self._log([-16]).history)
+
+    def test_not_while_pregnant(self) -> None:
+        runtime = self._log([-30], pregnancy_data={"is_pregnant": True, "start_date": _iso(-60)})
+        self.assertNotIn(_iso(-1), runtime.history)
+
+    def test_a_running_period_is_still_continued(self) -> None:
+        runtime = self._log([-3, -2], day_offset=0)
+        self.assertEqual(sorted(runtime.history), [_iso(-3), _iso(-2), _iso(-1), _iso(0)])
+
+
 class UnprotectedHintTests(unittest.TestCase):
     """Opt-in hint after unprotected intercourse is logged."""
 
