@@ -1180,5 +1180,8 @@
   "dashboard_period_start_cancel": "Cancelar",
   "dashboard_period_intermenstrual_done": "Guardado como sangrado intermenstrual.",
   "confirm_add_close_period_start": "El día de regla anterior fue hace {days} días. ¿Añadir este día como una nueva regla de todos modos?",
-  "dashboard_open_issues": "Avisos abiertos sobre tus datos: {count}"
+  "dashboard_open_issues": "Avisos abiertos sobre tus datos: {count}",
+  "dashboard_doctor_report_create": "Crear informe médico",
+  "dashboard_doctor_report_busy": "Creando…",
+  "dashboard_doctor_report_error": "No se pudo crear el informe."
 }

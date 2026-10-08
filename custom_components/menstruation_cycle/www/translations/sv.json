@@ -1180,5 +1180,8 @@
   "dashboard_period_start_cancel": "Avbryt",
   "dashboard_period_intermenstrual_done": "Sparat som mellanblödning.",
   "confirm_add_close_period_start": "Den förra mensdagen var för {days} dagar sedan. Lägga till den här dagen som en ny mens ändå?",
-  "dashboard_open_issues": "Öppna notiser om dina data: {count}"
+  "dashboard_open_issues": "Öppna notiser om dina data: {count}",
+  "dashboard_doctor_report_create": "Skapa läkarrapport",
+  "dashboard_doctor_report_busy": "Skapar…",
+  "dashboard_doctor_report_error": "Rapporten kunde inte skapas."
 }

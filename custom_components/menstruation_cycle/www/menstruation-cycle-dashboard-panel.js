@@ -1755,6 +1755,56 @@
       this.render();
     }
 
+    // Doctor report straight from the panel: export_doctor_report returns the HTML (it is also saved in the export
+    // folder), which becomes a blob link to open or download. The report language follows the panel language.
+    async _createDoctorReport() {
+      const conn = this._hass?.connection;
+      if (!conn?.sendMessagePromise || !this._selectedEntityId || this._doctorReportBusy) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      this._doctorReportBusy = true;
+      this.render();
+      try {
+        const result = await conn.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'export_doctor_report',
+          service_data: {
+            entity_id: this._selectedEntityId,
+            ...(attrs.profile ? { profile: attrs.profile } : {}),
+            days_back: 180,
+            language: ['de', 'en', 'es', 'fr', 'sv'].includes(this._lang) ? this._lang : 'en',
+          },
+          return_response: true,
+        });
+        const html = result?.response?.html;
+        if (typeof html !== 'string' || !html) throw new Error('no report returned');
+        if (this._doctorReport?.url && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(this._doctorReport.url);
+        this._doctorReport = {
+          url: URL.createObjectURL(new Blob([html], { type: 'text/html' })),
+          name: result.response.filename || 'doctor_report.html',
+          entityId: this._selectedEntityId,
+        };
+        this._message = '';
+      } catch (_error) {
+        this._doctorReport = null;
+        this._message = this._t('dashboard_doctor_report_error');
+      }
+      this._doctorReportBusy = false;
+      this.render();
+    }
+
+    _renderDoctorReportAction(discreetMode) {
+      if (discreetMode || !this._selectedEntityId) return '';
+      const busy = !!this._doctorReportBusy;
+      const report = this._doctorReport && this._doctorReport.entityId === this._selectedEntityId ? this._doctorReport : null;
+      const links = report
+        ? ` <a href="${escapeHtml(report.url)}" target="_blank" rel="noopener">${escapeHtml(this._t('export_open'))}</a>`
+          + ` · <a href="${escapeHtml(report.url)}" download="${escapeHtml(report.name)}">${escapeHtml(this._t('export_download'))}</a>`
+        : '';
+      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button type="button" data-action="create-doctor-report"${busy ? ' disabled' : ''}>${escapeHtml(this._t(busy ? 'dashboard_doctor_report_busy' : 'dashboard_doctor_report_create'))}</button>${links}</div>`;
+    }
+
     // "Open notes about your data": the integration's own Home Assistant repair issues (storage check, missing
     // periods, ...), counted via the frontend's repairs/list_issues and refreshed at most every 5 minutes. Any
     // failure (older HA, no permission) just hides the line.
@@ -3713,6 +3763,11 @@
 
       if (action === 'quick-log-save') {
         this._handleQuickLogSave();
+        return;
+      }
+
+      if (action === 'create-doctor-report') {
+        this._createDoctorReport();
         return;
       }
 
@@ -7861,6 +7916,7 @@
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderOpenIssues(discreetMode)}
+          ${this._renderDoctorReportAction(discreetMode)}
           ${this._renderPeriodActions(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}

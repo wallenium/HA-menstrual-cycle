@@ -1180,5 +1180,8 @@
   "dashboard_period_start_cancel": "Cancel",
   "dashboard_period_intermenstrual_done": "Saved as bleeding between periods.",
   "confirm_add_close_period_start": "The previous period day was {days} days ago. Add this day as a new period anyway?",
-  "dashboard_open_issues": "Open notes about your data: {count}"
+  "dashboard_open_issues": "Open notes about your data: {count}",
+  "dashboard_doctor_report_create": "Create doctor report",
+  "dashboard_doctor_report_busy": "Creating…",
+  "dashboard_doctor_report_error": "Could not create the report."
 }

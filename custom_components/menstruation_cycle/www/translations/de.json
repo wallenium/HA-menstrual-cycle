@@ -1180,5 +1180,8 @@
   "dashboard_period_start_cancel": "Abbrechen",
   "dashboard_period_intermenstrual_done": "Als Zwischenblutung gespeichert.",
   "confirm_add_close_period_start": "Der vorige Periodentag war vor {days} Tagen. Diesen Tag trotzdem als neue Periode eintragen?",
-  "dashboard_open_issues": "Offene Hinweise zu deinen Daten: {count}"
+  "dashboard_open_issues": "Offene Hinweise zu deinen Daten: {count}",
+  "dashboard_doctor_report_create": "Arztbericht erstellen",
+  "dashboard_doctor_report_busy": "Wird erstellt…",
+  "dashboard_doctor_report_error": "Der Bericht konnte nicht erstellt werden."
 }

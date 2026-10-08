@@ -294,6 +294,78 @@ const mount = (state, attributes = {}, discreet = false) => {
     assert.strictEqual(sent.length, 3);
   }
 
+  // doctor report from the panel: service response -> open/download link, in the panel language
+  {
+    const sent = [];
+    const blobs = [];
+    const revoked = [];
+    global.Blob = class { constructor(parts, opts) { blobs.push([parts.join(''), opts.type]); } };
+    global.URL = { createObjectURL: () => `blob:report-${blobs.length}`, revokeObjectURL: (u) => revoked.push(u) };
+    let response = { response: { filename: 'doctor_report_berta.html', path: '/config/x', html: '<html>report</html>' } };
+    const doc = new Panel();
+    doc._lang = 'de';
+    doc.render = () => { doc.rendered = (doc.rendered || 0) + 1; };
+    doc._selectedEntityId = 'sensor.menstruation_berta';
+    doc._hass = {
+      states: { 'sensor.menstruation_berta': { attributes: { profile: 'berta' } } },
+      connection: {
+        sendMessagePromise: async (msg) => {
+          sent.push(msg);
+          if (response instanceof Error) throw response;
+          return response;
+        },
+      },
+    };
+    const click = (action) => {
+      const button = Object.create(global.HTMLElement.prototype);
+      button.classList = { contains: () => false };
+      button.dataset = { action };
+      button.closest = () => button;
+      doc._handleClick({ target: button });
+    };
+
+    assert.ok(doc._renderDoctorReportAction(false).includes('data-action="create-doctor-report"'));
+    assert.strictEqual(doc._renderDoctorReportAction(true), '', 'hidden in discreet mode');
+    assert.ok(!doc._renderDoctorReportAction(false).includes('<a '), 'no link before a report exists');
+
+    click('create-doctor-report');
+    click('create-doctor-report'); // a second tap while busy is ignored
+    assert.ok(doc._renderDoctorReportAction(false).includes('disabled'));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(sent.length, 1);
+    assert.deepStrictEqual(sent[0], {
+      type: 'call_service', domain: 'menstruation_cycle', service: 'export_doctor_report', return_response: true,
+      service_data: { entity_id: 'sensor.menstruation_berta', profile: 'berta', days_back: 180, language: 'de' },
+    });
+    assert.deepStrictEqual(blobs, [['<html>report</html>', 'text/html']]);
+    const html = doc._renderDoctorReportAction(false);
+    assert.ok(html.includes('href="blob:report-1" target="_blank"'), html);
+    assert.ok(html.includes('download="doctor_report_berta.html"'), html);
+    assert.ok(!html.includes('disabled'));
+
+    // a second report replaces (and frees) the first; unsupported panel languages fall back to English
+    doc._lang = 'nl';
+    click('create-doctor-report');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(sent[1].service_data.language, 'en');
+    assert.deepStrictEqual(revoked, ['blob:report-1']);
+
+    // the link belongs to the profile it was made for
+    doc._selectedEntityId = 'sensor.menstruation_clara';
+    assert.ok(!doc._renderDoctorReportAction(false).includes('<a '));
+    doc._selectedEntityId = 'sensor.menstruation_berta';
+
+    // failures and empty responses give an error message and no link
+    for (const bad of [new Error('boom'), { response: {} }, {}]) {
+      response = bad;
+      click('create-doctor-report');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.strictEqual(doc._message, 'Could not create the report.');
+      assert.ok(!doc._renderDoctorReportAction(false).includes('<a '));
+      assert.ok(!doc._renderDoctorReportAction(false).includes('disabled'), 'usable again after an error');
+    }
+  }
+
   console.log('dashboard period actions: ok');
 })().catch((error) => {
   console.error(error);

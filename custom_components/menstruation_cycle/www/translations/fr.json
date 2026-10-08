@@ -1180,5 +1180,8 @@
   "dashboard_period_start_cancel": "Annuler",
   "dashboard_period_intermenstrual_done": "Enregistré comme saignement intermenstruel.",
   "confirm_add_close_period_start": "Le jour de règles précédent remonte à {days} jours. Ajouter quand même ce jour comme de nouvelles règles ?",
-  "dashboard_open_issues": "Remarques ouvertes sur les données : {count}"
+  "dashboard_open_issues": "Remarques ouvertes sur les données : {count}",
+  "dashboard_doctor_report_create": "Créer le rapport médical",
+  "dashboard_doctor_report_busy": "Création…",
+  "dashboard_doctor_report_error": "Impossible de créer le rapport."
 }
