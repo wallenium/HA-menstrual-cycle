@@ -325,6 +325,57 @@ class LhLagTests(unittest.TestCase):
             self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
 
 
+class CycleSignsColumnTests(unittest.TestCase):
+    """Cycle day of the first positive LH test and of the temperature rise in the cycle overview."""
+    TODAY = date(2026, 7, 20)
+    HISTORY = ["2026-05-01", "2026-05-29", "2026-06-27"]
+
+    def _data(self, lh_dates):
+        temps = LutealPhaseTests._temps("2026-05-01", 14, 14) + LutealPhaseTests._temps("2026-05-29", 14, 15)  # rises 05-15, 06-12
+        entries = {e["date"]: e for e in temps}
+        for day in lh_dates:
+            entries.setdefault(day, {"date": day})["test"] = "positive_ovulation"
+        return sorted(entries.values(), key=lambda e: e["date"])
+
+    def _stats(self, symptoms):
+        return statistics.compute_statistics(self.HISTORY, symptoms, days_back=180, today=self.TODAY, period_duration_days=5)
+
+    def _report(self, stats, lang="en"):
+        return statistics.generate_doctor_report_html(
+            stats=stats, history=self.HISTORY, symptom_history=[], profile="a", patient_name=None,
+            patient_birthdate=None, language=lang, report_date=self.TODAY.isoformat(),
+        )
+
+    def test_rows_carry_the_cycle_day_of_each_signal(self) -> None:
+        rows = self._stats(self._data(["2026-05-12", "2026-05-14", "2026-07-05"]))["cycle_table"]
+        self.assertEqual(
+            [(r["start"], r["lh_day"], r["temp_rise_day"]) for r in rows],
+            [("2026-05-01", 12, 15), ("2026-05-29", None, 15), ("2026-06-27", 9, None)],  # first of two LH tests counts
+        )
+
+    def test_lh_test_after_the_cycle_end_or_without_positive_result_is_not_counted(self) -> None:
+        symptoms = self._data([])
+        symptoms.append({"date": "2026-05-10", "test": "negative_ovulation"})
+        symptoms.sort(key=lambda e: e["date"])
+        self.assertEqual([r["lh_day"] for r in self._stats(symptoms)["cycle_table"]], [None, None, None])
+        # a test on the last day of cycle one is cycle day 28; on the next start it belongs to cycle two (day 1)
+        edge = self._stats(self._data(["2026-05-28", "2026-05-29"]))["cycle_table"]
+        self.assertEqual([r["lh_day"] for r in edge], [28, 1, None])
+
+    def test_report_shows_the_column_only_when_a_signal_exists(self) -> None:
+        stats = self._stats(self._data(["2026-05-12"]))
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            texts = statistics._REPORT_TEXT[lang]
+            report = self._report(stats, lang)
+            self.assertIn(f"<th>{html_lib.escape(texts['ovulation_signs_col'])}</th>", report, lang)
+            self.assertIn(f"<td>LH 12 · {html_lib.escape(texts['temp_short'])} 15</td>", report, lang)
+            self.assertIn(f"<td>{html_lib.escape(texts['temp_short'])} 15</td>", report, lang)
+            self.assertIn("<td>–</td>", report, lang)
+        none = self._report(self._stats([]))
+        self.assertNotIn("Ovulation signs", none)
+        self.assertNotIn("<td>–</td>", none)
+
+
 class CycleOverviewTests(unittest.TestCase):
     TODAY = date(2026, 7, 20)
     # cycles start 05-01 (28 days), 05-29 (29 days), 06-27 (running); period days 3, 4 and 3
@@ -347,9 +398,9 @@ class CycleOverviewTests(unittest.TestCase):
         self.assertEqual(
             self._stats()["cycle_table"],
             [
-                {"start": "2026-05-01", "length": 28, "period_days": 3, "pain_days": 1, "intermenstrual_days": 1},
-                {"start": "2026-05-29", "length": 29, "period_days": 4, "pain_days": 2, "intermenstrual_days": 1},
-                {"start": "2026-06-27", "length": None, "period_days": 3, "pain_days": 1, "intermenstrual_days": 0},
+                {"start": "2026-05-01", "length": 28, "period_days": 3, "pain_days": 1, "intermenstrual_days": 1, "lh_day": None, "temp_rise_day": None},
+                {"start": "2026-05-29", "length": 29, "period_days": 4, "pain_days": 2, "intermenstrual_days": 1, "lh_day": None, "temp_rise_day": None},
+                {"start": "2026-06-27", "length": None, "period_days": 3, "pain_days": 1, "intermenstrual_days": 0, "lh_day": None, "temp_rise_day": None},
             ],
         )
 

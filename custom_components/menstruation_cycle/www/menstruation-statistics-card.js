@@ -954,6 +954,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         fertility_forecast_best_days: 'Best days for conception',
         fertility_forecast_source_nfp: 'NFP (measured)',
         fertility_forecast_source_estimated: 'Estimated',
+        fertility_forecast_source_lh: 'Ovulation test (LH)',
         fertility_forecast_confidence: 'Window confidence',
         fertility_forecast_no_data: 'Not enough data for a fertility forecast.',
         progress_section_title: 'Progress',
@@ -1700,7 +1701,7 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     let fertilityHtml = '';
     if (ff) {
-      const sourceLabel = ff.source === 'nfp' ? t('fertility_forecast_source_nfp') : t('fertility_forecast_source_estimated');
+      const sourceLabel = t(`fertility_forecast_source_${['nfp', 'lh'].includes(ff.source) ? ff.source : 'estimated'}`);
       const fertileWindowConfidence = this._windowConfidenceFromDayMap(
         confidenceByDay,
         ff.fertile_window_start,

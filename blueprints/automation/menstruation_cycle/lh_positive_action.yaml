@@ -1,0 +1,40 @@
+blueprint:
+  name: M-Cycle - Action on positive ovulation test
+  description: >
+    Runs any action you choose when the first positive ovulation (LH) test of
+    a cycle is logged - e.g. send yourself or your partner a message, or
+    switch on a light. Fired once per cycle and not for private profiles.
+    The action can use trigger.event.data (friendly_name, profile, entry_id, date).
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/lh_positive_action.yaml
+  input:
+    profile_name:
+      name: Profile name (optional)
+      description: >
+        Only react to this profile (its display name, as shown in the logbook).
+        Leave empty to react to every profile.
+      default: ""
+      selector:
+        text: {}
+
+    action_to_run:
+      name: Action
+      description: What should happen.
+      selector:
+        action: {}
+
+trigger:
+  - trigger: event
+    event_type: menstruation_cycle_lh_positive
+
+variables:
+  profile_name: !input profile_name
+
+condition:
+  - condition: template
+    value_template: "{{ profile_name == '' or trigger.event.data.friendly_name == profile_name }}"
+
+action:
+  - !input action_to_run
+
+mode: queued

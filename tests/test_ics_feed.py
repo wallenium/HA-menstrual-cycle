@@ -150,6 +150,11 @@ class TestGenerateIcsStructure(unittest.TestCase):
         self.assertTrue(text.startswith("BEGIN:VCALENDAR"))
         self.assertIn("END:VCALENDAR", text)
 
+    def test_lh_source_is_named_in_the_fertility_events(self):
+        ff = {**self.ff, "source": "lh", "confidence": "medium"}
+        text = generate_ics(self.entry_id, self.pf, ff).decode("utf-8")
+        self.assertIn("Source: lh\\; confidence: medium", text)
+
     def test_required_fields(self):
         text = generate_ics(self.entry_id, self.pf, self.ff).decode("utf-8")
         self.assertIn("VERSION:2.0", text)

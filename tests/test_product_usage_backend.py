@@ -888,6 +888,23 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(cycle.ovulation_day, "2026-07-01")
         self.assertEqual(cycle.fertile_window_start, "2026-06-26")
         self.assertEqual(cycle.fertile_window_end, "2026-07-02")
+        # the forecast names its basis: the ovulation test, with medium confidence
+        self.assertEqual(cycle.fertility_forecast["source"], "lh")
+        self.assertEqual(cycle.fertility_forecast["confidence"], "medium")
+        self.assertEqual(self._lh_cycle([]).fertility_forecast["source"], "estimated")
+        negative = self._lh_cycle([{"date": "2026-06-30", "test": "negative_ovulation"}])
+        self.assertEqual(negative.fertility_forecast["source"], "estimated")
+
+    def test_compute_fertility_forecast_source_lh_needs_the_anchor_and_loses_to_nfp(self) -> None:
+        args = ("2026-07-27", None, "2026-06-26", "2026-07-02", "2026-07-01")
+        self.assertEqual(model.compute_fertility_forecast(*args, None, True)["source"], "lh")
+        # without an average cycle length the estimate would be low; the ovulation test lifts it to medium
+        self.assertEqual(model.compute_fertility_forecast(*args, None, True)["confidence"], "medium")
+        self.assertEqual(model.compute_fertility_forecast(*args, None)["source"], "estimated")
+        self.assertEqual(model.compute_fertility_forecast(*args, None)["confidence"], "low")
+        nfp = {"ovulation_detected": True, "confidence_level": "high"}
+        forecast = model.compute_fertility_forecast(*args, nfp, True)
+        self.assertEqual((forecast["source"], forecast["confidence"]), ("nfp", "high"))
 
     def test_positive_lh_test_uses_first_positive_of_the_cycle(self) -> None:
         cycle = self._lh_cycle(
@@ -933,6 +950,7 @@ class ProductUsageBackendTests(unittest.TestCase):
         self.assertEqual(with_lh.ovulation_day, without.ovulation_day)
         self.assertEqual(with_lh.fertile_window_start, without.fertile_window_start)
         self.assertNotEqual(with_lh.ovulation_day, "2026-06-09")
+        self.assertEqual(with_lh.fertility_forecast["source"], "nfp")
 
     def test_build_cycle_model_strict_mode_hides_ovulation_without_confirmed_temperature_rise(self) -> None:
         # Strict mode: no temperature rise logged → ovulation/fertile window must be None.

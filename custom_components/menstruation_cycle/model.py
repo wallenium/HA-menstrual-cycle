@@ -1936,6 +1936,7 @@ def compute_fertility_forecast(
     fertile_window_end: str | None,
     ovulation_day: str | None,
     nfp_analysis: dict[str, Any] | None,
+    lh_anchored: bool = False,
 ) -> dict[str, Any] | None:
     """Compute a fertility / conception planning forecast.
 
@@ -1945,7 +1946,8 @@ def compute_fertility_forecast(
         fertile_window_end: End of the fertile window (ISO date).
         best_days_start: Best days for conception – 2 days before ovulation (ISO date).
         best_days_end: Best days for conception – 1 day before ovulation (ISO date).
-        source: 'nfp' when derived from confirmed NFP analysis, 'estimated' otherwise.
+        source: 'nfp' when derived from confirmed NFP analysis, 'lh' when anchored on a positive ovulation test
+            (confidence 'medium'), 'estimated' otherwise.
         confidence: 'high', 'medium', or 'low'.
 
     Returns None when there is insufficient data to produce an estimate.
@@ -1960,6 +1962,8 @@ def compute_fertility_forecast(
     if nfp_detected and nfp_confidence in ("high", "medium"):
         source = "nfp"
         confidence = nfp_confidence
+    elif lh_anchored:
+        source, confidence = "lh", "medium"
     else:
         source = "estimated"
         confidence = "low" if avg_cycle_length is None else "medium"
@@ -2962,6 +2966,7 @@ def build_cycle_model(
     fertile_start: str | None = None
     fertile_end: str | None = None
     ovulation_day_iso: str | None = None
+    lh_anchored = False
     days_until: int | None = None
     learned_ov_offset: int | None = None
 
@@ -3032,6 +3037,7 @@ def build_cycle_model(
                     fertile_end = fw["end"]
             elif (lh_day := first_positive_lh_day(symptoms, current_cycle_start, now)) is not None:
                 # No confirmed temperature analysis: a positive LH test puts ovulation ~1 day later.
+                lh_anchored = True
                 ovulation_day = lh_day + timedelta(days=1)
                 ovulation_day_iso = ovulation_day.isoformat()
                 fertile_start = (ovulation_day - timedelta(days=5)).isoformat()
@@ -3081,7 +3087,7 @@ def build_cycle_model(
 
     period_forecast = compute_period_forecast(starts, next_start, effective_duration)
     fertility_forecast = compute_fertility_forecast(
-        next_start, avg_cycle, fertile_start, fertile_end, ovulation_day_iso, nfp_result
+        next_start, avg_cycle, fertile_start, fertile_end, ovulation_day_iso, nfp_result, lh_anchored
     )
     if low_data_mode:
         window_center = next_start or (period_forecast or {}).get("predicted_start")

@@ -40,6 +40,7 @@ from homeassistant.util import slugify
 from .const import (
     ATTR_HISTORY,
     EVENT_CYCLE_START_LOGGED,
+    EVENT_LH_POSITIVE,
     EVENT_PILL_TAKEN,
     EVENT_PRODUCT_CONSUMED,
     ATTR_PERIOD_DURATION_DAYS,
@@ -94,6 +95,7 @@ from .const import (
     CONF_NOTIFY_TEST_HINT,
     CONF_NOTIFY_LH_HINT,
     CONF_NOTIFY_TEMP_REMINDER,
+    CONF_NOTIFY_PERIOD_LUTEAL,
     SUPPLY_CHECK_LEAD_DAYS,
     SUPPLY_USAGE_GAP_DAYS,
     SUPPLY_USAGE_MAX_PERIODS,
@@ -105,6 +107,7 @@ from .const import (
     DEFAULT_NOTIFY_TEST_HINT,
     DEFAULT_NOTIFY_LH_HINT,
     DEFAULT_NOTIFY_TEMP_REMINDER,
+    DEFAULT_NOTIFY_PERIOD_LUTEAL,
     TEST_HINT_DAYS_AFTER_OVULATION,
     LH_HINT_LEAD_DAYS,
     LH_HINT_WINDOW_DAYS,
@@ -282,6 +285,7 @@ from .model import (
     cycle_wellness_score,
     current_cycle_phase,
     find_implausible_cycle_gaps,
+    first_positive_lh_day,
     grouped_cycle_starts,
     last_positive_pregnancy_test_day,
     normalize_history,
@@ -1265,6 +1269,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: the last cycle was {days} days shorter than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
         "testhint_title": "Pregnancy test",
         "testhint_message": "{name}: it is {days} days since the confirmed ovulation ({date}). A pregnancy test is meaningful from about now. This is only a rule of thumb, not medical advice.",
+        "testhint_lh_message": "{name}: it is {days} days since the ovulation estimated from your positive LH test ({date}). A pregnancy test is meaningful from about now. This is only a rule of thumb, not medical advice.",
         "lhhint_title": "Ovulation tests",
         "lhhint_message": "{name}: ovulation is expected in about {days} days ({date}). If you use ovulation (LH) tests, now is a good time to start testing. This is only a rule of thumb, not medical advice.",
         "tempreminder_title": "Basal temperature",
@@ -1318,6 +1323,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: Der letzte Zyklus war {days} Tage kürzer als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
         "testhint_title": "Schwangerschaftstest",
         "testhint_message": "{name}: Seit dem bestätigten Eisprung ({date}) sind {days} Tage vergangen. Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert, keine medizinische Beratung.",
+        "testhint_lh_message": "{name}: Seit dem aus deinem positiven LH-Test geschätzten Eisprung ({date}) sind {days} Tage vergangen. Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert, keine medizinische Beratung.",
         "lhhint_title": "Ovulationstests",
         "lhhint_message": "{name}: Der Eisprung wird in etwa {days} Tagen erwartet ({date}). Wenn du Ovulationstests (LH) verwendest, ist jetzt ein guter Zeitpunkt, mit dem Testen zu beginnen. Das ist nur ein Richtwert, keine medizinische Beratung.",
         "tempreminder_title": "Basaltemperatur",
@@ -1371,6 +1377,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name} : le dernier cycle était plus court de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
         "testhint_title": "Test de grossesse",
         "testhint_message": "{name} : {days} jours se sont écoulés depuis l'ovulation confirmée ({date}). Un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical.",
+        "testhint_lh_message": "{name} : {days} jours se sont écoulés depuis l'ovulation estimée d'après votre test LH positif ({date}). Un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical.",
         "lhhint_title": "Tests d'ovulation",
         "lhhint_message": "{name} : l'ovulation est attendue dans environ {days} jours ({date}). Si vous utilisez des tests d'ovulation (LH), c'est le bon moment pour commencer. Ce n'est qu'un repère, pas un avis médical.",
         "tempreminder_title": "Température basale",
@@ -1424,6 +1431,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: el último ciclo fue {days} días más corto que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
         "testhint_title": "Prueba de embarazo",
         "testhint_message": "{name}: han pasado {days} días desde la ovulación confirmada ({date}). Una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico.",
+        "testhint_lh_message": "{name}: han pasado {days} días desde la ovulación estimada a partir de tu prueba LH positiva ({date}). Una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico.",
         "lhhint_title": "Pruebas de ovulación",
         "lhhint_message": "{name}: se espera la ovulación en unos {days} días ({date}). Si usas pruebas de ovulación (LH), ahora es un buen momento para empezar. Es solo una pauta orientativa, no un consejo médico.",
         "tempreminder_title": "Temperatura basal",
@@ -1477,6 +1485,7 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: den senaste cykeln var {days} dagar kortare än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
         "testhint_title": "Graviditetstest",
         "testhint_message": "{name}: Det har gått {days} dagar sedan den bekräftade ägglossningen ({date}). Ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd.",
+        "testhint_lh_message": "{name}: Det har gått {days} dagar sedan den ägglossning som uppskattats utifrån ditt positiva LH-test ({date}). Ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd.",
         "lhhint_title": "Ovulationstester",
         "lhhint_message": "{name}: Ägglossning förväntas om cirka {days} dagar ({date}). Om du använder ovulationstester (LH) är det nu en bra tidpunkt att börja. Det är bara en tumregel, inget medicinskt råd.",
         "tempreminder_title": "Basaltemperatur",
@@ -1616,6 +1625,9 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             _LOGGER.warning("Could not send partner notification via %s.%s: %s", partner_target[0], partner_target[1], ex)
 
     period_start = (model.period_forecast or {}).get("predicted_start")
+    if entry.options.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL):
+        nfp_luteal = ((model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start")
+        period_start = nfp_luteal or period_start
     fertile_start = (model.fertility_forecast or {}).get("fertile_window_start")
     ovulation_day = (model.fertility_forecast or {}).get("ovulation_estimate")
     notified_something = False
@@ -1714,21 +1726,27 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             notified_something = True
 
     # Pregnancy-test timing for people trying to conceive: once per cycle, TEST_HINT_DAYS_AFTER_OVULATION days after an
-    # ovulation the NFP analysis confirmed (a short window so one missed daily run does not lose it); own target only.
+    # ovulation the NFP analysis confirmed - or, without that, the day after the first positive LH test (a short window
+    # so one missed daily run does not lose it); own target only.
     nfp = model.nfp_analysis if isinstance(model.nfp_analysis, dict) else {}
     confirmed_ovulation = nfp.get("ovulation_day")  # None unless the analysis confirmed it
+    test_hint_ovulation, test_hint_key = confirmed_ovulation, "testhint_message"
+    if test_hint_enabled and not confirmed_ovulation and model.grouped_starts:
+        lh_day = first_positive_lh_day(runtime.symptom_history, model.grouped_starts[-1], today)
+        if lh_day is not None:
+            test_hint_ovulation, test_hint_key = (lh_day + timedelta(days=1)).isoformat(), "testhint_lh_message"
     if (
         test_hint_enabled
-        and confirmed_ovulation
+        and test_hint_ovulation
         and model.grouped_starts
         and not mute_fertility
         and runtime.noncycle_data.get("notified_test_hint") != model.grouped_starts[-1]
-        and 0 <= (today - date.fromisoformat(confirmed_ovulation)).days - TEST_HINT_DAYS_AFTER_OVULATION <= 2
+        and 0 <= (today - date.fromisoformat(test_hint_ovulation)).days - TEST_HINT_DAYS_AFTER_OVULATION <= 2
     ):
         await _send(
             strings["testhint_title"],
-            strings["testhint_message"].format(
-                name=runtime.friendly_name, date=confirmed_ovulation, days=TEST_HINT_DAYS_AFTER_OVULATION
+            strings[test_hint_key].format(
+                name=runtime.friendly_name, date=test_hint_ovulation, days=TEST_HINT_DAYS_AFTER_OVULATION
             ),
         )
         runtime.noncycle_data["notified_test_hint"] = model.grouped_starts[-1]
@@ -5134,6 +5152,15 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         _async_check_household_supply(hass, household_data)
 
 
+def _lh_cycle_bounds(history: list[str], date_iso: str) -> tuple[str, date, str | None] | None:
+    """Arguments for first_positive_lh_day(): the cycle that contains date_iso (None before the first logged start)."""
+    starts = grouped_cycle_starts(sorted(set(history)))
+    start = max((s for s in starts if s <= date_iso), default=None)
+    if start is None:
+        return None
+    return start, date.max, min((s for s in starts if s > date_iso), default=None)
+
+
 async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, save: bool = True) -> None:
     """Add or update symptom data for a date. save=False lets a bulk caller (import_symptom_history) save once at the end."""
     runtime = _runtime_for_call(hass, call)
@@ -5241,6 +5268,8 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
 
     was_pill = existing is not None and existing.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
     was_unprotected = existing is not None and _is_unprotected(existing.get(SYMPTOM_INTERCOURSE))
+    lh_cycle = _lh_cycle_bounds(runtime.history, date_iso)
+    lh_was_open = lh_cycle is not None and first_positive_lh_day(runtime.symptom_history, *lh_cycle) is None
     if existing:
         merged = dict(existing)
         merged.update(next_symptom_data)
@@ -5277,6 +5306,21 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         ):
             hass.bus.async_fire(
                 EVENT_PILL_TAKEN,
+                {
+                    "entry_id": _entry_id_for_runtime(hass, runtime),
+                    "profile": runtime.profile,
+                    "friendly_name": runtime.friendly_name,
+                    "date": date_iso,
+                },
+            )
+        # First positive ovulation test of the cycle (this date became the first one); described in logbook.py.
+        if (
+            lh_was_open
+            and first_positive_lh_day(runtime.symptom_history, *lh_cycle) == date.fromisoformat(date_iso)
+            and runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE
+        ):
+            hass.bus.async_fire(
+                EVENT_LH_POSITIVE,
                 {
                     "entry_id": _entry_id_for_runtime(hass, runtime),
                     "profile": runtime.profile,

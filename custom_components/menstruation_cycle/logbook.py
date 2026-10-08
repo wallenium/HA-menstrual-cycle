@@ -11,7 +11,7 @@ home-assistant/core/dev/.../components/logbook/__init__.py) and against two
 real, unmangled example platforms (automation/logbook.py, script/logbook.py)
 before writing this - same Round-40 label_registry lesson as backup.py.
 
-Describes four menstruation_cycle events (the fourth, EVENT_PILL_TAKEN, is a newly logged pill intake):
+Describes five menstruation_cycle events (EVENT_PILL_TAKEN is a newly logged pill intake, EVENT_LH_POSITIVE the first positive ovulation test of a cycle):
 - EVENT_PRODUCT_CONSUMED (household-product usage). sensor.household_
   product_stock also carries a unit_of_measurement attribute (see
   _async_update_household_inventory_state) so HA's logbook "continuous
@@ -51,7 +51,15 @@ from homeassistant.components.logbook import (
 )
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, EVENT_CYCLE_START_LOGGED, EVENT_PILL_TAKEN, EVENT_PRODUCT_CONSUMED, EVENT_STATE_CHANGED
+from .const import (
+    DOMAIN,
+    EVENT_CYCLE_START_LOGGED,
+    EVENT_LH_POSITIVE,
+    EVENT_PILL_TAKEN,
+    EVENT_PRODUCT_CONSUMED,
+    EVENT_STATE_CHANGED,
+)
+
 
 _HOUSEHOLD_INVENTORY_STATE_ENTITY_ID = "sensor.household_product_stock"
 
@@ -62,6 +70,7 @@ _LOGBOOK_STRINGS: dict[str, dict[str, Any]] = {
         "state_changed": "cycle status changed to {state}",
         "cycle_start_logged": "logged period start on {date}",
         "pill_taken": "took the pill on {date}",
+        "lh_positive": "logged the first positive ovulation test of the cycle on {date}",
         "products": {
             "tampon": "tampons", "pad": "pads", "liner": "liners",
             "underwear": "underwear", "cup": "the menstrual cup",
@@ -79,6 +88,7 @@ _LOGBOOK_STRINGS: dict[str, dict[str, Any]] = {
         "state_changed": "Zyklusstatus wechselte zu {state}",
         "cycle_start_logged": "Periodenbeginn für {date} erfasst",
         "pill_taken": "Pille für {date} genommen",
+        "lh_positive": "Erster positiver Ovulationstest des Zyklus für {date} erfasst",
         "products": {
             "tampon": "Tampons", "pad": "Pads", "liner": "Slipeinlagen",
             "underwear": "Unterwäsche", "cup": "die Menstruationstasse",
@@ -96,6 +106,7 @@ _LOGBOOK_STRINGS: dict[str, dict[str, Any]] = {
         "state_changed": "el estado del ciclo cambió a {state}",
         "cycle_start_logged": "registró el inicio del período el {date}",
         "pill_taken": "tomó la píldora el {date}",
+        "lh_positive": "registró la primera prueba de ovulación positiva del ciclo el {date}",
         "products": {
             "tampon": "tampones", "pad": "compresas", "liner": "protectores diarios",
             "underwear": "ropa interior", "cup": "la copa menstrual",
@@ -113,6 +124,7 @@ _LOGBOOK_STRINGS: dict[str, dict[str, Any]] = {
         "state_changed": "le statut du cycle est passé à {state}",
         "cycle_start_logged": "a enregistré le début des règles le {date}",
         "pill_taken": "a pris la pilule le {date}",
+        "lh_positive": "a enregistré le premier test d'ovulation positif du cycle le {date}",
         "products": {
             "tampon": "tampons", "pad": "serviettes", "liner": "protège-slips",
             "underwear": "sous-vêtements", "cup": "la coupe menstruelle",
@@ -130,6 +142,7 @@ _LOGBOOK_STRINGS: dict[str, dict[str, Any]] = {
         "state_changed": "cykelstatus ändrades till {state}",
         "cycle_start_logged": "loggade mensstart den {date}",
         "pill_taken": "tog p-pillret den {date}",
+        "lh_positive": "loggade cykelns första positiva ägglossningstest den {date}",
         "products": {
             "tampon": "tamponger", "pad": "bindor", "liner": "trosskydd",
             "underwear": "underkläder", "cup": "menskoppen",
@@ -221,4 +234,17 @@ def async_describe_events(
     async_describe_event(DOMAIN, EVENT_PRODUCT_CONSUMED, async_describe_product_consumed)
     async_describe_event(DOMAIN, EVENT_STATE_CHANGED, async_describe_state_changed)
     async_describe_event(DOMAIN, EVENT_CYCLE_START_LOGGED, async_describe_cycle_start_logged)
+    @callback
+    def async_describe_lh_positive(event: LazyEventPartialState) -> dict[str, Any]:
+        """Describe the first positive ovulation test of a cycle."""
+        data = event.data
+        strings = _logbook_strings(hass.config.language)
+
+        return {
+            LOGBOOK_ENTRY_NAME: data.get("friendly_name") or "unknown",
+            LOGBOOK_ENTRY_MESSAGE: strings["lh_positive"].format(date=data.get("date", "?")),
+            LOGBOOK_ENTRY_CONTEXT_ID: event.context_id,
+        }
+
     async_describe_event(DOMAIN, EVENT_PILL_TAKEN, async_describe_pill_taken)
+    async_describe_event(DOMAIN, EVENT_LH_POSITIVE, async_describe_lh_positive)

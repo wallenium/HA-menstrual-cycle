@@ -516,6 +516,33 @@ test('stats tab renders fertility forecast with NFP source label when source is 
   assert.ok(html.includes('NFP (measured)'), 'NFP source label missing');
 });
 
+test('stats tab labels a fertility forecast anchored on an ovulation test', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.period_forecast = {
+    predicted_start: '2026-09-01',
+    predicted_end: '2026-09-05',
+    cycle_std_days: 0.8,
+    confidence: 'high',
+  };
+  hass.states['sensor.menstruation'].attributes.fertility_forecast = {
+    ovulation_estimate: '2026-08-18',
+    fertile_window_start: '2026-08-13',
+    fertile_window_end: '2026-08-19',
+    best_days_start: '2026-08-16',
+    best_days_end: '2026-08-17',
+    source: 'lh',
+    confidence: 'medium',
+  };
+  card._hass = hass;
+  card._tab = 'stats';
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('Ovulation test (LH)'), 'LH source label missing');
+  assert.ok(!html.includes('NFP (measured)') && !html.includes('>Estimated<'), 'wrong source label');
+});
+
 test('stats tab gracefully omits planning section when no forecast data', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', language: 'en' });

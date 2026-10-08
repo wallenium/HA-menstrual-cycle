@@ -64,6 +64,7 @@ from .const import (
     CONF_NOTIFY_TEST_HINT,
     CONF_NOTIFY_LH_HINT,
     CONF_NOTIFY_TEMP_REMINDER,
+    CONF_NOTIFY_PERIOD_LUTEAL,
     CONF_CALENDAR_PREGNANCY_EVENTS,
     CONF_CALENDAR_CONTRACEPTION_EVENTS,
     CONF_CALENDAR_LOGGED_PERIODS,
@@ -103,6 +104,7 @@ from .const import (
     DEFAULT_NOTIFY_TEST_HINT,
     DEFAULT_NOTIFY_LH_HINT,
     DEFAULT_NOTIFY_TEMP_REMINDER,
+    DEFAULT_NOTIFY_PERIOD_LUTEAL,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
     DEFAULT_CALENDAR_LOGGED_PERIODS,
@@ -422,6 +424,7 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_TEST_HINT,
         CONF_NOTIFY_LH_HINT,
         CONF_NOTIFY_TEMP_REMINDER,
+        CONF_NOTIFY_PERIOD_LUTEAL,
     ),
     "pill": (
         CONF_NOTIFY_PILL_ENABLED,
@@ -632,6 +635,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_test_hint": bool(self._entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT)),
             "notify_lh_hint": bool(self._entry.options.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT)),
             "notify_temp_reminder": bool(self._entry.options.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER)),
+            "notify_period_luteal": bool(self._entry.options.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL)),
             "calendar_pregnancy_events": bool(
                 self._entry.options.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
             ),
@@ -785,6 +789,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append("  - Ovulation test start hint")
             if d.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER):
                 lines.append("  - Basal temperature reminder")
+            if d.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL):
+                lines.append("  - Period reminder from the luteal phase")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -967,6 +973,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_TEMP_REMINDER] = bool(
                     user_input.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER)
                 )
+                self._data[CONF_NOTIFY_PERIOD_LUTEAL] = bool(
+                    user_input.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL)
+                )
                 self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
                     0,
                     min(
@@ -1128,6 +1137,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_NOTIFY_TEST_HINT, default=c["notify_test_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_LH_HINT, default=c["notify_lh_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_TEMP_REMINDER, default=c["notify_temp_reminder"]): bool,
+                vol.Optional(CONF_NOTIFY_PERIOD_LUTEAL, default=c["notify_period_luteal"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
@@ -1477,6 +1487,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_TEST_HINT: d[CONF_NOTIFY_TEST_HINT],
                 CONF_NOTIFY_LH_HINT: d[CONF_NOTIFY_LH_HINT],
                 CONF_NOTIFY_TEMP_REMINDER: d[CONF_NOTIFY_TEMP_REMINDER],
+                CONF_NOTIFY_PERIOD_LUTEAL: d[CONF_NOTIFY_PERIOD_LUTEAL],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],

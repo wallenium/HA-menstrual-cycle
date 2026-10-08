@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPONENT_ROOT = REPO_ROOT / "custom_components" / "menstruation_cycle"
@@ -859,6 +859,52 @@ class PregnancyTestHintTests(unittest.TestCase):
         self.assertEqual(len(self._send(14, options=mute, method="condom")), 1)
         self.assertEqual(len(self._send(14, method="pill")), 1)  # not muted unless the option is on
 
+    def _send_lh(self, positive_offset, *, symptoms=(), **kwargs):
+        """LH-only user: first positive test `positive_offset` days after the cycle start 30 days ago."""
+        start = -30
+        tests = [{"date": _iso(start + positive_offset), "test": "positive_ovulation"}] if positive_offset is not None else []
+        runtime = _runtime(history=[_iso(start + k) for k in range(5)], symptom_history=[*tests, *symptoms])
+        entry = _entry(**{const.CONF_NOTIFY_TEST_HINT: True, **kwargs.pop("options", {})})
+        return [(t, m) for t, m, _ in _run_notifications(entry, runtime).calls], runtime
+
+    def test_positive_lh_test_stands_in_for_a_confirmed_ovulation(self) -> None:
+        # first positive test 13 days after the start -> ovulation the day after -> today is 16 days after it
+        sent, runtime = self._send_lh(13)
+        hint = [(t, m) for t, m in sent if t == "Pregnancy test"]
+        self.assertEqual(len(hint), 1, sent)
+        self.assertIn("estimated from your positive LH test", hint[0][1])
+        self.assertIn(_iso(-30 + 14), hint[0][1])
+        self.assertEqual(runtime.noncycle_data["notified_test_hint"], _iso(-30))
+        # window is 14..16 days after the estimated ovulation (positive test + 1)
+        for offset, expected in ((12, 0), (13, 1), (15, 1), (16, 0)):
+            titles = [t for t, _ in self._send_lh(offset)[0]]
+            self.assertEqual(titles.count("Pregnancy test"), expected, offset)
+
+    def test_confirmed_ovulation_wins_over_the_lh_stand_in(self) -> None:
+        original = self._entries
+
+        def with_early_positive(start_offset):
+            entries = original(start_offset)
+            entries[3]["test"] = "positive_ovulation"  # LH estimate would be day 4 - long before the confirmed day
+            return entries
+
+        with patch.object(self, "_entries", with_early_positive):
+            (title, message), = self._send(14)
+        self.assertIn("confirmed ovulation", message)
+        self.assertNotIn("LH test", message)
+
+    def test_lh_stand_in_respects_off_dedupe_mute_and_only_positive_tests(self) -> None:
+        titles = lambda sent: [t for t, _ in sent]  # noqa: E731
+        self.assertNotIn("Pregnancy test", titles(self._send_lh(13, options={const.CONF_NOTIFY_TEST_HINT: False})[0]))
+        self.assertNotIn("Pregnancy test", titles(self._send_lh(None)[0]))
+        negative = [{"date": _iso(-30 + 13), "test": "negative_ovulation"}]
+        self.assertNotIn("Pregnancy test", titles(self._send_lh(None, symptoms=negative)[0]))
+        mute = {const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True}
+        pill = [{"date": _iso(-1), "contraception_method": "pill"}]
+        self.assertNotIn("Pregnancy test", titles(self._send_lh(13, symptoms=pill, options=mute)[0]))
+        # a test of the previous cycle does not count (cycle start is 30 days ago)
+        self.assertNotIn("Pregnancy test", titles(self._send_lh(-16)[0]))
+
     def test_no_message_without_a_confirmed_ovulation(self) -> None:
         runtime = _runtime(history=[_iso(-20 + k) for k in range(5)], symptom_history=[{"date": _iso(-9), "basal_temp": 36.4}])
         entry = _entry(**{const.CONF_NOTIFY_TEST_HINT: True})
@@ -873,6 +919,7 @@ class PregnancyTestHintTests(unittest.TestCase):
             strings = integration._notify_strings(lang)
             self.assertTrue(strings["testhint_title"], lang)
             strings["testhint_message"].format(name="A", date="2026-10-01", days=14)
+            strings["testhint_lh_message"].format(name="A", date="2026-10-01", days=14)
 
 
 class OvulationTestAndTemperatureHintTests(unittest.TestCase):
@@ -1389,6 +1436,126 @@ class PillRefillTodoTests(unittest.TestCase):
         self.assertEqual(self._run(_runtime(symptom_history=_pill_entries(*range(-17, 1)))).await_count, 0)
         self.assertEqual(self._run(_runtime(symptom_history=_pill_entries(*range(-24, 1))), **pause).await_count, 0)
         self.assertEqual(self._run(_runtime(), **pause).await_count, 0)
+
+
+class PeriodFromLutealPhaseTests(unittest.TestCase):
+    """Opt-in: "period expected" uses the luteal-phase date instead of the calendar prediction."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _send(self, *, luteal_offset, option=True, noncycle=None, lead=0, calendar_offset=0):
+        # regular 28-day cycles; the calendar predicts the next start calendar_offset days from today
+        last = calendar_offset - 28
+        runtime = _runtime(history=[_iso(last - 28 * k + d) for k in range(2, -1, -1) for d in range(5)],
+                           noncycle_data=dict(noncycle or {}))
+        options = {
+            const.CONF_NOTIFY_PERIOD_ENABLED: True, const.CONF_NOTIFY_PERIOD_LEAD_DAYS: lead,
+            const.CONF_NOTIFY_PERIOD_LUTEAL: option,
+        }
+        model_mod = sys.modules[f"{_PKG}.model"]
+        real = model_mod.build_cycle_model
+
+        def build(**kwargs):
+            result = real(**kwargs)
+            self.calendar = result.period_forecast["predicted_start"]
+            if luteal_offset is not None:
+                result.nfp_analysis = {"luteal_forecast": {"predicted_start": _iso(luteal_offset)}}
+            return result
+
+        sent = _Sent()
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]), patch.object(model_mod, "build_cycle_model", build):
+            _run(integration._async_check_and_send_notifications(_hass(), _entry(**options), runtime))
+        self.runtime = runtime
+        return [message for _, message, _ in sent.calls]
+
+    def test_option_off_keeps_the_calendar_date(self) -> None:
+        self.assertEqual(len(self._send(luteal_offset=3, option=False)), 1)
+        self.assertEqual(self._send(luteal_offset=0, option=False, calendar_offset=3), [])
+        self.assertEqual(self.runtime.noncycle_data.get("notified_period_start"), None)
+
+    def test_option_on_uses_the_luteal_date(self) -> None:
+        # calendar says in 3 days, luteal phase says today: reminder today with the luteal date
+        (message,) = self._send(luteal_offset=0, calendar_offset=3)
+        self.assertIn(_iso(0), message)
+        self.assertEqual(self.runtime.noncycle_data["notified_period_start"], _iso(0))
+        # calendar says today, luteal phase says in 3 days: nothing yet
+        self.assertEqual(self._send(luteal_offset=3), [])
+        # lead time counts from the luteal date
+        (message,) = self._send(luteal_offset=2, lead=2)
+        self.assertIn(_iso(2), message)
+
+    def test_without_luteal_forecast_the_calendar_date_is_used(self) -> None:
+        (message,) = self._send(luteal_offset=None)
+        self.assertIn(self.calendar, message)
+
+    def test_each_date_is_notified_once(self) -> None:
+        self.assertEqual(self._send(luteal_offset=0, calendar_offset=3, noncycle={"notified_period_start": _iso(0)}), [])
+
+
+class LhPositiveEventTests(unittest.TestCase):
+    """The first positive ovulation test of a cycle fires an event for automations and the logbook."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _log(self, symptom_data, day_offset=-2, *, symptoms=(), starts=(-10,), visibility="full", save=True):
+        history = [_iso(s + k) for s in starts for k in range(3)]
+        runtime = _runtime(
+            history=history, symptom_history=[dict(e) for e in symptoms], profile="anna", visibility_level=visibility
+        )
+        hass = _hass()
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: _entry())
+        hass.bus = SimpleNamespace(async_fire=MagicMock())
+        call = SimpleNamespace(data={const.SERVICE_FIELD_DATE: _iso(day_offset), const.SERVICE_FIELD_SYMPTOM_DATA: symptom_data})
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_entry_id_for_runtime", lambda h, r: "e1"
+        ), patch.object(integration, "_async_save_and_notify", AsyncMock()), patch.object(
+            integration.dt_util, "now", lambda: NOW[0]
+        ):
+            _run(integration._async_handle_add_symptom(hass, call, save=save))
+        return [c.args for c in hass.bus.async_fire.call_args_list if c.args[0] == const.EVENT_LH_POSITIVE]
+
+    def test_first_positive_test_of_the_cycle_fires_once_with_the_profile(self) -> None:
+        (name, data), = self._log({"test": ["positive_ovulation"]})
+        self.assertEqual(name, "menstruation_cycle_lh_positive")
+        self.assertEqual(data, {"entry_id": "e1", "profile": "anna", "friendly_name": "Test", "date": _iso(-2)})
+        # a plain string counts, a mixed list too
+        self.assertEqual(len(self._log({"test": "positive_ovulation"})), 1)
+        self.assertEqual(len(self._log({"test": ["negative_pregnancy", "positive_ovulation"]})), 1)
+
+    def test_no_event_for_negative_tests_other_fields_or_pregnancy_tests(self) -> None:
+        self.assertEqual(self._log({"test": ["negative_ovulation"]}), [])
+        self.assertEqual(self._log({"test": ["positive_pregnancy"]}), [])
+        self.assertEqual(self._log({"mood": "good"}), [])
+
+    def test_no_event_when_the_cycle_already_has_a_positive_test(self) -> None:
+        earlier = [{"date": _iso(-4), "test": ["positive_ovulation"]}]
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, symptoms=earlier), [])
+        later = [{"date": _iso(-1), "test": ["positive_ovulation"]}]
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, symptoms=later), [])
+        # saving the same day again does not repeat it
+        same_day = [{"date": _iso(-2), "test": ["positive_ovulation"]}]
+        self.assertEqual(self._log({"test": ["positive_ovulation"], "mood": "ok"}, symptoms=same_day), [])
+
+    def test_a_positive_test_of_the_previous_cycle_does_not_block_the_new_one(self) -> None:
+        previous = [{"date": _iso(-30), "test": ["positive_ovulation"]}]
+        self.assertEqual(len(self._log({"test": ["positive_ovulation"]}, symptoms=previous, starts=(-38, -10))), 1)
+        # ... and a test backfilled into the previous cycle is that cycle's first one
+        newer = [{"date": _iso(-4), "test": ["positive_ovulation"]}]
+        self.assertEqual(len(self._log({"test": ["positive_ovulation"]}, -30, symptoms=newer, starts=(-38, -10))), 1)
+
+    def test_a_negative_test_on_the_same_day_is_replaced_by_the_positive_one(self) -> None:
+        existing = [{"date": _iso(-2), "test": ["negative_ovulation"]}]
+        self.assertEqual(len(self._log({"test": ["positive_ovulation"]}, symptoms=existing)), 1)
+
+    def test_nothing_for_private_profiles_bulk_imports_or_before_the_first_period(self) -> None:
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, visibility="private"), [])
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, save=False), [])
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, starts=()), [])
+        self.assertEqual(self._log({"test": ["positive_ovulation"]}, -20), [])
 
 
 if __name__ == "__main__":

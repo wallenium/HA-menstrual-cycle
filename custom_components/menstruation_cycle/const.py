@@ -16,6 +16,8 @@ EVENT_PRODUCT_CONSUMED = f"{DOMAIN}_product_consumed"
 EVENT_CYCLE_START_LOGGED = f"{DOMAIN}_cycle_start_logged"
 # Fired when a pill intake is newly logged (dashboard, service or notification button); described in logbook.py.
 EVENT_PILL_TAKEN = f"{DOMAIN}_pill_taken"
+# Fired when the first positive ovulation (LH) test of a cycle is logged; described in logbook.py.
+EVENT_LH_POSITIVE = f"{DOMAIN}_lh_positive"
 PLATFORMS = ["sensor"]
 
 STORAGE_VERSION = 1
@@ -176,6 +178,8 @@ CONF_NOTIFY_LH_HINT = "notify_lh_hint"
 DEFAULT_NOTIFY_LH_HINT = False
 CONF_NOTIFY_TEMP_REMINDER = "notify_temp_reminder"
 DEFAULT_NOTIFY_TEMP_REMINDER = False
+CONF_NOTIFY_PERIOD_LUTEAL = "notify_period_luteal"
+DEFAULT_NOTIFY_PERIOD_LUTEAL = False
 LH_HINT_LEAD_DAYS = 7  # start hint this many days before the expected ovulation
 LH_HINT_WINDOW_DAYS = 2  # ... and still send it up to this many days later (one missed daily run does not lose it)
 TEMP_REMINDER_LOOKBACK_DAYS = 7

@@ -282,12 +282,17 @@ def _compute_cycle_table(
     pain_trend: list[dict[str, Any]],
     intermenstrual_dates: list[str],
     today: date,
+    symptom_history: list[dict[str, Any]],
+    period_duration_days: int,
 ) -> list[dict[str, Any]]:
     """One row per analysed cycle, oldest first: start, length (None while it is still running), period days,
-    pain days and days with bleeding outside the period."""
+    pain days, days with bleeding outside the period and the cycle day (1 = start) of the first positive LH test
+    and of the temperature rise (None where the cycle has no such signal)."""
     rows: list[dict[str, Any]] = []
     for (start_d, end_d, start_iso), pain in zip(periods, pain_trend):
         first, last = start_d.isoformat(), end_d.isoformat()
+        lh_day = first_positive_lh_day(symptom_history, start_iso, end_d)
+        rise_iso = _parse_iso(analyze_nfp_cycle(symptom_history, start_iso, period_duration_days).get("temperature_rise_day"))
         rows.append(
             {
                 "start": start_iso,
@@ -295,6 +300,8 @@ def _compute_cycle_table(
                 "period_days": sum(1 for day in period_days if first <= day <= last),
                 "pain_days": pain["pain_days"],
                 "intermenstrual_days": sum(1 for day in intermenstrual_dates if first <= day <= last),
+                "lh_day": (lh_day - start_d).days + 1 if lh_day else None,
+                "temp_rise_day": (rise_iso - start_d).days + 1 if rise_iso else None,
             }
         )
     return rows
@@ -545,7 +552,13 @@ def compute_statistics(
         "prediction_accuracy": compute_prediction_accuracy(usable, period_duration_days),
         "pain_trend": pain_trend,
         "cycle_table": _compute_cycle_table(
-            usable, periods, pain_trend, [item["date"] for item in intermenstrual["intermenstrual_bleeding"]], today
+            usable,
+            periods,
+            pain_trend,
+            [item["date"] for item in intermenstrual["intermenstrual_bleeding"]],
+            today,
+            symptom_history,
+            period_duration_days,
         ),
         "days_back": days_back,
         "report_date": today.isoformat(),
@@ -684,6 +697,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "cycle_length_col": "Länge",
         "period_days_col": "Periodentage",
         "intermenstrual_col": "Blutung außerhalb der Periode (Tage)",
+        "ovulation_signs_col": "Eisprung-Zeichen (Zyklustag)",
+        "temp_short": "Temp.",
         "cycle_ongoing": "laufend",
         "pain_days": "Schmerztage",
         "cycle_data": "Zyklusdaten",
@@ -741,6 +756,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "cycle_length_col": "Length",
         "period_days_col": "Period days",
         "intermenstrual_col": "Bleeding outside the period (days)",
+        "ovulation_signs_col": "Ovulation signs (cycle day)",
+        "temp_short": "Temp.",
         "cycle_ongoing": "ongoing",
         "pain_days": "Pain Days",
         "cycle_data": "Cycle Data",
@@ -798,6 +815,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "cycle_length_col": "Duración",
         "period_days_col": "Días de periodo",
         "intermenstrual_col": "Sangrado fuera del periodo (días)",
+        "ovulation_signs_col": "Signos de ovulación (día del ciclo)",
+        "temp_short": "Temp.",
         "cycle_ongoing": "en curso",
         "pain_days": "Días de dolor",
         "cycle_data": "Datos del ciclo",
@@ -855,6 +874,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "cycle_length_col": "Durée",
         "period_days_col": "Jours de règles",
         "intermenstrual_col": "Saignement hors règles (jours)",
+        "ovulation_signs_col": "Signes d'ovulation (jour du cycle)",
+        "temp_short": "Temp.",
         "cycle_ongoing": "en cours",
         "pain_days": "Jours de douleur",
         "cycle_data": "Données du cycle",
@@ -912,6 +933,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "cycle_length_col": "Längd",
         "period_days_col": "Mensdagar",
         "intermenstrual_col": "Blödning utanför menstruationen (dagar)",
+        "ovulation_signs_col": "Ägglossningstecken (cykeldag)",
+        "temp_short": "Temp.",
         "cycle_ongoing": "pågår",
         "pain_days": "Smärtdagar",
         "cycle_data": "Cykeldata",
@@ -1002,14 +1025,23 @@ def generate_doctor_report_html(
                 return _h(T["cycle_ongoing"])
             return _h(f"{row['length']} {T['days']}")
 
+        def _signs_cell(row: dict[str, Any]) -> str:
+            parts = [f"LH {row['lh_day']}"] if row.get("lh_day") else []
+            parts += [f"{T['temp_short']} {row['temp_rise_day']}"] if row.get("temp_rise_day") else []
+            return _h(" · ".join(parts) or "–")
+
+        # The signs column only appears when at least one cycle has an LH test or a temperature rise.
+        show_signs = any(row.get("lh_day") or row.get("temp_rise_day") for row in stats["cycle_table"])
         ct_rows = "".join(
             f"<tr><td>{_h(row['start'])}</td><td>{_length_cell(row)}</td><td>{row['period_days']}</td>"
-            f"<td>{row['pain_days']}</td><td>{row['intermenstrual_days']}</td></tr>"
+            f"<td>{row['pain_days']}</td><td>{row['intermenstrual_days']}</td>"
+            f"{'<td>' + _signs_cell(row) + '</td>' if show_signs else ''}</tr>"
             for row in reversed(stats["cycle_table"])
         )
+        signs_header = f"<th>{_h(T['ovulation_signs_col'])}</th>" if show_signs else ""
         cycle_table_html = f"""
         <table class="stats-table">
-          <tr><th>{_h(T['cycle_start'])}</th><th>{_h(T['cycle_length_col'])}</th><th>{_h(T['period_days_col'])}</th><th>{_h(T['pain_days'])}</th><th>{_h(T['intermenstrual_col'])}</th></tr>
+          <tr><th>{_h(T['cycle_start'])}</th><th>{_h(T['cycle_length_col'])}</th><th>{_h(T['period_days_col'])}</th><th>{_h(T['pain_days'])}</th><th>{_h(T['intermenstrual_col'])}</th>{signs_header}</tr>
           {ct_rows}
         </table>"""
 
