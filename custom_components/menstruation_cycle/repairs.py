@@ -25,6 +25,7 @@ from .const import (
     PERIOD_OVERDUE_DAYS,
     PERIOD_PROLONGED_DAYS,
     PREGNANCY_OVERDUE_REPAIR_DAYS,
+    PREGNANCY_TEST_HINT_DAYS,
     PROFILE_INACTIVITY_REMINDER_DAYS,
     WELLNESS_SCORE_LOW_THRESHOLD,
     menstruation_object_ids_for_profile,
@@ -788,6 +789,35 @@ def async_check_period_prolonged(
         async_delete_period_prolonged_issue(hass, entry_id)
         return
     async_create_period_prolonged_issue(hass, entry_id, entry_title, length)
+
+
+def async_check_pregnancy_test_hint(
+    hass: HomeAssistant,
+    entry_id: str,
+    entry_title: str,
+    positive_day: date | None,
+    is_pregnant: bool,
+    today: date,
+) -> None:
+    """Raise (or clear) a neutral hint to switch on pregnancy mode after a recent positive pregnancy test.
+
+    ``positive_day`` is model.last_positive_pregnancy_test_day(): a later negative test clears it, and the hint
+    expires PREGNANCY_TEST_HINT_DAYS after the test. Not shown while pregnancy mode is on.
+    """
+    issue_id = f"pregnancy_test_positive_{entry_id}"
+    if is_pregnant or positive_day is None or not 0 <= (today - positive_day).days <= PREGNANCY_TEST_HINT_DAYS:
+        async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="pregnancy_test_positive",
+        translation_placeholders={"entry_title": entry_title, "date": positive_day.isoformat()},
+    )
 
 
 def async_create_checkup_overdue_issue(

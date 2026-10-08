@@ -1186,5 +1186,11 @@
   "dashboard_doctor_report_error": "Rapporten kunde inte skapas.",
   "supply_short_hint": "Förrådet räcker kanske inte till nästa mens (vanligtvis cirka {need} per mens).",
   "nfp_luteal_forecast": "Nästa mens (lutealfas)",
-  "nfp_luteal_forecast_value": "{date} ({n} dagars lutealfas)"
+  "nfp_luteal_forecast_value": "{date} ({n} dagars lutealfas)",
+  "dashboard_lh_label": "Ovulationstest idag:",
+  "dashboard_lh_positive": "LH-test positivt",
+  "dashboard_lh_negative": "LH-test negativt",
+  "dashboard_lh_done": "LH-test sparat för idag.",
+  "luteal_forecast_hint": "Mens väntas enligt temperaturen",
+  "dashboard_luteal_forecast": "Enligt temperatur: {date} ({diff} dagar mot kalendern)"
 }

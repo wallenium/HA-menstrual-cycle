@@ -1211,6 +1211,10 @@
       "title": "Menstruation Cycle: Period is lasting unusually long",
       "description": "Profile: **{entry_title}**\n\nBleeding has been logged for {days} days in a row, which is longer than usual for this profile. A period lasting more than about a week can have many causes, and this is purely informational, not medical advice - no action is taken automatically. If the bleeding is very heavy or keeps going, it may be worth discussing with a doctor. Dismiss this issue if you're already aware."
     },
+    "pregnancy_test_positive": {
+      "title": "Menstruation Cycle: Positive pregnancy test logged",
+      "description": "Profile: **{entry_title}**\n\nA positive pregnancy test was logged on {date}. If you are pregnant, you can switch on pregnancy mode in the dashboard panel or with the service `menstruation_cycle.set_pregnancy_mode` to get weekly information and due-date tracking. This is purely informational, not medical advice, and nothing is changed automatically. Home tests are not always reliable, so a doctor can confirm the result. The hint disappears once pregnancy mode is on, after a later negative test, or after two weeks; you can also dismiss it."
+    },
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine checkup may be due",
       "description": "Profile: **{entry_title}**\n\nThe last gynecological checkup logged for this profile was on {last_date}, about {months} months ago. This reminder is set to {interval} months in the options; the right interval depends on age, history and local recommendations. This is purely informational, not medical advice, and no action is taken automatically. Log your next appointment once it has happened, or dismiss this issue if you're already aware."

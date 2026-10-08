@@ -114,6 +114,7 @@ class MenstruationCalendarCard extends HTMLElement {
         ovulation: 'Ovulation',
         bleeding_strength: 'Bleeding strength',
         bleeding_outside_period: 'Bleeding outside the period',
+        luteal_forecast_hint: 'Period expected from temperature',
         spotting: 'Spotting',
         pain: 'Pain',
         none: 'None',
@@ -592,6 +593,7 @@ class MenstruationCalendarCard extends HTMLElement {
       extraPredictedStartSet,
       currentPeriodTailSet,
       nfpAnalysis: (attrs.nfp_analysis && typeof attrs.nfp_analysis === 'object') ? attrs.nfp_analysis : null,
+      lutealForecastIso: this._normalizeISO(attrs.nfp_analysis?.luteal_forecast?.predicted_start),
       predictionConfidenceByDay: this._predictionConfidenceByDay(attrs),
       onboardingStage: String(attrs.onboarding_stage || ''),
       onboardingStageEffective: String(attrs.onboarding_stage_effective || ''),
@@ -1119,6 +1121,7 @@ class MenstruationCalendarCard extends HTMLElement {
       const hasSymptoms = model.symptomByDate && Object.keys(model.symptomByDate[iso] || {}).length > 0;
       const isModalOpen = this._modalIso === iso;
       const intermenstrual = model.intermenstrualByDate?.[iso];
+      const isLutealForecast = model.lutealForecastIso === iso;
 
       const classes = [
         'day',
@@ -1134,6 +1137,7 @@ class MenstruationCalendarCard extends HTMLElement {
         (isPreMenarche && !st.isPeriod) ? 'is-premenarche-day' : '',
         (isMenopause && !st.isPeriod) ? 'is-menopause-day' : '',
         intermenstrual ? 'is-intermenstrual' : '',
+        isLutealForecast ? 'is-luteal-forecast' : '',
         isToday ? 'today' : '',
         isModalOpen ? 'selected' : '',
       ].filter(Boolean).join(' ');
@@ -1141,7 +1145,10 @@ class MenstruationCalendarCard extends HTMLElement {
       const baseHint = Number.isFinite(st.cycleDay)
         ? `${this._t('cycle_day')}: ${st.cycleDay}${isPredictedDay ? ` (${this._t('predicted')}, ${this._t(`confidence_${confidenceLevel}`)})` : ''}`
         : this._t('no_data');
-      const cycleHint = intermenstrual ? `${baseHint} · ${this._t('bleeding_outside_period')}` : baseHint;
+      const hintParts = [baseHint];
+      if (intermenstrual) hintParts.push(this._t('bleeding_outside_period'));
+      if (isLutealForecast) hintParts.push(this._t('luteal_forecast_hint'));
+      const cycleHint = hintParts.join(' · ');
       items.push(`
         <button
           class="${classes}"
@@ -1157,6 +1164,7 @@ class MenstruationCalendarCard extends HTMLElement {
             : ''}
           ${hasSymptoms ? '<span class="sym-dot" aria-hidden="true"></span>' : ''}
           ${intermenstrual ? '<span class="im-mark" aria-hidden="true"></span>' : ''}
+          ${isLutealForecast ? '<span class="luteal-mark" aria-hidden="true"></span>' : ''}
           ${isPredictedDay ? `<span class="confidence-chip" aria-hidden="true">${confidenceLevel === 'high' ? 'H' : confidenceLevel === 'medium' ? 'M' : 'L'}</span>` : ''}
           ${(this._config?.show_ovulation_marker !== false && (st.isOvulation || st.isPredictedOvulation))
             ? `<span class="ovulation-dot${st.isPredictedOvulation ? ' predicted' : ''}" aria-hidden="true"></span>`
@@ -1410,6 +1418,16 @@ class MenstruationCalendarCard extends HTMLElement {
           border-radius: 50%;
           background: var(--warning-color, #d97706);
           opacity: .85;
+        }
+        .luteal-mark {
+          position: absolute;
+          right: 7px;
+          bottom: 7px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          border: 1.5px dashed var(--primary-text-color, #2B1B24);
+          box-sizing: border-box;
         }
         .im-mark {
           position: absolute;

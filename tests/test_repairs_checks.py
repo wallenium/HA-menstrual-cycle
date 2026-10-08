@@ -56,7 +56,7 @@ with patch.dict(sys.modules, _stubs()):
     _package.__path__ = [str(COMPONENT_ROOT)]
     sys.modules[_PKG] = _package
     const = _load("const", "const.py")
-    _load("model", "model.py")
+    model = _load("model", "model.py")
     repairs = _load("repairs", "repairs.py")
 
 
@@ -267,6 +267,45 @@ class PeriodProlongedTests(RepairCheckCase):
             CALLS.clear()
             self._check(period)
             self.assertCleared("period_prolonged_")
+
+
+class PregnancyTestHintTests(RepairCheckCase):
+    def _day(self, symptoms):
+        return model.last_positive_pregnancy_test_day(symptoms)
+
+    def test_latest_test_decides_whether_it_is_positive(self) -> None:
+        pos = {"date": "2026-10-01", "test": "positive_pregnancy"}
+        neg = {"date": "2026-10-03", "test": ["negative_pregnancy"]}
+        self.assertEqual(self._day([pos]), date(2026, 10, 1))
+        self.assertIsNone(self._day([pos, neg]))  # a later negative test wins
+        self.assertEqual(self._day([neg, {"date": "2026-10-05", "test": "positive_pregnancy"}]), date(2026, 10, 5))
+        self.assertEqual(self._day([{"date": "2026-10-03", "test": ["negative_pregnancy", "positive_pregnancy"]}]), date(2026, 10, 3))
+        self.assertIsNone(self._day([{"date": "2026-10-03", "test": "positive_ovulation"}, {"date": "bad"}, "x"]))
+        self.assertIsNone(self._day([]))
+
+    def _check(self, positive_day, is_pregnant=False) -> None:
+        repairs.async_check_pregnancy_test_hint(None, "e1", "Sarah", positive_day, is_pregnant, TODAY)
+
+    def test_hint_for_a_recent_positive_test_with_the_date(self) -> None:
+        self._check(TODAY - timedelta(days=3))
+        self.assertCreated("pregnancy_test_positive_", date=(TODAY - timedelta(days=3)).isoformat(), entry_title="Sarah")
+        CALLS.clear()
+        self._check(TODAY)
+        self.assertCreated("pregnancy_test_positive_")
+        CALLS.clear()
+        self._check(TODAY - timedelta(days=const.PREGNANCY_TEST_HINT_DAYS))
+        self.assertCreated("pregnancy_test_positive_")
+
+    def test_cleared_when_old_future_missing_or_pregnancy_mode_is_on(self) -> None:
+        for args in (
+            (TODAY - timedelta(days=const.PREGNANCY_TEST_HINT_DAYS + 1), False),
+            (TODAY + timedelta(days=1), False),
+            (None, False),
+            (TODAY, True),
+        ):
+            CALLS.clear()
+            self._check(*args)
+            self.assertCleared("pregnancy_test_positive_")
 
 
 class HouseholdInventoryTests(RepairCheckCase):

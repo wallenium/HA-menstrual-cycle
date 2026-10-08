@@ -1186,5 +1186,11 @@
   "dashboard_doctor_report_error": "Impossible de créer le rapport.",
   "supply_short_hint": "Le stock pourrait ne pas suffire pour les prochaines règles (habituellement environ {need} par période).",
   "nfp_luteal_forecast": "Prochaines règles (phase lutéale)",
-  "nfp_luteal_forecast_value": "{date} (phase lutéale de {n} jours)"
+  "nfp_luteal_forecast_value": "{date} (phase lutéale de {n} jours)",
+  "dashboard_lh_label": "Test d'ovulation aujourd'hui :",
+  "dashboard_lh_positive": "Test LH positif",
+  "dashboard_lh_negative": "Test LH négatif",
+  "dashboard_lh_done": "Test LH enregistré pour aujourd'hui.",
+  "luteal_forecast_hint": "Règles attendues d'après la température",
+  "dashboard_luteal_forecast": "D'après la température : {date} ({diff} jours par rapport au calendrier)"
 }

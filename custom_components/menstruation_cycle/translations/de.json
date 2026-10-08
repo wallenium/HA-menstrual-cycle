@@ -1211,6 +1211,10 @@
       "title": "Menstruation Cycle: Periode dauert ungewöhnlich lange",
       "description": "Profil: **{entry_title}**\n\nEs wurde {days} Tage in Folge eine Blutung eingetragen, das ist länger als für dieses Profil üblich. Eine Periode, die länger als etwa eine Woche dauert, kann viele Ursachen haben, und das ist rein informativ, keine medizinische Beratung - es wird keine Aktion automatisch ausgeführt. Wenn die Blutung sehr stark ist oder anhält, kann es sich lohnen, das mit einem Arzt zu besprechen. Verwirf dieses Problem, falls du es bereits kennst."
     },
+    "pregnancy_test_positive": {
+      "title": "Menstruation Cycle: Positiver Schwangerschaftstest eingetragen",
+      "description": "Profil: **{entry_title}**\n\nAm {date} wurde ein positiver Schwangerschaftstest eingetragen. Wenn du schwanger bist, kannst du im Dashboard-Panel oder mit dem Dienst `menstruation_cycle.set_pregnancy_mode` den Schwangerschaftsmodus einschalten, um wöchentliche Informationen und die Terminverfolgung zu bekommen. Das ist rein informativ, keine medizinische Beratung, und es wird nichts automatisch geändert. Tests für zu Hause sind nicht immer zuverlässig, deshalb kann eine Ärztin oder ein Arzt das Ergebnis bestätigen. Der Hinweis verschwindet, sobald der Schwangerschaftsmodus an ist, nach einem späteren negativen Test oder nach zwei Wochen; du kannst ihn auch ausblenden."
+    },
     "checkup_overdue": {
       "title": "Menstruation Cycle: Routine-Vorsorge könnte fällig sein",
       "description": "Profil: **{entry_title}**\n\nDie letzte für dieses Profil eingetragene gynäkologische Vorsorge war am {last_date}, vor etwa {months} Monaten. Diese Erinnerung ist in den Optionen auf {interval} Monate eingestellt, das passende Intervall hängt aber von Alter, Vorgeschichte und örtlichen Empfehlungen ab. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Trage den nächsten Termin ein, sobald er stattgefunden hat, oder verwirf dieses Problem, falls du es bereits kennst."

@@ -406,6 +406,22 @@ def learn_ovulation_pattern(
     return None
 
 
+def last_positive_pregnancy_test_day(symptoms: list[dict[str, Any]]) -> date | None:
+    """Day of the most recent pregnancy test if that day's entry has a positive result, else None."""
+    latest: tuple[date, bool] | None = None
+    for entry in symptoms:
+        if not isinstance(entry, dict):
+            continue
+        results = _entry_value_set(entry, "test") & {"positive_pregnancy", "negative_pregnancy"}
+        try:
+            day = date.fromisoformat(str(entry.get("date")))
+        except ValueError:
+            continue
+        if results and (latest is None or day > latest[0]):
+            latest = (day, "positive_pregnancy" in results)
+    return latest[0] if latest and latest[1] else None
+
+
 def learn_luteal_length(
     symptom_history: list[dict[str, Any]],
     cycle_starts: list[str],

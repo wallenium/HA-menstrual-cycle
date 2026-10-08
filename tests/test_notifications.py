@@ -741,6 +741,48 @@ class HouseholdSupplyTests(unittest.TestCase):
             self.assertEqual(calls, [("delete", "household_supply_short")])
 
 
+class PregnancyModeHintWiringTests(unittest.TestCase):
+    """The positive-pregnancy-test repair hint is raised right after saving, not only at midnight."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _save(self, symptoms, *, pregnant=False, entry_exists=True):
+        runtime = _runtime(
+            symptom_history=symptoms,
+            pregnancy_data={"is_pregnant": pregnant, "start_date": None},
+            storage=SimpleNamespace(async_save=AsyncMock()),
+            profile="p1",
+            product_usage={},
+        )
+        entry = SimpleNamespace(title="Sarah") if entry_exists else None
+        hass = _hass()
+        hass.data = {integration.DOMAIN: {"e1": runtime}}
+        hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
+        with patch.object(integration, "_async_refresh_cycle_model", AsyncMock()), patch.object(
+            integration, "_async_sync_cycle_statistics", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            with _issue_recorder() as calls:
+                _run(integration._async_save_and_notify(hass, runtime))
+        return [(c[0], c[1]) for c in calls]
+
+    def test_save_raises_the_hint_for_a_fresh_positive_test(self) -> None:
+        positive = [{"date": _iso(-1), "test": "positive_pregnancy"}]
+        self.assertEqual(self._save(positive), [("create", "pregnancy_test_positive_e1")])
+
+    def test_save_clears_it_when_negative_pregnant_or_old(self) -> None:
+        clear = [("delete", "pregnancy_test_positive_e1")]
+        self.assertEqual(self._save([{"date": _iso(-1), "test": "positive_pregnancy"}], pregnant=True), clear)
+        self.assertEqual(self._save([{"date": _iso(-20), "test": "positive_pregnancy"}]), clear)
+        negative_later = [
+            {"date": _iso(-3), "test": "positive_pregnancy"}, {"date": _iso(-1), "test": "negative_pregnancy"}
+        ]
+        self.assertEqual(self._save(negative_later), clear)
+
+    def test_save_still_works_when_the_entry_is_missing(self) -> None:
+        self.assertEqual(self._save([{"date": _iso(-1), "test": "positive_pregnancy"}], entry_exists=False), [])
+
+
 class PregnancyTestHintTests(unittest.TestCase):
     """Opt-in neutral hint 14 days after an ovulation confirmed by the NFP analysis (trying to conceive)."""
 

@@ -757,6 +757,11 @@
     description: String(item?.description ?? ''),
   });
 
+  // States in which the period / LH-test quick actions make no sense.
+
+  const NON_CYCLE_STATES = ['pregnant', 'pre_menarche', 'menarche', 'menopause', 'postpartum', 'private', 'unavailable', 'unknown'];
+
+
   class MenstruationCycleDashboardPanel extends HTMLElement {
     constructor() {
       super();
@@ -3782,6 +3787,11 @@
         return;
       }
 
+      if (action === 'lh-test') {
+        this._logLhTest(target.dataset.value);
+        return;
+      }
+
       if (action === 'period-start') {
         this._requestPeriodStart(target.dataset.daysAgo);
         return;
@@ -4647,11 +4657,20 @@
       const nextPeriodFoot = windowStart
         ? `${this._t('dashboard_expected') || 'erwartet'} ${escapeHtml(this._formatDate(windowStart))}${windowEnd && windowEnd !== windowStart ? ` – ${escapeHtml(this._formatDate(windowEnd))}` : ''}`
         : '';
+      // Second forecast once this cycle's temperature rise is known (nfp_analysis.luteal_forecast); the calendar one stays.
+      const lutealForecast = !discreetMode && nfpAnalysis?.luteal_forecast?.predicted_start ? nfpAnalysis.luteal_forecast : null;
+      const lutealDiff = lutealForecast?.difference_days ?? null;
+      const lutealFoot = lutealForecast
+        ? this._t('dashboard_luteal_forecast')
+          .replace('{date}', escapeHtml(this._formatDate(lutealForecast.predicted_start)))
+          .replace('{diff}', lutealDiff === null ? '?' : (lutealDiff > 0 ? `+${lutealDiff}` : lutealDiff === 0 ? '±0' : String(lutealDiff)))
+        : '';
       const stat1 = `
         <div class="stat mc-rose">
           <div class="stat-label">${this._t('dashboard_next_period') || 'Nächste Periode'}</div>
           <div class="stat-value">${daysUntil !== null && daysUntil !== undefined ? escapeHtml(daysUntil) : '—'} <small>${this._t('days') || 'Tage'}</small></div>
           ${nextPeriodFoot ? `<div class="stat-foot">${nextPeriodFoot}</div>` : ''}
+          ${lutealFoot ? `<div class="stat-foot">${lutealFoot}</div>` : ''}
         </div>`;
 
       // --- Stat 2 (plain): ovulation estimate, phrased relatively ---
@@ -6788,7 +6807,7 @@
     _renderPeriodActions(stateObj, discreetMode) {
       if (discreetMode || !stateObj) return '';
       const state = String(stateObj.state || '');
-      if (['pregnant', 'pre_menarche', 'menarche', 'menopause', 'postpartum', 'private', 'unavailable', 'unknown'].includes(state)) return '';
+      if (NON_CYCLE_STATES.includes(state)) return '';
       const running = state === 'period' || stateObj.attributes?.current_bleeding_block?.is_active === true;
       const button = (action, days, key) =>
         `<button type="button" data-action="${action}" data-days-ago="${days}">${escapeHtml(this._t(key))}</button>`;
@@ -6808,6 +6827,58 @@
         ? button('period-end', 0, 'dashboard_period_end_today')
         : `${button('period-start', 0, 'dashboard_period_start_today')} ${button('period-start', 1, 'dashboard_period_start_yesterday')}`;
       return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
+    }
+
+    // One-tap LH (ovulation) test for today, offered inside the fertile window. A positive test moves the ovulation estimate.
+    _renderLhTestActions(stateObj, discreetMode) {
+      if (discreetMode || !stateObj) return '';
+      const state = String(stateObj.state || '');
+      if (state === 'period' || NON_CYCLE_STATES.includes(state)) return '';
+      const attrs = stateObj.attributes || {};
+      const today = this._todayIso();
+      if (!attrs.fertile_window_start || !attrs.fertile_window_end) return '';
+      if (today < attrs.fertile_window_start || today > attrs.fertile_window_end) return '';
+      const current = this._todaysLhTests(stateObj);
+      const button = (value, key) =>
+        `<button type="button" class="${current.includes(value) ? 'mode-btn active' : ''}" data-action="lh-test" data-value="${value}" aria-pressed="${current.includes(value)}">${escapeHtml(this._t(key))}</button>`;
+      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" role="group" aria-label="${escapeHtml(this._t('dashboard_lh_label'))}">
+        <span>${escapeHtml(this._t('dashboard_lh_label'))}</span>
+        ${button('positive_ovulation', 'dashboard_lh_positive')} ${button('negative_ovulation', 'dashboard_lh_negative')}
+      </div>`;
+    }
+
+    // Only the two LH values are looked up in the result, so other tests of the day do no harm.
+    _todaysLhTests(stateObj) {
+      const entry = this._getFullSymptomHistory(stateObj).find((item) => item?.date === this._todayIso());
+      return Array.isArray(entry?.test) ? entry.test : (entry?.test ? [entry.test] : []);
+    }
+
+    // The service replaces the whole "test" field of a day, so keep today's other tests (e.g. a pregnancy test).
+    async _logLhTest(value) {
+      if (value !== 'positive_ovulation' && value !== 'negative_ovulation') return;
+      if (!this._hass || !this._selectedEntityId) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      const entry = this._getFullSymptomHistory(stateObj).find((item) => item?.date === this._todayIso());
+      const existing = Array.isArray(entry?.test) ? entry.test : (entry?.test ? [entry.test] : []);
+      const others = existing.filter((item) => item !== 'positive_ovulation' && item !== 'negative_ovulation');
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: this._todayIso(),
+          symptom_data: { test: [...others, value] },
+        });
+        this._message = this._t('dashboard_lh_done');
+      } catch (_error) {
+        this._message = this._t('dashboard_period_action_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
     }
 
     _renderContraceptionWarning(stateObj, discreetMode) {
@@ -7942,6 +8013,7 @@
           ${this._renderOpenIssues(discreetMode)}
           ${this._renderDoctorReportAction(discreetMode)}
           ${this._renderPeriodActions(stateObj, discreetMode)}
+          ${this._renderLhTestActions(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}

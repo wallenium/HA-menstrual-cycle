@@ -1211,6 +1211,10 @@
       "title": "Menstruation Cycle: La regla dura más de lo habitual",
       "description": "Perfil: **{entry_title}**\n\nSe ha registrado sangrado durante {days} días seguidos, más de lo habitual para este perfil. Una regla de más de una semana aproximadamente puede tener muchas causas; esto es meramente informativo, no es consejo médico, y no se realiza ninguna acción automáticamente. Si el sangrado es muy abundante o continúa, puede valer la pena comentarlo con un médico. Descarta este aviso si ya lo sabes."
     },
+    "pregnancy_test_positive": {
+      "title": "Menstruation Cycle: prueba de embarazo positiva registrada",
+      "description": "Perfil: **{entry_title}**\n\nSe registró una prueba de embarazo positiva el {date}. Si estás embarazada, puedes activar el modo embarazo en el panel del dashboard o con el servicio `menstruation_cycle.set_pregnancy_mode` para recibir información semanal y seguir la fecha prevista. Esto es meramente informativo, no es consejo médico, y no se cambia nada automáticamente. Las pruebas caseras no siempre son fiables; un médico puede confirmar el resultado. El aviso desaparece cuando el modo embarazo está activado, tras una prueba negativa posterior o tras dos semanas; también puedes descartarlo."
+    },
     "checkup_overdue": {
       "title": "Menstruation Cycle: puede que toque una revisión de rutina",
       "description": "Perfil: **{entry_title}**\n\nLa última revisión ginecológica registrada para este perfil fue el {last_date}, hace unos {months} meses. Este recordatorio está configurado en {interval} meses en las opciones, pero el intervalo adecuado depende de la edad, los antecedentes y las recomendaciones locales. Esto es meramente informativo, no un consejo médico, y no se realiza ninguna acción automáticamente. Registra tu próxima cita cuando se haya realizado, o descarta este problema si ya lo sabes."

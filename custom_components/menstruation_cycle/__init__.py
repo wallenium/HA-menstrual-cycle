@@ -283,6 +283,7 @@ from .model import (
     current_cycle_phase,
     find_implausible_cycle_gaps,
     grouped_cycle_starts,
+    last_positive_pregnancy_test_day,
     normalize_history,
 )
 from .statistics import (
@@ -2297,6 +2298,20 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
     )
 
 
+def _check_pregnancy_test_hint(hass: HomeAssistant, entry_id: str, entry_title: str, runtime: MenstruationRuntime) -> None:
+    """Raise or clear the "positive pregnancy test" repair hint (repairs.py::async_check_pregnancy_test_hint)."""
+    from .repairs import async_check_pregnancy_test_hint
+
+    async_check_pregnancy_test_hint(
+        hass,
+        entry_id,
+        entry_title,
+        last_positive_pregnancy_test_day(runtime.symptom_history),
+        bool(runtime.pregnancy_data.get("is_pregnant")),
+        dt_util.now().date(),
+    )
+
+
 async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRuntime) -> None:
     runtime.history = normalize_history(runtime.history)
     runtime.period_duration_days = max(1, min(14, int(runtime.period_duration_days)))
@@ -2314,7 +2329,15 @@ async def _async_save_and_notify(hass: HomeAssistant, runtime: MenstruationRunti
         onboarding_stage=runtime.onboarding_stage,
         visibility_level=runtime.visibility_level,
     )
-    await _async_refresh_cycle_model(hass, {_entry_id_for_runtime(hass, runtime)})
+    entry_id = _entry_id_for_runtime(hass, runtime)
+    await _async_refresh_cycle_model(hass, {entry_id})
+    try:
+        # A just-logged positive test should show the hint right away, not only at the next midnight.
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is not None:
+            _check_pregnancy_test_hint(hass, entry_id, entry.title, runtime)
+    except Exception:  # noqa: BLE001 - a hint must never break saving
+        _LOGGER.exception("Pregnancy-test hint check failed for %s", entry_id)
     # HA-5 (M-Cycle_HA-Component-Roadmap.md): keep HA's own long-term statistics
     # in sync with every history/symptom change, not just on integration load.
     # Wrapped defensively inside the helper itself, so a recorder hiccup here
@@ -3297,6 +3320,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight low-prediction-confidence check failed for %s", entry.entry_id)
         try:
+            # The hint expires after PREGNANCY_TEST_HINT_DAYS, so it needs the daily recheck too.
+            _check_pregnancy_test_hint(hass, entry.entry_id, entry.title, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight pregnancy-test hint check failed for %s", entry.entry_id)
+        try:
             # Same daily-recheck reasoning as the checks above.
             from .repairs import async_check_low_wellness_score
 
@@ -3537,6 +3565,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         dt_util.now().date(),
         int(entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
     )
+
+    _check_pregnancy_test_hint(hass, entry.entry_id, entry.title, runtime)
 
     # Same "cheap, safe to run on every load" reasoning as the checks above.
     from .repairs import async_check_period_overdue

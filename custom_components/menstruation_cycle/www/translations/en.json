@@ -1186,5 +1186,11 @@
   "dashboard_doctor_report_error": "Could not create the report.",
   "supply_short_hint": "Stock may not last the next period (typically about {need} per period).",
   "nfp_luteal_forecast": "Next period (from luteal phase)",
-  "nfp_luteal_forecast_value": "{date} ({n} days luteal phase)"
+  "nfp_luteal_forecast_value": "{date} ({n} days luteal phase)",
+  "dashboard_lh_label": "Ovulation test today:",
+  "dashboard_lh_positive": "LH test positive",
+  "dashboard_lh_negative": "LH test negative",
+  "dashboard_lh_done": "LH test saved for today.",
+  "luteal_forecast_hint": "Period expected from temperature",
+  "dashboard_luteal_forecast": "From temperature: {date} ({diff} days vs. calendar)"
 }

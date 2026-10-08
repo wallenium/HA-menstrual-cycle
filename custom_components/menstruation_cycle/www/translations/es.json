@@ -1186,5 +1186,11 @@
   "dashboard_doctor_report_error": "No se pudo crear el informe.",
   "supply_short_hint": "Puede que las existencias no alcancen para la próxima regla (habitual: unas {need} por regla).",
   "nfp_luteal_forecast": "Próxima regla (fase lútea)",
-  "nfp_luteal_forecast_value": "{date} (fase lútea de {n} días)"
+  "nfp_luteal_forecast_value": "{date} (fase lútea de {n} días)",
+  "dashboard_lh_label": "Prueba de ovulación hoy:",
+  "dashboard_lh_positive": "Prueba LH positiva",
+  "dashboard_lh_negative": "Prueba LH negativa",
+  "dashboard_lh_done": "Prueba LH guardada para hoy.",
+  "luteal_forecast_hint": "Regla esperada según la temperatura",
+  "dashboard_luteal_forecast": "Según la temperatura: {date} ({diff} días respecto al calendario)"
 }

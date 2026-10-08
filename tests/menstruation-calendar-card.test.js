@@ -197,6 +197,30 @@ function testCalendarRenderingStates() {
   console.log('  ✓ renders phase markers and cycle-day tooltip');
 }
 
+function testLutealForecastMarker() {
+  const render = (nfp) => {
+    const card = new CardClass();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass();
+    if (nfp !== undefined) hass.states['sensor.menstruation'].attributes.nfp_analysis = nfp;
+    card.hass = hass;
+    card._viewDate = new Date(2026, 6, 1, 12, 0, 0, 0);
+    return card._calendarGrid(card._buildModel(), 'en');
+  };
+  const html = render({ luteal_forecast: { predicted_start: '2026-07-20', luteal_days: 14, difference_days: 2 } });
+  assert.strictEqual((html.match(/is-luteal-forecast/g) || []).length, 1, 'exactly one day is marked');
+  assert.strictEqual((html.match(/class="luteal-mark"/g) || []).length, 1, 'one mark is rendered');
+  const cell = html.split('<button').find((part) => part.includes('data-iso="2026-07-20"'));
+  assert.ok(cell.includes('is-luteal-forecast') && cell.includes('luteal-mark'), 'the predicted day carries the marker');
+  assert.ok(cell.includes('Period expected from temperature'), 'tooltip explains the marker');
+  // month without the date, missing forecast, forecast without date: nothing
+  assert.ok(!render({ luteal_forecast: { predicted_start: '2026-08-20' } }).includes('luteal-mark'));
+  assert.ok(!render().includes('luteal-mark'));
+  assert.ok(!render({ luteal_forecast: {} }).includes('luteal-mark'));
+  assert.ok(!render({ luteal_forecast: { predicted_start: 'nonsense' } }).includes('luteal-mark'));
+  console.log('  ✓ marks the period date expected from the luteal phase');
+}
+
 function testOvulationMarkerToggle() {
   const card = new CardClass();
   card.setConfig({
@@ -781,6 +805,7 @@ let failed = 0;
   testCurrentPeriodTailNoCbb,
   testCurrentPeriodTailLegendEntry,
   testBleedingOutsideThePeriod,
+  testLutealForecastMarker,
 ].forEach((fn) => {
   try {
     fn();

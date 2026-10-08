@@ -226,6 +226,9 @@ CONF_NOTIFY_PARTNER_SERVICE = "notify_partner_service"
 # Aufeinanderfolgende Blutungstage ab denen repairs.py::async_check_period_prolonged
 # einen rein informativen Hinweis erzeugt (>7 Tage gilt allgemein als auffaellig lang).
 PERIOD_PROLONGED_DAYS = 8
+# A positive pregnancy test logged within this many days raises the informational pregnancy-mode hint
+# (repairs.py::async_check_pregnancy_test_hint) unless pregnancy mode is already on.
+PREGNANCY_TEST_HINT_DAYS = 14
 
 # A logged bleeding strength starts a new period only if no period day was recorded in the days before it;
 # closer to the last period it counts as intermenstrual bleeding (the shortest plausible cycle is ~21 days).

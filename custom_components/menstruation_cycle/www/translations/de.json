@@ -1186,5 +1186,11 @@
   "dashboard_doctor_report_error": "Der Bericht konnte nicht erstellt werden.",
   "supply_short_hint": "Vorrat reicht evtl. nicht für die nächste Periode (üblich: ca. {need} pro Periode).",
   "nfp_luteal_forecast": "Nächste Periode (aus Lutealphase)",
-  "nfp_luteal_forecast_value": "{date} ({n} Tage Lutealphase)"
+  "nfp_luteal_forecast_value": "{date} ({n} Tage Lutealphase)",
+  "dashboard_lh_label": "Ovulationstest heute:",
+  "dashboard_lh_positive": "LH-Test positiv",
+  "dashboard_lh_negative": "LH-Test negativ",
+  "dashboard_lh_done": "LH-Test für heute eingetragen.",
+  "luteal_forecast_hint": "Periode laut Temperatur erwartet",
+  "dashboard_luteal_forecast": "Aus Temperatur: {date} ({diff} Tage zum Kalender)"
 }
