@@ -14,6 +14,7 @@
 - Protection against accidental period starts: the dashboard panel asks before a period is started less than 15 days after the last period day (with the option to log it as bleeding between periods instead), the calendar and gauge cards ask before a tapped day 3-14 days after the previous period day opens a new period, and `repair_storage` / the storage-integrity repair issue flag period starts of the last year that follow the previous one within 14 days.
 - Notification option "Pregnancy test timing hint" for people trying to conceive: 14 days after an ovulation confirmed by the temperature/mucus analysis, one neutral message (a rule of thumb, no medical advice), once per cycle; off by default.
 - Dashboard panel: a small line "Open notes about your data: N" (linking to Settings > Repairs) shows how many of the integration's repair issues are open; hidden in discreet mode and whenever the count cannot be read.
+- Dashboard panel: a "Create doctor report" button creates the report right in the panel (saved to the export folder as before) and shows an open/download link; the report is created in the panel language (English if the language has no report).
 - Notifications: overdue-period, check-up due and pill-gap reminders, a pill refill to-do, and mobile-app action buttons with snooze (snoozes survive a restart).
 - `send_test_notification` service and a repair issue when the configured notify target is unavailable.
 - Notification, pill, tracking and life-stage options are grouped into sections in the options form.

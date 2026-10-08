@@ -364,6 +364,47 @@ const mount = (state, attributes = {}, discreet = false) => {
       assert.ok(!doc._renderDoctorReportAction(false).includes('<a '));
       assert.ok(!doc._renderDoctorReportAction(false).includes('disabled'), 'usable again after an error');
     }
+
+    // period and patient name can be chosen; the name is optional, trimmed and never stored
+    response = { response: { filename: 'r.html', html: '<html/>' } };
+    doc._lang = 'en';
+    const change = (action, value) => {
+      const field = Object.create(global.HTMLElement.prototype);
+      field.dataset = { action };
+      field.value = value;
+      doc._handleChange({ target: field });
+    };
+    const form = doc._renderDoctorReportAction(false);
+    assert.ok(form.includes('data-action="doctor-report-days"') && form.includes('<option value="180" selected>6 months</option>'), form);
+    assert.ok(form.includes('<option value="90">3 months</option>') && form.includes('<option value="365">12 months</option>'), form);
+    assert.ok(form.includes('data-action="doctor-report-name"') && form.includes('placeholder="Patient name (optional)"'), form);
+
+    change('doctor-report-days', '365');
+    change('doctor-report-name', '  Berta Beispiel ');
+    assert.ok(doc._renderDoctorReportAction(false).includes('<option value="365" selected>12 months</option>'));
+    assert.ok(doc._renderDoctorReportAction(false).includes('value="Berta Beispiel"'));
+    sent.length = 0;
+    click('create-doctor-report');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(sent[0].service_data.days_back, 365);
+    assert.strictEqual(sent[0].service_data.patient_name, 'Berta Beispiel');
+
+    // text typed but not yet committed by a change event is still used; a blank field sends no name
+    doc.shadowRoot = { querySelector: (selector) => (selector.includes('doctor-report-name') ? { value: ' Clara ' } : null) };
+    click('create-doctor-report');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(sent[1].service_data.patient_name, 'Clara');
+    assert.ok(doc._renderDoctorReportAction(false).includes('value="Clara"'), 'the typed name survives the re-render');
+    doc.shadowRoot = { querySelector: () => ({ value: '   ' }) };
+    click('create-doctor-report');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(!('patient_name' in sent[2].service_data), 'blank name: not sent');
+    doc.shadowRoot = undefined;
+
+    // unknown periods fall back to six months; the name never reaches localStorage
+    change('doctor-report-days', '999');
+    assert.strictEqual(doc._doctorReportDays, 180);
+    assert.ok(![...storage.values()].some((value) => value.includes('Berta') || value.includes('Clara')));
   }
 
   console.log('dashboard period actions: ok');

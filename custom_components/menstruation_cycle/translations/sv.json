@@ -1183,6 +1183,10 @@
       "title": "Menstruation Cycle: Hushållets förråd tar slut",
       "description": "Följande produkter är på eller under sin kritiska lagernivå: **{products_list}**. De lades redan till Home Assistants inköpslista när de nådde varningströskeln - denna extra avisering betyder att lagret nu är kritiskt lågt. Fyll på snart, eller justera den kritiska tröskeln via tjänsten **manage_household_inventory** om detta inte stämmer med din faktiska förbrukning. Avfärda detta problem när du har fyllt på."
     },
+    "household_supply_short": {
+      "title": "Menstruation Cycle: Förrådet räcker kanske inte till nästa mens",
+      "description": "En mens väntas inom de närmaste dagarna och hushållets förråd är lägre än vad som vanligtvis gick åt per mens (förråd/vanligt behov): **{products_list}**. Det vanliga behovet är medelvärdet av de senaste avslutade menstruationerna i förbrukningsloggen, alltså bara en tumregel. Fyll på förrådet, eller ignorera meddelandet om förrådet räcker."
+    },
     "low_wellness_score": {
       "title": "Menstruation Cycle: Wellness-poängen är låg",
       "description": "Profil: **{entry_title}**\n\nDen här profilens wellness-poäng är för närvarande {score}/100 - den kombinerar cykelregelbundenhet, nyligen inträffade smärtdagar och hur mycket historik som ligger bakom den. Detta är enbart informativt, inte medicinsk rådgivning, och ingen åtgärd vidtas automatiskt. Om detta kvarstår kan det vara värt att se över senaste symtommönster eller diskutera dem med en läkare. Avfärda detta problem om du redan känner till det."

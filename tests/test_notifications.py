@@ -600,6 +600,111 @@ class BleedingWithoutPeriodTests(unittest.TestCase):
         self.assertEqual(save.await_count, 1)
 
 
+class HouseholdSupplyTests(unittest.TestCase):
+    """Warn when the household stock is below what was typically used per period and a period is near."""
+
+    TODAY = date(2026, 10, 6)
+
+    @staticmethod
+    def _log(product, *days):
+        """days: (offset from today, quantity) pairs."""
+        return [
+            {"product": product, "quantity": qty, "timestamp": f"{(HouseholdSupplyTests.TODAY + timedelta(days=off)).isoformat()}T08:00:00+02:00"}
+            for off, qty in days
+        ]
+
+    def _need(self, log, product="tampon", today=None):
+        return integration._typical_use_per_period(log, product, today or self.TODAY)
+
+    def test_average_of_the_finished_periods_rounded_up_and_the_running_one_ignored(self) -> None:
+        log = self._log("tampon", (-80, 3), (-79, 4), (-78, 3), (-52, 4), (-51, 4), (-50, 5), (-2, 9), (-1, 9))
+        self.assertEqual(self._need(log), 12)  # finished periods 10 and 13 -> 11.5 rounded up; the running 18 is ignored
+
+    def test_needs_two_finished_periods(self) -> None:
+        self.assertIsNone(self._need(self._log("tampon", (-50, 5), (-49, 5))))
+        self.assertIsNone(self._need([]))
+
+    def test_period_boundaries(self) -> None:
+        # usage days 7 apart belong to one period, 8 apart start a new one
+        same = self._log("tampon", (-60, 2), (-53, 2), (-30, 2), (-23, 2))
+        self.assertEqual(self._need(same), 4)
+        split = self._log("tampon", (-60, 2), (-52, 2), (-30, 2), (-22, 2))
+        self.assertEqual(self._need(split), 2)
+        # a period whose last usage is 7 days ago is still running, 8 days ago it is finished
+        log = self._log("tampon", (-40, 4), (-30, 4))
+        self.assertEqual(self._need(log + self._log("tampon", (-7, 10))), 4)  # running: left out
+        self.assertEqual(self._need(log + self._log("tampon", (-8, 10))), 6)  # finished: (4 + 4 + 10) / 3
+
+    def test_only_the_last_three_finished_periods_count(self) -> None:
+        log = self._log("tampon", (-120, 20), (-90, 4), (-60, 8), (-30, 12))
+        self.assertEqual(self._need(log), 8)  # 4, 8, 12 -> 8; the 20 is too old
+
+    def test_a_full_log_drops_its_possibly_cut_off_oldest_period(self) -> None:
+        filler = self._log("pad", *[(-100 + k, 1) for k in range(47)])
+        log = filler + self._log("tampon", (-90, 1), (-60, 6), (-30, 8))
+        self.assertEqual(len(log), integration.HOUSEHOLD_CONSUMPTION_LOG_LIMIT)
+        self.assertEqual(self._need(log), 7)  # (6 + 8) / 2; the cut-off first period (1) is left out
+        self.assertEqual(self._need(log[1:]), 5)  # one entry fewer: nothing is dropped, (1 + 6 + 8) / 3
+
+    def test_other_products_and_broken_entries_are_ignored(self) -> None:
+        log = self._log("tampon", (-60, 4), (-30, 4)) + self._log("pad", (-60, 50), (-30, 50))
+        log += [{"product": "tampon", "timestamp": "garbage", "quantity": 7}, "x", {"product": "tampon"}]
+        self.assertEqual(self._need(log), 4)
+        self.assertEqual(self._need(self._log("tampon", (-60, 0), (-30, 0))), 1)  # quantity counts at least 1
+
+    def test_shortfalls_list_stock_and_need(self) -> None:
+        data = {
+            "inventory": {"tampon": 8, "pad": 6, "liner": 0, "cup": 1, "underwear": 0},
+            "consumption_log": self._log("tampon", (-60, 14), (-30, 14)) + self._log("pad", (-60, 6), (-30, 6))
+            + self._log("cup", (-60, 9), (-30, 9)) + self._log("underwear", (-60, 9), (-30, 9)),
+        }
+        self.assertEqual(integration._household_supply_shortfalls(data, self.TODAY), ["Tampons 8/14"])  # pads: 6 is enough
+        data["inventory"]["tampon"] = 14
+        self.assertEqual(integration._household_supply_shortfalls(data, self.TODAY), [])
+
+    def _hass_with_period_in(self, days, *, visibility="full"):
+        start = -(28 - days)
+        runtime = _runtime(history=[_iso(start - 28 * k + j) for k in range(5, -1, -1) for j in range(5)], visibility_level=visibility)
+        hass = _hass()
+        hass.data = {integration.DOMAIN: {"e1": runtime}}
+        return hass
+
+    def test_a_period_within_a_week_counts_as_upcoming(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        today = NOW[0].date()
+        with patch.object(integration, "MenstruationRuntime", SimpleNamespace):
+            for days, expected in ((0, True), (7, True), (8, False), (20, False)):
+                self.assertEqual(integration._household_period_upcoming(self._hass_with_period_in(days), today), expected, days)
+            self.assertFalse(integration._household_period_upcoming(self._hass_with_period_in(3, visibility="private"), today))
+            empty = _hass()
+            empty.data = {}
+            self.assertFalse(integration._household_period_upcoming(empty, today))
+
+    def test_check_raises_or_clears_the_issue(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        today = NOW[0].date()
+        data = {
+            "inventory": {"tampon": 3},
+            "consumption_log": [
+                {"product": "tampon", "quantity": 7, "timestamp": f"{(today + timedelta(days=off)).isoformat()}T08:00:00"}
+                for off in (-60, -30)
+            ],
+        }
+        with patch.object(integration, "MenstruationRuntime", SimpleNamespace), patch.object(
+            integration.dt_util, "now", lambda: NOW[0]
+        ):
+            with _issue_recorder() as calls:
+                integration._async_check_household_supply(self._hass_with_period_in(3), data)
+            self.assertEqual([(c[0], c[1]) for c in calls], [("create", "household_supply_short")])
+            self.assertEqual(calls[0][2]["translation_placeholders"], {"products_list": "Tampons 3/7"})
+            with _issue_recorder() as calls:  # period not near: cleared
+                integration._async_check_household_supply(self._hass_with_period_in(15), data)
+            self.assertEqual(calls, [("delete", "household_supply_short")])
+            with _issue_recorder() as calls:  # enough stock: cleared
+                integration._async_check_household_supply(self._hass_with_period_in(3), {**data, "inventory": {"tampon": 7}})
+            self.assertEqual(calls, [("delete", "household_supply_short")])
+
+
 class PregnancyTestHintTests(unittest.TestCase):
     """Opt-in neutral hint 14 days after an ovulation confirmed by the NFP analysis (trying to conceive)."""
 

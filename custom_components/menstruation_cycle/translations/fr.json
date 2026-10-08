@@ -1183,6 +1183,10 @@
       "title": "Menstruation Cycle : les stocks du foyer sont bas",
       "description": "Les produits suivants sont à leur niveau de stock critique ou en dessous : **{products_list}**. Ils ont déjà été ajoutés à la liste de courses de Home Assistant lorsqu'ils ont atteint le seuil d'avertissement - cet avis supplémentaire signifie que le stock est maintenant critiquement bas. Réapprovisionnez bientôt, ou ajustez le seuil critique via le service **manage_household_inventory** si cela ne correspond pas à votre usage réel. Ignorez cet avis une fois réapprovisionné."
     },
+    "household_supply_short": {
+      "title": "Menstruation Cycle : le stock pourrait ne pas suffire pour les prochaines règles",
+      "description": "Des règles sont attendues dans les prochains jours et le stock du foyer est inférieur à la consommation habituelle par période (stock/besoin habituel) : **{products_list}**. Le besoin habituel est la moyenne des dernières périodes terminées du journal de consommation ; ce n'est qu'un repère. Réapprovisionnez ou ignorez cette alerte si le stock suffit."
+    },
     "low_wellness_score": {
       "title": "Menstruation Cycle : le score de bien-être est bas",
       "description": "Profil : **{entry_title}**\n\nLe score de bien-être de ce profil est actuellement de {score}/100 - il combine la régularité du cycle, les jours de douleur récents et la quantité d'historique qui le soutient. Ceci est purement informatif, pas un avis médical, et aucune action n'est effectuée automatiquement. Si cela persiste, il peut être utile de revoir les schémas de symptômes récents ou d'en discuter avec un médecin. Ignorez cet avis si vous en êtes déjà conscient(e)."

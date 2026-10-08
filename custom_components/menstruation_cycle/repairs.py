@@ -892,6 +892,30 @@ def async_check_household_inventory_critical(hass: HomeAssistant, product_names:
     async_create_household_inventory_critical_issue(hass, product_names)
 
 
+_HOUSEHOLD_SUPPLY_SHORT_ISSUE_ID = "household_supply_short"
+
+
+def async_check_household_supply_short(hass: HomeAssistant, items: list[str]) -> None:
+    """Raise (or clear) the "supplies may not last the next period" issue.
+
+    items are preformatted "Tampons 8/14" strings (stock/typical need per period); like the critical-stock issue
+    it is shared by the whole household, so it uses one fixed issue_id. Idempotent create/delete.
+    """
+    if not items:
+        async_delete_issue(hass, DOMAIN, _HOUSEHOLD_SUPPLY_SHORT_ISSUE_ID)
+        return
+    async_create_issue(
+        hass,
+        DOMAIN,
+        _HOUSEHOLD_SUPPLY_SHORT_ISSUE_ID,
+        issue_domain=DOMAIN,
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="household_supply_short",
+        translation_placeholders={"products_list": ", ".join(items)},
+    )
+
+
 def async_create_profile_inactive_issue(
     hass: HomeAssistant,
     entry_id: str,

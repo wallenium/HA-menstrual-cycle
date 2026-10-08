@@ -1761,6 +1761,10 @@
       const conn = this._hass?.connection;
       if (!conn?.sendMessagePromise || !this._selectedEntityId || this._doctorReportBusy) return;
       const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      // The name is read from the field itself (a change event may not have fired yet) and only kept in memory.
+      const nameField = this.shadowRoot?.querySelector?.('[data-action="doctor-report-name"]');
+      const patientName = String(nameField ? nameField.value : this._doctorReportName || '').trim();
+      this._doctorReportName = patientName;
       this._doctorReportBusy = true;
       this.render();
       try {
@@ -1771,7 +1775,8 @@
           service_data: {
             entity_id: this._selectedEntityId,
             ...(attrs.profile ? { profile: attrs.profile } : {}),
-            days_back: 180,
+            days_back: this._doctorReportDays || 180,
+            ...(patientName ? { patient_name: patientName } : {}),
             language: ['de', 'en', 'es', 'fr', 'sv'].includes(this._lang) ? this._lang : 'en',
           },
           return_response: true,
@@ -1801,7 +1806,13 @@
         ? ` <a href="${escapeHtml(report.url)}" target="_blank" rel="noopener">${escapeHtml(this._t('export_open'))}</a>`
           + ` · <a href="${escapeHtml(report.url)}" download="${escapeHtml(report.name)}">${escapeHtml(this._t('export_download'))}</a>`
         : '';
+      const days = this._doctorReportDays || 180;
+      const options = [[90, 'months_3'], [180, 'months_6'], [365, 'months_12']]
+        .map(([value, key]) => `<option value="${value}"${value === days ? ' selected' : ''}>${escapeHtml(this._t(key))}</option>`)
+        .join('');
       return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select data-action="doctor-report-days" aria-label="${escapeHtml(this._t('doctor_report_title'))}"${busy ? ' disabled' : ''}>${options}</select>
+        <input type="text" data-action="doctor-report-name" value="${escapeHtml(this._doctorReportName || '')}" placeholder="${escapeHtml(this._t('patient_name'))}" autocomplete="off"${busy ? ' disabled' : ''} />
         <button type="button" data-action="create-doctor-report"${busy ? ' disabled' : ''}>${escapeHtml(this._t(busy ? 'dashboard_doctor_report_busy' : 'dashboard_doctor_report_create'))}</button>${links}</div>`;
     }
 
@@ -3890,6 +3901,15 @@
     _handleChange(event) {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
+
+      if (target.dataset.action === 'doctor-report-days') {
+        this._doctorReportDays = [90, 180, 365].includes(Number(target.value)) ? Number(target.value) : 180;
+        return;
+      }
+      if (target.dataset.action === 'doctor-report-name') {
+        this._doctorReportName = String(target.value || '').trim();
+        return;
+      }
 
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-date-change') {
         this._quickLogDate = target.value || this._todayIso();

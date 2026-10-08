@@ -173,6 +173,14 @@ CONF_NOTIFY_TEST_HINT = "notify_test_hint"
 DEFAULT_NOTIFY_TEST_HINT = False
 TEST_HINT_DAYS_AFTER_OVULATION = 14
 CYCLE_HINT_SHORT_DAYS = 21
+# Household supplies vs. the next period: warn when a profile's period is predicted within SUPPLY_CHECK_LEAD_DAYS and a
+# purchasable product's stock is below what the household typically used per period. "Per period" is read from the
+# consumption log: usage days at most SUPPLY_USAGE_GAP_DAYS apart form one period; the average of the last
+# SUPPLY_USAGE_MAX_PERIODS finished ones counts, but only with at least SUPPLY_USAGE_MIN_PERIODS of them.
+SUPPLY_CHECK_LEAD_DAYS = 7
+SUPPLY_USAGE_GAP_DAYS = 7
+SUPPLY_USAGE_MIN_PERIODS = 2
+SUPPLY_USAGE_MAX_PERIODS = 3
 CYCLE_HINT_LONG_DAYS = 38
 CYCLE_HINT_DEVIATION_DAYS = 10
 # Days since the pregnancy start at which the 2nd (14+0) and 3rd (28+0) trimester begin.

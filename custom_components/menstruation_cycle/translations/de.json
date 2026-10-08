@@ -1183,6 +1183,10 @@
       "title": "Menstruation Cycle: Haushaltsvorräte werden knapp",
       "description": "Folgende Produkte sind auf oder unter ihrem kritischen Bestandswert: **{products_list}**. Sie wurden bereits beim Erreichen der Warnschwelle zur Home-Assistant-Einkaufsliste hinzugefügt - dieser zusätzliche Hinweis bedeutet, dass der Bestand jetzt kritisch niedrig ist. Bald nachbestellen, oder die kritische Schwelle über den Service **manage_household_inventory** anpassen, falls das nicht zum tatsächlichen Verbrauch passt. Verwirf dieses Problem, sobald du nachbestellt hast."
     },
+    "household_supply_short": {
+      "title": "Menstruation Cycle: Vorrat reicht evtl. nicht für die nächste Periode",
+      "description": "In den nächsten Tagen wird eine Periode erwartet, und der Haushaltsvorrat liegt unter dem, was typischerweise pro Periode verbraucht wurde (Vorrat/üblicher Bedarf): **{products_list}**. Der übliche Bedarf ist der Durchschnitt der letzten abgeschlossenen Perioden im Verbrauchsprotokoll, also nur ein Richtwert. Fülle den Vorrat auf oder ignoriere den Hinweis, wenn der Vorrat reicht."
+    },
     "low_wellness_score": {
       "title": "Menstruation Cycle: Wellness-Score ist niedrig",
       "description": "Profil: **{entry_title}**\n\nDer Wellness-Score dieses Profils liegt aktuell bei {score}/100 - er kombiniert Zyklusregelmäßigkeit, jüngste Schmerztage und wie viel Historie dahintersteht. Das ist rein informativ, keine medizinische Beratung, es wird keine Aktion automatisch ausgeführt. Falls das anhält, kann es sich lohnen, die jüngsten Symptommuster durchzusehen oder mit einem Arzt zu besprechen. Verwerfe dieses Problem, falls du es bereits kennst."

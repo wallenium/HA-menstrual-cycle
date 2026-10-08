@@ -279,6 +279,18 @@ class HouseholdInventoryTests(RepairCheckCase):
         self.assertEqual(CALLS[0][0], "delete")
 
 
+class HouseholdSupplyShortTests(RepairCheckCase):
+    def test_lists_short_products_or_clears(self) -> None:
+        repairs.async_check_household_supply_short(None, ["Tampons 8/14", "Pads 2/6"])
+        self.assertEqual(CALLS[0][0], "create")
+        self.assertEqual(CALLS[0][1], "household_supply_short")
+        self.assertEqual(CALLS[0][2]["translation_placeholders"], {"products_list": "Tampons 8/14, Pads 2/6"})
+        self.assertFalse(CALLS[0][2]["is_fixable"])
+        CALLS.clear()
+        repairs.async_check_household_supply_short(None, [])
+        self.assertEqual(CALLS, [("delete", "household_supply_short")])
+
+
 class ProfileInactiveTests(RepairCheckCase):
     def _check(self, last) -> None:
         repairs.async_check_profile_inactive(None, "e1", "Sarah", last, TODAY)

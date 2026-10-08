@@ -92,6 +92,10 @@ from .const import (
     CONF_NOTIFY_UNPROTECTED_HINT,
     CONF_NOTIFY_CYCLE_HINT,
     CONF_NOTIFY_TEST_HINT,
+    SUPPLY_CHECK_LEAD_DAYS,
+    SUPPLY_USAGE_GAP_DAYS,
+    SUPPLY_USAGE_MAX_PERIODS,
+    SUPPLY_USAGE_MIN_PERIODS,
     CONF_NOTIFY_PREGNANCY_UPDATES,
     DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
@@ -559,6 +563,89 @@ def _normalize_household_inventory_data(data: Any) -> dict[str, Any]:
     }
 
 
+def _typical_use_per_period(consumption_log: list, product: str, today: date) -> int | None:
+    """Typical quantity of a product used per period, from the household consumption log.
+
+    Usage days at most SUPPLY_USAGE_GAP_DAYS apart form one period; a period that is still running is left out, and so
+    is the oldest one when the log is full (it may be cut off). Needs SUPPLY_USAGE_MIN_PERIODS finished periods,
+    averages the last SUPPLY_USAGE_MAX_PERIODS (rounded up); None otherwise.
+    """
+    per_day: dict[date, int] = {}
+    for item in consumption_log:
+        if not isinstance(item, dict) or str(item.get("product", "")).lower() != product:
+            continue
+        try:
+            day = date.fromisoformat(str(item.get("timestamp", ""))[:10])
+            per_day[day] = per_day.get(day, 0) + max(1, int(item.get("quantity", 1)))
+        except (TypeError, ValueError):
+            continue
+    periods: list[int] = []
+    previous: date | None = None
+    for day in sorted(per_day):
+        if previous is None or (day - previous).days > SUPPLY_USAGE_GAP_DAYS:
+            periods.append(0)
+        periods[-1] += per_day[day]
+        previous = day
+    if previous is not None and (today - previous).days <= SUPPLY_USAGE_GAP_DAYS:
+        periods.pop()  # still running
+    if len(consumption_log) >= HOUSEHOLD_CONSUMPTION_LOG_LIMIT and periods:
+        periods.pop(0)  # the log is full, so its oldest period may be cut off
+    periods = periods[-SUPPLY_USAGE_MAX_PERIODS:]
+    if len(periods) < SUPPLY_USAGE_MIN_PERIODS:
+        return None
+    return -(-sum(periods) // len(periods))
+
+
+def _household_supply_shortfalls(household_data: dict[str, Any], today: date) -> list[str]:
+    """"Tampons 8/14" (stock/typical need per period) for purchasable products below their typical need."""
+    inventory = household_data.get("inventory", {})
+    log = household_data.get("consumption_log", [])
+    short: list[str] = []
+    for product in HOUSEHOLD_PRODUCTS:
+        name = _SHOPPING_PRODUCT_NAMES.get(product)
+        if product in _SKIP_SHOPPING_PRODUCTS or not name:
+            continue
+        need = _typical_use_per_period(log, product, today)
+        stock = max(0, int(inventory.get(product, 0)))
+        if need is not None and stock < need:
+            short.append(f"{name} {stock}/{need}")
+    return short
+
+
+def _household_period_upcoming(hass: HomeAssistant, today: date) -> bool:
+    """True if a (not private) profile's next period is predicted within SUPPLY_CHECK_LEAD_DAYS."""
+    for runtime in hass.data.get(DOMAIN, {}).values():
+        if not isinstance(runtime, MenstruationRuntime) or runtime.visibility_level == VISIBILITY_LEVEL_PRIVATE:
+            continue
+        model = build_cycle_model(
+            history=runtime.history,
+            period_duration_days=runtime.period_duration_days,
+            symptom_history=runtime.symptom_history,
+            pregnancy_data=runtime.pregnancy_data,
+            menarche_data=runtime.menarche_data,
+            pre_menarche_data=runtime.pre_menarche_data,
+            menopause_data=runtime.menopause_data,
+            noncycle_data=runtime.noncycle_data,
+            today=today,
+            cycle_length_override=runtime.cycle_length_override,
+            nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+            onboarding_stage=getattr(runtime, "onboarding_stage", None),
+        )
+        days = model.days_until_next_start
+        if days is not None and 0 <= days <= SUPPLY_CHECK_LEAD_DAYS:
+            return True
+    return False
+
+
+def _async_check_household_supply(hass: HomeAssistant, household_data: dict[str, Any]) -> None:
+    """Raise (or clear) the "supplies may not last the next period" issue; cheap and idempotent."""
+    from .repairs import async_check_household_supply_short
+
+    today = dt_util.now().date()
+    items = _household_supply_shortfalls(household_data, today) if _household_period_upcoming(hass, today) else []
+    async_check_household_supply_short(hass, items)
+
+
 def _household_members(hass: HomeAssistant) -> list[dict[str, str]]:
     members: list[dict[str, str]] = []
     for runtime in hass.data.get(DOMAIN, {}).values():
@@ -837,6 +924,7 @@ async def _async_register_consumption(
     from .repairs import async_check_household_inventory_critical
 
     async_check_household_inventory_critical(hass, _household_inventory_critical_products(household_data))
+    _async_check_household_supply(hass, household_data)
 
 
 def _apply_optional_thresholds(
@@ -3245,6 +3333,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 async_check_household_inventory_critical(
                     hass, _household_inventory_critical_products(_household_data)
                 )
+                _async_check_household_supply(hass, _household_data)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight household-inventory-critical check failed")
 
@@ -3429,6 +3518,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_check_household_inventory_critical(
             hass, _household_inventory_critical_products(_setup_household_data)
         )
+        _async_check_household_supply(hass, _setup_household_data)
 
     return True
 
@@ -4920,6 +5010,7 @@ async def _async_handle_manage_household_inventory(hass: HomeAssistant, call: Se
         from .repairs import async_check_household_inventory_critical
 
         async_check_household_inventory_critical(hass, _household_inventory_critical_products(household_data))
+        _async_check_household_supply(hass, household_data)
 
 
 async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, save: bool = True) -> None:
