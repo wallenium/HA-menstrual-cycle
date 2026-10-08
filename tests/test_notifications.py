@@ -833,6 +833,119 @@ class PregnancyTestHintTests(unittest.TestCase):
             strings["testhint_message"].format(name="A", date="2026-10-01", days=14)
 
 
+class OvulationTestAndTemperatureHintTests(unittest.TestCase):
+    """Opt-in hint to start LH tests and opt-in basal temperature reminder around the expected ovulation."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _send(self, days_to_ovulation, option, *, symptoms=(), noncycle=None, options=None, method=None, language="en"):
+        # regular 28-day cycles: ovulation is estimated on cycle day 14 = start + 13
+        start = days_to_ovulation - 13
+        history = [_iso(s + k) for s in (start - 56, start - 28, start) for k in range(5)]
+        extra = [{"date": _iso(-1), "contraception_method": method}] if method else []
+        runtime = _runtime(history=history, symptom_history=[*symptoms, *extra], noncycle_data=dict(noncycle or {}))
+        entry = _entry(**{
+            const.CONF_NOTIFY_PERIOD_ENABLED: False, const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False, const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False, const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            option: True, **(options or {}),
+        })
+        hass, sent = _hass(), _Sent()
+        hass.config.language = language
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        self.runtime, self.start = runtime, start
+        return [(title, message) for title, message, _ in sent.calls]
+
+    # --- LH test start hint ---
+
+    def test_lh_hint_is_sent_7_to_5_days_before_ovulation_once_per_cycle(self) -> None:
+        (title, message), = self._send(7, const.CONF_NOTIFY_LH_HINT)
+        self.assertEqual(title, "Ovulation tests")
+        self.assertIn("in about 7 days", message)
+        self.assertEqual(self.runtime.noncycle_data["notified_lh_hint"], _iso(self.start))
+        self.assertEqual(len(self._send(5, const.CONF_NOTIFY_LH_HINT)), 1)
+        self.assertEqual(self._send(8, const.CONF_NOTIFY_LH_HINT), [])
+        self.assertEqual(self._send(4, const.CONF_NOTIFY_LH_HINT), [])
+        done = {"notified_lh_hint": _iso(7 - 13)}
+        self.assertEqual(self._send(7, const.CONF_NOTIFY_LH_HINT, noncycle=done), [])
+
+    def test_lh_hint_is_skipped_with_positive_test_off_by_default_and_when_muted(self) -> None:
+        self.assertEqual(self._send(7, const.CONF_NOTIFY_LH_HINT, options={const.CONF_NOTIFY_LH_HINT: False}), [])
+        positive = [{"date": _iso(7 - 13 + 3), "test": "positive_ovulation"}]
+        self.assertEqual(self._send(7, const.CONF_NOTIFY_LH_HINT, symptoms=positive), [])
+        # a positive test from the previous cycle does not count
+        old = [{"date": _iso(7 - 13 - 20), "test": "positive_ovulation"}]
+        self.assertEqual(len(self._send(7, const.CONF_NOTIFY_LH_HINT, symptoms=old)), 1)
+        mute = {const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True}
+        self.assertEqual(self._send(7, const.CONF_NOTIFY_LH_HINT, options=mute, method="pill"), [])
+        self.assertEqual(len(self._send(7, const.CONF_NOTIFY_LH_HINT, options=mute, method="condom")), 1)
+
+    # --- basal temperature reminder ---
+
+    def _temps(self, days):
+        return [{"date": _iso(-d), "basal_temp": 36.4} for d in days]
+
+    def test_temp_reminder_for_regular_loggers_inside_the_window(self) -> None:
+        recent = self._temps([1, 2, 3])
+        (title, message), = self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=recent)
+        self.assertEqual(title, "Basal temperature")
+        self.assertIn(_iso(2), message)
+        self.assertEqual(self.runtime.noncycle_data["notified_temp_reminder"], _iso(0))
+        self.assertEqual(len(self._send(5, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=recent)), 1)
+        self.assertEqual(len(self._send(-3, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=recent)), 1)
+        self.assertEqual(self._send(6, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=recent), [])
+        self.assertEqual(self._send(-4, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=recent), [])
+
+    def test_temp_reminder_needs_regular_logging_and_no_value_today(self) -> None:
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([1, 2])), [])
+        self.assertEqual(len(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([1, 4, 7]))), 1)
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([8, 9, 10])), [])
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([0, 1, 2, 3])), [])
+        done = {"notified_temp_reminder": _iso(0)}
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([1, 2, 3]), noncycle=done), [])
+        off = {const.CONF_NOTIFY_TEMP_REMINDER: False}
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=self._temps([1, 2, 3]), options=off), [])
+
+    def test_temp_reminder_ignores_entries_without_temperature_and_stops_after_confirmation(self) -> None:
+        no_temp = self._temps([1, 2]) + [{"date": _iso(-3), "cervical_mucus": "cremig"}]
+        self.assertEqual(self._send(2, const.CONF_NOTIFY_TEMP_REMINDER, symptoms=no_temp), [])
+        # Confirmed ovulation (temperature rise + mucus peak) two days ago: still inside the +3 day window, but no reminder.
+        cycle = PregnancyTestHintTests._CYCLE
+        start = -(14 + 2)
+        confirmed = []
+        for k, (temp, mucus, bleeding) in enumerate(cycle):
+            entry = {"date": _iso(start + k), "basal_temp": temp}
+            if mucus:
+                entry["cervical_mucus"] = mucus
+            if bleeding:
+                entry["bleeding_strength"] = bleeding
+            confirmed.append(entry)
+        runtime = _runtime(history=[_iso(start + k) for k in range(5)], symptom_history=confirmed)
+        entry = _entry(**{
+            const.CONF_NOTIFY_PERIOD_ENABLED: False, const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False, const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False, const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            const.CONF_NOTIFY_TEMP_REMINDER: True,
+        })
+        titles = [t for t, _, _ in _run_notifications(entry, runtime).calls]
+        self.assertNotIn("Basal temperature", titles)
+        unconfirmed = [dict(e, basal_temp=36.2) for e in confirmed]  # flat temperature: nothing confirmed
+        runtime = _runtime(history=[_iso(start + k) for k in range(5)], symptom_history=unconfirmed)
+        titles = [t for t, _, _ in _run_notifications(entry, runtime).calls]
+        self.assertIn("Basal temperature", titles)
+
+    def test_texts_exist_in_every_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            strings = integration._notify_strings(lang)
+            self.assertTrue(strings["lhhint_title"] and strings["tempreminder_title"], lang)
+            strings["lhhint_message"].format(name="A", date="2026-10-01", days=7)
+            strings["tempreminder_message"].format(name="A", date="2026-10-01")
+
+
 class ClosePeriodStartsTests(unittest.TestCase):
     """repair_storage flags period starts that follow the previous one too closely."""
 

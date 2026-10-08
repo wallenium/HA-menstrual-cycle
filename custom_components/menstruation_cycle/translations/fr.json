@@ -89,7 +89,9 @@
               "notify_unprotected_hint": "Conseil après un rapport non protégé",
               "notify_pregnancy_updates": "Message hebdomadaire de grossesse",
               "notify_cycle_hint": "Alerte pour une durée de cycle inhabituelle",
-              "notify_test_hint": "Alerte pour le moment du test (désir de grossesse)"
+              "notify_test_hint": "Alerte pour le moment du test (désir de grossesse)",
+              "notify_lh_hint": "Rappel : commencer les tests d'ovulation",
+              "notify_temp_reminder": "Rappel de la température basale"
             },
             "data_description": {
               "notifications_enabled": "Envoie une notification lorsque les règles sont prévues pour demain, ou lorsque la fenêtre de fertilité commence aujourd'hui.",
@@ -111,7 +113,9 @@
               "notify_unprotected_hint": "Lorsqu'un rapport non protégé est saisi pour aujourd'hui ou l'un des 5 derniers jours, un conseil neutre est envoyé : si une grossesse n'est pas souhaitée, une pharmacie ou un médecin peut conseiller sur la contraception d'urgence, le plus tôt possible. Pas de posologie ni de conseil médical. Non envoyé pendant la grossesse ou la ménopause. Désactivé par défaut. Nécessite « Activer les notifications » ci-dessus.",
               "notify_pregnancy_updates": "Tant que le mode grossesse est actif, envoie une fois par semaine (le jour de la semaine du début de grossesse) un court message neutre indiquant la semaine en cours, ainsi qu'une note au début des 2e et 3e trimestres. Aucun conseil médical.",
               "notify_cycle_hint": "Après le début de nouvelles règles, envoie une alerte neutre lorsque les trois derniers cycles étaient tous plus courts que 21 jours ou tous plus longs que 38 jours, ou que le dernier cycle s'écartait de 10 jours ou plus de votre moyenne. Ce n'est pas un diagnostic ; cela suggère seulement d'en parler lors du prochain suivi.",
-              "notify_test_hint": "Envoie 14 jours après une ovulation confirmée par vos relevés de température et de glaire/col de l'utérus un message neutre : un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical. Pas d'envoi pendant une grossesse ni sous contraception hormonale si les alertes de fertilité sont désactivées pour celle-ci. Désactivé par défaut."
+              "notify_test_hint": "Envoie 14 jours après une ovulation confirmée par vos relevés de température et de glaire/col de l'utérus un message neutre : un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical. Pas d'envoi pendant une grossesse ni sous contraception hormonale si les alertes de fertilité sont désactivées pour celle-ci. Désactivé par défaut.",
+              "notify_lh_hint": "Quelques jours avant l'ovulation attendue, envoie une fois par cycle un message neutre indiquant qu'il est temps de commencer les tests d'ovulation (LH). Il n'est pas envoyé si un test LH positif ou une ovulation confirmée existe déjà dans le cycle. Simple repère, pas un avis médical. Ignoré tant que les notifications de fertilité sont désactivées pour cause de contraception hormonale. Désactivé par défaut.",
+              "notify_temp_reminder": "À l'heure de notification, rappelle de mesurer et d'enregistrer la température basale autour de l'ovulation attendue, tant qu'aucune montée de température n'est confirmée. Uniquement pour les personnes qui enregistrent régulièrement leur température (au moins 3 des 7 derniers jours) et seulement si la température du jour n'est pas encore enregistrée. Désactivé par défaut."
             }
           },
           "pill": {

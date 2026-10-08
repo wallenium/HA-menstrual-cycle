@@ -848,6 +848,8 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_cervix_peak: 'Cervix Position Peak',
         nfp_ovulation: 'Estimated Ovulation',
         nfp_fertile_window: 'Fertile Window',
+        nfp_luteal_forecast: 'Next period (from luteal phase)',
+        nfp_luteal_forecast_value: '{date} ({n} days luteal phase)',
         nfp_score: 'NFP Score',
         nfp_method: 'Method',
         nfp_method_nfp: 'NFP',
@@ -2340,6 +2342,15 @@ class MenstruationStatisticsCard extends HTMLElement {
       ? `${esc(fwStart)} – ${esc(fwEnd)}`
       : esc(t('nfp_not_detected'));
 
+    const lf = nfp.luteal_forecast;
+    const lutealRow = (lf && lf.predicted_start)
+      ? `<div class="nfp-info-row">
+            <span class="nfp-info-icon">🩸</span>
+            <span class="nfp-info-label">${esc(t('nfp_luteal_forecast'))}</span>
+            <span class="nfp-info-value">${esc(t('nfp_luteal_forecast_value').replace('{date}', lf.predicted_start).replace('{n}', lf.luteal_days))}</span>
+          </div>`
+      : '';
+
     const methodLabel = (nfp.ovulation_detected && confidence !== 'low')
       ? `<img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP Method" class="method-icon" />${esc(t('nfp_method_nfp'))}`
       : `<img src="/menstruation_cycle/assets/state/hybrid.svg" alt="Standard Method" class="method-icon" />${esc(t('nfp_method_standard'))}`;
@@ -2409,6 +2420,7 @@ class MenstruationStatisticsCard extends HTMLElement {
             <span class="nfp-info-label">${esc(t('nfp_fertile_window'))}</span>
             <span class="nfp-info-value">${fertileText}</span>
           </div>
+          ${lutealRow}
           <div class="nfp-info-row nfp-info-highlight nfp-pregnancy-likelihood">
             <span class="nfp-info-icon">🤰</span>
             <span class="nfp-info-label">${esc(t('nfp_pregnancy_likelihood'))}</span>

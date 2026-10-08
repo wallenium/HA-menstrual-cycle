@@ -679,6 +679,36 @@ class ProductUsageBackendTests(unittest.TestCase):
         result = model.learn_ovulation_pattern([], [])
         self.assertIsNone(result)
 
+    def test_learn_ovulation_pattern_uses_positive_lh_tests_without_temperature(self) -> None:
+        starts = ["2026-04-01", "2026-05-01", "2026-06-01"]
+        lh = [
+            {"date": "2026-04-14", "test": "positive_ovulation"},  # ovulation 04-15 -> offset 14
+            {"date": "2026-05-16", "test": ["positive_ovulation"]},  # ovulation 05-17 -> offset 16
+        ]
+        self.assertEqual(model.learn_ovulation_pattern(lh, starts), 15)
+        # A single cycle with an LH test is not enough, and it must not count for the cycle before it.
+        self.assertIsNone(model.learn_ovulation_pattern(lh[1:], starts))
+
+    def test_learn_ovulation_pattern_lh_test_belongs_to_its_own_cycle_only(self) -> None:
+        # Very short first cycle: the LH test on 04-20 lies after the second start (04-12) and counts for that cycle.
+        starts = ["2026-04-01", "2026-04-12", "2026-05-20"]
+        lh = [{"date": "2026-04-20", "test": "positive_ovulation"}]  # ovulation 04-21 -> offset 9 for cycle two
+        self.assertEqual(model.learn_ovulation_pattern(lh, starts, min_cycles=1), 9)
+        # A test on the next cycle's start day is not part of the previous cycle.
+        edge = [{"date": "2026-04-12", "test": "positive_ovulation"}]
+        self.assertIsNone(model.learn_ovulation_pattern(edge, starts, min_cycles=1))
+
+    def test_learn_ovulation_pattern_prefers_temperature_rise_over_lh(self) -> None:
+        starts = ["2026-04-01", "2026-05-01", "2026-06-01"]
+        temps = [
+            {"date": (date(2026, 4, 1) + timedelta(days=i)).isoformat(), "basal_temp": 36.5 if i < 16 else 36.8}
+            for i in range(21)
+        ]
+        # An early (implausible) LH test in a cycle that also has a temperature rise must be ignored.
+        temps[5]["test"] = "positive_ovulation"
+        lh_cycle_two = [{"date": "2026-05-14", "test": "positive_ovulation"}]  # offset 14
+        self.assertEqual(model.learn_ovulation_pattern(temps + lh_cycle_two, starts), 15)
+
     def test_learn_ovulation_pattern_returns_none_with_only_one_cycle_start(self) -> None:
         result = model.learn_ovulation_pattern([], ["2026-06-01"])
         self.assertIsNone(result)
@@ -789,6 +819,68 @@ class ProductUsageBackendTests(unittest.TestCase):
             today=today,
             nfp_mode=nfp_mode,
         )
+
+    @staticmethod
+    def _temps_with_rise(start_iso: str, rise_index: int, days: int = 21) -> list[dict]:
+        start = date.fromisoformat(start_iso)
+        return [
+            {"date": (start + timedelta(days=i)).isoformat(), "basal_temp": 36.5 if i < rise_index else 36.8}
+            for i in range(days)
+        ]
+
+    def _luteal_inputs(self):
+        # finished cycles of 28 and 30 days with the rise on day 14 / 16 -> luteal phase 14 days both times;
+        # the running cycle (start 2026-05-29) rises on day 18 = 2026-06-16
+        starts = ["2026-04-01", "2026-04-29", "2026-05-29"]
+        symptoms = [
+            e for s_, rise in zip(starts, (14, 16, 18)) for e in self._temps_with_rise(s_, rise)
+        ]
+        return starts, symptoms
+
+    def test_learn_luteal_length_averages_finished_cycles_only(self) -> None:
+        starts, symptoms = self._luteal_inputs()
+        self.assertEqual(model.learn_luteal_length(symptoms, starts), 14)
+        # one finished cycle is not enough; the running cycle never counts
+        self.assertIsNone(model.learn_luteal_length(symptoms, starts[1:]))
+        self.assertIsNone(model.learn_luteal_length([], starts))
+        # implausible lengths (rise only 2 days before the next period) are dropped
+        late = [e for s_ in starts for e in self._temps_with_rise(s_, 28, days=31)]
+        self.assertIsNone(model.learn_luteal_length(late, starts))
+
+    def test_cycle_model_adds_luteal_forecast_without_changing_the_calendar_prediction(self) -> None:
+        starts, symptoms = self._luteal_inputs()
+        kwargs = dict(
+            history=[(date.fromisoformat(s_) + timedelta(days=k)).isoformat() for s_ in starts for k in range(5)],
+            period_duration_days=5,
+            today=date(2026, 6, 20),
+        )
+        cycle = model.build_cycle_model(symptom_history=symptoms, **kwargs)
+        forecast = cycle.nfp_analysis["luteal_forecast"]
+        # rise on 2026-06-16 plus 14 luteal days; the calendar prediction (average cycle 29 days) differs from it
+        self.assertEqual(forecast["predicted_start"], "2026-06-30")
+        self.assertEqual(forecast["luteal_days"], 14)
+        self.assertNotEqual(forecast["difference_days"], 0)
+        self.assertEqual(forecast["difference_days"], (date(2026, 6, 30) - date.fromisoformat(cycle.next_predicted_start)).days)
+        # the regular prediction is the same as without any temperature data
+        plain = model.build_cycle_model(symptom_history=[], **kwargs)
+        self.assertEqual(cycle.next_predicted_start, plain.next_predicted_start)
+
+    def test_no_luteal_forecast_without_a_rise_in_this_cycle_or_history(self) -> None:
+        starts, symptoms = self._luteal_inputs()
+        kwargs = dict(
+            history=[(date.fromisoformat(s_) + timedelta(days=k)).isoformat() for s_ in starts for k in range(5)],
+            period_duration_days=5,
+            today=date(2026, 6, 5),
+        )
+        # temperature rise of the running cycle is not logged yet
+        running_flat = [e for e in symptoms if e["date"] < "2026-05-29"] + [
+            {"date": "2026-05-29", "basal_temp": 36.5}, {"date": "2026-06-01", "basal_temp": 36.5}
+        ]
+        self.assertNotIn("luteal_forecast", model.build_cycle_model(symptom_history=running_flat, **kwargs).nfp_analysis)
+        # rise seen, but only the running cycle has temperature data -> no personal luteal length
+        only_current = self._temps_with_rise("2026-05-29", 18)
+        kwargs["today"] = date(2026, 6, 20)
+        self.assertNotIn("luteal_forecast", model.build_cycle_model(symptom_history=only_current, **kwargs).nfp_analysis)
 
     def test_positive_lh_test_anchors_ovulation_one_day_later(self) -> None:
         # Cycle starts 2026-06-29; positive LH on 06-30 -> ovulation 07-01, window = ovulation -5 .. +1.

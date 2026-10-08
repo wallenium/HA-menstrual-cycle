@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from .const import (
+    LUTEAL_PHASE_PLAUSIBLE_DAYS,
     CONTRACEPTION_HORMONAL_METHODS,
     CYCLE_HINT_DEVIATION_DAYS,
     CYCLE_HINT_LONG_DAYS,
@@ -370,7 +371,7 @@ def learn_ovulation_pattern(
     recent_starts = cycle_starts[-max_cycles:]
     ovulation_offsets: list[int] = []
 
-    for cycle_start_iso in recent_starts:
+    for index, cycle_start_iso in enumerate(recent_starts):
         try:
             cycle_start = date.fromisoformat(cycle_start_iso)
         except ValueError:
@@ -380,21 +381,53 @@ def learn_ovulation_pattern(
 
         # Extract temperature rise day if available (works even for LOW-confidence)
         temp_rise_day_iso = nfp_result.get("temperature_rise_day")
+        ovulation_day: date | None = None
         if temp_rise_day_iso:
             try:
-                temp_rise_day = date.fromisoformat(temp_rise_day_iso)
-                offset = (temp_rise_day - cycle_start).days
-                # Sanity check: ovulation should be between day 8 and day 25
-                if 8 <= offset <= 25:
-                    ovulation_offsets.append(offset)
+                ovulation_day = date.fromisoformat(temp_rise_day_iso)
             except ValueError:
                 continue
+        else:
+            # No temperature rise in this cycle: a positive LH test puts ovulation about one day later.
+            next_start_iso = recent_starts[index + 1] if index + 1 < len(recent_starts) else None
+            lh_day = first_positive_lh_day(symptom_history, cycle_start_iso, date.max, next_start_iso)
+            if lh_day is not None:
+                ovulation_day = lh_day + timedelta(days=1)
+        if ovulation_day is not None:
+            offset = (ovulation_day - cycle_start).days
+            # Sanity check: ovulation should be between day 8 and day 25
+            if 8 <= offset <= 25:
+                ovulation_offsets.append(offset)
 
     # Return average only if we have enough data points
     if len(ovulation_offsets) >= min_cycles:
         return round(sum(ovulation_offsets) / len(ovulation_offsets))
 
     return None
+
+
+def learn_luteal_length(
+    symptom_history: list[dict[str, Any]],
+    cycle_starts: list[str],
+    period_duration_days: int = 5,
+    min_cycles: int = 2,
+    max_cycles: int = 5,
+) -> int | None:
+    """Average days from the temperature rise to the next period start over recent finished cycles.
+
+    Same definition as the luteal phase in the doctor report (statistics.py); the current cycle is not a finished
+    cycle and is skipped. Returns None with fewer than ``min_cycles`` plausible cycles.
+    """
+    lengths: list[int] = []
+    for start_iso, next_iso in list(zip(cycle_starts, cycle_starts[1:]))[-max_cycles:]:
+        result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
+        rise_iso = result.get("temperature_rise_day")  # only set when the rise is confirmed
+        if not rise_iso:
+            continue
+        luteal = (date.fromisoformat(next_iso) - date.fromisoformat(rise_iso)).days
+        if LUTEAL_PHASE_PLAUSIBLE_DAYS[0] <= luteal <= LUTEAL_PHASE_PLAUSIBLE_DAYS[1]:
+            lengths.append(luteal)
+    return round(sum(lengths) / len(lengths)) if len(lengths) >= min_cycles else None
 
 
 def normalize_symptoms(symptom_history: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1859,8 +1892,12 @@ def compute_period_forecast(
     }
 
 
-def first_positive_lh_day(symptoms: list[dict[str, Any]], cycle_start_iso: str, today: date) -> date | None:
-    """Return the first day of the current cycle with a positive ovulation (LH) test, if any.
+def first_positive_lh_day(
+    symptoms: list[dict[str, Any]], cycle_start_iso: str, today: date, next_start_iso: str | None = None
+) -> date | None:
+    """Return the first day of a cycle with a positive ovulation (LH) test, if any.
+
+    The cycle runs from ``cycle_start_iso`` up to ``today`` (and before ``next_start_iso`` for finished cycles).
 
     ponytail: first positive wins; a false early positive would shift the anchor,
     refine to "first of the latest consecutive run" if that shows up in practice.
@@ -1868,7 +1905,9 @@ def first_positive_lh_day(symptoms: list[dict[str, Any]], cycle_start_iso: str, 
     days = [
         entry["date"]
         for entry in symptoms
-        if cycle_start_iso <= str(entry.get("date", "")) <= today.isoformat()
+        if isinstance(entry, dict)
+        and cycle_start_iso <= str(entry.get("date", "")) <= today.isoformat()
+        and (next_start_iso is None or str(entry.get("date", "")) < next_start_iso)
         and "positive_ovulation" in _entry_value_set(entry, "test")
     ]
     return date.fromisoformat(min(days)) if days else None
@@ -2992,6 +3031,18 @@ def build_cycle_model(
             ovulation_day=nfp_result.get("ovulation_day") or ovulation_day_iso,
             today=now,
         )
+
+        # Extra forecast (the calendar prediction stays unchanged): once this cycle's temperature rise is seen, the next
+        # period is expected one personal luteal phase later.
+        rise_iso = nfp_result.get("temperature_rise_day")
+        luteal_days = learn_luteal_length(symptoms, starts, effective_duration) if rise_iso else None
+        if luteal_days is not None:
+            predicted = date.fromisoformat(rise_iso) + timedelta(days=luteal_days)
+            nfp_result["luteal_forecast"] = {
+                "predicted_start": predicted.isoformat(),
+                "luteal_days": luteal_days,
+                "difference_days": (predicted - date.fromisoformat(next_start)).days if next_start else None,
+            }
 
     low_data_mode = (
         effective_stage == ONBOARDING_STAGE_EARLY_MENARCHE

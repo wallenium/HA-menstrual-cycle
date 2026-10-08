@@ -1184,5 +1184,7 @@
   "dashboard_doctor_report_create": "Crear informe médico",
   "dashboard_doctor_report_busy": "Creando…",
   "dashboard_doctor_report_error": "No se pudo crear el informe.",
-  "supply_short_hint": "Puede que las existencias no alcancen para la próxima regla (habitual: unas {need} por regla)."
+  "supply_short_hint": "Puede que las existencias no alcancen para la próxima regla (habitual: unas {need} por regla).",
+  "nfp_luteal_forecast": "Próxima regla (fase lútea)",
+  "nfp_luteal_forecast_value": "{date} (fase lútea de {n} días)"
 }

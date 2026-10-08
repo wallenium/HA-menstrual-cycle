@@ -1184,5 +1184,7 @@
   "dashboard_doctor_report_create": "Arztbericht erstellen",
   "dashboard_doctor_report_busy": "Wird erstellt…",
   "dashboard_doctor_report_error": "Der Bericht konnte nicht erstellt werden.",
-  "supply_short_hint": "Vorrat reicht evtl. nicht für die nächste Periode (üblich: ca. {need} pro Periode)."
+  "supply_short_hint": "Vorrat reicht evtl. nicht für die nächste Periode (üblich: ca. {need} pro Periode).",
+  "nfp_luteal_forecast": "Nächste Periode (aus Lutealphase)",
+  "nfp_luteal_forecast_value": "{date} ({n} Tage Lutealphase)"
 }

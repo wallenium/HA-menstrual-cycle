@@ -271,6 +271,60 @@ class LutealPhaseTests(unittest.TestCase):
             self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
 
 
+class LhLagTests(unittest.TestCase):
+    """Days between the first positive LH test and the temperature rise, from cycles that have both."""
+    TODAY = date(2026, 7, 20)
+    HISTORY = ["2026-05-01", "2026-05-29", "2026-06-27"]
+
+    @staticmethod
+    def _temps(first_day, low_days, high_days):
+        return LutealPhaseTests._temps(first_day, low_days, high_days)
+
+    def _data(self, lh_dates):
+        # rise on 05-15 and 06-12
+        temps = self._temps("2026-05-01", 14, 14) + self._temps("2026-05-29", 14, 15)
+        for entry in temps:
+            if entry["date"] in lh_dates:
+                entry["test"] = "positive_ovulation"
+        return temps
+
+    def _stats(self, temps):
+        return statistics.compute_statistics(self.HISTORY, temps, days_back=180, today=self.TODAY, period_duration_days=5)
+
+    def test_lag_is_averaged_over_cycles_with_both_signals(self) -> None:
+        stats = self._stats(self._data({"2026-05-12", "2026-06-10", "2026-06-11"}))  # lags 3 and 2 (first test counts)
+        self.assertEqual(
+            (stats["lh_lag_cycles"], stats["lh_lag_avg"], stats["lh_lag_min"], stats["lh_lag_max"]), (2, 2.5, 2, 3)
+        )
+
+    def test_cycles_without_both_signals_or_with_implausible_lag_are_left_out(self) -> None:
+        self.assertEqual(self._stats(self._data(set()))["lh_lag_cycles"], 0)
+        only_one = self._stats(self._data({"2026-05-12"}))
+        self.assertEqual((only_one["lh_lag_cycles"], only_one["lh_lag_avg"]), (1, 3.0))
+        # lag -4 (test after the rise) and +8 (test far before the rise) are outside -3..7
+        self.assertEqual(self._stats(self._data({"2026-05-19", "2026-06-04"}))["lh_lag_cycles"], 0)
+        edges = self._stats(self._data({"2026-05-18", "2026-06-05"}))  # lags -3 and +7
+        self.assertEqual((edges["lh_lag_cycles"], edges["lh_lag_min"], edges["lh_lag_max"]), (2, -3, 7))
+
+    def test_lh_test_of_the_previous_cycle_does_not_count(self) -> None:
+        # 05-28 belongs to cycle one (before the 05-29 start), so cycle two has no test of its own
+        stats = self._stats(self._data({"2026-05-28"}))
+        self.assertEqual(stats["lh_lag_cycles"], 0)
+
+    def test_report_line_in_every_language_only_with_data(self) -> None:
+        stats = self._stats(self._data({"2026-05-12", "2026-06-10"}))
+        empty = self._stats(self._data(set()))
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            title = html_lib.escape(statistics._REPORT_TEXT[lang]["lh_lag"])
+            kwargs = dict(history=[], symptom_history=[], profile="a", patient_name=None, patient_birthdate=None,
+                          language=lang, report_date=self.TODAY.isoformat())
+            html = statistics.generate_doctor_report_html(stats=stats, **kwargs)
+            self.assertIn(title, html, lang)
+            self.assertIn("2.5", html, lang)
+            self.assertNotIn("{avg}", html)
+            self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+
+
 class CycleOverviewTests(unittest.TestCase):
     TODAY = date(2026, 7, 20)
     # cycles start 05-01 (28 days), 05-29 (29 days), 06-27 (running); period days 3, 4 and 3

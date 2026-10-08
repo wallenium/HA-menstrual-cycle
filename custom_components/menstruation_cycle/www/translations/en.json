@@ -1184,5 +1184,7 @@
   "dashboard_doctor_report_create": "Create doctor report",
   "dashboard_doctor_report_busy": "Creating…",
   "dashboard_doctor_report_error": "Could not create the report.",
-  "supply_short_hint": "Stock may not last the next period (typically about {need} per period)."
+  "supply_short_hint": "Stock may not last the next period (typically about {need} per period).",
+  "nfp_luteal_forecast": "Next period (from luteal phase)",
+  "nfp_luteal_forecast_value": "{date} ({n} days luteal phase)"
 }

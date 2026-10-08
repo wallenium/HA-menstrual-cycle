@@ -172,6 +172,15 @@ DEFAULT_NOTIFY_CYCLE_HINT = False
 CONF_NOTIFY_TEST_HINT = "notify_test_hint"
 DEFAULT_NOTIFY_TEST_HINT = False
 TEST_HINT_DAYS_AFTER_OVULATION = 14
+CONF_NOTIFY_LH_HINT = "notify_lh_hint"
+DEFAULT_NOTIFY_LH_HINT = False
+CONF_NOTIFY_TEMP_REMINDER = "notify_temp_reminder"
+DEFAULT_NOTIFY_TEMP_REMINDER = False
+LH_HINT_LEAD_DAYS = 7  # start hint this many days before the expected ovulation
+LH_HINT_WINDOW_DAYS = 2  # ... and still send it up to this many days later (one missed daily run does not lose it)
+TEMP_REMINDER_LOOKBACK_DAYS = 7
+TEMP_REMINDER_MIN_LOGGED_DAYS = 3  # only remind people who log their temperature regularly
+TEMP_REMINDER_DAYS_AFTER_OVULATION = 3
 CYCLE_HINT_SHORT_DAYS = 21
 # Household supplies vs. the next period: warn when a profile's period is predicted within SUPPLY_CHECK_LEAD_DAYS and a
 # purchasable product's stock is below what the household typically used per period. "Per period" is read from the
@@ -223,6 +232,8 @@ PERIOD_PROLONGED_DAYS = 8
 NEW_PERIOD_MIN_GAP_DAYS = 14
 # Luteal phase lengths (days) outside this range are treated as a misdetected temperature rise and ignored.
 LUTEAL_PHASE_PLAUSIBLE_DAYS = (5, 25)
+# Days from the first positive LH test to the temperature rise outside this range are ignored (misread rise or test).
+LH_TEMP_LAG_PLAUSIBLE_DAYS = (-3, 7)
 # Completed cycles used for the look-back prediction accuracy.
 PREDICTION_ACCURACY_CYCLES = 6
 # Months since the last logged gynecologist/pap-smear appointment after which repairs.py::async_check_checkup_overdue hints at a routine checkup (0 = off).

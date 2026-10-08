@@ -1184,5 +1184,7 @@
   "dashboard_doctor_report_create": "Skapa läkarrapport",
   "dashboard_doctor_report_busy": "Skapar…",
   "dashboard_doctor_report_error": "Rapporten kunde inte skapas.",
-  "supply_short_hint": "Förrådet räcker kanske inte till nästa mens (vanligtvis cirka {need} per mens)."
+  "supply_short_hint": "Förrådet räcker kanske inte till nästa mens (vanligtvis cirka {need} per mens).",
+  "nfp_luteal_forecast": "Nästa mens (lutealfas)",
+  "nfp_luteal_forecast_value": "{date} ({n} dagars lutealfas)"
 }

@@ -355,6 +355,33 @@ test('NFP tab renders current-cycle conception estimate when available', () => {
   assert.ok(html.includes('nfp_likelihood_disclaimer') || html.includes('Estimated from cycle history'), 'disclaimer missing from NFP tab');
 });
 
+test('NFP tab shows the next period from the personal luteal phase only when the forecast exists', () => {
+  const render = (extra) => {
+    const card = makeCard();
+    card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+    const hass = makeHass();
+    hass.states['sensor.menstruation'].attributes.nfp_analysis = {
+      confidence_level: 'high',
+      ovulation_day: '2026-06-16',
+      ovulation_detected: true,
+      temperature_rise_day: '2026-06-16',
+      temperature_rise_detected: true,
+      fertile_window: { start: '2026-06-11', end: '2026-06-17' },
+      nfp_symptom_score: 0.8,
+      details: { temperature_rise_confirmed: true, conflicting_signals: false },
+      ...extra,
+    };
+    card._hass = hass;
+    card._tab = 'nfp';
+    card._render();
+    return card.shadowRoot.innerHTML;
+  };
+  const withForecast = render({ luteal_forecast: { predicted_start: '2026-06-30', luteal_days: 14, difference_days: 3 } });
+  assert.ok(withForecast.includes('Next period (from luteal phase)'), 'label missing');
+  assert.ok(withForecast.includes('2026-06-30 (14 days luteal phase)'), 'date and luteal length missing');
+  assert.ok(!render({}).includes('Next period (from luteal phase)'), 'row must be absent without a forecast');
+});
+
 test('NFP tab shows no-data message and no pregnancy likelihood when NFP data is absent', () => {
   const card = makeCard();
   card.setConfig({ entity: 'sensor.menstruation', language: 'en' });

@@ -11,12 +11,20 @@ from typing import Any
 
 from .const import (
     DOCTOR_REPORT_LANGUAGES,
+    LH_TEMP_LAG_PLAUSIBLE_DAYS,
     LUTEAL_PHASE_PLAUSIBLE_DAYS,
     NEW_PERIOD_MIN_GAP_DAYS,
     PREDICTION_ACCURACY_CYCLES,
     SYMPTOM_CONTRACEPTION_METHOD,
 )
-from .model import analyze_nfp_cycle, bleeding_blocks, build_cycle_model, grouped_cycle_starts, normalize_history
+from .model import (
+    analyze_nfp_cycle,
+    bleeding_blocks,
+    build_cycle_model,
+    first_positive_lh_day,
+    grouped_cycle_starts,
+    normalize_history,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -419,6 +427,7 @@ def _compute_nfp_confirmation_stats(
     confirmed_count = 0
     day_offsets: list[int] = []
     luteal_lengths: list[int] = []
+    lh_lags: list[int] = []
     for start_d, end_d, start_iso in periods:
         try:
             result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
@@ -431,6 +440,12 @@ def _compute_nfp_confirmation_stats(
             rise_day = _parse_iso(result.get("temperature_rise_day"))
             if rise_day is not None:
                 day_offsets.append((rise_day - start_d).days + 1)
+                # Days from the first positive LH test to the temperature rise (the rise normally follows the test).
+                lh_day = first_positive_lh_day(symptom_history, start_iso, end_d)
+                if lh_day is not None:
+                    lag = (rise_day - lh_day).days
+                    if LH_TEMP_LAG_PLAUSIBLE_DAYS[0] <= lag <= LH_TEMP_LAG_PLAUSIBLE_DAYS[1]:
+                        lh_lags.append(lag)
                 # Luteal phase = first raised reading up to the day before the next period; only finished cycles
                 # (end_d < today) and plausible lengths count, so a rise found in a later cycle is ignored.
                 luteal = (end_d - rise_day).days + 1
@@ -445,6 +460,10 @@ def _compute_nfp_confirmation_stats(
         "luteal_phase_avg": round(mean(luteal_lengths), 1) if luteal_lengths else None,
         "luteal_phase_min": min(luteal_lengths) if luteal_lengths else None,
         "luteal_phase_max": max(luteal_lengths) if luteal_lengths else None,
+        "lh_lag_cycles": len(lh_lags),
+        "lh_lag_avg": round(mean(lh_lags), 1) if lh_lags else None,
+        "lh_lag_min": min(lh_lags) if lh_lags else None,
+        "lh_lag_max": max(lh_lags) if lh_lags else None,
     }
 
 
@@ -650,6 +669,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Durchschnittlich bestätigt an Zyklustag",
         "luteal_phase": "Lutealphase (erster erhöhter Messwert bis Periodenbeginn)",
         "luteal_phase_summary": "Ø {avg} Tage (Min {min}, Max {max}) in {cycles} abgeschlossenen Zyklen.",
+        "lh_lag": "LH-Test und Temperaturanstieg",
+        "lh_lag_summary": "Der Temperaturanstieg folgte im Mittel {avg} Tage (Min {min}, Max {max}) nach dem ersten positiven LH-Test, in {cycles} Zyklen.",
         "current_status": "Aktueller Status",
         "current_contraception": "Aktuelle Verhütungsmethode",
         "contraception_history": "Verlauf der Verhütung",
@@ -705,6 +726,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Average confirmation on cycle day",
         "luteal_phase": "Luteal phase (first raised reading until the next period)",
         "luteal_phase_summary": "Avg {avg} days (min {min}, max {max}) over {cycles} completed cycles.",
+        "lh_lag": "LH test and temperature rise",
+        "lh_lag_summary": "The temperature rise followed the first positive LH test by {avg} days on average (min {min}, max {max}) in {cycles} cycles.",
         "current_status": "Current Status",
         "current_contraception": "Current Contraception Method",
         "contraception_history": "Contraception history",
@@ -760,6 +783,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Confirmada de media en el día del ciclo",
         "luteal_phase": "Fase lútea (primera lectura elevada hasta el siguiente periodo)",
         "luteal_phase_summary": "Media de {avg} días (mín. {min}, máx. {max}) en {cycles} ciclos completos.",
+        "lh_lag": "Prueba LH y aumento de temperatura",
+        "lh_lag_summary": "El aumento de temperatura siguió a la primera prueba LH positiva una media de {avg} días (mín. {min}, máx. {max}) en {cycles} ciclos.",
         "current_status": "Estado actual",
         "current_contraception": "Método anticonceptivo actual",
         "contraception_history": "Historial anticonceptivo",
@@ -815,6 +840,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Confirmée en moyenne au jour du cycle",
         "luteal_phase": "Phase lutéale (première mesure élevée jusqu'aux règles suivantes)",
         "luteal_phase_summary": "Moyenne de {avg} jours (min {min}, max {max}) sur {cycles} cycles terminés.",
+        "lh_lag": "Test LH et montée de température",
+        "lh_lag_summary": "La montée de température a suivi le premier test LH positif de {avg} jours en moyenne (min {min}, max {max}) sur {cycles} cycles.",
         "current_status": "Statut actuel",
         "current_contraception": "Méthode de contraception actuelle",
         "contraception_history": "Historique de contraception",
@@ -870,6 +897,8 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "nfp_confirmation_day": "Bekräftad i genomsnitt på cykeldag",
         "luteal_phase": "Lutealfas (första förhöjda mätningen till nästa menstruation)",
         "luteal_phase_summary": "Medel {avg} dagar (min {min}, max {max}) över {cycles} avslutade cykler.",
+        "lh_lag": "LH-test och temperaturstigning",
+        "lh_lag_summary": "Temperaturstigningen kom i genomsnitt {avg} dagar efter det första positiva LH-testet (min {min}, max {max}) i {cycles} cykler.",
         "current_status": "Aktuell status",
         "current_contraception": "Aktuellt preventivmedel",
         "contraception_history": "Preventivmedelshistorik",
@@ -1084,6 +1113,13 @@ def generate_doctor_report_html(
         basal_temp_html += f"""
         <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['luteal_phase'])}</h3>
         <p>{_h(luteal_summary)}</p>"""
+    if stats.get("lh_lag_cycles"):
+        lh_summary = T["lh_lag_summary"].format(
+            avg=stats["lh_lag_avg"], min=stats["lh_lag_min"], max=stats["lh_lag_max"], cycles=stats["lh_lag_cycles"],
+        )
+        basal_temp_html += f"""
+        <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['lh_lag'])}</h3>
+        <p>{_h(lh_summary)}</p>"""
 
     # Bleeding outside the period (neutral listing, no assessment)
     intermenstrual_html = ""

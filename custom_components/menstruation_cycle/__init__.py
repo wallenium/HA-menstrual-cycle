@@ -92,6 +92,8 @@ from .const import (
     CONF_NOTIFY_UNPROTECTED_HINT,
     CONF_NOTIFY_CYCLE_HINT,
     CONF_NOTIFY_TEST_HINT,
+    CONF_NOTIFY_LH_HINT,
+    CONF_NOTIFY_TEMP_REMINDER,
     SUPPLY_CHECK_LEAD_DAYS,
     SUPPLY_USAGE_GAP_DAYS,
     SUPPLY_USAGE_MAX_PERIODS,
@@ -101,7 +103,14 @@ from .const import (
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
     DEFAULT_NOTIFY_CYCLE_HINT,
     DEFAULT_NOTIFY_TEST_HINT,
+    DEFAULT_NOTIFY_LH_HINT,
+    DEFAULT_NOTIFY_TEMP_REMINDER,
     TEST_HINT_DAYS_AFTER_OVULATION,
+    LH_HINT_LEAD_DAYS,
+    LH_HINT_WINDOW_DAYS,
+    TEMP_REMINDER_LOOKBACK_DAYS,
+    TEMP_REMINDER_MIN_LOGGED_DAYS,
+    TEMP_REMINDER_DAYS_AFTER_OVULATION,
     DEFAULT_NOTIFY_PREGNANCY_UPDATES,
     UNPROTECTED_HINT_MAX_DAYS,
     NOTIFY_ACTION_RENEWED_PREFIX,
@@ -1255,6 +1264,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: the last cycle was {days} days shorter than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
         "testhint_title": "Pregnancy test",
         "testhint_message": "{name}: it is {days} days since the confirmed ovulation ({date}). A pregnancy test is meaningful from about now. This is only a rule of thumb, not medical advice.",
+        "lhhint_title": "Ovulation tests",
+        "lhhint_message": "{name}: ovulation is expected in about {days} days ({date}). If you use ovulation (LH) tests, now is a good time to start testing. This is only a rule of thumb, not medical advice.",
+        "tempreminder_title": "Basal temperature",
+        "tempreminder_message": "{name}: the fertile window is near (ovulation expected around {date}). Please measure and log your basal body temperature today.",
         "overdue_title": "Period overdue",
         "overdue_message": "{name}: the period is {days} days past the predicted start ({date}). If it has started, please log it.",
         "checkup_title": "Checkup reminder",
@@ -1304,6 +1317,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: Der letzte Zyklus war {days} Tage kürzer als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
         "testhint_title": "Schwangerschaftstest",
         "testhint_message": "{name}: Seit dem bestätigten Eisprung ({date}) sind {days} Tage vergangen. Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert, keine medizinische Beratung.",
+        "lhhint_title": "Ovulationstests",
+        "lhhint_message": "{name}: Der Eisprung wird in etwa {days} Tagen erwartet ({date}). Wenn du Ovulationstests (LH) verwendest, ist jetzt ein guter Zeitpunkt, mit dem Testen zu beginnen. Das ist nur ein Richtwert, keine medizinische Beratung.",
+        "tempreminder_title": "Basaltemperatur",
+        "tempreminder_message": "{name}: Das fruchtbare Fenster rückt näher (Eisprung etwa am {date}). Bitte miss heute deine Basaltemperatur und trage sie ein.",
         "overdue_title": "Periode überfällig",
         "overdue_message": "{name}: Die Periode ist {days} Tage nach dem vorhergesagten Beginn ({date}) noch nicht eingetragen. Falls sie begonnen hat, bitte eintragen.",
         "checkup_title": "Kontrolltermin-Erinnerung",
@@ -1353,6 +1370,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name} : le dernier cycle était plus court de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
         "testhint_title": "Test de grossesse",
         "testhint_message": "{name} : {days} jours se sont écoulés depuis l'ovulation confirmée ({date}). Un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical.",
+        "lhhint_title": "Tests d'ovulation",
+        "lhhint_message": "{name} : l'ovulation est attendue dans environ {days} jours ({date}). Si vous utilisez des tests d'ovulation (LH), c'est le bon moment pour commencer. Ce n'est qu'un repère, pas un avis médical.",
+        "tempreminder_title": "Température basale",
+        "tempreminder_message": "{name} : la fenêtre de fertilité approche (ovulation attendue vers le {date}). Pensez à mesurer et enregistrer votre température basale aujourd'hui.",
         "overdue_title": "Règles en retard",
         "overdue_message": "{name} : les règles ont {days} jours de retard sur le début prévu ({date}). Si elles ont commencé, merci de les saisir.",
         "checkup_title": "Rappel de contrôle",
@@ -1402,6 +1423,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: el último ciclo fue {days} días más corto que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
         "testhint_title": "Prueba de embarazo",
         "testhint_message": "{name}: han pasado {days} días desde la ovulación confirmada ({date}). Una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico.",
+        "lhhint_title": "Pruebas de ovulación",
+        "lhhint_message": "{name}: se espera la ovulación en unos {days} días ({date}). Si usas pruebas de ovulación (LH), ahora es un buen momento para empezar. Es solo una pauta orientativa, no un consejo médico.",
+        "tempreminder_title": "Temperatura basal",
+        "tempreminder_message": "{name}: la ventana fértil se acerca (ovulación esperada hacia el {date}). Mide y registra hoy tu temperatura basal.",
         "overdue_title": "Menstruación retrasada",
         "overdue_message": "{name}: la menstruación lleva {days} días de retraso sobre el inicio previsto ({date}). Si ya empezó, por favor regístrala.",
         "checkup_title": "Recordatorio de revisión",
@@ -1451,6 +1476,10 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_shorter": "{name}: den senaste cykeln var {days} dagar kortare än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
         "testhint_title": "Graviditetstest",
         "testhint_message": "{name}: Det har gått {days} dagar sedan den bekräftade ägglossningen ({date}). Ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd.",
+        "lhhint_title": "Ovulationstester",
+        "lhhint_message": "{name}: Ägglossning förväntas om cirka {days} dagar ({date}). Om du använder ovulationstester (LH) är det nu en bra tidpunkt att börja. Det är bara en tumregel, inget medicinskt råd.",
+        "tempreminder_title": "Basaltemperatur",
+        "tempreminder_message": "{name}: Det fertila fönstret närmar sig (ägglossning väntas runt {date}). Mät och registrera din basaltemperatur idag.",
         "overdue_title": "Mensen är försenad",
         "overdue_message": "{name}: mensen är {days} dagar efter beräknad start ({date}). Om den har börjat, logga den gärna nu.",
         "checkup_title": "Påminnelse om kontroll",
@@ -1507,6 +1536,8 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     pregnancy_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES))
     cycle_hint_enabled = bool(entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT))
     test_hint_enabled = bool(entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT))
+    lh_hint_enabled = bool(entry.options.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT))
+    temp_reminder_enabled = bool(entry.options.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER))
     if not any(
         (
             period_notify_enabled,
@@ -1518,6 +1549,8 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             pregnancy_notify_enabled,
             cycle_hint_enabled,
             test_hint_enabled,
+            lh_hint_enabled,
+            temp_reminder_enabled,
         )
     ):
         return
@@ -1699,6 +1732,53 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         )
         runtime.noncycle_data["notified_test_hint"] = model.grouped_starts[-1]
         notified_something = True
+
+    # Ovulation-test start hint: once per cycle, LH_HINT_LEAD_DAYS before the expected ovulation (a short window so one
+    # missed daily run does not lose it).
+    if (
+        lh_hint_enabled
+        and ovulation_day
+        and model.grouped_starts
+        and not mute_fertility
+        and runtime.noncycle_data.get("notified_lh_hint") != model.grouped_starts[-1]
+    ):
+        # A positive LH test or a confirmed ovulation already moved the estimate to the past/tomorrow, so no extra check.
+        days_to_ovulation = (date.fromisoformat(ovulation_day) - today).days
+        if LH_HINT_LEAD_DAYS - LH_HINT_WINDOW_DAYS <= days_to_ovulation <= LH_HINT_LEAD_DAYS:
+            await _send(
+                strings["lhhint_title"],
+                strings["lhhint_message"].format(
+                    name=runtime.friendly_name, date=ovulation_day, days=days_to_ovulation
+                ),
+            )
+            runtime.noncycle_data["notified_lh_hint"] = model.grouped_starts[-1]
+            notified_something = True
+
+    # Basal temperature reminder: around the expected ovulation, until a temperature rise is confirmed, for people who
+    # log their temperature regularly and have not logged today's value yet.
+    if (
+        temp_reminder_enabled
+        and ovulation_day
+        and fertile_start
+        and not confirmed_ovulation
+        and runtime.noncycle_data.get("notified_temp_reminder") != today.isoformat()
+        and date.fromisoformat(fertile_start)
+        <= today
+        <= date.fromisoformat(ovulation_day) + timedelta(days=TEMP_REMINDER_DAYS_AFTER_OVULATION)
+    ):
+        logged_days = {
+            str(entry.get("date"))
+            for entry in runtime.symptom_history
+            if isinstance(entry, dict) and entry.get("basal_temp") not in (None, "")
+        }
+        recent_days = {(today - timedelta(days=offset)).isoformat() for offset in range(1, TEMP_REMINDER_LOOKBACK_DAYS + 1)}
+        if today.isoformat() not in logged_days and len(logged_days & recent_days) >= TEMP_REMINDER_MIN_LOGGED_DAYS:
+            await _send(
+                strings["tempreminder_title"],
+                strings["tempreminder_message"].format(name=runtime.friendly_name, date=ovulation_day),
+            )
+            runtime.noncycle_data["notified_temp_reminder"] = today.isoformat()
+            notified_something = True
 
     # Overdue period: same gate as the repair issue (repairs.py::async_check_period_overdue); once per predicted start, own target only.
     days_to_start = model.days_until_next_start
