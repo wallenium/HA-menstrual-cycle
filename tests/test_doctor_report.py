@@ -202,10 +202,11 @@ class IntermenstrualBleedingTests(unittest.TestCase):
             kwargs = dict(history=self.PERIOD, symptom_history=[], profile="a", patient_name=None, patient_birthdate=None,
                           language=lang, report_date=TODAY.isoformat())
             html = statistics.generate_doctor_report_html(stats=stats, **kwargs)
-            self.assertIn(title, html, lang)
+            heading = f"<h2>{title}</h2>"  # the same words also head a column of the cycle overview
+            self.assertIn(heading, html, lang)
             self.assertIn("2026-10-02", html, lang)
             self.assertNotIn("{count}", html)
-            self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+            self.assertNotIn(heading, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
 
 
 class LutealPhaseTests(unittest.TestCase):
@@ -268,6 +269,59 @@ class LutealPhaseTests(unittest.TestCase):
             self.assertIn("14.5", html, lang)
             self.assertNotIn("{avg}", html)
             self.assertNotIn(title, statistics.generate_doctor_report_html(stats=empty, **kwargs), lang)
+
+
+class CycleOverviewTests(unittest.TestCase):
+    TODAY = date(2026, 7, 20)
+    # cycles start 05-01 (28 days), 05-29 (29 days), 06-27 (running); period days 3, 4 and 3
+    HISTORY = ["2026-05-01", "2026-05-02", "2026-05-03", "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+               "2026-06-27", "2026-06-28", "2026-06-29"]
+    SYMPTOMS = [
+        {"date": "2026-05-02", "pain": ["cramps"]},
+        {"date": "2026-05-10", "bleeding_strength": "light"},  # 7 days after the period: outside it
+        {"date": "2026-06-10", "pain": ["headache"], "bleeding_strength": "light"},  # 9 days after: outside it
+        {"date": "2026-06-11", "pain": ["cramps"]},
+        {"date": "2026-06-28", "pain": ["cramps"]},
+    ]
+
+    def _stats(self, **kwargs):
+        args = dict(history=self.HISTORY, symptom_history=self.SYMPTOMS, days_back=180, today=self.TODAY)
+        args.update(kwargs)
+        return statistics.compute_statistics(**args)
+
+    def test_one_row_per_cycle_oldest_first_with_the_running_one_open(self) -> None:
+        self.assertEqual(
+            self._stats()["cycle_table"],
+            [
+                {"start": "2026-05-01", "length": 28, "period_days": 3, "pain_days": 1, "intermenstrual_days": 1},
+                {"start": "2026-05-29", "length": 29, "period_days": 4, "pain_days": 2, "intermenstrual_days": 1},
+                {"start": "2026-06-27", "length": None, "period_days": 3, "pain_days": 1, "intermenstrual_days": 0},
+            ],
+        )
+
+    def test_the_analysis_range_limits_the_rows_and_nothing_gives_an_empty_table(self) -> None:
+        self.assertEqual([row["start"] for row in self._stats(days_back=30)["cycle_table"]], ["2026-06-27"])
+        self.assertEqual(self._stats(history=[], symptom_history=[])["cycle_table"], [])
+
+    def test_report_lists_the_newest_cycle_first_in_every_language(self) -> None:
+        import html as html_lib
+
+        stats = self._stats()
+        for lang in const.DOCTOR_REPORT_LANGUAGES:
+            texts = statistics._REPORT_TEXT[lang]
+            report = statistics.generate_doctor_report_html(
+                stats=stats, history=self.HISTORY, symptom_history=self.SYMPTOMS, profile="a", patient_name=None,
+                patient_birthdate=None, language=lang, report_date=self.TODAY.isoformat(),
+            )
+            self.assertIn(f"<h2>{html_lib.escape(texts['cycle_overview'])}</h2>", report, lang)
+            self.assertIn(html_lib.escape(texts["cycle_ongoing"]), report, lang)
+            self.assertIn(f"28 {html_lib.escape(texts['days'])}", report, lang)
+            self.assertLess(report.index("2026-06-27</td><td>"), report.index("2026-05-01</td><td>"), lang)
+        empty = statistics.generate_doctor_report_html(
+            stats=self._stats(history=[], symptom_history=[]), history=[], symptom_history=[], profile="a",
+            patient_name=None, patient_birthdate=None, language="en", report_date=self.TODAY.isoformat(),
+        )
+        self.assertIn("<h2>Cycle overview</h2>\n    No data available", empty)
 
 
 if __name__ == "__main__":

@@ -268,6 +268,30 @@ def _compute_pain_trend(
     return trend
 
 
+def _compute_cycle_table(
+    period_days: list[str],
+    periods: list[tuple[date, date, str]],
+    pain_trend: list[dict[str, Any]],
+    intermenstrual_dates: list[str],
+    today: date,
+) -> list[dict[str, Any]]:
+    """One row per analysed cycle, oldest first: start, length (None while it is still running), period days,
+    pain days and days with bleeding outside the period."""
+    rows: list[dict[str, Any]] = []
+    for (start_d, end_d, start_iso), pain in zip(periods, pain_trend):
+        first, last = start_d.isoformat(), end_d.isoformat()
+        rows.append(
+            {
+                "start": start_iso,
+                "length": (end_d - start_d).days + 1 if end_d < today else None,
+                "period_days": sum(1 for day in period_days if first <= day <= last),
+                "pain_days": pain["pain_days"],
+                "intermenstrual_days": sum(1 for day in intermenstrual_dates if first <= day <= last),
+            }
+        )
+    return rows
+
+
 def compute_contraception_timeline(
     symptom_history: list[dict[str, Any]], renewed: dict[str, Any] | None = None, limit: int = 8
 ) -> list[dict[str, Any]]:
@@ -501,6 +525,9 @@ def compute_statistics(
         **intermenstrual,
         "prediction_accuracy": compute_prediction_accuracy(usable, period_duration_days),
         "pain_trend": pain_trend,
+        "cycle_table": _compute_cycle_table(
+            usable, periods, pain_trend, [item["date"] for item in intermenstrual["intermenstrual_bleeding"]], today
+        ),
         "days_back": days_back,
         "report_date": today.isoformat(),
     }
@@ -632,6 +659,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "contraception_renewed": "erneuert am {date}",
         "pain_trend": "Schmerztage pro Zyklus (Trend)",
         "cycle_start": "Zyklusbeginn",
+        "cycle_overview": "Zyklusübersicht",
+        "cycle_length_col": "Länge",
+        "period_days_col": "Periodentage",
+        "intermenstrual_col": "Blutung außerhalb der Periode (Tage)",
+        "cycle_ongoing": "laufend",
         "pain_days": "Schmerztage",
         "cycle_data": "Zyklusdaten",
         "date": "Datum",
@@ -682,6 +714,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "contraception_renewed": "renewed {date}",
         "pain_trend": "Pain Days per Cycle (Trend)",
         "cycle_start": "Cycle Start",
+        "cycle_overview": "Cycle overview",
+        "cycle_length_col": "Length",
+        "period_days_col": "Period days",
+        "intermenstrual_col": "Bleeding outside the period (days)",
+        "cycle_ongoing": "ongoing",
         "pain_days": "Pain Days",
         "cycle_data": "Cycle Data",
         "date": "Date",
@@ -732,6 +769,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "contraception_renewed": "renovado el {date}",
         "pain_trend": "Días de dolor por ciclo (tendencia)",
         "cycle_start": "Inicio del ciclo",
+        "cycle_overview": "Resumen de ciclos",
+        "cycle_length_col": "Duración",
+        "period_days_col": "Días de periodo",
+        "intermenstrual_col": "Sangrado fuera del periodo (días)",
+        "cycle_ongoing": "en curso",
         "pain_days": "Días de dolor",
         "cycle_data": "Datos del ciclo",
         "date": "Fecha",
@@ -782,6 +824,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "contraception_renewed": "renouvelé le {date}",
         "pain_trend": "Jours de douleur par cycle (tendance)",
         "cycle_start": "Début du cycle",
+        "cycle_overview": "Aperçu des cycles",
+        "cycle_length_col": "Durée",
+        "period_days_col": "Jours de règles",
+        "intermenstrual_col": "Saignement hors règles (jours)",
+        "cycle_ongoing": "en cours",
         "pain_days": "Jours de douleur",
         "cycle_data": "Données du cycle",
         "date": "Date",
@@ -832,6 +879,11 @@ _REPORT_TEXT: dict[str, dict[str, str]] = {
         "contraception_renewed": "förnyat {date}",
         "pain_trend": "Smärtdagar per cykel (trend)",
         "cycle_start": "Cykelstart",
+        "cycle_overview": "Cykelöversikt",
+        "cycle_length_col": "Längd",
+        "period_days_col": "Mensdagar",
+        "intermenstrual_col": "Blödning utanför menstruationen (dagar)",
+        "cycle_ongoing": "pågår",
         "pain_days": "Smärtdagar",
         "cycle_data": "Cykeldata",
         "date": "Datum",
@@ -912,6 +964,25 @@ def generate_doctor_report_html(
         <h3 style="font-size:12px;color:#666;margin-top:12px;">{_h(T['prediction_accuracy'])}</h3>
         <p>{_h(T['prediction_accuracy_summary'].format(
             mean=accuracy['mean_abs_error_days'], within=accuracy['within_2_days'], cycles=accuracy['cycles']))}</p>"""
+
+    # One row per cycle, newest first
+    cycle_table_html = T["no_data"]
+    if stats.get("cycle_table"):
+        def _length_cell(row: dict[str, Any]) -> str:
+            if row["length"] is None:
+                return _h(T["cycle_ongoing"])
+            return _h(f"{row['length']} {T['days']}")
+
+        ct_rows = "".join(
+            f"<tr><td>{_h(row['start'])}</td><td>{_length_cell(row)}</td><td>{row['period_days']}</td>"
+            f"<td>{row['pain_days']}</td><td>{row['intermenstrual_days']}</td></tr>"
+            for row in reversed(stats["cycle_table"])
+        )
+        cycle_table_html = f"""
+        <table class="stats-table">
+          <tr><th>{_h(T['cycle_start'])}</th><th>{_h(T['cycle_length_col'])}</th><th>{_h(T['period_days_col'])}</th><th>{_h(T['pain_days'])}</th><th>{_h(T['intermenstrual_col'])}</th></tr>
+          {ct_rows}
+        </table>"""
 
     # Bleeding duration
     bleeding_dur_html = T["no_data"]
@@ -1121,6 +1192,11 @@ def generate_doctor_report_html(
   <section class="section">
     <h2>{_h(T['cycle_length'])}</h2>
     {cycle_length_html}
+  </section>
+
+  <section class="section">
+    <h2>{_h(T['cycle_overview'])}</h2>
+    {cycle_table_html}
   </section>
 
   <section class="section">
