@@ -116,6 +116,184 @@ const mount = (state, attributes = {}, discreet = false) => {
   await panel._logPeriodAction('start', '0');
   assert.strictEqual(panel._message, 'Could not save.');
 
+  // a start shortly after the last period day is asked about first (same 14-day rule as the backend)
+  {
+    const calls2 = [];
+    const guarded = new Panel();
+    guarded._lang = 'en';
+    guarded.render = () => {};
+    guarded._selectedEntityId = 'sensor.menstruation_berta';
+    const setLast = (daysAgo) => {
+      guarded._hass = {
+        states: { 'sensor.menstruation_berta': { state: 'neutral', attributes: { profile: 'berta', history: [iso(daysAgo + 3), iso(daysAgo + 2), iso(daysAgo)] } } },
+        callService: async (domain, service, data) => { calls2.push([domain, service, data]); },
+      };
+      guarded._periodStartConfirm = null;
+      calls2.length = 0;
+    };
+    const click = (action, daysAgo = '0') => {
+      const button = Object.create(global.HTMLElement.prototype);
+      button.classList = { contains: () => false };
+      button.dataset = { action, daysAgo };
+      button.closest = () => button;
+      guarded._handleClick({ target: button });
+    };
+    const html = () => guarded._renderPeriodActions(guarded._hass.states['sensor.menstruation_berta'], false);
+
+    setLast(5);
+    click('period-start', '0');
+    assert.strictEqual(calls2.length, 0, 'nothing is saved before the answer');
+    assert.deepStrictEqual(guarded._periodStartConfirm, { entityId: 'sensor.menstruation_berta', daysAgo: 0, gap: 5 });
+    const question = html();
+    assert.ok(question.includes('Your last period day was 5 days ago. Start a new period anyway?'), question);
+    for (const action of ['period-start-spotting', 'period-start-confirm', 'period-start-cancel']) {
+      assert.ok(question.includes(`data-action="${action}"`), action);
+    }
+    assert.ok(!question.includes('data-action="period-start"'), 'the start buttons give way to the question');
+
+    // "yesterday" counts the gap from yesterday
+    setLast(5);
+    click('period-start', '1');
+    assert.strictEqual(guarded._periodStartConfirm.gap, 4);
+    assert.strictEqual(guarded._periodStartConfirm.daysAgo, 1);
+
+    // confirm -> the period is started on the asked day
+    click('period-start-confirm', '1');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepStrictEqual(calls2[0], ['menstruation_cycle', 'add_cycle_start', { entity_id: 'sensor.menstruation_berta', profile: 'berta', date: iso(1) }]);
+    assert.strictEqual(guarded._periodStartConfirm, null);
+
+    // spotting -> only a bleeding entry, no period start
+    setLast(5);
+    click('period-start', '1');
+    click('period-start-spotting', '1');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepStrictEqual(calls2[0], ['menstruation_cycle', 'add_symptom', {
+      entity_id: 'sensor.menstruation_berta', profile: 'berta', date: iso(1), symptom_data: { bleeding_strength: 'light' },
+    }]);
+    assert.ok(!calls2.some((call) => call[1] === 'add_cycle_start'));
+    assert.strictEqual(guarded._message, 'Saved as bleeding between periods.');
+
+    // cancel -> nothing saved, buttons are back
+    setLast(5);
+    click('period-start', '0');
+    click('period-start-cancel', '0');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(calls2.length, 0);
+    assert.strictEqual(guarded._periodStartConfirm, null);
+    assert.ok(html().includes('data-action="period-start"'));
+
+    // boundary: 14 days still asks, 15 days and "today is already a period day" do not, nor does a missing history
+    for (const [lastDaysAgo, asks] of [[14, true], [15, false], [1, true], [0, false]]) {
+      setLast(lastDaysAgo);
+      guarded._hass.states['sensor.menstruation_berta'].attributes.history = [iso(lastDaysAgo)];
+      click('period-start', '0');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.strictEqual(guarded._periodStartConfirm !== null, asks, `last period day ${lastDaysAgo} days ago`);
+      assert.strictEqual(calls2.some((call) => call[1] === 'add_cycle_start'), !asks, `last period day ${lastDaysAgo} days ago`);
+    }
+    setLast(3);
+    delete guarded._hass.states['sensor.menstruation_berta'].attributes.history;
+    click('period-start', '0');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(calls2.some((call) => call[1] === 'add_cycle_start'), 'no history attribute: no question');
+
+    // an answer that arrives after the profile was switched is dropped
+    setLast(5);
+    click('period-start', '0');
+    guarded._selectedEntityId = 'sensor.menstruation_clara';
+    guarded._hass.states['sensor.menstruation_clara'] = { state: 'neutral', attributes: {} };
+    click('period-start-confirm', '0');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(calls2.length, 0);
+    guarded._selectedEntityId = 'sensor.menstruation_berta';
+
+    // a pending question never shows for another profile
+    setLast(5);
+    click('period-start', '0');
+    guarded._selectedEntityId = 'sensor.menstruation_clara';
+    guarded._hass.states['sensor.menstruation_clara'] = { state: 'neutral', attributes: {} };
+    assert.ok(guarded._renderPeriodActions(guarded._hass.states['sensor.menstruation_clara'], false).includes('data-action="period-start"'));
+  }
+
+  // open repair issues of this integration are counted and linked (refreshed at most every 5 minutes)
+  {
+    const sent = [];
+    let issues = [
+      { domain: 'menstruation_cycle', issue_id: 'a', ignored: false },
+      { domain: 'menstruation_cycle', issue_id: 'b', ignored: false },
+      { domain: 'menstruation_cycle', issue_id: 'c', ignored: true },
+      { domain: 'other_integration', issue_id: 'd', ignored: false },
+    ];
+    let fail = false;
+    const make = () => {
+      const p = new Panel();
+      p._lang = 'en';
+      p.render = () => { p.rendered = (p.rendered || 0) + 1; };
+      p._hass = {
+        connection: {
+          sendMessagePromise: async (msg) => {
+            sent.push(msg.type);
+            if (fail) throw new Error('no permission');
+            return { issues };
+          },
+        },
+      };
+      return p;
+    };
+    const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+    const panelWith = make();
+    assert.strictEqual(panelWith._renderOpenIssues(false), '', 'nothing before the count is known');
+    await tick();
+    assert.deepStrictEqual(sent, ['repairs/list_issues']);
+    assert.strictEqual(panelWith.rendered, 1);
+    const line = panelWith._renderOpenIssues(false);
+    assert.ok(line.includes('Open notes about your data: 2') && line.includes('href="/config/repairs"'), line);
+    assert.strictEqual(sent.length, 1, 'cached within 5 minutes');
+
+    // discreet mode shows nothing and asks nothing
+    const discreet = make();
+    assert.strictEqual(discreet._renderOpenIssues(true), '');
+    await tick();
+    assert.strictEqual(sent.length, 1);
+
+    // exactly 5 minutes is refreshed, a moment earlier is not; an unchanged count does not re-render
+    const realNow = Date.now;
+    try {
+      panelWith._openIssuesAt = 1000000;
+      const before = panelWith.rendered;
+      Date.now = () => 1000000 + 299999;
+      panelWith._fetchOpenIssues();
+      await tick();
+      assert.strictEqual(sent.length, 1);
+      Date.now = () => 1000000 + 300000;
+      panelWith._fetchOpenIssues();
+      await tick();
+      assert.strictEqual(sent.length, 2);
+      assert.strictEqual(panelWith.rendered, before, 'same count: no extra render');
+    } finally {
+      Date.now = realNow;
+    }
+    sent.length = 1;
+
+    // a refresh after 5 minutes picks up a changed count; no issues hides the line
+    panelWith._openIssuesAt -= 300001;
+    issues = [];
+    panelWith._renderOpenIssues(false);
+    await tick();
+    assert.strictEqual(panelWith._renderOpenIssues(false), '');
+
+    // a failing request hides the line and does not retry in a loop
+    const failing = make();
+    fail = true;
+    failing._renderOpenIssues(false);
+    await tick();
+    failing._renderOpenIssues(false);
+    assert.strictEqual(failing._renderOpenIssues(false), '');
+    assert.strictEqual(sent.length, 3);
+  }
+
   console.log('dashboard period actions: ok');
 })().catch((error) => {
   console.error(error);

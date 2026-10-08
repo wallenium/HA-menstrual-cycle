@@ -9,6 +9,11 @@
 - Household inventory: low-stock repair issue, summary service, per-area product tracking.
 - Cycle-day counter on the dashboard panel, weekly household digest blueprint, ICS calendar reminders, profile duplication.
 - Full backup/restore flow with a schema-versioned export.
+- Doctor report: the statistics card now opens the report straight away (open/download link) instead of only saying it was saved to the export folder; `export_doctor_report` returns `filename`, `path` and `html` as a service response. The hard-coded German hint is translated.
+- Countdown/timer card: all remaining hard-coded German texts (product selector, timer buttons and status, pregnancy/postpartum/menopause lists, moods, wellness tips, notification) now come from the translation files (DE/EN/ES/FR/SV); a guard test keeps new German literals out of the cards.
+- Protection against accidental period starts: the dashboard panel asks before a period is started less than 15 days after the last period day (with the option to log it as bleeding between periods instead), the calendar and gauge cards ask before a tapped day 3-14 days after the previous period day opens a new period, and `repair_storage` / the storage-integrity repair issue flag period starts of the last year that follow the previous one within 14 days.
+- Notification option "Pregnancy test timing hint" for people trying to conceive: 14 days after an ovulation confirmed by the temperature/mucus analysis, one neutral message (a rule of thumb, no medical advice), once per cycle; off by default.
+- Dashboard panel: a small line "Open notes about your data: N" (linking to Settings > Repairs) shows how many of the integration's repair issues are open; hidden in discreet mode and whenever the count cannot be read.
 - Notifications: overdue-period, check-up due and pill-gap reminders, a pill refill to-do, and mobile-app action buttons with snooze (snoozes survive a restart).
 - `send_test_notification` service and a repair issue when the configured notify target is unavailable.
 - Notification, pill, tracking and life-stage options are grouped into sections in the options form.
@@ -48,6 +53,7 @@
 - Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
+- Countdown/timer card: the "time is up" browser notification threw an error (a `Notification` has no `.catch`), so the alert sound and the automatic reset were skipped; on browsers without the Notification API (iOS Safari) the card even showed its load-error state.
 - Several places used the system clock (`date.today()`) instead of Home Assistant's time zone to decide what "today" is (cycle model at the midnight run and on load, calendar, ICS feed, hospital-bag reminder, cycle predictions, date checks in the options form); around midnight they could work with the wrong day. A test now guards against it.
 - The basal-temperature import from a linked sensor only ran at midnight and on load, when the sensor still held yesterday's value: that value was stored under the new day and blocked the real morning reading. The import now runs when the sensor updates (and when the option is saved), stores a reading under the day it was taken, and ignores readings older than yesterday.
 - The renewal reminder for an IUD, implant or injection counted from the very first log of the method, so re-logging the same method after a renewal (for example every injection) left it overdue forever. A confirmed renewal now restarts the period.

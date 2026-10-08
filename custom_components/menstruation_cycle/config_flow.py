@@ -61,6 +61,7 @@ from .const import (
     CONF_NOTIFY_UNPROTECTED_HINT,
     CONF_NOTIFY_PREGNANCY_UPDATES,
     CONF_NOTIFY_CYCLE_HINT,
+    CONF_NOTIFY_TEST_HINT,
     CONF_CALENDAR_PREGNANCY_EVENTS,
     CONF_CALENDAR_CONTRACEPTION_EVENTS,
     CONF_CALENDAR_LOGGED_PERIODS,
@@ -97,6 +98,7 @@ from .const import (
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
     DEFAULT_NOTIFY_PREGNANCY_UPDATES,
     DEFAULT_NOTIFY_CYCLE_HINT,
+    DEFAULT_NOTIFY_TEST_HINT,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
     DEFAULT_CALENDAR_LOGGED_PERIODS,
@@ -413,6 +415,7 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_UNPROTECTED_HINT,
         CONF_NOTIFY_PREGNANCY_UPDATES,
         CONF_NOTIFY_CYCLE_HINT,
+        CONF_NOTIFY_TEST_HINT,
     ),
     "pill": (
         CONF_NOTIFY_PILL_ENABLED,
@@ -620,6 +623,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES)
             ),
             "notify_cycle_hint": bool(self._entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT)),
+            "notify_test_hint": bool(self._entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT)),
             "calendar_pregnancy_events": bool(
                 self._entry.options.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
             ),
@@ -767,6 +771,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append("  - Weekly pregnancy message")
             if d.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT):
                 lines.append("  - Hint for an unusual cycle length")
+            if d.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT):
+                lines.append("  - Pregnancy test timing hint")
             if d.get(CONF_NOTIFY_PARTNER_SERVICE):
                 lines.append(f"  - Partner target: {d.get(CONF_NOTIFY_PARTNER_SERVICE)}")
             if d.get(CONF_NOTIFY_SERVICE):
@@ -940,6 +946,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_CYCLE_HINT] = bool(
                     user_input.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT)
                 )
+                self._data[CONF_NOTIFY_TEST_HINT] = bool(
+                    user_input.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT)
+                )
                 self._data[CONF_CHECKUP_INTERVAL_MONTHS] = max(
                     0,
                     min(
@@ -1098,6 +1107,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_NOTIFY_UNPROTECTED_HINT, default=c["notify_unprotected_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_PREGNANCY_UPDATES, default=c["notify_pregnancy_updates"]): bool,
                 vol.Optional(CONF_NOTIFY_CYCLE_HINT, default=c["notify_cycle_hint"]): bool,
+                vol.Optional(CONF_NOTIFY_TEST_HINT, default=c["notify_test_hint"]): bool,
                 vol.Optional(
                     CONF_CHECKUP_INTERVAL_MONTHS, default=c["checkup_interval_months"]
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=CHECKUP_INTERVAL_MONTHS_MAX)),
@@ -1444,6 +1454,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_UNPROTECTED_HINT: d[CONF_NOTIFY_UNPROTECTED_HINT],
                 CONF_NOTIFY_PREGNANCY_UPDATES: d[CONF_NOTIFY_PREGNANCY_UPDATES],
                 CONF_NOTIFY_CYCLE_HINT: d[CONF_NOTIFY_CYCLE_HINT],
+                CONF_NOTIFY_TEST_HINT: d[CONF_NOTIFY_TEST_HINT],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],
                 CONF_NOTIFY_OVULATION_ENABLED: d[CONF_NOTIFY_OVULATION_ENABLED],
                 CONF_NOTIFY_OVULATION_LEAD_DAYS: d[CONF_NOTIFY_OVULATION_LEAD_DAYS],

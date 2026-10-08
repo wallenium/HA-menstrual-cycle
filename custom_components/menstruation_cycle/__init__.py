@@ -91,10 +91,13 @@ from .const import (
     CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
     CONF_NOTIFY_UNPROTECTED_HINT,
     CONF_NOTIFY_CYCLE_HINT,
+    CONF_NOTIFY_TEST_HINT,
     CONF_NOTIFY_PREGNANCY_UPDATES,
     DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL,
     DEFAULT_NOTIFY_UNPROTECTED_HINT,
     DEFAULT_NOTIFY_CYCLE_HINT,
+    DEFAULT_NOTIFY_TEST_HINT,
+    TEST_HINT_DAYS_AFTER_OVULATION,
     DEFAULT_NOTIFY_PREGNANCY_UPDATES,
     UNPROTECTED_HINT_MAX_DAYS,
     NOTIFY_ACTION_RENEWED_PREFIX,
@@ -1151,6 +1154,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_long": "{name}: the last 3 cycles were each longer than {limit} days ({lengths} days). This is not a diagnosis; you could mention it at your next check-up.",
         "cyclehint_longer": "{name}: the last cycle was {days} days longer than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
         "cyclehint_shorter": "{name}: the last cycle was {days} days shorter than your previous average ({average} days). Single deviations are common; if it keeps happening you could mention it at your next check-up.",
+        "testhint_title": "Pregnancy test",
+        "testhint_message": "{name}: it is {days} days since the confirmed ovulation ({date}). A pregnancy test is meaningful from about now. This is only a rule of thumb, not medical advice.",
         "overdue_title": "Period overdue",
         "overdue_message": "{name}: the period is {days} days past the predicted start ({date}). If it has started, please log it.",
         "checkup_title": "Checkup reminder",
@@ -1198,6 +1203,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_long": "{name}: Die letzten 3 Zyklen waren jeweils länger als {limit} Tage ({lengths} Tage). Das ist keine Diagnose; du kannst es beim nächsten Vorsorgetermin erwähnen.",
         "cyclehint_longer": "{name}: Der letzte Zyklus war {days} Tage länger als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
         "cyclehint_shorter": "{name}: Der letzte Zyklus war {days} Tage kürzer als dein bisheriger Durchschnitt ({average} Tage). Einzelne Abweichungen sind häufig; wenn es öfter vorkommt, kannst du es beim nächsten Vorsorgetermin erwähnen.",
+        "testhint_title": "Schwangerschaftstest",
+        "testhint_message": "{name}: Seit dem bestätigten Eisprung ({date}) sind {days} Tage vergangen. Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert, keine medizinische Beratung.",
         "overdue_title": "Periode überfällig",
         "overdue_message": "{name}: Die Periode ist {days} Tage nach dem vorhergesagten Beginn ({date}) noch nicht eingetragen. Falls sie begonnen hat, bitte eintragen.",
         "checkup_title": "Kontrolltermin-Erinnerung",
@@ -1245,6 +1252,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_long": "{name} : les 3 derniers cycles duraient chacun plus de {limit} jours ({lengths} jours). Ce n'est pas un diagnostic ; vous pouvez en parler lors de votre prochain suivi.",
         "cyclehint_longer": "{name} : le dernier cycle était plus long de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
         "cyclehint_shorter": "{name} : le dernier cycle était plus court de {days} jours que votre moyenne habituelle ({average} jours). Un écart isolé est fréquent ; si cela se répète, vous pouvez en parler lors de votre prochain suivi.",
+        "testhint_title": "Test de grossesse",
+        "testhint_message": "{name} : {days} jours se sont écoulés depuis l'ovulation confirmée ({date}). Un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical.",
         "overdue_title": "Règles en retard",
         "overdue_message": "{name} : les règles ont {days} jours de retard sur le début prévu ({date}). Si elles ont commencé, merci de les saisir.",
         "checkup_title": "Rappel de contrôle",
@@ -1292,6 +1301,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_long": "{name}: los últimos 3 ciclos duraron cada uno más de {limit} días ({lengths} días). No es un diagnóstico; puedes mencionarlo en tu próxima revisión.",
         "cyclehint_longer": "{name}: el último ciclo fue {days} días más largo que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
         "cyclehint_shorter": "{name}: el último ciclo fue {days} días más corto que tu media anterior ({average} días). Las desviaciones aisladas son frecuentes; si se repite, puedes mencionarlo en tu próxima revisión.",
+        "testhint_title": "Prueba de embarazo",
+        "testhint_message": "{name}: han pasado {days} días desde la ovulación confirmada ({date}). Una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico.",
         "overdue_title": "Menstruación retrasada",
         "overdue_message": "{name}: la menstruación lleva {days} días de retraso sobre el inicio previsto ({date}). Si ya empezó, por favor regístrala.",
         "checkup_title": "Recordatorio de revisión",
@@ -1339,6 +1350,8 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "cyclehint_long": "{name}: de tre senaste cyklerna var var och en längre än {limit} dagar ({lengths} dagar). Det är ingen diagnos; du kan nämna det vid nästa kontroll.",
         "cyclehint_longer": "{name}: den senaste cykeln var {days} dagar längre än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
         "cyclehint_shorter": "{name}: den senaste cykeln var {days} dagar kortare än ditt tidigare genomsnitt ({average} dagar). Enstaka avvikelser är vanliga; om det upprepas kan du nämna det vid nästa kontroll.",
+        "testhint_title": "Graviditetstest",
+        "testhint_message": "{name}: Det har gått {days} dagar sedan den bekräftade ägglossningen ({date}). Ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd.",
         "overdue_title": "Mensen är försenad",
         "overdue_message": "{name}: mensen är {days} dagar efter beräknad start ({date}). Om den har börjat, logga den gärna nu.",
         "checkup_title": "Påminnelse om kontroll",
@@ -1394,6 +1407,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     checkup_notify_enabled = bool(entry.options.get(CONF_NOTIFY_CHECKUP_ENABLED, DEFAULT_NOTIFY_CHECKUP_ENABLED))
     pregnancy_notify_enabled = bool(entry.options.get(CONF_NOTIFY_PREGNANCY_UPDATES, DEFAULT_NOTIFY_PREGNANCY_UPDATES))
     cycle_hint_enabled = bool(entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT))
+    test_hint_enabled = bool(entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT))
     if not any(
         (
             period_notify_enabled,
@@ -1404,6 +1418,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             checkup_notify_enabled,
             pregnancy_notify_enabled,
             cycle_hint_enabled,
+            test_hint_enabled,
         )
     ):
         return
@@ -1564,6 +1579,27 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
                 await _send(strings["cyclehint_title"], message)
             runtime.noncycle_data["notified_cycle_hint"] = latest
             notified_something = True
+
+    # Pregnancy-test timing for people trying to conceive: once per cycle, TEST_HINT_DAYS_AFTER_OVULATION days after an
+    # ovulation the NFP analysis confirmed (a short window so one missed daily run does not lose it); own target only.
+    nfp = model.nfp_analysis if isinstance(model.nfp_analysis, dict) else {}
+    confirmed_ovulation = nfp.get("ovulation_day")  # None unless the analysis confirmed it
+    if (
+        test_hint_enabled
+        and confirmed_ovulation
+        and model.grouped_starts
+        and not mute_fertility
+        and runtime.noncycle_data.get("notified_test_hint") != model.grouped_starts[-1]
+        and 0 <= (today - date.fromisoformat(confirmed_ovulation)).days - TEST_HINT_DAYS_AFTER_OVULATION <= 2
+    ):
+        await _send(
+            strings["testhint_title"],
+            strings["testhint_message"].format(
+                name=runtime.friendly_name, date=confirmed_ovulation, days=TEST_HINT_DAYS_AFTER_OVULATION
+            ),
+        )
+        runtime.noncycle_data["notified_test_hint"] = model.grouped_starts[-1]
+        notified_something = True
 
     # Overdue period: same gate as the repair issue (repairs.py::async_check_period_overdue); once per predicted start, own target only.
     days_to_start = model.days_until_next_start
@@ -2369,8 +2405,8 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_save_timer_state(call: ServiceCall) -> None:
         await _async_handle_save_timer_state(hass, call)
 
-    async def async_export_doctor_report(call: ServiceCall) -> None:
-        await _async_handle_export_doctor_report(hass, call)
+    async def async_export_doctor_report(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_export_doctor_report(hass, call)
 
     async def async_set_profile_visibility(call: ServiceCall) -> None:
         await _async_handle_set_profile_visibility(hass, call)
@@ -2765,17 +2801,19 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         }),
     )
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_EXPORT_DOCTOR_REPORT,
-        async_export_doctor_report,
-        schema=vol.Schema({
+    _export_doctor_report_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({
             **common_profile_field,
             vol.Optional(SERVICE_FIELD_DAYS_BACK, default=180): vol.All(vol.Coerce(int), vol.Range(min=30, max=730)),
             vol.Optional(SERVICE_FIELD_PATIENT_NAME): cv.string,
             vol.Optional(SERVICE_FIELD_PATIENT_BIRTHDATE): cv.string,
             vol.Optional(SERVICE_FIELD_LANGUAGE, default="de"): vol.In(list(DOCTOR_REPORT_LANGUAGES)),
-        }),
+        })
+    }
+    if SupportsResponse is not None:
+        _export_doctor_report_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_EXPORT_DOCTOR_REPORT, async_export_doctor_report, **_export_doctor_report_register_kwargs
     )
 
     hass.services.async_register(
@@ -3668,8 +3706,12 @@ async def _async_handle_save_timer_state(hass: HomeAssistant, call: ServiceCall)
     )
 
 
-async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Generate an HTML doctor report from the cycle history and symptom data."""
+async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Generate an HTML doctor report from the cycle history and symptom data.
+
+    The file goes to the export folder; the response carries the same HTML so a card can open it in the
+    browser right away (the folder is not served over HTTP).
+    """
     runtime = _runtime_for_call(hass, call)
     days_back = max(30, min(730, int(call.data.get(SERVICE_FIELD_DAYS_BACK, 180))))
     patient_name = call.data.get(SERVICE_FIELD_PATIENT_NAME)
@@ -3716,6 +3758,8 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
     if not runtime.noncycle_data.get("doctor_report_exported"):
         runtime.noncycle_data["doctor_report_exported"] = True
         await _async_save_and_notify(hass, runtime)
+
+    return {"filename": target_path.name, "path": str(target_path), "html": html_content}
 
 
 def _smart_period_history_dates(
@@ -4164,7 +4208,34 @@ async def _async_diagnose_profile_storage(runtime: MenstruationRuntime) -> list[
             f"(first: {missing[0]}); service create_periods_from_bleeding adds them"
         )
 
+    close = _close_period_starts(runtime.history, dt_util.now().date())
+    if close:
+        first = close[0]
+        issues.append(
+            f"period starts too close: {len(close)} period start(s) less than {NEW_PERIOD_MIN_GAP_DAYS + 1} days after "
+            f"the previous one (first: {first['to']}, {first['gap_days']} days after {first['from']}); if that was a "
+            f"spotting or intermenstrual bleeding, remove its days with service remove_cycle_start"
+        )
+
     return issues
+
+
+CLOSE_PERIOD_STARTS_LOOKBACK_DAYS = 365
+
+
+def _close_period_starts(history: list[str], today: date) -> list[dict[str, Any]]:
+    """Period starts of the last year that follow the previous one within NEW_PERIOD_MIN_GAP_DAYS.
+
+    The days of one period are grouped first; older entries are left alone so a long-ago slip does not nag forever.
+    """
+    since = (today - timedelta(days=CLOSE_PERIOD_STARTS_LOOKBACK_DAYS)).isoformat()
+    return [
+        gap
+        for gap in find_implausible_cycle_gaps(
+            grouped_cycle_starts(sorted(set(history))), min_gap_days=NEW_PERIOD_MIN_GAP_DAYS + 1
+        )
+        if gap["to"] >= since
+    ]
 
 
 async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:

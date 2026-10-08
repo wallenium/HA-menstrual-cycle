@@ -121,8 +121,8 @@ class MenstruationCountdownTimer extends HTMLElement {
     try {
       this.setupEventListeners();
       
-      if (Notification.permission === "default") {
-        Notification.requestPermission().catch(() => {});
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        Notification.requestPermission()?.catch?.(() => {});
       }
     } catch (error) {
       console.error("MenstruationCountdownTimer Error:", error);
@@ -222,7 +222,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       <style>${this.getStyles()}</style>
       <ha-card>
         <div class="card-header">
-          <h2 class="card-title">Menstruations-Countdown</h2>
+          <h2 class="card-title">${this._t('card_title')}</h2>
           <div class="card-meta" id="cardMeta"></div>
         </div>
         <div class="card-content" id="cardContent">
@@ -574,10 +574,10 @@ class MenstruationCountdownTimer extends HTMLElement {
   renderPeriodMode(cardContent) {
     cardContent.innerHTML = `
       <div class="product-selector">
-        <label class="selector-label">Wähle Produkt</label>
+        <label class="selector-label">${this._t('ct_select_product')}</label>
         <div class="product-dropdown-wrapper">
           <select id="productSelect" class="product-select">
-            <option value="">-- Produkt wählen --</option>
+            <option value="">${this._t('ct_select_product_option')}</option>
           </select>
         </div>
       </div>
@@ -587,14 +587,14 @@ class MenstruationCountdownTimer extends HTMLElement {
         <div class="timer-icon" id="timerIcon"></div>
           <div class="timer-content">
             <div class="timer-time" id="timerTime">00:00</div>
-            <div class="timer-label" id="timerLabel">Bereit</div>
+            <div class="timer-label" id="timerLabel">${this._t('ct_status_ready')}</div>
           </div>
         </div>
 
         <div class="timer-controls">
-          <button id="startBtn" class="btn btn-start" data-action="start-timer">Start</button>
-          <button id="pauseBtn" class="btn btn-pause" data-action="pause-timer" disabled>Pause</button>
-          <button id="resetBtn" class="btn btn-reset" data-action="reset-timer">Zurück</button>
+          <button id="startBtn" class="btn btn-start" data-action="start-timer">${this._t('ct_btn_start')}</button>
+          <button id="pauseBtn" class="btn btn-pause" data-action="pause-timer" disabled>${this._t('ct_btn_pause')}</button>
+          <button id="resetBtn" class="btn btn-reset" data-action="reset-timer">${this._t('ct_btn_reset')}</button>
         </div>
 
         <div class="usage-controls">
@@ -623,16 +623,16 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (!milestoneList) return;
 
     const milestones = {
-      1: ['Herzschlag erkennbar', 'Erstes Ultraschall', 'Geschlechtsbestimmung möglich'],
-      2: ['Bewegungen spürbar', 'Detailliertes Ultraschall', 'Gewichtszunahme'],
-      3: ['Babys Position fest', 'Geburt nahbar', 'Letzter Check-up']
+      1: ['ct_ms_heartbeat', 'ct_ms_first_ultrasound', 'ct_ms_sex_determination'],
+      2: ['ct_ms_movements', 'ct_ms_detailed_ultrasound', 'ct_weight_gain'],
+      3: ['ct_ms_baby_position', 'ct_ms_birth_near', 'ct_ms_last_checkup']
     };
 
     const items = milestones[trimester] || [];
     milestoneList.innerHTML = items.map(m => `
       <div class="milestone-item">
         <span class="milestone-check">✓</span>
-        <span>${m}</span>
+        <span>${this._t(m)}</span>
       </div>
     `).join('');
   }
@@ -642,16 +642,16 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (!checklist) return;
 
     const checklists = {
-      1: ['Arzttermin vereinbaren', 'Vorsorgeuntersuchung', 'Vitamins starten'],
-      2: ['Zahnarzt-Check', 'Gewichtszunahme kontrollieren', 'Bewegungsübungen'],
-      3: ['Geburtsplan besprechen', 'Krankenhaus anmelden', 'Tasche packen']
+      1: ['ct_cl_book_doctor', 'ct_cl_prenatal_exam', 'ct_cl_vitamins'],
+      2: ['ct_cl_dentist', 'ct_cl_check_weight', 'ct_cl_exercises'],
+      3: ['ct_cl_birth_plan', 'ct_cl_register_hospital', 'ct_cl_pack_bag']
     };
 
     const items = checklists[trimester] || [];
     checklist.innerHTML = items.map((item, i) => `
       <label class="checkbox-item">
         <input type="checkbox" data-item="${i}" />
-        <span>${item}</span>
+        <span>${this._t(item)}</span>
       </label>
     `).join('');
   }
@@ -663,18 +663,18 @@ class MenstruationCountdownTimer extends HTMLElement {
     // Each entry: { label: display text, key: backend value for pregnancy_symptoms field }
     const symptoms = mode === 'pregnancy'
       ? [
-          { label: 'Übelkeit',      key: 'nausea'     },
-          { label: 'Müdigkeit',     key: 'fatigue'    },
-          { label: 'Kopfschmerz',   key: 'headache'   },
-          { label: 'Rückenschmerz', key: 'back_pain'  },
-          { label: 'Sodbrennen',    key: 'heartburn'  },
-          { label: 'Schwellungen',  key: 'swelling'   },
+          { label: this._t('opt_nausea'),         key: 'nausea'     },
+          { label: this._t('opt_fatigue'),        key: 'fatigue'    },
+          { label: this._t('opt_headache'),       key: 'headache'   },
+          { label: this._t('opt_back_pain'),      key: 'back_pain'  },
+          { label: this._t('opt_heartburn'),      key: 'heartburn'  },
+          { label: this._t('opt_preg_swelling'),  key: 'swelling'   },
         ]
       : [
-          { label: 'Hitzewallungen',     key: null },
-          { label: 'Schweißausbrüche',   key: null },
-          { label: 'Schlafstörungen',    key: null },
-          { label: 'Stimmungsschwankungen', key: null },
+          { label: this._t('cat_hot_flashes'),         key: null },
+          { label: this._t('ct_sym_night_sweats'),     key: null },
+          { label: this._t('ct_sym_sleep_disturbance'), key: null },
+          { label: this._t('opt_preg_mood_swings'),    key: null },
         ];
 
     symptomGrid.innerHTML = symptoms.map(s => `
@@ -743,10 +743,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (!recoveryItems) return;
 
     const items = [
-      { label: 'Wundheilung', weeks: 2 },
-      { label: 'Blutung normalisiert', weeks: 4 },
-      { label: 'Rückbildung aktiv', weeks: 6 },
-      { label: 'Sex möglich', weeks: 6 }
+      { label: this._t('ct_rec_wound_healing'), weeks: 2 },
+      { label: this._t('ct_rec_bleeding_normal'), weeks: 4 },
+      { label: this._t('ct_rec_recovery_course'), weeks: 6 },
+      { label: this._t('ct_rec_sex_ok'), weeks: 6 }
     ];
 
     recoveryItems.innerHTML = items.map(item => {
@@ -755,7 +755,7 @@ class MenstruationCountdownTimer extends HTMLElement {
         <div class="recovery-item ${completed ? 'completed' : ''}">
           <span class="recovery-check">${completed ? '✓' : '○'}</span>
           <span>${item.label}</span>
-          <span class="week-label">Woche ${item.weeks}</span>
+          <span class="week-label">${this._t('week')} ${item.weeks}</span>
         </div>
       `;
     }).join('');
@@ -765,11 +765,11 @@ class MenstruationCountdownTimer extends HTMLElement {
     const bleedingGrid = this.querySelector("#bleedingGrid");
     if (!bleedingGrid) return;
 
-    const levels = ['Gering', 'Moderat', 'Stark'];
+    const levels = ['light', 'medium', 'heavy'];
     bleedingGrid.innerHTML = levels.map(level => `
       <label class="bleeding-option">
         <input type="radio" name="bleeding" value="${level}" />
-        <span>${level}</span>
+        <span>${this._t('bleeding_' + level)}</span>
       </label>
     `).join('');
   }
@@ -779,17 +779,17 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (!checklist) return;
 
     const items = [
-      'Arzttermin Wochenbett',
-      'Rückbildungskurs starten',
-      'Beckenbodentraining',
-      'Blutung überprüfen',
-      'Emotional Check-in'
+      'ct_pp_doctor',
+      'ct_pp_course',
+      'ct_pp_pelvic',
+      'ct_pp_bleeding',
+      'ct_pp_emotional'
     ];
 
     checklist.innerHTML = items.map((item, i) => `
       <label class="checkbox-item">
         <input type="checkbox" data-item="${i}" />
-        <span>${item}</span>
+        <span>${this._t(item)}</span>
       </label>
     `).join('');
   }
@@ -814,12 +814,12 @@ class MenstruationCountdownTimer extends HTMLElement {
     // hot_flashes (list: false) ist dagegen ein Einzelwert-Feld und wird
     // beim Klick komplett ersetzt (checked -> "light", unchecked -> "none").
     const items = [
-      { label: 'Hitzewallungen',  field: 'hot_flashes',        list: false, value: 'light' },
-      { label: 'Nachtschweiß',    field: 'menopause_symptoms', list: true,  value: 'night_sweats' },
-      { label: 'Schlafstörungen', field: 'menopause_symptoms', list: true,  value: 'sleep_disturbance' },
-      { label: 'Reizbarkeit',     field: 'menopause_symptoms', list: true,  value: 'irritability' },
-      { label: 'Trockenheit',     field: 'vulva_vagina',       list: true,  value: 'vaginal_dryness' },
-      { label: 'Gewichtszunahme', field: 'menopause_symptoms', list: true,  value: 'weight_gain' },
+      { label: this._t('cat_hot_flashes'),          field: 'hot_flashes',        list: false, value: 'light' },
+      { label: this._t('ct_sym_night_sweats'),      field: 'menopause_symptoms', list: true,  value: 'night_sweats' },
+      { label: this._t('ct_sym_sleep_disturbance'), field: 'menopause_symptoms', list: true,  value: 'sleep_disturbance' },
+      { label: this._t('ct_sym_irritability'),      field: 'menopause_symptoms', list: true,  value: 'irritability' },
+      { label: this._t('opt_vaginal_dryness'),      field: 'vulva_vagina',       list: true,  value: 'vaginal_dryness' },
+      { label: this._t('ct_weight_gain'),           field: 'menopause_symptoms', list: true,  value: 'weight_gain' },
     ];
 
     symptomsGrid.innerHTML = items.map((item, i) => `
@@ -925,11 +925,11 @@ class MenstruationCountdownTimer extends HTMLElement {
     // UI-Deko) als diesen Tagestext zu speichern statt eine neue,
     // separate Options-Liste im Backend einzuführen.
     const moods = [
-      { emoji: '😊', label: 'Glücklich' },
-      { emoji: '😐', label: 'Neutral' },
-      { emoji: '😔', label: 'Traurig' },
-      { emoji: '😤', label: 'Reizbar' },
-      { emoji: '😰', label: 'Ängstlich' },
+      { emoji: '😊', label: this._t('ct_mood_happy') },
+      { emoji: '😐', label: this._t('neutral') },
+      { emoji: '😔', label: this._t('ct_mood_sad') },
+      { emoji: '😤', label: this._t('ct_mood_irritable') },
+      { emoji: '😰', label: this._t('ct_mood_anxious') },
     ];
     moodGrid.innerHTML = moods.map(m => `
       <label class="mood-option">
@@ -992,16 +992,16 @@ class MenstruationCountdownTimer extends HTMLElement {
     if (!wellnessTips) return;
 
     const tips = [
-      '🧘 Entspannungstechniken & Yoga',
-      '🏃 Regelmäßige Bewegung',
-      '🥗 Gesunde Ernährung',
-      '💧 Ausreichend Wasser trinken',
-      '😴 Guter Schlaf wichtig',
-      '🤝 Unterstützung suchen'
+      ['🧘', 'ct_tip_relax'],
+      ['🏃', 'ct_tip_move'],
+      ['🥗', 'ct_tip_eat'],
+      ['💧', 'ct_tip_water'],
+      ['😴', 'ct_tip_sleep'],
+      ['🤝', 'ct_tip_support']
     ];
 
-    wellnessTips.innerHTML = tips.map(tip => `
-      <div class="wellness-tip">${tip}</div>
+    wellnessTips.innerHTML = tips.map(([emoji, key]) => `
+      <div class="wellness-tip">${emoji} ${this._t(key)}</div>
     `).join('');
   }
 
@@ -1575,11 +1575,11 @@ class MenstruationCountdownTimer extends HTMLElement {
       const timerLabel = this.querySelector("#timerLabel");
       if (timerLabel) {
         if (this.timerState.isRunning) {
-          timerLabel.textContent = "Läuft...";
+          timerLabel.textContent = this._t('ct_status_running');
         } else if (this.timerState.remainingSeconds > 0) {
-          timerLabel.textContent = "Pausiert";
+          timerLabel.textContent = this._t('ct_status_paused');
         } else {
-          timerLabel.textContent = "Bereit";
+          timerLabel.textContent = this._t('ct_status_ready');
         }
       }
 
@@ -1604,17 +1604,22 @@ class MenstruationCountdownTimer extends HTMLElement {
       this.updateButtonStates();
 
       const timerLabel = this.querySelector("#timerLabel");
-      if (timerLabel) timerLabel.textContent = "Zeit abgelaufen!";
+      if (timerLabel) timerLabel.textContent = this._t('ct_status_done');
 
       const timerDisplay = this.querySelector("#timerDisplay");
       if (timerDisplay) timerDisplay.classList.add("timer-complete");
 
-      if (this.timerState.reminderEnabled && Notification.permission === "granted") {
-        new Notification("Menstruations-Countdown", {
-          body: "Wechsel erforderlich!",
-          tag: "period-timer",
-          requireInteraction: true,
-        }).catch(() => {});
+      if (this.timerState.reminderEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try {
+          // `new Notification()` is not a promise, so there is nothing to .catch(); a failure must not skip the alert sound and the reset below.
+          new Notification(this._t('card_title'), {
+            body: this._t('ct_notification_body'),
+            tag: "period-timer",
+            requireInteraction: true,
+          });
+        } catch (error) {
+          console.warn("Notification not available:", error);
+        }
       }
 
       this.playAlert();
@@ -1994,7 +1999,69 @@ class MenstruationCountdownTimer extends HTMLElement {
         // Init-Fehlertext in connectedCallback() war hartcodiert Deutsch
         // ("Fehler beim Laden"), unabhängig von der Sprache des
         // Betrachters, anders als jeder sonstige Text in dieser Karte.
-        load_error: "Error loading"
+        load_error: "Error loading",
+        opt_nausea: "Nausea",
+        opt_fatigue: "Fatigue",
+        opt_headache: "Headache",
+        opt_back_pain: "Back Pain",
+        opt_heartburn: "Heartburn",
+        opt_preg_swelling: "Swelling",
+        cat_hot_flashes: "Hot Flashes",
+        opt_preg_mood_swings: "Mood Swings",
+        opt_vaginal_dryness: "Dryness",
+        bleeding_light: "Light",
+        bleeding_medium: "Medium",
+        bleeding_heavy: "Heavy",
+        ct_select_product: "Choose product",
+        ct_select_product_option: "-- Choose a product --",
+        ct_status_ready: "Ready",
+        ct_status_running: "Running…",
+        ct_status_paused: "Paused",
+        ct_status_done: "Time is up!",
+        ct_btn_start: "Start",
+        ct_btn_pause: "Pause",
+        ct_btn_reset: "Reset",
+        ct_notification_body: "Time to change!",
+        ct_ms_heartbeat: "Heartbeat detectable",
+        ct_ms_first_ultrasound: "First ultrasound",
+        ct_ms_sex_determination: "Sex can be determined",
+        ct_ms_movements: "Movements can be felt",
+        ct_ms_detailed_ultrasound: "Detailed ultrasound",
+        ct_weight_gain: "Weight gain",
+        ct_ms_baby_position: "Baby’s position settles",
+        ct_ms_birth_near: "Birth is getting closer",
+        ct_ms_last_checkup: "Final check-up",
+        ct_cl_book_doctor: "Book a doctor’s appointment",
+        ct_cl_prenatal_exam: "Prenatal check-up",
+        ct_cl_vitamins: "Start vitamins",
+        ct_cl_dentist: "Dental check-up",
+        ct_cl_check_weight: "Monitor weight gain",
+        ct_cl_exercises: "Gentle exercise",
+        ct_cl_birth_plan: "Discuss the birth plan",
+        ct_cl_register_hospital: "Register at the hospital",
+        ct_cl_pack_bag: "Pack the hospital bag",
+        ct_sym_night_sweats: "Night sweats",
+        ct_sym_sleep_disturbance: "Sleep disturbances",
+        ct_sym_irritability: "Irritability",
+        ct_rec_wound_healing: "Wound healing",
+        ct_rec_bleeding_normal: "Bleeding back to normal",
+        ct_rec_recovery_course: "Postnatal recovery under way",
+        ct_rec_sex_ok: "Sex possible",
+        ct_pp_doctor: "Postpartum doctor’s appointment",
+        ct_pp_course: "Start postnatal recovery class",
+        ct_pp_pelvic: "Pelvic floor training",
+        ct_pp_bleeding: "Check bleeding",
+        ct_pp_emotional: "Emotional check-in",
+        ct_mood_happy: "Happy",
+        ct_mood_sad: "Sad",
+        ct_mood_irritable: "Irritable",
+        ct_mood_anxious: "Anxious",
+        ct_tip_relax: "Relaxation techniques & yoga",
+        ct_tip_move: "Regular exercise",
+        ct_tip_eat: "Healthy eating",
+        ct_tip_water: "Drink enough water",
+        ct_tip_sleep: "Good sleep matters",
+        ct_tip_support: "Ask for support"
       },
     };
 

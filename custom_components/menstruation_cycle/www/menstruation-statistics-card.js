@@ -820,6 +820,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         export_language: 'Report language',
         export_btn: 'Export HTML for Doctor',
         export_ok: '✅ Report exported!',
+        export_hint_saved: 'Saved in the export folder of your Home Assistant. Open it in the browser and choose Print → Save as PDF.',
+        export_hint_open: 'The report is ready. Open it and choose Print → Save as PDF.',
+        export_open: 'Open report',
+        export_download: 'Download',
         export_err: '❌ Export failed',
         exporting: '⏳ Exporting…',
         print_btn: 'Print page / Save as PDF',
@@ -2632,6 +2636,44 @@ class MenstruationStatisticsCard extends HTMLElement {
     </div>`;
   }
 
+  /**
+   * Calls export_doctor_report and returns its response ({filename, path, html}); null when the
+   * response is unavailable (older backend: the file is only saved on the server).
+   */
+  async _requestDoctorReport(serviceData) {
+    if (this._hass?.connection?.sendMessagePromise) {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: 'call_service',
+        domain: 'menstruation_cycle',
+        service: 'export_doctor_report',
+        service_data: serviceData,
+        return_response: true,
+      });
+      return result?.response || null;
+    }
+    await this._hass.callService('menstruation_cycle', 'export_doctor_report', serviceData);
+    return null;
+  }
+
+  /** Keeps the exported report as a blob URL so it can be opened or downloaded from the card. */
+  _setReportFile(response) {
+    if (this._reportUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(this._reportUrl);
+    this._reportUrl = null;
+    this._reportName = null;
+    if (response && typeof response.html === 'string' && typeof Blob !== 'undefined' && typeof URL !== 'undefined') {
+      this._reportUrl = URL.createObjectURL(new Blob([response.html], { type: 'text/html' }));
+      this._reportName = String(response.filename || 'report.html');
+    }
+  }
+
+  _renderExportHint() {
+    const t = (k) => this._t(k);
+    if (!this._reportUrl) return `<p class="export-hint">📁 ${this._escHtml(t('export_hint_saved'))}</p>`;
+    return `<p class="export-hint">${this._escHtml(t('export_hint_open'))}<br>
+      <a href="${this._escHtml(this._reportUrl)}" target="_blank" rel="noopener">${this._escHtml(t('export_open'))}</a>
+      · <a href="${this._escHtml(this._reportUrl)}" download="${this._escHtml(this._reportName)}">${this._escHtml(t('export_download'))}</a></p>`;
+  }
+
   _renderDoctorTab() {
     const t = (k) => this._t(k);
     const exportLang = this._reportLang();
@@ -2660,7 +2702,7 @@ class MenstruationStatisticsCard extends HTMLElement {
           </select>
         </div>
         <button class="export-btn" id="export-btn" ${btnDisabled}>${this._escHtml(btnLabel)}</button>
-        ${this._exportStatus === 'ok' ? '<p class="export-hint">📁 Die Datei wurde im HA-Export-Verzeichnis gespeichert.<br>Öffnen Sie sie im Browser und wählen Sie <em>Drucken → Als PDF speichern</em>.</p>' : ''}
+        ${this._exportStatus === 'ok' ? this._renderExportHint() : ''}
       </div>`;
   }
 
@@ -2989,7 +3031,7 @@ class MenstruationStatisticsCard extends HTMLElement {
           if (bd) serviceData.patient_birthdate = bd;
           serviceData.language = lang;
 
-          await this._hass.callService('menstruation_cycle', 'export_doctor_report', serviceData);
+          this._setReportFile(await this._requestDoctorReport(serviceData));
           this._exportStatus = 'ok';
         } catch (err) {
           console.error('export_doctor_report failed', err);

@@ -88,7 +88,8 @@
               "notify_fertile_mute_hormonal": "No fertility notifications on hormonal contraception",
               "notify_unprotected_hint": "Hint after unprotected intercourse",
               "notify_pregnancy_updates": "Weekly pregnancy message",
-              "notify_cycle_hint": "Hint for an unusual cycle length"
+              "notify_cycle_hint": "Hint for an unusual cycle length",
+              "notify_test_hint": "Pregnancy test timing hint"
             },
             "data_description": {
               "notifications_enabled": "Sends a notification when the period is predicted to start tomorrow, or when the fertile window starts today.",
@@ -109,7 +110,8 @@
               "notify_fertile_mute_hormonal": "Skips the fertile-window and ovulation notifications while the current contraception method is hormonal (pill, hormonal IUD, implant, patch, ring, injection), since the cycle is usually suppressed then. The sensor state and the dashboard stay unchanged. Off by default.",
               "notify_unprotected_hint": "When unprotected intercourse is logged for today or one of the last 5 days, sends one neutral hint: if a pregnancy is not wanted, a pharmacy or doctor can advise on emergency contraception, and the sooner the better. No dosing, no medical advice. Not sent during pregnancy or menopause. Off by default. Requires 'Enable notifications' above.",
               "notify_pregnancy_updates": "While pregnancy mode is on, sends a short neutral message once a week (on the weekday of the pregnancy start) with the current week, and a note at the start of the 2nd and 3rd trimester. No medical advice.",
-              "notify_cycle_hint": "After a new period start, sends one neutral hint when the last three cycles were all shorter than 21 or all longer than 38 days, or when the last cycle was 10 or more days off your average. It is no diagnosis; it only suggests mentioning it at the next check-up."
+              "notify_cycle_hint": "After a new period start, sends one neutral hint when the last three cycles were all shorter than 21 or all longer than 38 days, or when the last cycle was 10 or more days off your average. It is no diagnosis; it only suggests mentioning it at the next check-up.",
+              "notify_test_hint": "After an ovulation that was confirmed by your temperature and mucus/cervix logs, sends one neutral message 14 days later: a pregnancy test is meaningful from about now. It is only a rule of thumb, no medical advice. Skipped while pregnant and on hormonal contraception if the fertility notifications are muted for it. Off by default."
             }
           },
           "pill": {

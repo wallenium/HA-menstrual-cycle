@@ -139,6 +139,7 @@ class MenstruationGaugeCard extends HTMLElement {
         month: 'Month',
         trimester: 'Trimester',
         confirm_remove_cycle_start: 'Remove this confirmed period start?',
+        confirm_add_close_period_start: 'The previous period day was {days} days ago. Add this day as a new period anyway?',
         // Modal UI
         modal_edit_day: 'Edit Day',
         period: 'Period',
@@ -1800,6 +1801,12 @@ class MenstruationGaugeCard extends HTMLElement {
     });
   }
 
+  _daysSincePreviousPeriodDay(confirmedSet, iso) {
+    const previous = [...(confirmedSet || [])].filter((day) => day < iso).sort().pop();
+    if (!previous) return null;
+    return Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${previous}T00:00:00Z`)) / 86400000);
+  }
+
   async _toggleCycleStart(iso) {
     if (this._config?.calendar_edit_enabled === false) return;
     const model = this._buildModel();
@@ -1809,6 +1816,13 @@ class MenstruationGaugeCard extends HTMLElement {
     // gets a confirmation — adding one doesn't need it (reversible either way,
     // but removal is the more surprising direction to trigger by accident).
     if (service === 'remove_cycle_start' && !window.confirm(this._t('confirm_remove_cycle_start'))) return;
+    // A day 3-14 days after the previous period day would open a new period inside that period's 14-day window
+    // (the backend's NEW_PERIOD_MIN_GAP_DAYS) — usually a mis-tap or a spotting day, so ask first.
+    if (service === 'add_cycle_start') {
+      const gap = this._daysSincePreviousPeriodDay(model.confirmedSet, iso);
+      if (gap !== null && gap > 2 && gap <= 14
+        && !window.confirm(this._t('confirm_add_close_period_start').replace('{days}', String(gap)))) return;
+    }
     const profile = model.stateObj?.attributes?.profile;
     const entityId = model.entityId || this._config?.entity || '';
     const entryId = model.stateObj?.attributes?.entry_id || this._config?.entry_id || '';

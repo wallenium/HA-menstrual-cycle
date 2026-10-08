@@ -1755,14 +1755,108 @@
       this.render();
     }
 
+    // "Open notes about your data": the integration's own Home Assistant repair issues (storage check, missing
+    // periods, ...), counted via the frontend's repairs/list_issues and refreshed at most every 5 minutes. Any
+    // failure (older HA, no permission) just hides the line.
+    _fetchOpenIssues() {
+      const conn = this._hass?.connection;
+      const now = Date.now();
+      if (!conn?.sendMessagePromise || this._openIssuesFetching || (this._openIssuesAt && now - this._openIssuesAt < 300000)) return;
+      this._openIssuesFetching = true;
+      this._openIssuesAt = now;
+      conn.sendMessagePromise({ type: 'repairs/list_issues' })
+        .then((result) => (Array.isArray(result?.issues)
+          ? result.issues.filter((issue) => issue && issue.domain === 'menstruation_cycle' && !issue.ignored).length
+          : 0))
+        .catch(() => 0)
+        .then((count) => {
+          this._openIssuesFetching = false;
+          if (count !== this._openIssues) {
+            this._openIssues = count;
+            this.render();
+          }
+        });
+    }
+
+    _renderOpenIssues(discreetMode) {
+      if (discreetMode) return '';
+      this._fetchOpenIssues();
+      if (!this._openIssues) return '';
+      const text = this._t('dashboard_open_issues').replace('{count}', String(this._openIssues));
+      return `<p class="helper" style="margin:6px 0 0;"><a href="/config/repairs" style="color:inherit;">${escapeHtml(text)} →</a></p>`;
+    }
+
+    // Same rule as the backend (NEW_PERIOD_MIN_GAP_DAYS): a bleeding within 14 days of a period day is no new period.
+    // A start inside that window is asked about first, so a tap on the wrong day does not create a bogus cycle.
+    _isoDaysAgo(daysAgo) {
+      const day = new Date();
+      day.setDate(day.getDate() - (Number(daysAgo) || 0));
+      return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    }
+
+    _daysSinceLastPeriodDay(daysAgo) {
+      const history = this._hass?.states?.[this._selectedEntityId]?.attributes?.history;
+      if (!Array.isArray(history) || !history.length) return null;
+      const last = history.filter((d) => typeof d === 'string').sort().pop();
+      const toUtc = (iso) => Date.UTC(...iso.split('-').map((part, i) => Number(part) - (i === 1 ? 1 : 0)));
+      if (!last) return null;
+      return Math.round((toUtc(this._isoDaysAgo(daysAgo)) - toUtc(last)) / 86400000);
+    }
+
+    _requestPeriodStart(daysAgo) {
+      const gap = this._daysSinceLastPeriodDay(daysAgo);
+      if (gap !== null && gap > 0 && gap <= 14) {
+        this._periodStartConfirm = { entityId: this._selectedEntityId, daysAgo: Number(daysAgo) || 0, gap };
+        this.render();
+        return;
+      }
+      this._logPeriodAction('start', daysAgo);
+    }
+
+    async _answerPeriodStartConfirm(answer) {
+      const pending = this._periodStartConfirm;
+      this._periodStartConfirm = null;
+      if (pending && pending.entityId === this._selectedEntityId) {
+        if (answer === 'confirm') {
+          await this._logPeriodAction('start', pending.daysAgo);
+          return;
+        }
+        if (answer === 'spotting') {
+          await this._logIntermenstrualBleeding(pending.daysAgo);
+          return;
+        }
+      }
+      this.render();
+    }
+
+    async _logIntermenstrualBleeding(daysAgo) {
+      if (!this._hass || !this._selectedEntityId) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: this._isoDaysAgo(daysAgo),
+          symptom_data: { bleeding_strength: 'light' },
+        });
+        this._message = this._t('dashboard_period_intermenstrual_done');
+      } catch (_error) {
+        this._message = this._t('dashboard_period_action_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
     // Period start / end without going through the symptom form: a start is the add_cycle_start service,
     // "bleeding is over" is a logged bleeding strength of "none" (which ends the running period).
     async _logPeriodAction(kind, daysAgo) {
       if (!this._hass || !this._selectedEntityId) return;
       const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
-      const day = new Date();
-      day.setDate(day.getDate() - (Number(daysAgo) || 0));
-      const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      const date = this._isoDaysAgo(daysAgo);
       const target = { entity_id: this._selectedEntityId, ...(attrs.profile ? { profile: attrs.profile } : {}), date };
       try {
         if (kind === 'start') {
@@ -3622,8 +3716,18 @@
         return;
       }
 
-      if (action === 'period-start' || action === 'period-end') {
-        this._logPeriodAction(action === 'period-start' ? 'start' : 'end', target.dataset.daysAgo);
+      if (action === 'period-start') {
+        this._requestPeriodStart(target.dataset.daysAgo);
+        return;
+      }
+
+      if (action === 'period-end') {
+        this._logPeriodAction('end', target.dataset.daysAgo);
+        return;
+      }
+
+      if (action === 'period-start-confirm' || action === 'period-start-spotting' || action === 'period-start-cancel') {
+        this._answerPeriodStartConfirm(action.replace('period-start-', ''));
         return;
       }
 
@@ -6609,6 +6713,18 @@
       const running = state === 'period' || stateObj.attributes?.current_bleeding_block?.is_active === true;
       const button = (action, days, key) =>
         `<button type="button" data-action="${action}" data-days-ago="${days}">${escapeHtml(this._t(key))}</button>`;
+      const pending = this._periodStartConfirm;
+      if (!running && pending && pending.entityId === this._selectedEntityId) {
+        const question = this._t('dashboard_period_start_confirm').replace('{days}', String(pending.gap));
+        return `<div class="helper" style="margin:6px 0 0;" role="group">
+          <p style="margin:0 0 6px;">${escapeHtml(question)}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${button('period-start-spotting', pending.daysAgo, 'dashboard_period_start_as_spotting')}
+            ${button('period-start-confirm', pending.daysAgo, 'dashboard_period_start_new')}
+            ${button('period-start-cancel', pending.daysAgo, 'dashboard_period_start_cancel')}
+          </div>
+        </div>`;
+      }
       const buttons = running
         ? button('period-end', 0, 'dashboard_period_end_today')
         : `${button('period-start', 0, 'dashboard_period_start_today')} ${button('period-start', 1, 'dashboard_period_start_yesterday')}`;
@@ -7744,6 +7860,7 @@
           </header>
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
+          ${this._renderOpenIssues(discreetMode)}
           ${this._renderPeriodActions(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}

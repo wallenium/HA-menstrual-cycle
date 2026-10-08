@@ -88,7 +88,8 @@
               "notify_fertile_mute_hormonal": "Sin avisos de fertilidad con anticoncepción hormonal",
               "notify_unprotected_hint": "Aviso tras relaciones sin protección",
               "notify_pregnancy_updates": "Mensaje semanal de embarazo",
-              "notify_cycle_hint": "Aviso por duración de ciclo inusual"
+              "notify_cycle_hint": "Aviso por duración de ciclo inusual",
+              "notify_test_hint": "Aviso del momento para la prueba (deseo de embarazo)"
             },
             "data_description": {
               "notifications_enabled": "Envía una notificación cuando se prevé que la menstruación comience mañana, o cuando la ventana fértil comienza hoy.",
@@ -109,7 +110,8 @@
               "notify_fertile_mute_hormonal": "Omite los avisos de ventana fértil y de ovulación mientras el método anticonceptivo actual sea hormonal (píldora, DIU hormonal, implante, parche, anillo, inyección), porque el ciclo suele estar suprimido. El estado del sensor y el panel no cambian. Desactivado por defecto.",
               "notify_unprotected_hint": "Si se registra una relación sin protección para hoy o alguno de los últimos 5 días, se envía un aviso neutral: si no se desea un embarazo, una farmacia o un médico pueden orientar sobre la anticoncepción de emergencia, cuanto antes mejor. Sin dosis ni consejo médico. No se envía durante el embarazo ni la menopausia. Desactivado por defecto. Requiere 'Activar notificaciones' arriba.",
               "notify_pregnancy_updates": "Mientras el modo embarazo está activo, envía una vez por semana (el día de la semana del inicio del embarazo) un mensaje breve y neutral con la semana actual, y una nota al comenzar el 2.º y el 3.er trimestre. Sin consejos médicos.",
-              "notify_cycle_hint": "Tras el inicio de un nuevo periodo, envía un aviso neutral cuando los tres últimos ciclos fueron todos más cortos de 21 días o todos más largos de 38 días, o cuando el último ciclo se desvió 10 o más días de tu media. No es un diagnóstico; solo sugiere mencionarlo en la próxima revisión."
+              "notify_cycle_hint": "Tras el inicio de un nuevo periodo, envía un aviso neutral cuando los tres últimos ciclos fueron todos más cortos de 21 días o todos más largos de 38 días, o cuando el último ciclo se desvió 10 o más días de tu media. No es un diagnóstico; solo sugiere mencionarlo en la próxima revisión.",
+              "notify_test_hint": "Envía 14 días después de una ovulación confirmada por tus registros de temperatura y moco/cuello uterino un mensaje neutral: una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico. No se envía durante un embarazo ni con anticoncepción hormonal si los avisos de fertilidad están silenciados para ella. Desactivado por defecto."
             }
           },
           "pill": {

@@ -1153,6 +1153,47 @@ test('doctor report export falls back to English for a UI language without a rep
   assert.ok(!html.includes('value="pt"'), 'unsupported language must not be offered');
 });
 
+test('doctor report: the response HTML becomes an open/download link, without a response the saved-file hint stays', async () => {
+  const calls = [];
+  const blobs = [];
+  global.Blob = class { constructor(parts, opts) { this.parts = parts; this.type = opts.type; blobs.push(this); } };
+  const revoked = [];
+  global.URL = { createObjectURL: (blob) => `blob:test-${blobs.indexOf(blob)}`, revokeObjectURL: (u) => revoked.push(u) };
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = {
+    ...makeHass(),
+    locale: { language: 'en' },
+    connection: { sendMessagePromise: async (msg) => { calls.push(msg); return { response: { filename: 'doctor_report_anna.html', path: '/config/x.html', html: '<html>R</html>' } }; } },
+  };
+  const response = await card._requestDoctorReport({ days_back: 90, language: 'en' });
+  assert.deepStrictEqual(calls[0], {
+    type: 'call_service', domain: 'menstruation_cycle', service: 'export_doctor_report',
+    service_data: { days_back: 90, language: 'en' }, return_response: true,
+  });
+  card._setReportFile(response);
+  card._exportStatus = 'ok';
+  let html = card._renderDoctorTab();
+  assert.ok(html.includes('href="blob:test-0" target="_blank"'), html);
+  assert.ok(html.includes('download="doctor_report_anna.html"'), 'download link keeps the file name');
+  assert.ok(html.includes('Open report') && html.includes('Download'), 'link texts are translated');
+  assert.ok(!html.includes('Die Datei wurde'), 'no hard-coded German hint');
+  assert.strictEqual(blobs[0].parts[0], '<html>R</html>');
+  assert.strictEqual(blobs[0].type, 'text/html');
+
+  // A second export revokes the old URL; no response (older backend) falls back to the saved-file hint.
+  card._setReportFile(null);
+  assert.deepStrictEqual(revoked, ['blob:test-0']);
+  html = card._renderDoctorTab();
+  assert.ok(!html.includes('blob:') && html.includes('Saved in the export folder'), html);
+
+  // Without the websocket connection the plain service call is used and yields no response.
+  const plain = [];
+  card._hass = { ...makeHass(), callService: async (...args) => { plain.push(args); } };
+  assert.strictEqual(await card._requestDoctorReport({ days_back: 30 }), null);
+  assert.deepStrictEqual(plain, [['menstruation_cycle', 'export_doctor_report', { days_back: 30 }]]);
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

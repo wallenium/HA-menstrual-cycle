@@ -600,6 +600,181 @@ class BleedingWithoutPeriodTests(unittest.TestCase):
         self.assertEqual(save.await_count, 1)
 
 
+class PregnancyTestHintTests(unittest.TestCase):
+    """Opt-in neutral hint 14 days after an ovulation confirmed by the NFP analysis (trying to conceive)."""
+
+    # day k of a cycle: (basal temperature, cervical mucus, bleeding) - the Roetzer rise is on day 14
+    _CYCLE = [
+        (36.2, None, "heavy"), (36.1, None, "heavy"), (36.1, None, "heavy"), (36.0, None, "medium"),
+        (36.2, None, "heavy"), (36.2, None, "medium"), (36.2, None, None), (36.2, None, None),
+        (36.2, "cremig", None), (36.2, "cremig", None), (36.2, "cremig", None), (36.1, "cremig", None),
+        (36.2, "cremig", None), (36.1, "fadenziehend", None), (36.6, "fadenziehend", None), (36.5, None, None),
+    ]
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        model_mod = sys.modules[f"{_PKG}.model"]
+        entries = self._entries(-30)
+        analysis = model_mod.analyze_nfp_cycle(entries, _iso(-30), 5)
+        self.assertTrue(analysis["ovulation_detected"], analysis)
+        self.ovulation_k = (date.fromisoformat(analysis["ovulation_day"]) - date.fromisoformat(_iso(-30))).days
+
+    def _entries(self, start_offset):
+        entries = []
+        for k, (temp, mucus, bleeding) in enumerate(self._CYCLE):
+            entry = {"date": _iso(start_offset + k), "basal_temp": temp}
+            if mucus:
+                entry["cervical_mucus"] = mucus
+            if bleeding:
+                entry["bleeding_strength"] = bleeding
+            entries.append(entry)
+        return entries
+
+    def _send(self, days_since_ovulation, *, option=True, noncycle=None, language="en", options=None, method=None, **runtime_overrides):
+        start = -(self.ovulation_k + days_since_ovulation)
+        extra = [{"date": _iso(-1), "contraception_method": method}] if method else []
+        runtime = _runtime(
+            history=[_iso(start + k) for k in range(5)], symptom_history=self._entries(start) + extra,
+            noncycle_data=dict(noncycle or {}), **runtime_overrides,
+        )
+        entry = _entry(**{
+            const.CONF_NOTIFY_PERIOD_ENABLED: False, const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False, const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False, const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            const.CONF_NOTIFY_TEST_HINT: option, **(options or {}),
+        })
+        hass, sent = _hass(), _Sent()
+        hass.config.language = language
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        self.runtime, self.start = runtime, start
+        return [(title, message) for title, message, _ in sent.calls]
+
+    def test_sends_one_neutral_message_14_days_after_the_confirmed_ovulation(self) -> None:
+        (title, message), = self._send(14)
+        self.assertEqual(title, "Pregnancy test")
+        self.assertEqual(
+            message.split("(")[0], "Test: it is 14 days since the confirmed ovulation ",
+        )
+        self.assertIn("rule of thumb, not medical advice", message)
+        self.assertEqual(self.runtime.noncycle_data["notified_test_hint"], _iso(self.start))
+
+    def test_window_is_14_to_16_days_and_only_once_per_cycle(self) -> None:
+        self.assertEqual(self._send(13), [])
+        self.assertEqual(len(self._send(15)), 1)
+        self.assertEqual(len(self._send(16)), 1)
+        self.assertEqual(self._send(17), [])
+        self.assertEqual(self._send(14, noncycle={"notified_test_hint": _iso(-(self.ovulation_k + 14))}), [])
+
+    def test_off_by_default_and_never_while_pregnant_or_muted(self) -> None:
+        self.assertEqual(self._send(14, option=False), [])
+        self.assertEqual(self._send(14, pregnancy_data={"is_pregnant": True, "start_date": _iso(-5)}), [])
+        mute = {const.CONF_NOTIFY_FERTILE_MUTE_HORMONAL: True}
+        self.assertEqual(self._send(14, options=mute, method="pill"), [])
+        self.assertEqual(len(self._send(14, options=mute, method="condom")), 1)
+        self.assertEqual(len(self._send(14, method="pill")), 1)  # not muted unless the option is on
+
+    def test_no_message_without_a_confirmed_ovulation(self) -> None:
+        runtime = _runtime(history=[_iso(-20 + k) for k in range(5)], symptom_history=[{"date": _iso(-9), "basal_temp": 36.4}])
+        entry = _entry(**{const.CONF_NOTIFY_TEST_HINT: True})
+        titles = [title for title, _, _ in _run_notifications(entry, runtime).calls]
+        self.assertNotIn("Pregnancy test", titles)
+
+    def test_follows_the_language(self) -> None:
+        self.assertEqual(self._send(14, language="de")[0][0], "Schwangerschaftstest")
+
+    def test_texts_exist_in_every_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            strings = integration._notify_strings(lang)
+            self.assertTrue(strings["testhint_title"], lang)
+            strings["testhint_message"].format(name="A", date="2026-10-01", days=14)
+
+
+class ClosePeriodStartsTests(unittest.TestCase):
+    """repair_storage flags period starts that follow the previous one too closely."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    @staticmethod
+    def _close(*offsets):
+        return integration._close_period_starts([_iso(o) for o in offsets], NOW[0].date())
+
+    def test_normal_cycles_are_quiet(self) -> None:
+        self.assertEqual(self._close(-84, -83, -56, -55, -28, -27, -1), [])
+
+    def test_a_start_within_fourteen_days_is_flagged_but_fifteen_is_not(self) -> None:
+        flagged = self._close(-60, -59, -46)  # 14 days after the previous start
+        self.assertEqual([(g["from"], g["to"], g["gap_days"]) for g in flagged], [(_iso(-60), _iso(-46), 14)])
+        self.assertEqual(self._close(-60, -59, -45), [])  # 15 days
+
+    def test_days_of_one_period_are_not_separate_starts(self) -> None:
+        # a one-day hole inside a period (gap of 2) stays one start
+        self.assertEqual(self._close(-30, -28, -27, -26), [])
+
+    def test_a_longer_period_followed_by_spotting_is_found(self) -> None:
+        flagged = self._close(-40, -39, -38, -37, -30)
+        self.assertEqual([g["to"] for g in flagged], [_iso(-30)])
+
+    def test_only_the_last_year_is_reported(self) -> None:
+        self.assertEqual(len(self._close(-375, -365)), 1)  # the later start is exactly 365 days back
+        self.assertEqual(self._close(-376, -366), [])
+        self.assertEqual(len(self._close(-370, -360)), 1)
+
+    def test_unsorted_and_duplicate_history_is_handled(self) -> None:
+        self.assertEqual(len(self._close(-30, -42, -30, -41)), 1)
+
+    def test_diagnosis_names_the_start_and_the_service(self) -> None:
+        class _Storage:
+            async def async_load_raw(self):
+                return {}
+
+            async def async_load(self):
+                return {
+                    "pregnancy_data": {}, "menarche_data": {}, "menopause_data": {},
+                    "ics_token": None, "ics_token_created_at": None, "hospital_bag_items": [],
+                }
+
+        for history, expected in (([-60, -59, -48], 1), ([-60, -59, -30], 0)):
+            runtime = _runtime(history=[_iso(o) for o in history], storage=_Storage())
+            with patch.object(integration.dt_util, "now", lambda: NOW[0]):
+                issues = _run(integration._async_diagnose_profile_storage(runtime))
+            self.assertEqual(len(issues), expected, issues)
+            if expected:
+                self.assertIn(_iso(-48), issues[0])
+                self.assertIn("remove_cycle_start", issues[0])
+
+
+class DoctorReportResponseTests(unittest.TestCase):
+    """The doctor report service hands the HTML back so a card can open it."""
+
+    def test_response_carries_filename_path_and_html_and_the_file_matches(self) -> None:
+        import tempfile
+
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        runtime = _runtime(profile="anna", history=[_iso(-30), _iso(-29), _iso(-2), _iso(-1)])
+        with tempfile.TemporaryDirectory() as tmp:
+            hass = _hass()
+            hass.config.path = lambda *parts: str(Path(tmp, *parts))
+
+            async def _executor(func, *args):
+                return func(*args)
+
+            hass.async_add_executor_job = _executor
+            call = SimpleNamespace(data={const.SERVICE_FIELD_LANGUAGE: "en"})
+            with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+                integration, "_async_save_and_notify", AsyncMock()
+            ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+                result = _run(integration._async_handle_export_doctor_report(hass, call))
+            self.assertEqual(set(result), {"filename", "path", "html"})
+            self.assertTrue(result["filename"].startswith("doctor_report_anna_"))
+            self.assertIn("<html", result["html"].lower())
+            self.assertEqual(Path(result["path"]).read_text(encoding="utf-8"), result["html"])
+            self.assertEqual(Path(result["path"]).name, result["filename"])
+
+
 class UnprotectedHintTests(unittest.TestCase):
     """Opt-in hint after unprotected intercourse is logged."""
 

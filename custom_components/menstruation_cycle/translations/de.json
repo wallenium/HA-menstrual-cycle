@@ -88,7 +88,8 @@
               "notify_fertile_mute_hormonal": "Keine Fruchtbarkeitsmeldungen bei hormoneller Verhütung",
               "notify_unprotected_hint": "Hinweis nach ungeschütztem Verkehr",
               "notify_pregnancy_updates": "Wöchentliche Schwangerschaftsnachricht",
-              "notify_cycle_hint": "Hinweis bei ungewöhnlicher Zykluslänge"
+              "notify_cycle_hint": "Hinweis bei ungewöhnlicher Zykluslänge",
+              "notify_test_hint": "Hinweis zum Testzeitpunkt (Kinderwunsch)"
             },
             "data_description": {
               "notifications_enabled": "Sendet eine Benachrichtigung, wenn die Periode voraussichtlich morgen beginnt, oder wenn das fruchtbare Fenster heute beginnt.",
@@ -109,7 +110,8 @@
               "notify_fertile_mute_hormonal": "Überspringt die Meldungen zum fruchtbaren Fenster und zum Eisprung, solange die aktuelle Verhütungsmethode hormonell ist (Pille, Hormonspirale, Implantat, Pflaster, Ring, Spritze), weil der Zyklus dann meist unterdrückt ist. Sensorzustand und Dashboard bleiben unverändert. Standardmäßig aus.",
               "notify_unprotected_hint": "Wird ungeschützter Verkehr für heute oder einen der letzten 5 Tage eingetragen, kommt ein neutraler Hinweis: Wenn keine Schwangerschaft gewünscht ist, können Apotheke oder Arztpraxis zur Notfallverhütung beraten, je früher, desto besser. Keine Dosierung, keine medizinische Beratung. Wird nicht bei Schwangerschaft oder Wechseljahren gesendet. Standardmäßig aus. Erfordert 'Benachrichtigungen aktivieren' oben.",
               "notify_pregnancy_updates": "Sendet bei aktivem Schwangerschaftsmodus einmal pro Woche (am Wochentag des Schwangerschaftsbeginns) eine kurze, neutrale Nachricht mit der aktuellen Woche sowie einen Hinweis zu Beginn des 2. und 3. Trimesters. Keine medizinischen Ratschläge.",
-              "notify_cycle_hint": "Sendet nach einem neuen Periodenbeginn einen neutralen Hinweis, wenn die letzten drei Zyklen alle kürzer als 21 oder alle länger als 38 Tage waren oder der letzte Zyklus 10 oder mehr Tage vom Durchschnitt abwich. Das ist keine Diagnose; es wird nur angeregt, es beim nächsten Vorsorgetermin zu erwähnen."
+              "notify_cycle_hint": "Sendet nach einem neuen Periodenbeginn einen neutralen Hinweis, wenn die letzten drei Zyklen alle kürzer als 21 oder alle länger als 38 Tage waren oder der letzte Zyklus 10 oder mehr Tage vom Durchschnitt abwich. Das ist keine Diagnose; es wird nur angeregt, es beim nächsten Vorsorgetermin zu erwähnen.",
+              "notify_test_hint": "Sendet 14 Tage nach einem Eisprung, der durch deine Temperatur- und Schleim-/Muttermund-Einträge bestätigt wurde, eine neutrale Nachricht: Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert und keine medizinische Beratung. Entfällt während einer Schwangerschaft und bei hormoneller Verhütung, wenn dafür die Fruchtbarkeits-Benachrichtigungen stummgeschaltet sind. Standardmäßig aus."
             }
           },
           "pill": {

@@ -167,6 +167,11 @@ DEFAULT_NOTIFY_PREGNANCY_UPDATES = False
 # than CYCLE_HINT_LONG_DAYS, or the last cycle is CYCLE_HINT_DEVIATION_DAYS off the average of the earlier ones.
 CONF_NOTIFY_CYCLE_HINT = "notify_cycle_hint"
 DEFAULT_NOTIFY_CYCLE_HINT = False
+# One neutral message this many days after an ovulation confirmed by the NFP analysis (a rule of thumb for when a
+# pregnancy test is meaningful), for people trying to conceive. No medical advice.
+CONF_NOTIFY_TEST_HINT = "notify_test_hint"
+DEFAULT_NOTIFY_TEST_HINT = False
+TEST_HINT_DAYS_AFTER_OVULATION = 14
 CYCLE_HINT_SHORT_DAYS = 21
 CYCLE_HINT_LONG_DAYS = 38
 CYCLE_HINT_DEVIATION_DAYS = 10
