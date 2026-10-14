@@ -1263,6 +1263,94 @@ test('doctor report: the response HTML becomes an open/download link, without a 
   assert.deepStrictEqual(plain, [['menstruation_cycle', 'export_doctor_report', { days_back: 30 }]]);
 });
 
+// ── Cycle comparison (last three cycles over one cycle-day axis) ──────────────────────────────────
+
+function comparisonSetup({ history, version = 1, starts } = {}) {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const calls = [];
+  window.MenstruationFunctions = {
+    attributesWithFullHistory: (...args) => { calls.push(args); return { symptom_history: history }; },
+    fullHistoryVersion: () => version,
+  };
+  const attrs = { grouped_starts: starts || [daysAgo(60), daysAgo(32), daysAgo(4)] };
+  return { card, attrs, calls, stateObj: { attributes: attrs } };
+}
+
+function cycleEntries(start, { rise = 14, lh = null, bleeding = 4, mucus = null } = {}) {
+  const out = [];
+  for (let day = 1; day <= 20; day += 1) {
+    const d = new Date(start + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + day - 1);
+    const entry = { date: d.toISOString().slice(0, 10), basal_temp: day >= rise ? 36.8 : 36.3 };
+    if (day <= bleeding) entry.bleeding_strength = 'medium';
+    if (day === lh) entry.test = ['positive_ovulation'];
+    if (day === mucus) entry.cervical_mucus = 'fadenziehend';
+    out.push(entry);
+  }
+  return out;
+}
+
+test('cycle comparison: draws one curve per cycle plus a marker row each, asking for the full history', () => {
+  const starts = [daysAgo(60), daysAgo(32), daysAgo(4)];
+  const history = [
+    ...cycleEntries(starts[0], { lh: 12, mucus: 11 }),
+    ...cycleEntries(starts[1], { lh: 13 }),
+    ...cycleEntries(starts[2], { rise: 99 }).slice(0, 1),
+  ];
+  history.push({ date: history[0].date, cervical_mucus: 'klebrig' }); // not stretchy: no marker
+  const far = new Date(starts[2] + 'T12:00:00Z');
+  far.setUTCDate(far.getUTCDate() + 50);
+  history.push({ date: far.toISOString().slice(0, 10), basal_temp: 39.5 }); // beyond day 45: ignored
+  const { card, attrs, calls, stateObj } = comparisonSetup({ history, starts });
+  const html = card._renderCycleComparison(attrs, stateObj);
+  assert.ok(html.includes('Cycle comparison'), html);
+  assert.strictEqual((html.match(/stroke="#0ea5e9" stroke-width="1.2"/g) || []).length, 1, 'only the stretchy mucus day');
+  assert.ok(!/>39\./.test(html), 'entries beyond the axis limit do not stretch the chart');
+  assert.strictEqual((html.match(/<polyline/g) || []).length, 2, 'only cycles with at least two temperatures get a curve');
+  assert.strictEqual((html.match(/<polygon/g) || []).length, 2, 'one triangle per positive ovulation test');
+  assert.ok(html.includes('stroke="#0ea5e9"'), 'stretchy mucus marker');
+  assert.ok((html.match(/fill="#dc2626"><title>/g) || []).length >= 8, 'period days are marked');
+  assert.strictEqual(calls[0][4], true, 'asks for the full symptom history, not the capped attribute');
+  assert.ok(!html.includes('cycle_comparison'), 'no raw translation key');
+});
+
+test('cycle comparison: shown in the NFP tab, with and without NFP data', () => {
+  const starts = [daysAgo(60), daysAgo(32), daysAgo(4)];
+  const history = starts.flatMap((start) => cycleEntries(start));
+  const { card, attrs } = comparisonSetup({ history, starts });
+  const stateObj = { attributes: attrs };
+  assert.ok(card._renderNfpTab(attrs, stateObj).includes('Cycle comparison'), 'no NFP data');
+  const withNfp = { ...attrs, nfp_analysis: { temperature_rise_day: daysAgo(10), confidence_level: 'high' } };
+  assert.ok(card._renderNfpTab(withNfp, stateObj).includes('Cycle comparison'), 'with NFP data');
+});
+
+test('cycle comparison: empty without the full history or with fewer than two usable cycles', () => {
+  const starts = [daysAgo(60), daysAgo(32), daysAgo(4)];
+  const history = [...cycleEntries(starts[0]), ...cycleEntries(starts[1]), ...cycleEntries(starts[2])];
+  let c = comparisonSetup({ history, starts, version: 0 });
+  assert.strictEqual(c.card._renderCycleComparison(c.attrs, c.stateObj), '', 'history not loaded yet');
+  c = comparisonSetup({ history: cycleEntries(starts[1]), starts });
+  assert.strictEqual(c.card._renderCycleComparison(c.attrs, c.stateObj), '', 'only one cycle has temperatures');
+  c = comparisonSetup({ history, starts });
+  assert.strictEqual(c.card._renderCycleComparison(c.attrs, null), '', 'no state object');
+  window.MenstruationFunctions = undefined;
+  assert.strictEqual(c.card._renderCycleComparison(c.attrs, c.stateObj), '', 'helper unavailable');
+});
+
+test('cycle comparison: only the last three cycles, Fahrenheit axis, test given as plain string', () => {
+  const starts = [daysAgo(120), daysAgo(90), daysAgo(60), daysAgo(30)];
+  const history = starts.flatMap((start) => cycleEntries(start, { lh: 12 }));
+  history.forEach((e) => { if (e.test) e.test = 'positive_ovulation'; });
+  const { card, attrs, stateObj } = comparisonSetup({ history, starts });
+  attrs.temperature_unit = 'fahrenheit';
+  const html = card._renderCycleComparison(attrs, stateObj);
+  assert.strictEqual((html.match(/<polyline/g) || []).length, 3, 'three curves, the oldest cycle is left out');
+  assert.strictEqual((html.match(/<polygon/g) || []).length, 3);
+  assert.ok(/>9[6-8]\.\d</.test(html), 'Fahrenheit axis labels');
+});
+
 if (failed > 0) {
   console.error(`
 ${failed} test(s) failed, ${passed} passed.`);

@@ -67,6 +67,18 @@ const state = (attributes, stamp = 't1') => ({ attributes: { profile: `p${n}`, .
   assert.ok(partial.product_usage_timeline.length === 1);
   assert.strictEqual(hass.calls.length, 2);
 
+  // forceSymptoms: a present (capped) list is fetched and replaced anyway, product usage keeps following the attribute
+  n += 1;
+  hass = fakeHass();
+  st = state({ symptom_history: [{ date: 'capped' }], product_usage_timeline: [] });
+  assert.strictEqual(mf.attributesWithFullHistory(hass, st, () => {}, 180, true).symptom_history[0].date, 'capped');
+  await flush();
+  assert.strictEqual(hass.calls.length, 1, 'requests the full list although the attribute exists');
+  const forced = mf.attributesWithFullHistory(hass, st, () => {}, 180, true);
+  assert.deepStrictEqual(forced.symptom_history, RESPONSE.symptom_history);
+  assert.deepStrictEqual(forced.product_usage_timeline, []);
+  assert.deepStrictEqual(mf.attributesWithFullHistory(hass, st).symptom_history, [{ date: 'capped' }], 'unforced callers are unaffected');
+
   // two cards of the same profile are both told when the data arrives
   n += 1;
   hass = fakeHass();

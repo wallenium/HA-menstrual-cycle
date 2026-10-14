@@ -839,9 +839,10 @@ function fullHistoryVersion(stateObj) {
   return profile && _fullHistoryStore.has(profile) ? _fullHistoryStore.get(profile).version : 0;
 }
 
-function attributesWithFullHistory(hass, stateObj, onUpdate, days = 180) {
+function attributesWithFullHistory(hass, stateObj, onUpdate, days = 180, forceSymptoms = false) {
   const attrs = stateObj?.attributes || {};
-  const needSymptoms = !Array.isArray(attrs.symptom_history);
+  // forceSymptoms: the sensor attribute is capped to the latest entries even when present; charts spanning several cycles ask for the full list.
+  const needSymptoms = forceSymptoms || !Array.isArray(attrs.symptom_history);
   const needUsage = !Array.isArray(attrs.product_usage_timeline);
   const profile = attrs.profile;
   if (!profile || (!needSymptoms && !needUsage)) return attrs;

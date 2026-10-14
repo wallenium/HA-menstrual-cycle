@@ -855,6 +855,9 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_method_nfp: 'NFP',
         nfp_method_standard: 'Standard',
         nfp_temp_chart: 'Basal Temperature Curve',
+        cycle_comparison_title: 'Cycle comparison',
+        cycle_comparison_lh: 'Ovulation test +',
+        cycle_comparison_mucus: 'Stretchy mucus',
         nfp_baseline: 'Baseline',
         nfp_threshold: 'Threshold (+{delta})',
         nfp_period_marker: 'Period',
@@ -2297,16 +2300,17 @@ class MenstruationStatisticsCard extends HTMLElement {
     );
   }
 
-  _renderNfpTab(attrs) {
+  _renderNfpTab(attrs, stateObj) {
     const t = (k) => this._t(k);
     const esc = (s) => this._escHtml(s);
     const nfp = attrs && attrs.nfp_analysis;
+    const comparisonHtml = this._renderCycleComparison(attrs, stateObj);
 
     if (!this._hasNfpData(attrs)) {
       return `<div class="section">
         <div class="section-header"><span class="section-icon"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP" class="section-icon-img" /></span><span>${esc(t('nfp_title'))}</span></div>
         <p class="no-data">${esc(t('nfp_no_data'))}</p>
-      </div>`;
+      </div>${comparisonHtml}`;
     }
 
     const confidence = nfp.confidence_level || 'low';
@@ -2439,7 +2443,103 @@ class MenstruationStatisticsCard extends HTMLElement {
           </div>
         </div>
       </div>
-      ${chartHtml}`;
+      ${chartHtml}
+      ${comparisonHtml}`;
+  }
+
+  /**
+   * Temperature curves of the last (up to) three cycles over one cycle-day axis, with a marker row per cycle:
+   * period days, positive ovulation tests and stretchy mucus. Needs the full history (the sensor attribute only
+   * keeps the latest entries), so it stays empty until get_full_history has answered.
+   */
+  _renderCycleComparison(attrs, stateObj) {
+    const mf = window.MenstruationFunctions;
+    if (!stateObj || !mf?.attributesWithFullHistory) return '';
+    const full = mf.attributesWithFullHistory(this._hass, stateObj, () => this._render(), 180, true);
+    if (!(mf.fullHistoryVersion?.(stateObj) > 0) || !Array.isArray(full.symptom_history)) return '';
+    const t = (k) => this._t(k);
+    const esc = (s) => this._escHtml(s);
+    const MAX_DAY = 45;
+    const dayMs = 86400000;
+    const starts = (Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [])
+      .filter((s) => typeof s === 'string').sort().slice(-3);
+    const valuesOf = (v) => (Array.isArray(v) ? v : [v]);
+    const cycles = starts.map((start, i) => {
+      const end = starts[i + 1] || null;
+      const t0 = new Date(start + 'T12:00:00Z');
+      const cycle = { start, temps: [], period: new Set(), lh: new Set(), mucus: new Set() };
+      for (const e of full.symptom_history) {
+        if (!e || !e.date || e.date < start || (end && e.date >= end)) continue;
+        const day = Math.round((new Date(e.date + 'T12:00:00Z') - t0) / dayMs) + 1;
+        if (day < 1 || day > MAX_DAY) continue;
+        const temp = parseFloat(e.basal_temp);
+        if (!Number.isNaN(temp)) cycle.temps.push({ day, temp });
+        if (e.bleeding_strength && e.bleeding_strength !== 'none') cycle.period.add(day);
+        if (valuesOf(e.test).includes('positive_ovulation')) cycle.lh.add(day);
+        if (e.cervical_mucus === 'fadenziehend') cycle.mucus.add(day);
+      }
+      cycle.temps.sort((a, b) => a.day - b.day);
+      return cycle;
+    });
+    if (cycles.filter((c) => c.temps.length >= 3).length < 2) return '';
+
+    const colors = ['#94a3b8', '#7c3aed', 'var(--primary-color, #c0392b)'].slice(-cycles.length);
+    const fahrenheit = attrs && attrs.temperature_unit === 'fahrenheit';
+    const all = cycles.flatMap((c) => c.temps.map((p) => p.temp));
+    const minTemp = Math.min(...all) - 0.1;
+    const maxTemp = Math.max(...all) + 0.1;
+    const maxDay = Math.max(14, ...cycles.flatMap((c) => c.temps.map((p) => p.day)));
+    const W = 320;
+    const padL = 36;
+    const padR = 12;
+    const padT = 12;
+    const chartH = 120;
+    const rowH = 12;
+    const H = padT + chartH + 18 + cycles.length * rowH + 22;
+    const x = (day) => padL + ((day - 1) / Math.max(maxDay - 1, 1)) * (W - padL - padR);
+    const y = (temp) => padT + chartH - ((temp - minTemp) / (maxTemp - minTemp)) * chartH;
+
+    const lines = cycles.map((c, i) => {
+      if (c.temps.length < 2) return '';
+      const points = c.temps.map((p) => `${x(p.day).toFixed(1)},${y(p.temp).toFixed(1)}`).join(' ');
+      return `<polyline points="${points}" fill="none" stroke="${colors[i]}" stroke-width="${i === cycles.length - 1 ? 2 : 1.5}" stroke-linejoin="round" stroke-linecap="round" />`;
+    }).join('');
+
+    const step = maxTemp - minTemp > 0.8 ? 0.5 : 0.2;
+    let tick = Math.ceil(minTemp / step) * step;
+    const yLabels = [];
+    while (tick <= maxTemp + 0.01) {
+      yLabels.push(`<text x="${padL - 4}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${(fahrenheit ? tick * 9 / 5 + 32 : tick).toFixed(1)}</text>`);
+      tick = Math.round((tick + step) * 100) / 100;
+    }
+    const xStep = Math.max(1, Math.round(maxDay / 7));
+    const xLabels = [];
+    for (let d = 1; d <= maxDay; d += xStep) {
+      xLabels.push(`<text x="${x(d).toFixed(1)}" y="${padT + chartH + 11}" text-anchor="middle" font-size="8" fill="#888">${d}</text>`);
+    }
+
+    const rows = cycles.map((c, i) => {
+      const cy = padT + chartH + 18 + i * rowH + rowH / 2;
+      const label = `<text x="${padL - 4}" y="${(cy + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="${colors[i]}">${esc(c.start.slice(5).split('-').reverse().join('.'))}</text>`;
+      const period = [...c.period].map((d) => `<circle cx="${x(d).toFixed(1)}" cy="${cy}" r="2.6" fill="#dc2626"><title>${esc(c.start)}: ${esc(t('nfp_period_marker'))} ${d}</title></circle>`).join('');
+      const mucus = [...c.mucus].map((d) => `<circle cx="${x(d).toFixed(1)}" cy="${cy}" r="2.6" fill="none" stroke="#0ea5e9" stroke-width="1.2"><title>${esc(c.start)}: ${esc(t('cycle_comparison_mucus'))} ${d}</title></circle>`).join('');
+      const lh = [...c.lh].map((d) => `<polygon points="${x(d).toFixed(1)},${cy - 3.5} ${(x(d) - 3.2).toFixed(1)},${cy + 2.5} ${(x(d) + 3.2).toFixed(1)},${cy + 2.5}" fill="#9333ea"><title>${esc(c.start)}: ${esc(t('cycle_comparison_lh'))} ${d}</title></polygon>`).join('');
+      return label + period + mucus + lh;
+    }).join('');
+
+    const legendY = H - 6;
+    const legend = `<text x="${padL}" y="${legendY}" font-size="8" fill="#dc2626">● ${esc(t('nfp_period_marker'))}</text>
+      <text x="${padL + 52}" y="${legendY}" font-size="8" fill="#9333ea">▲ ${esc(t('cycle_comparison_lh'))}</text>
+      <text x="${padL + 130}" y="${legendY}" font-size="8" fill="#0ea5e9">○ ${esc(t('cycle_comparison_mucus'))}</text>`;
+
+    const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" class="nfp-temp-chart" aria-label="${esc(t('cycle_comparison_title'))}">
+      ${lines}${yLabels.join('')}${xLabels.join('')}${rows}${legend}
+    </svg>`;
+    return `<div class="section">
+      <div class="section-header"><span class="section-icon">📈</span><span>${esc(t('cycle_comparison_title'))}</span></div>
+      <div class="nfp-chart-wrap">${svg}</div>
+      <div class="nfp-chart-axis-label">${esc(t('cycle_day'))}</div>
+    </div>`;
   }
 
   _renderNfpTempChart(attrs, nfp) {
@@ -2784,7 +2884,7 @@ class MenstruationStatisticsCard extends HTMLElement {
     let tabContent = '';
     if (tab === 'stats') tabContent = this._renderStatsTab(stats, attrs);
     else if (tab === 'hygiene') tabContent = this._renderHygieneTab(attrs);
-    else if (tab === 'nfp') tabContent = this._renderNfpTab(attrs);
+    else if (tab === 'nfp') tabContent = this._renderNfpTab(attrs, stateObj);
     else if (tab === 'doctor') tabContent = this._renderDoctorTab();
 
     const hasNfp = this._hasNfpData(attrs);
