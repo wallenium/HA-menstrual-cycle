@@ -422,6 +422,25 @@ def last_positive_pregnancy_test_day(symptoms: list[dict[str, Any]]) -> date | N
     return latest[0] if latest and latest[1] else None
 
 
+def _finished_luteal_lengths(
+    symptom_history: list[dict[str, Any]],
+    cycle_starts: list[str],
+    period_duration_days: int,
+    max_cycles: int,
+) -> list[int]:
+    """Luteal lengths (temperature rise to next period start) of the recent finished cycles with a confirmed rise."""
+    lengths: list[int] = []
+    for start_iso, next_iso in list(zip(cycle_starts, cycle_starts[1:]))[-max_cycles:]:
+        result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
+        rise_iso = result.get("temperature_rise_day")  # only set when the rise is confirmed
+        if not rise_iso:
+            continue
+        luteal = (date.fromisoformat(next_iso) - date.fromisoformat(rise_iso)).days
+        if LUTEAL_PHASE_PLAUSIBLE_DAYS[0] <= luteal <= LUTEAL_PHASE_PLAUSIBLE_DAYS[1]:
+            lengths.append(luteal)
+    return lengths
+
+
 def learn_luteal_length(
     symptom_history: list[dict[str, Any]],
     cycle_starts: list[str],
@@ -434,15 +453,7 @@ def learn_luteal_length(
     Same definition as the luteal phase in the doctor report (statistics.py); the current cycle is not a finished
     cycle and is skipped. Returns None with fewer than ``min_cycles`` plausible cycles.
     """
-    lengths: list[int] = []
-    for start_iso, next_iso in list(zip(cycle_starts, cycle_starts[1:]))[-max_cycles:]:
-        result = analyze_nfp_cycle(symptom_history, start_iso, period_duration_days)
-        rise_iso = result.get("temperature_rise_day")  # only set when the rise is confirmed
-        if not rise_iso:
-            continue
-        luteal = (date.fromisoformat(next_iso) - date.fromisoformat(rise_iso)).days
-        if LUTEAL_PHASE_PLAUSIBLE_DAYS[0] <= luteal <= LUTEAL_PHASE_PLAUSIBLE_DAYS[1]:
-            lengths.append(luteal)
+    lengths = _finished_luteal_lengths(symptom_history, cycle_starts, period_duration_days, max_cycles)
     return round(sum(lengths) / len(lengths)) if len(lengths) >= min_cycles else None
 
 
@@ -2359,6 +2370,41 @@ def _recent_log_entry_count(symptoms: list[dict[str, Any]], now: date) -> int:
     return count
 
 
+LUTEAL_LEARNING_MIN_CYCLES = 2
+TEMPERATURE_HINT_WINDOW_DAYS = 14
+
+
+def _missing_data_hints(
+    starts: list[str],
+    symptoms: list[dict[str, Any]],
+    now: date,
+    valid_cycles: int,
+    cycle_std: float | None,
+    recent_logs: int,
+) -> list[dict[str, Any]]:
+    """What is holding the predictions back, as ``{"code", "needed"}`` items the clients translate.
+
+    Codes: more_cycles, irregular, more_logs, log_temperature, luteal_needs_cycles. ``needed`` is a count
+    (cycles / entries) or None.
+    """
+    hints: list[dict[str, Any]] = []
+    if valid_cycles < MIN_VALID_CYCLES_FOR_HIGH_PRECISION:
+        hints.append({"code": "more_cycles", "needed": MIN_VALID_CYCLES_FOR_HIGH_PRECISION - valid_cycles})
+    elif cycle_std is not None and cycle_std > MAX_CYCLE_STD_FOR_HIGH_PRECISION:
+        hints.append({"code": "irregular", "needed": None})
+    if recent_logs < MIN_RECENT_LOG_ENTRIES_FOR_HIGH_PRECISION:
+        hints.append({"code": "more_logs", "needed": MIN_RECENT_LOG_ENTRIES_FOR_HIGH_PRECISION - recent_logs})
+    temp_days = [str(e.get("date")) for e in symptoms if isinstance(e, dict) and e.get("basal_temp") not in (None, "")]
+    if not any(day >= (now - timedelta(days=TEMPERATURE_HINT_WINDOW_DAYS)).isoformat() for day in temp_days):
+        hints.append({"code": "log_temperature", "needed": None})
+    elif len(starts) >= 2:
+        # ponytail: re-analyses up to five cycles per refresh (as learn_luteal_length does); cache if refreshes get slow.
+        have = len(_finished_luteal_lengths(symptoms, starts, DEFAULT_PERIOD_DURATION_DAYS, 5))
+        if have < LUTEAL_LEARNING_MIN_CYCLES:
+            hints.append({"code": "luteal_needs_cycles", "needed": LUTEAL_LEARNING_MIN_CYCLES - have})
+    return hints
+
+
 def _build_prediction_gating(
     starts: list[str],
     symptoms: list[dict[str, Any]],
@@ -2384,6 +2430,7 @@ def _build_prediction_gating(
         "valid_cycles": valid_cycles,
         "cycle_std_days": round(cycle_std, 2) if cycle_std is not None else None,
         "recent_log_entries": recent_logs,
+        "missing": _missing_data_hints(starts, symptoms, now, valid_cycles, cycle_std, recent_logs),
         "thresholds": {
             "min_valid_cycles": MIN_VALID_CYCLES_FOR_HIGH_PRECISION,
             "max_cycle_std_days": MAX_CYCLE_STD_FOR_HIGH_PRECISION,

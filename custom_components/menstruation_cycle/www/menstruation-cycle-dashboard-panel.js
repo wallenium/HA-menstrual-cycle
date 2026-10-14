@@ -306,6 +306,12 @@
     dashboard_period_day_label: 'Period',
     dashboard_learning_phase: 'Learning phase — predictions are still rough, they get more precise with more logged cycles.',
     dashboard_learning_phase_progress: 'Learning phase — {have} of {need} cycles logged for more reliable predictions.',
+    dashboard_missing_title: 'What would improve the forecast',
+    dashboard_missing_more_cycles: '{n} more finished cycle(s) make the forecast more reliable.',
+    dashboard_missing_irregular: 'Your cycle lengths vary a lot, so the forecast stays a rough range.',
+    dashboard_missing_more_logs: 'Log {n} more day(s) (symptoms, temperature or a note) within the last 4 months.',
+    dashboard_missing_log_temperature: 'Log your morning temperature to confirm ovulation.',
+    dashboard_missing_luteal_needs_cycles: '{n} more cycle(s) with a confirmed temperature rise unlock your own luteal-phase forecast.',
     dashboard_calendar_loading: 'Loading…',
     dashboard_card_unavailable: 'Card unavailable — please check that the resource is correctly registered in Home Assistant (HACS redownload, clear browser cache).',
     dashboard_past_fertile_disclaimer: 'Fertile windows outside the current cycle are estimated (calendar method), not measured or guaranteed values.',
@@ -4782,6 +4788,9 @@
         }
       }
 
+      // What the backend says is still missing for better forecasts (prediction_gating.missing).
+      const missingNote = this._renderMissingDataHints(gating);
+
       return `
         <div class="hero-layout" role="region" aria-label="Cycle at a glance">
           <div class="hero-wheel-holder">${wheelSvg}${centerHtml}${statusBadge}</div>
@@ -4791,7 +4800,24 @@
           </div>
         </div>
         ${periodDayNote}
-        ${learningNote}`;
+        ${learningNote}
+        ${missingNote}`;
+    }
+
+    _renderMissingDataHints(gating) {
+      const missing = Array.isArray(gating?.missing) ? gating.missing : [];
+      const keyByCode = {
+        more_cycles: 'dashboard_missing_more_cycles',
+        irregular: 'dashboard_missing_irregular',
+        more_logs: 'dashboard_missing_more_logs',
+        log_temperature: 'dashboard_missing_log_temperature',
+        luteal_needs_cycles: 'dashboard_missing_luteal_needs_cycles',
+      };
+      const items = missing
+        .filter((hint) => keyByCode[hint?.code])
+        .map((hint) => `<li>${escapeHtml(this._t(keyByCode[hint.code]).replace('{n}', hint.needed ?? ''))}</li>`);
+      if (!items.length) return '';
+      return `<div class="helper" style="margin-top:4px;font-size:0.7rem;"><strong>${escapeHtml(this._t('dashboard_missing_title'))}</strong><ul style="margin:2px 0 0 16px;padding:0;">${items.join('')}</ul></div>`;
     }
 
     _renderPregnancyHero(stateObj, discreetMode) {

@@ -3,6 +3,7 @@
 ## 1.8.0
 
 ### Added
+- Data-quality hints: `prediction_gating.missing` lists what holds the forecast back (more finished cycles, strongly varying cycle lengths, too few recent log entries, no recent temperature, too few cycles with a confirmed temperature rise for the own luteal-phase forecast). The dashboard shows them under the learning-phase note (5 languages).
 - Household overview panel: colored status boxes per cycle phase, member avatars with a hover/tap detail popup (opens downward, larger icons), a 30-day preview timeline, and a household cycle-synchrony metric.
 - Logbook integration: product consumption, period start, and cycle-state changes now show up as readable, translated logbook entries (DE/EN/ES/FR/SV) instead of raw state changes.
 - New entities: next-ovulation sensor, cycle-phase image entity, calendar entity, diagnostics platform, icon picker.
