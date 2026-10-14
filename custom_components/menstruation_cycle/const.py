@@ -774,6 +774,8 @@ CONTRACEPTION_RENEWAL_MONTHS: dict[str, int] = {
 CONTRACEPTION_RENEWAL_REMINDER_LEAD_DAYS = 30
 # Where a confirmed renewal ({"method": ..., "date": ...}) is kept (noncycle_data, so backups carry it).
 NONCYCLE_CONTRACEPTION_RENEWED = "contraception_renewed"
+# Cycle start (ISO) of the last cycle whose temperature rise fired EVENT_OVULATION_CONFIRMED (survives restarts).
+NONCYCLE_OVULATION_CONFIRMED_CYCLE = "ovulation_confirmed_cycle"
 # Patch and ring follow a fixed 28-day rhythm counted from the day a new pack/ring was started:
 # patch = change on days 7, 14, remove on day 21, new patch on day 28; ring = remove on day 21, new ring on day 28.
 CONTRACEPTION_RHYTHM_DAYS = 28

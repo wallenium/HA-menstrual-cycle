@@ -134,7 +134,7 @@ class MenstruationCalendarCard extends HTMLElement {
         period_start: 'Period Start',
         log_today: 'Log Today',
         cancel: 'Cancel',
-        basal_temp_label: 'Basal Temperature (°C)',
+        basal_temp_label: 'Basal Temperature ({unit})',
         bleeding_strength: 'Bleeding Strength',
         spotting: 'Spotting',
         discharge: 'Discharge',
@@ -896,7 +896,11 @@ class MenstruationCalendarCard extends HTMLElement {
       return `<div class="sym-row${hiddenClass}" data-sym-row="${cat.key}"><div class="sym-cat-head">${window.MenstruationFunctions ? window.MenstruationFunctions.renderCategoryIcon(cat.icon) : `<ha-icon icon="${cat.icon}"></ha-icon>`}<span>${catLabel}</span></div><div class="sym-options sym-single-opts">${buttons}</div></div>`;
     }).join('');
 
-    const basalTemp = existing.basal_temp != null ? existing.basal_temp : '';
+    // Stored values are Celsius; the form shows and submits the profile unit (the backend converts °F input).
+    const fahrenheit = model.stateObj?.attributes?.temperature_unit === 'fahrenheit';
+    const basalTemp = existing.basal_temp != null && fahrenheit
+      ? Math.round((Number(existing.basal_temp) * 9 / 5 + 32) * 10) / 10
+      : (existing.basal_temp != null ? existing.basal_temp : '');
     const saveLabel = this._periodSaveLabel(iso, model);
 
     return `
@@ -918,8 +922,8 @@ class MenstruationCalendarCard extends HTMLElement {
             </div>`}
             ${categoryRows}
             <div class="sym-row">
-              <div class="sym-cat-head"><ha-icon icon="mdi:thermometer"></ha-icon><span>${this._t('basal_temp_label')}</span></div>
-              <input id="sym-basal-temp" type="number" step="0.1" min="35" max="42" value="${basalTemp}" class="sym-temp-input" placeholder="36.5">
+              <div class="sym-cat-head"><ha-icon icon="mdi:thermometer"></ha-icon><span>${this._t('basal_temp_label').replace('{unit}', fahrenheit ? '°F' : '°C')}</span></div>
+              <input id="sym-basal-temp" type="number" step="0.1" min="${fahrenheit ? 95 : 35}" max="${fahrenheit ? 107.6 : 42}" value="${basalTemp}" class="sym-temp-input" placeholder="${fahrenheit ? 97.7 : 36.5}">
             </div>
           </div>
           <div class="sym-footer">

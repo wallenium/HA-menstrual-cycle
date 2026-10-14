@@ -856,15 +856,13 @@ class MenstruationStatisticsCard extends HTMLElement {
         nfp_method_standard: 'Standard',
         nfp_temp_chart: 'Basal Temperature Curve',
         nfp_baseline: 'Baseline',
-        nfp_threshold: 'Threshold (+0.2°C)',
+        nfp_threshold: 'Threshold (+{delta})',
         nfp_period_marker: 'Period',
         nfp_intercourse_marker: 'Intercourse',
         day: 'Day',
-        nfp_temp_unit: '°C',
         nfp_not_detected: 'Not detected',
         nfp_day_label: 'Day {n}',
         cycle_day: 'Cycle Day',
-        nfp_temperature: 'Temperature (°C)',
         correlations_title: 'Symptom Correlations',
         correlations_subtitle: 'Patterns from last 3–6 cycles',
         correlations_no_data: 'Not enough data for correlation analysis (need ≥ 3 cycles).',
@@ -2449,6 +2447,8 @@ class MenstruationStatisticsCard extends HTMLElement {
     const esc = (s) => this._escHtml(s);
     const cycleStart = attrs && attrs.cycle_start_date;
     const symptomHistory = Array.isArray(attrs && attrs.symptom_history) ? attrs.symptom_history : [];
+    // Stored values are always Celsius; only axis labels and the threshold caption follow the profile unit.
+    const fahrenheit = attrs && attrs.temperature_unit === 'fahrenheit';
 
     // Filter temp entries from cycle start onwards
     const tempEntries = symptomHistory
@@ -2607,7 +2607,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       tickTemp = Math.round((tickTemp + step) * 100) / 100;
     }
     const yLabels = yTicks.map(temp =>
-      `<text x="${(padL - 4).toFixed(0)}" y="${(yScale(temp) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${temp.toFixed(1)}</text>`
+      `<text x="${(padL - 4).toFixed(0)}" y="${(yScale(temp) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${(fahrenheit ? temp * 9 / 5 + 32 : temp).toFixed(1)}</text>`
     ).join('');
 
     // X-axis labels (every ~5 days)
@@ -2623,7 +2623,7 @@ class MenstruationStatisticsCard extends HTMLElement {
       <line x1="${padL}" y1="${legendY}" x2="${padL + 14}" y2="${legendY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" />
       <text x="${padL + 16}" y="${legendY + 3}" font-size="8" fill="#94a3b8">${esc(t('nfp_baseline'))}</text>
       <line x1="${padL + 70}" y1="${legendY}" x2="${padL + 84}" y2="${legendY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" />
-      <text x="${padL + 86}" y="${legendY + 3}" font-size="8" fill="#f59e0b">${esc(t('nfp_threshold'))}</text>
+      <text x="${padL + 86}" y="${legendY + 3}" font-size="8" fill="#f59e0b">${esc(t('nfp_threshold').replace('{delta}', fahrenheit ? '0.36°F' : '0.2°C'))}</text>
       <text x="${padL}" y="${H - 4}" font-size="8" fill="#dc2626">🩸 ${esc(t('nfp_period_marker'))}</text>
       <text x="${padL + 60}" y="${H - 4}" font-size="8" fill="#db2777">❤️ ${esc(t('nfp_intercourse_marker'))}</text>`;
 

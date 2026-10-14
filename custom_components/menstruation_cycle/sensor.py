@@ -86,6 +86,7 @@ from .const import (
     STATE_PRIVATE,
     VISIBILITY_LEVEL_FULL,
     EVENT_OVULATION_CONFIRMED,
+    NONCYCLE_OVULATION_CONFIRMED_CYCLE,
     EVENT_STATE_CHANGED,
     VISIBILITY_LEVEL_PRIVATE,
     VISIBILITY_LEVEL_STATUS_ONLY,
@@ -1155,8 +1156,6 @@ class MenstruationGaugeSensor(SensorEntity):
         # async_update() after (re)start, when self._state still holds
         # its constructor sentinel rather than a real previous value.
         self._state_initialized = False
-        # Temperature rise day seen by the previous update (None = not confirmed yet); see _fire_ovulation_confirmed.
-        self._seen_rise_day: str | None = None
         self._icon: str | None = runtime.icon or None
 
     @property
@@ -1496,19 +1495,29 @@ class MenstruationGaugeSensor(SensorEntity):
                     "entity_id": self.entity_id,
                 },
             )
-        self._fire_ovulation_confirmed(model, runtime, visibility_level)
+        if self._fire_ovulation_confirmed(model, runtime, visibility_level):
+            await _async_save_backfill_flag(runtime)
         self._state_initialized = True
 
-    def _fire_ovulation_confirmed(self, model: Any, runtime: Any, visibility_level: str) -> None:
-        """Fire EVENT_OVULATION_CONFIRMED when this update confirms a temperature rise the last one did not.
+    def _fire_ovulation_confirmed(self, model: Any, runtime: Any, visibility_level: str) -> bool:
+        """Fire EVENT_OVULATION_CONFIRMED once per cycle in which the temperature rise gets confirmed.
 
-        Like the state-change event it is skipped on the first update after (re)start, so a restart never repeats
-        it; a rise that was already confirmed before then simply stays silent (ponytail: no persisted marker).
+        The cycle start of the last confirmed cycle is kept in runtime.noncycle_data, so a restart neither repeats
+        the event nor loses one confirmed while HA was down. The very first run with a rise that is already
+        confirmed and no marker (upgrade) only records it, silently. Returns True when the marker changed and
+        needs saving.
         """
         rise_day = (model.nfp_analysis or {}).get("temperature_rise_day")
-        newly_confirmed = self._state_initialized and rise_day and not self._seen_rise_day
-        self._seen_rise_day = rise_day
-        if newly_confirmed and visibility_level != VISIBILITY_LEVEL_PRIVATE:
+        starts = getattr(model, "grouped_starts", None)
+        cycle = starts[-1] if starts else None
+        if not rise_day or not cycle:
+            return False
+        marker = runtime.noncycle_data.get(NONCYCLE_OVULATION_CONFIRMED_CYCLE)
+        if marker == cycle:
+            return False
+        runtime.noncycle_data[NONCYCLE_OVULATION_CONFIRMED_CYCLE] = cycle
+        silent = marker is None and not self._state_initialized
+        if not silent and visibility_level != VISIBILITY_LEVEL_PRIVATE:
             self.hass.bus.async_fire(
                 EVENT_OVULATION_CONFIRMED,
                 {
@@ -1518,6 +1527,7 @@ class MenstruationGaugeSensor(SensorEntity):
                     "date": rise_day,
                 },
             )
+        return True
 
     def _resolve_estimated_menarche_date(
         self,

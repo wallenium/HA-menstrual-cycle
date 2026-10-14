@@ -1622,6 +1622,28 @@ function testRenderKeyIgnoresTimelineMonthScrollState() {
 // Runner
 // ---------------------------------------------------------------------------
 
+
+function testBasalTempFieldFollowsProfileUnit() {
+  const render = (unit) => {
+    const card = makeCard();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass({ attributes: {} });
+    if (unit) hass.states['sensor.menstruation'].attributes.temperature_unit = unit;
+    card._hass = hass;
+    const iso = '2026-07-14';
+    card._symptomOverrides = { [iso]: { basal_temp: 36.6 } };
+    const model = card._buildModel();
+    return card._renderSymptomModal(iso, model, card._palette?.(model.state));
+  };
+  const c = render('celsius');
+  assert.ok(c.includes('(°C)') && c.includes('value="36.6"') && c.includes('min="35" max="42"') && c.includes('placeholder="36.5"'), 'celsius form');
+  assert.ok(render(undefined).includes('value="36.6"'), 'missing attribute falls back to celsius');
+  const f = render('fahrenheit');
+  assert.ok(f.includes('(°F)') && !f.includes('(°C)'), 'fahrenheit label');
+  assert.ok(f.includes('value="97.9"'), '36.6 C prefills as 97.9 F');
+  assert.ok(f.includes('min="95" max="107.6"') && f.includes('placeholder="97.7"'), 'fahrenheit range and placeholder');
+}
+
 const tests = [
   ['render-stability', testRenderStability],
   ['status-icon-above-day-label', testStatusIconAboveDayLabel],
@@ -1656,6 +1678,7 @@ const tests = [
   ['clot-size-dependency-save', testClotSizeDependencyOnSave],
   ['modal-save-captures-timeline-state-before-service-calls', testModalSaveCapturesTimelineStateBeforeServiceCalls],
   ['period-lifecycle-save-labels', testTodaySaveButtonUsesPeriodLifecycleLabels],
+  ['basal-temp-field-profile-unit', testBasalTempFieldFollowsProfileUnit],
 ];
 
 (async () => {

@@ -1047,6 +1047,21 @@ test('BBT chart: intercourse as array is recognized', () => {
   assert.ok(html.includes('❤️'), 'heart marker missing when intercourse is an array value');
 });
 
+test('BBT chart: axis labels and threshold caption follow the profile temperature unit', () => {
+  const card = makeCard();
+  card.setConfig({ entity: 'sensor.menstruation', language: 'en' });
+  card._hass = makeHass();
+  const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day) => ({ day, temp: 36.5 }));
+  const attrs = makeBbtAttrs(daysAgo(14), [], tempDays);
+  const labels = (html) => [...html.matchAll(/text-anchor="end" font-size="9" fill="#888">([\d.]+)</g)].map((m) => Number(m[1]));
+  const c = card._renderNfpTempChart(attrs, null);
+  assert.ok(c.includes('Threshold (+0.2°C)'), 'celsius caption');
+  assert.ok(labels(c).length > 0 && labels(c).every((v) => v < 40), 'celsius ticks');
+  const f = card._renderNfpTempChart({ ...attrs, temperature_unit: 'fahrenheit' }, null);
+  assert.ok(f.includes('Threshold (+0.36°F)') && !f.includes('°C'), 'fahrenheit caption');
+  assert.ok(labels(f).length > 0 && labels(f).every((v) => v > 95 && v < 100), 'fahrenheit ticks ' + labels(f));
+});
+
 // ---------------------------------------------------------------------------
 // Progress badges – _renderProgressSection
 // ---------------------------------------------------------------------------

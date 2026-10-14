@@ -325,54 +325,75 @@ class TestBackgroundThreadSafety(unittest.TestCase):
 
 
 class TestOvulationConfirmedEvent(unittest.TestCase):
-    """The event fires when an update newly confirms the temperature rise, never on the first update."""
+    """The event fires once per cycle whose temperature rise gets confirmed; the marker survives restarts."""
 
-    def _sensor(self):
+    def _sensor(self, noncycle_data=None, initialized=False):
         entity = _make_gauge_sensor()
         entity.hass.bus = MagicMock()
         entity._entry = types.SimpleNamespace(entry_id="entry-1")
-        entity._state_initialized = False
-        entity._seen_rise_day = None
-        self.runtime = types.SimpleNamespace(profile="anna", friendly_name="Anna")
+        entity._state_initialized = initialized
+        self.runtime = types.SimpleNamespace(
+            profile="anna", friendly_name="Anna", noncycle_data={} if noncycle_data is None else noncycle_data
+        )
         return entity
 
-    def _update(self, entity, rise_day, visibility="full"):
-        model = types.SimpleNamespace(nfp_analysis={"temperature_rise_day": rise_day} if rise_day else {})
-        entity._fire_ovulation_confirmed(model, self.runtime, visibility)
+    def _update(self, entity, rise_day, cycle="2026-06-01", visibility="full"):
+        model = types.SimpleNamespace(
+            nfp_analysis={"temperature_rise_day": rise_day} if rise_day else {}, grouped_starts=[cycle]
+        )
+        changed = entity._fire_ovulation_confirmed(model, self.runtime, visibility)
         entity._state_initialized = True
-        return [c.args for c in entity.hass.bus.async_fire.call_args_list]
+        return changed, [c.args for c in entity.hass.bus.async_fire.call_args_list]
 
     def test_fires_once_when_the_rise_becomes_confirmed(self) -> None:
-        entity = self._sensor()
-        self.assertEqual(self._update(entity, None), [])
-        (name, data), = self._update(entity, "2026-06-15")
+        entity = self._sensor(initialized=True)
+        self.assertEqual(self._update(entity, None), (False, []))
+        changed, calls = self._update(entity, "2026-06-15")
+        self.assertTrue(changed)
+        (name, data), = calls
         self.assertEqual(name, "menstruation_cycle_ovulation_confirmed")
         self.assertEqual(data, {"entry_id": "entry-1", "profile": "anna", "friendly_name": "Anna", "date": "2026-06-15"})
-        # still confirmed, or the day shifts a little: no second event
-        self.assertEqual(len(self._update(entity, "2026-06-15")), 1)
-        self.assertEqual(len(self._update(entity, "2026-06-16")), 1)
+        self.assertEqual(self.runtime.noncycle_data["ovulation_confirmed_cycle"], "2026-06-01")
+        # still confirmed, the day shifts a little, or the rise flickers away and back: no second event
+        for rise in ("2026-06-15", "2026-06-16", None, "2026-06-15"):
+            changed, calls = self._update(entity, rise)
+            self.assertFalse(changed)
+            self.assertEqual(len(calls), 1)
 
     def test_a_new_cycle_can_fire_again(self) -> None:
-        entity = self._sensor()
-        self._update(entity, None)
+        entity = self._sensor(initialized=True)
         self._update(entity, "2026-06-15")
-        self._update(entity, None)
-        self.assertEqual(len(self._update(entity, "2026-07-13")), 2)
+        self.assertEqual(len(self._update(entity, "2026-07-13", cycle="2026-06-29")[1]), 2)
 
-    def test_the_first_update_after_a_restart_stays_silent(self) -> None:
+    def test_a_restart_does_not_repeat_the_event(self) -> None:
+        entity = self._sensor(noncycle_data={"ovulation_confirmed_cycle": "2026-06-01"})
+        self.assertEqual(self._update(entity, "2026-06-15"), (False, []))
+
+    def test_a_rise_confirmed_while_ha_was_down_still_fires(self) -> None:
+        entity = self._sensor(noncycle_data={"ovulation_confirmed_cycle": "2026-05-04"})
+        changed, calls = self._update(entity, "2026-06-15")
+        self.assertTrue(changed)
+        self.assertEqual(len(calls), 1)
+
+    def test_the_first_run_without_a_marker_only_records_it(self) -> None:
         entity = self._sensor()
-        self.assertEqual(self._update(entity, "2026-06-15"), [])
-        self.assertEqual(self._update(entity, "2026-06-15"), [])
+        changed, calls = self._update(entity, "2026-06-15")
+        self.assertTrue(changed)
+        self.assertEqual(calls, [])
+        self.assertEqual(self.runtime.noncycle_data["ovulation_confirmed_cycle"], "2026-06-01")
 
-    def test_the_sensor_update_calls_the_check_before_marking_itself_initialized(self) -> None:
+    def test_the_sensor_update_saves_the_marker_before_marking_itself_initialized(self) -> None:
         source = Path(sensor_module.__file__).read_text(encoding="utf-8")
-        call = "self._fire_ovulation_confirmed(model, runtime, visibility_level)\n        self._state_initialized = True"
+        call = (
+            "if self._fire_ovulation_confirmed(model, runtime, visibility_level):\n"
+            "            await _async_save_backfill_flag(runtime)\n"
+            "        self._state_initialized = True"
+        )
         self.assertEqual(source.count(call), 1)
 
     def test_private_profiles_fire_nothing(self) -> None:
-        entity = self._sensor()
-        self._update(entity, None, "private")
-        self.assertEqual(self._update(entity, "2026-06-15", "private"), [])
+        entity = self._sensor(initialized=True)
+        self.assertEqual(self._update(entity, "2026-06-15", visibility="private")[1], [])
 
 
 class TestCycleLengthSensor(unittest.TestCase):
