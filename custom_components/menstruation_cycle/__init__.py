@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import gzip
+import hashlib
 import inspect
 import json
 import logging
@@ -5833,32 +5834,26 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             raise HTTPBadRequest()
 
         file_path = WWW_DIR / "translations" / filename
-        content = await hass.async_add_executor_job(_read_bytes_or_none, file_path)
+        gzip_ok = "gzip" in request.headers.get("Accept-Encoding", "")
+        content, gzipped = await hass.async_add_executor_job(_read_card_file, file_path, gzip_ok)
         if content is None:
             _LOGGER.debug("Translation file not found: %s", file_path)
             raise HTTPNotFound()
+        # ~70 KB per language, revalidated on every request (no-cache): compress it and answer
+        # unchanged files with 304 so a revalidation costs no body. Content hash, not mtime.
+        etag = f'"{hashlib.blake2b(content, digest_size=8).hexdigest()}"'
+        # "no-cache" (not immutable/max-age) on purpose: the ?v= query follows the manifest version,
+        # which is not bumped on every translation change, so the browser must revalidate each time.
+        validators = {"ETag": etag, "Cache-Control": "no-cache", "Vary": "Accept-Encoding"}
+        if request.headers.get("If-None-Match") == etag:
+            return Response(status=304, headers=validators)
+        if gzipped:
+            validators["Content-Encoding"] = "gzip"
         return Response(
             body=content,
             content_type="application/json",
             charset="utf-8",
-            headers={
-                # Bugfix 28.09.2026 (Simon: Uebersetzungen fehlten in der
-                # Haushalts-Uebersicht, roh Schluessel/State-Strings statt
-                # deutschem Text): "immutable" + 24h max-age liess den
-                # Browser eine Antwort blind wiederverwenden, OHNE je erneut
-                # nachzufragen - und die versionierende ?v=-Query auf dieser
-                # URL (buildUrls() in menstruation-i18n.js) haengt an
-                # RESOURCE_VERSION/manifest.json, das absichtlich nicht bei
-                # jeder Runde hochgezaehlt wird (siehe Cache-Bust-Tradeoff-
-                # Hinweise in der Roadmap) - jede Aenderung an
-                # translations/*.json blieb dadurch unter derselben URL
-                # haengen, bis die 24h abliefen oder der Browser-Cache
-                # manuell geleert wurde. "no-cache" erzwingt stattdessen bei
-                # JEDER Anfrage eine Revalidierung (kleine JSON-Datei, die
-                # Mehrkosten sind vernachlaessigbar) - Uebersetzungsaenderu-
-                # ngen sind damit sofort sichtbar, unabhaengig vom Manifest.
-                "Cache-Control": "no-cache",
-            },
+            headers=validators,
         )
 
     async def _serve_ics_feed(request):  # type: ignore[no-untyped-def]

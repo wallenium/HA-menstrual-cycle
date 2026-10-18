@@ -1770,10 +1770,41 @@ class HttpRouteHandlerTests(unittest.TestCase):
 
         class _FakeRequest:
             match_info = {"filename": "en.json"}
+            headers: dict[str, str] = {}
 
         response = asyncio.run(handler(_FakeRequest()))
         self.assertEqual(response.status, 200)
         self.assertEqual(response.content_type, "application/json")
+        self.assertNotIn("Content-Encoding", response.headers)
+
+    def test_translation_route_gzips_and_answers_304_for_unchanged_etag(self) -> None:
+        import gzip as _gzip
+        import json as _json
+
+        hass = self._make_hass_with_http()
+        asyncio.run(integration._async_register_http_handlers(hass))
+        handler = hass.http.app.router.routes[f"/{integration.DOMAIN}/translations/{{filename}}"]
+
+        def _request(**headers):
+            return type("R", (), {"match_info": {"filename": "en.json"}, "headers": headers})()
+
+        first = asyncio.run(handler(_request(**{"Accept-Encoding": "gzip, br"})))
+        self.assertEqual(first.status, 200)
+        self.assertEqual(first.headers["Content-Encoding"], "gzip")
+        self.assertEqual(first.headers["Cache-Control"], "no-cache")
+        plain = (integration.WWW_DIR / "translations" / "en.json").read_bytes()
+        self.assertEqual(_json.loads(_gzip.decompress(first.body)), _json.loads(plain))
+        self.assertLess(len(first.body), len(plain) / 2)
+
+        etag = first.headers["ETag"]
+        same = asyncio.run(handler(_request(**{"Accept-Encoding": "gzip", "If-None-Match": etag})))
+        self.assertEqual(same.status, 304)
+        self.assertEqual(same.headers["ETag"], etag)
+        other = asyncio.run(handler(_request(**{"Accept-Encoding": "gzip", "If-None-Match": '"stale"'})))
+        self.assertEqual(other.status, 200)
+
+        uncompressed = asyncio.run(handler(_request(**{"If-None-Match": etag})))
+        self.assertEqual(uncompressed.status, 200)  # gzip etag must not validate the plain variant
 
     def test_translation_route_returns_404_for_missing_file(self) -> None:
         """_serve_translation_file must return 404 when the translation file does not exist."""
@@ -1788,6 +1819,7 @@ class HttpRouteHandlerTests(unittest.TestCase):
 
         class _FakeRequest:
             match_info = {"filename": "zz.json"}
+            headers: dict[str, str] = {}
 
         with self.assertRaises(HTTPNotFound):
             asyncio.run(handler(_FakeRequest()))
