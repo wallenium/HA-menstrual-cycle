@@ -300,6 +300,7 @@ from .statistics import (
     generate_doctor_report_html,
 )
 from .storage import MenstruationStorage
+from . import repairs as _repairs_preload  # noqa: F401 - import at load time (executor), not lazily on the event loop
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
@@ -4859,15 +4860,18 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
     filename = str(call.data[SERVICE_FIELD_FILENAME])
     stem = _sanitize_export_filename(Path(filename).stem)
     target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
-    target_path = (target_dir / f"{stem}.json").resolve()
-    if target_dir.resolve() not in target_path.parents:
-        raise HomeAssistantError("Invalid filename.")
+    target_path = target_dir / f"{stem}.json"
 
     def _read_file() -> str:
+        # resolve() touches the filesystem, so the containment check lives here, off the event loop
+        if target_dir.resolve() not in target_path.resolve().parents:
+            raise ValueError("Invalid filename.")
         return target_path.read_text(encoding="utf-8")
 
     try:
         raw_content = await hass.async_add_executor_job(_read_file)
+    except ValueError as err:
+        raise HomeAssistantError(str(err)) from err
     except OSError as err:
         raise HomeAssistantError(f"Could not read backup file '{target_path.name}': {err}") from err
 

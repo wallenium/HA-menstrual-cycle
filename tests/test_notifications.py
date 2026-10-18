@@ -161,6 +161,8 @@ def _issue_recorder():
     registry.async_create_issue = lambda hass, domain, issue_id, **kwargs: calls.append(("create", issue_id, kwargs))
     registry.async_delete_issue = lambda hass, domain, issue_id: calls.append(("delete", issue_id))
     with patch.dict(sys.modules, stubs):
+        # repairs is preloaded by __init__ now; re-import it so it binds the recording stubs
+        sys.modules.pop(f"{_PKG}.repairs", None)
         yield calls
 
 

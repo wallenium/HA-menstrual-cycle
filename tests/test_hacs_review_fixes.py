@@ -94,8 +94,12 @@ class NoBlockingIoOnEventLoop(unittest.TestCase):
                     body = ast.get_source_segment(_read(name), node) or ""
                     # allow inside nested sync helpers handed to the executor
                     stripped = re.sub(r"\n\s+def _\w+\([^)]*\)[^\n]*:\n(?:(?:\s{8,}.*)?\n)+", "\n", body)
-                    for bad in (".is_file()", ".exists()", ".read_text(", ".read_bytes(", "open("):
+                    for bad in (".is_file()", ".exists()", ".read_text(", ".read_bytes(", ".write_text(", ".mkdir(", ".resolve()", "open("):
                         self.assertNotIn(bad, stripped, f"{name}:{node.name}")
+
+
+    def test_repairs_is_preloaded_not_imported_lazily_on_the_loop(self) -> None:
+        self.assertRegex(_read("__init__.py"), r"(?m)^from \. import repairs as _repairs_preload")
 
 
 if __name__ == "__main__":
