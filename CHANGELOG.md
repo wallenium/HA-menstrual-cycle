@@ -1,16 +1,10 @@
 # Changelog
 
-## 1.8.0
+## 1.9.0
 
 ### Added
 - Cycle comparison in the NFP tab of the statistics card: the temperature curves of the last three cycles over one cycle-day axis, with a marker row per cycle for period days, positive ovulation tests and stretchy mucus (reads the full history, 5 languages).
 - Data-quality hints: `prediction_gating.missing` lists what holds the forecast back (more finished cycles, strongly varying cycle lengths, too few recent log entries, no recent temperature, too few cycles with a confirmed temperature rise for the own luteal-phase forecast). The dashboard shows them under the learning-phase note (5 languages).
-- Household overview panel: colored status boxes per cycle phase, member avatars with a hover/tap detail popup (opens downward, larger icons), a 30-day preview timeline, and a household cycle-synchrony metric.
-- Logbook integration: product consumption, period start, and cycle-state changes now show up as readable, translated logbook entries (DE/EN/ES/FR/SV) instead of raw state changes.
-- New entities: next-ovulation sensor, cycle-phase image entity, calendar entity, diagnostics platform, icon picker.
-- Household inventory: low-stock repair issue, summary service, per-area product tracking.
-- Cycle-day counter on the dashboard panel, weekly household digest blueprint, ICS calendar reminders, profile duplication.
-- Full backup/restore flow with a schema-versioned export.
 - Doctor report: the statistics card now opens the report straight away (open/download link) instead of only saying it was saved to the export folder; `export_doctor_report` returns `filename`, `path` and `html` as a service response. The hard-coded German hint is translated.
 - Countdown/timer card: all remaining hard-coded German texts (product selector, timer buttons and status, pregnancy/postpartum/menopause lists, moods, wellness tips, notification) now come from the translation files (DE/EN/ES/FR/SV); a guard test keeps new German literals out of the cards.
 - Protection against accidental period starts: the dashboard panel asks before a period is started less than 15 days after the last period day (with the option to log it as bleeding between periods instead), the calendar and gauge cards ask before a tapped day 3-14 days after the previous period day opens a new period, and `repair_storage` / the storage-integrity repair issue flag period starts of the last year that follow the previous one within 14 days.
@@ -77,14 +71,12 @@
 - Faster and lighter: the cycle model is calculated once per profile and day and reused while history, symptoms and options are unchanged (the sensors, the phase image, the calendar, the notifications and the household supply check used to calculate it separately; the next-ovulation sensor update drops from about 8 to 0.3 ms with three years of data). A change refreshes only the affected profile's entities instead of every profile's, and the sensors are updated once instead of twice. The card and panel JavaScript is served gzip-compressed (about 75 % less transfer, compressed once and kept in memory).
 - Dashboard panel renders about 60 times faster (72 ms to about 1 ms for a full render in a desktop Node measurement): every translation lookup used to copy the whole English dictionary twice, and every date was formatted with a fresh Intl formatter. Same output as before, checked byte for byte in four languages. Badge evaluation and date parsing in the main sensor are faster too (warm update 5.0 to 3.4 ms with three years of data).
 - The dashboard panel no longer loads Google Fonts at runtime (no third-party request, no visitor IP sent to Google); installed fonts are used, system fonts otherwise.
-- Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
-- Household avatars now get a deterministic per-profile accent color; profiles are grouped by current cycle state.
 - 28 services that were only described in English now have names, descriptions and field labels in DE/EN/ES/FR/SV.
 - Card texts that fell back to English in German (calendar, statistics, support, history, timer cards) are translated; dashboard texts were completed in ES/FR/SV.
 - Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
-- Lovelace resources were registered again on every Home Assistant start (the resource list was read before it was loaded, so it looked empty). The list is now loaded first, and identical duplicate entries left over from earlier starts are removed automatically.
+- Lovelace resources were registered again on every Home Assistant start (the resource list was read before it was loaded, so it looked empty). The list is now loaded first, and identical duplicate entries left over from earlier starts are removed automatically (#256).
 - No blocking file I/O on the event loop any more: diagnostics reads the version without touching `manifest.json`, the HTTP handlers for card, asset and translation files and the cycle-phase image entity check and read files in the executor.
 - Countdown/timer card: the "time is up" browser notification threw an error (a `Notification` has no `.catch`), so the alert sound and the automatic reset were skipped; on browsers without the Notification API (iOS Safari) the card even showed its load-error state.
 - Several places used the system clock (`date.today()`) instead of Home Assistant's time zone to decide what "today" is (cycle model at the midnight run and on load, calendar, ICS feed, hospital-bag reminder, cycle predictions, date checks in the options form); around midnight they could work with the wrong day. A test now guards against it.
@@ -99,10 +91,26 @@
 - Logging a bleeding strength as a symptom (the only way in the dashboard panel) only continued a running period and never started a new one, so a bleeding without a logged period start stayed without a period. It now starts a period when no period day was recorded in the 14 days before and the profile is not pregnant; bleeding closer to the last period still counts as intermenstrual.
 - The countdown/product timer card in the dashboard panel stayed empty ("IDLE") because the panel passed no entity to it; it now gets the selected profile's main cycle sensor.
 - The calendar card read the symptom entries as nested objects although they are stored flat, so the dot for days with logged symptoms never appeared (and the edit dialog's fallback was empty); both shapes are accepted now.
+- `import_full_backup` did not restore the hospital-bag checklist, although `export_full_backup` wrote it.
+- The diagnostics download exposed the partner notify target, the basal-temperature sensor entity and a legacy profile name; they are redacted now.
+- Services `compare_current_cycle`, `export_doctor_report`, `get_cycle_predictions`, dashboard-preference, household-summary, profile-visibility and basal-temperature reimport services stayed registered after the last entry was removed.
+
+## 1.8.0
+
+### Added
+- Household overview panel: colored status boxes per cycle phase, member avatars with a hover/tap detail popup (opens downward, larger icons), a 30-day preview timeline, and a household cycle-synchrony metric.
+- Logbook integration: product consumption, period start, and cycle-state changes now show up as readable, translated logbook entries (DE/EN/ES/FR/SV) instead of raw state changes.
+- New entities: next-ovulation sensor, cycle-phase image entity, calendar entity, diagnostics platform, icon picker.
+- Household inventory: low-stock repair issue, summary service, per-area product tracking.
+- Cycle-day counter on the dashboard panel, weekly household digest blueprint, ICS calendar reminders, profile duplication.
+- Full backup/restore flow with a schema-versioned export.
+
+### Changed
+- Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
+- Household avatars now get a deterministic per-profile accent color; profiles are grouped by current cycle state.
+
+### Fixed
 - Crash in profile label sync (wrong LabelRegistry API).
 - "Day of the week" off-by-one bug (#255).
 - Stale translation cache in the household summary.
 - Backup import robustness (warning on implausibly close cycle-start dates).
-- `import_full_backup` did not restore the hospital-bag checklist, although `export_full_backup` wrote it.
-- The diagnostics download exposed the partner notify target, the basal-temperature sensor entity and a legacy profile name; they are redacted now.
-- Services `compare_current_cycle`, `export_doctor_report`, `get_cycle_predictions`, dashboard-preference, household-summary, profile-visibility and basal-temperature reimport services stayed registered after the last entry was removed.
