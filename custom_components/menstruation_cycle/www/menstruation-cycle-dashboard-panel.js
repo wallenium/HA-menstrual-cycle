@@ -446,6 +446,8 @@
   const I18N_SCRIPT_PATH = '/menstruation_cycle/menstruation-i18n.js';
   const I18N_SCRIPT_SELECTOR = 'script[src]';
   let i18nScriptPromise = null;
+  let i18nMerged = null;
+  const formatDateCache = new Map();
 
   const ensureI18nState = () => {
     if (typeof window === 'undefined') {
@@ -459,8 +461,14 @@
     i18n.cache = i18n.cache || {};
     i18n.loading = i18n.loading || {};
     i18n.fallback = i18n.fallback || {};
-    i18n.fallback.en = { ...PANEL_FALLBACK_EN, ...(i18n.fallback.en || {}) };
-    i18n.cache.en = { ...(i18n.fallback.en || {}), ...(i18n.cache.en || {}) };
+    // Merge the English fallbacks in only when the dictionaries were replaced (e.g. by the i18n
+    // loader): this runs on every _t() call, and copying ~1000 keys twice per lookup made up
+    // most of a render.
+    if (!i18nMerged || i18nMerged[0] !== i18n.cache.en || i18nMerged[1] !== i18n.fallback.en) {
+      i18n.fallback.en = { ...PANEL_FALLBACK_EN, ...(i18n.fallback.en || {}) };
+      i18n.cache.en = { ...(i18n.fallback.en || {}), ...(i18n.cache.en || {}) };
+      i18nMerged = [i18n.cache.en, i18n.fallback.en];
+    }
     return i18n;
   };
 
@@ -1681,10 +1689,18 @@
      */
     _formatDate(isoString, options = { day: '2-digit', month: '2-digit', year: 'numeric' }) {
       if (!isoString) return isoString;
+      // Same dates are formatted again on every render (year overview, history, ...) and
+      // toLocaleDateString builds a new Intl formatter each time, so remember the results.
+      const cacheKey = `${this._localeCode()}|${JSON.stringify(options)}|${isoString}`;
+      const hit = formatDateCache.get(cacheKey);
+      if (hit !== undefined) return hit;
       const d = new Date(isoString);
       if (Number.isNaN(d.getTime())) return isoString;
       try {
-        return d.toLocaleDateString(this._localeCode(), options);
+        const text = d.toLocaleDateString(this._localeCode(), options);
+        if (formatDateCache.size >= 4000) formatDateCache.clear();
+        formatDateCache.set(cacheKey, text);
+        return text;
       } catch (_err) {
         return isoString;
       }

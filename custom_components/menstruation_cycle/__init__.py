@@ -388,6 +388,7 @@ def _build_card_resource_url(filename: str) -> str:
 RESOURCE_VERSION = _load_manifest_version()
 CARD_RESOURCE_TYPE = "module"
 EXPORT_DIR_NAME = "menstruation_cycle_exports"
+DASHBOARD_PANEL_FILE = "menstruation-cycle-dashboard-panel.js"
 CARD_FILES = [
     "menstruation-i18n.js",
     "menstruation-functions.js",
@@ -401,7 +402,7 @@ CARD_FILES = [
     "menstruation-cycle-history-card-row.js",
     "menstruation-statistics-card.js",
     "menstruation-support-card.js",
-    "menstruation-cycle-dashboard-panel.js",
+    DASHBOARD_PANEL_FILE,
 ]
 LOVELACE_RESOURCES = [
     (
@@ -410,6 +411,8 @@ LOVELACE_RESOURCES = [
         filename,
     )
     for filename in CARD_FILES
+    # the dashboard panel is loaded by its sidebar panel (module_url); a Lovelace resource would load its 455 KB on every page
+    if filename != DASHBOARD_PANEL_FILE
 ]
 VALID_PRODUCT_USAGE_PRODUCTS = {"tampon", "pad", "cup", "underwear", "liner"}
 VALID_PRODUCT_USAGE_ACTIONS = {"used", "emptied"}
@@ -6017,7 +6020,7 @@ async def _async_sync_dashboard_sidebar_panel(hass: HomeAssistant) -> None:
                 config={
                     "_panel_custom": {
                         "name": "menstruation-cycle-dashboard-panel",
-                        "module_url": _build_card_resource_url("menstruation-cycle-dashboard-panel.js"),
+                        "module_url": _build_card_resource_url(DASHBOARD_PANEL_FILE),
                         "trust_external_script": True,
                         "embed_iframe": False,
                     },
@@ -6152,6 +6155,13 @@ async def _async_get_lovelace_resource_collection(hass: HomeAssistant) -> tuple[
         return None, resource_mode
 
 
+async def _async_load_resource_collection(collection: Any) -> None:
+    """Load the collection first: async_items() is empty until then, which re-created every resource on each start."""
+    if getattr(collection, "loaded", True) is False and hasattr(collection, "async_load"):
+        await _maybe_await(collection.async_load())
+        collection.loaded = True
+
+
 async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
     """Auto-register Lovelace JS resources for storage dashboards."""
     if hass.data.get(_LOVELACE_RESOURCES_ENSURED_KEY):
@@ -6180,6 +6190,7 @@ async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
         return
 
     try:
+        await _async_load_resource_collection(collection)
         items = await _maybe_await(collection.async_items())
         existing_urls = {
             _normalize_resource_url(item.get("url"))
@@ -6297,6 +6308,7 @@ async def _async_cleanup_old_lovelace_resources(hass: HomeAssistant, current_ver
         return
 
     try:
+        await _async_load_resource_collection(collection)
         items = await _maybe_await(collection.async_items())
     except Exception as err:
         _LOGGER.debug("Lovelace resource cleanup skipped: %s", err)
@@ -6307,17 +6319,23 @@ async def _async_cleanup_old_lovelace_resources(hass: HomeAssistant, current_ver
 
     current_base_urls = {_normalize_resource_url(resource_url) for resource_url, _static_url, _filename in LOVELACE_RESOURCES}
     removed_count = 0
+    seen_urls: set[str] = set()
+    # earlier versions registered the panel as a Lovelace resource; it is loaded by its sidebar panel now
+    panel_base_url = _normalize_resource_url(_build_card_resource_url(DASHBOARD_PANEL_FILE))
 
-    for item in items:
+    for item in list(items):
         if not isinstance(item, dict) or not item.get("url"):
             continue
 
         item_url = str(item["url"])
-        if _normalize_resource_url(item_url) not in current_base_urls:
+        is_panel = _normalize_resource_url(item_url) == panel_base_url
+        if not is_panel and _normalize_resource_url(item_url) not in current_base_urls:
             continue
 
         item_version = _extract_resource_version(item_url)
-        if item_version is None or item_version == current_version:
+        is_duplicate = item_url in seen_urls
+        seen_urls.add(item_url)
+        if not is_panel and not is_duplicate and (item_version is None or item_version == current_version):
             continue
 
         item_id = item.get("id")

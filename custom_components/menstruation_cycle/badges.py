@@ -8,7 +8,9 @@ Philosophy: non-gamified, supportive, calm milestone recognition.
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from datetime import date, timedelta
+from functools import lru_cache
 from typing import Any
 
 from .model import SYMPTOM_MULTI_VALUE_KEYS, SYMPTOM_SINGLE_VALUE_KEYS
@@ -73,11 +75,16 @@ _CYCLES_LOGGED_EXTENDED = 12
 _WELLNESS_THRIVING_MIN_SCORE = 75
 
 
-def _parse_iso(value: Any) -> date | None:
+@lru_cache(maxsize=8192)
+def _parse_iso_text(text: str) -> date | None:
     try:
-        return date.fromisoformat(str(value))
-    except (TypeError, ValueError):
+        return date.fromisoformat(text)
+    except ValueError:
         return None
+
+
+def _parse_iso(value: Any) -> date | None:
+    return _parse_iso_text(str(value))
 
 
 def _count_log_days_in_last_30(
@@ -253,6 +260,8 @@ def evaluate_badges(
                     variety_categories.add(key)
             elif value not in (None, "", "none"):
                 variety_categories.add(key)
+        if len(variety_categories) >= _SYMPTOM_VARIETY_MIN_CATEGORIES:
+            break  # earned; the exact count is only shown while in progress
     if len(variety_categories) >= _SYMPTOM_VARIETY_MIN_CATEGORIES:
         badges.append(_make_badge("symptom_variety", True))
     else:
@@ -367,10 +376,11 @@ def _max_basal_temp_days_in_any_cycle(
         return len(temp_days)
 
     boundaries = starts + [today + timedelta(days=1)]
+    days = sorted(temp_days)
     best = 0
     for i in range(len(boundaries) - 1):
-        window_start, window_end = boundaries[i], boundaries[i + 1]
-        count = sum(1 for d in temp_days if window_start <= d < window_end)
+        # days in [window_start, window_end): two bisects instead of a scan per cycle
+        count = bisect_left(days, boundaries[i + 1]) - bisect_left(days, boundaries[i])
         best = max(best, count)
     return best
 

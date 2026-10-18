@@ -1584,6 +1584,72 @@ class _FakeLovelaceCollection:
         self._items.append({"url": payload["url"]})
 
 
+class _UnloadedLovelaceCollection(_FakeLovelaceCollection):
+    """Mimics ResourceStorageCollection: async_items() is empty until async_load() ran."""
+
+    def __init__(self, items=None) -> None:
+        super().__init__(items)
+        self._stored = list(self._items)
+        self._items = []
+        self.loaded = False
+        self.deleted: list[str] = []
+
+    async def async_load(self) -> None:
+        self._items = list(self._stored)
+
+    async def async_delete_item(self, item_id: str) -> None:
+        self.deleted.append(item_id)
+        self._items = [i for i in self._items if i.get("id") != item_id]
+
+
+class LovelaceResourceDuplicateTests(unittest.TestCase):
+    def _run(self, collection) -> None:
+        async def _get(_hass):
+            return collection, "storage"
+
+        async def _go():
+            await integration._async_ensure_lovelace_resource(_FakeHass())
+
+        with patch.object(integration, "_async_get_lovelace_resource_collection", _get):
+            asyncio.run(_go())
+
+    def test_unloaded_collection_is_loaded_before_checking_existing_resources(self) -> None:
+        stored = [
+            {"id": f"r{i}", "url": url} for i, (url, _s, _f) in enumerate(integration.LOVELACE_RESOURCES)
+        ]
+        collection = _UnloadedLovelaceCollection(stored)
+
+        self._run(collection)
+
+        self.assertEqual(collection.create_calls, [])
+        self.assertEqual(collection.deleted, [])
+
+    def test_dashboard_panel_is_not_a_lovelace_resource_and_old_entries_are_removed(self) -> None:
+        panel_url = integration._build_card_resource_url(integration.DASHBOARD_PANEL_FILE)
+        self.assertNotIn(integration.DASHBOARD_PANEL_FILE, [f for _u, _s, f in integration.LOVELACE_RESOURCES])
+        self.assertIn(integration.DASHBOARD_PANEL_FILE, integration.CARD_FILES)
+
+        stored = [{"id": f"o{i}", "url": u} for i, (u, _s, _f) in enumerate(integration.LOVELACE_RESOURCES)]
+        stored += [{"id": "p1", "url": panel_url}, {"id": "p2", "url": panel_url}, {"id": "p3", "url": panel_url.split("?")[0] + "?v=0.0.1"}]
+        collection = _UnloadedLovelaceCollection(stored)
+
+        self._run(collection)
+
+        self.assertEqual(collection.create_calls, [])
+        self.assertEqual(sorted(collection.deleted), ["p1", "p2", "p3"])
+
+    def test_existing_duplicates_are_removed_keeping_one(self) -> None:
+        url = integration.LOVELACE_RESOURCES[0][0]
+        stored = [{"id": f"r{i}", "url": url} for i in range(1, 4)]
+        stored += [{"id": f"o{i}", "url": u} for i, (u, _s, _f) in enumerate(integration.LOVELACE_RESOURCES[1:])]
+        collection = _UnloadedLovelaceCollection(stored)
+
+        self._run(collection)
+
+        self.assertEqual(collection.create_calls, [])
+        self.assertEqual(collection.deleted, ["r2", "r3"])
+
+
 class ManifestMetadataTests(unittest.TestCase):
     def test_manifest_omits_frontend_extra_module_url_and_matches_resource_version(self) -> None:
         with (COMPONENT_ROOT / "manifest.json").open(encoding="utf-8") as manifest_file:

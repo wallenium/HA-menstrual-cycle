@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from statistics import mean
 import json
 import logging
@@ -602,7 +603,17 @@ def _build_product_usage_stats(
     }
 
 
+@lru_cache(maxsize=8192)
+def _parse_iso_str(text: str) -> date | None:
+    return _parse_iso_date_uncached(text)
+
+
 def _parse_iso_date(raw: Any) -> date | None:
+    """Parse a log/history date; strings (the hot case, the same dates parsed over and over per update) are memoized."""
+    return _parse_iso_str(raw) if type(raw) is str else _parse_iso_date_uncached(raw)
+
+
+def _parse_iso_date_uncached(raw: Any) -> date | None:
     if raw in (None, ""):
         return None
     if isinstance(raw, date):
