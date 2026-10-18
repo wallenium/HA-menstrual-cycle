@@ -40,6 +40,8 @@ from .const import (
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_CALENDAR_ENABLED,
     CONF_DASHBOARD_ENABLED,
+    CONF_ICS_FEED_ENABLED,
+    DEFAULT_ICS_FEED_ENABLED,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_PERIOD_ENABLED,
@@ -579,6 +581,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "calendar_enabled": bool(
                 self._entry.options.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED)
             ),
+            "ics_feed_enabled": bool(self._entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED)),
             "notifications_enabled": bool(
                 self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
             ),
@@ -743,6 +746,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         lines.append(f"- Basal temperature input unit: {d.get(CONF_TEMPERATURE_UNIT, DEFAULT_TEMPERATURE_UNIT)}")
         lines.append(f"- Cycle Dashboard in sidebar: {'yes' if d.get(CONF_DASHBOARD_ENABLED) else 'no'}")
         lines.append(f"- Cycle calendar entity: {'yes' if d.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED) else 'no'}")
+        lines.append(f"- Public ICS calendar feed (anyone with the URL can read the predictions): {'yes' if d.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED) else 'no'}")
         if d.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS):
             lines.append("- Calendar and ICS feed: pregnancy due date")
         if d.get(CONF_CALENDAR_CONTRACEPTION_EVENTS, DEFAULT_CALENDAR_CONTRACEPTION_EVENTS):
@@ -890,6 +894,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 )
                 self._data[CONF_DASHBOARD_ENABLED] = bool(user_input.get(CONF_DASHBOARD_ENABLED, DEFAULT_DASHBOARD_ENABLED))
                 self._data[CONF_CALENDAR_ENABLED] = bool(user_input.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED))
+                self._data[CONF_ICS_FEED_ENABLED] = bool(
+                    user_input.get(CONF_ICS_FEED_ENABLED, self._current['ics_feed_enabled'])
+                )
                 self._data[CONF_CALENDAR_PREGNANCY_EVENTS] = bool(
                     user_input.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
                 )
@@ -1091,6 +1098,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
                 vol.Optional(CONF_CALENDAR_ENABLED, default=c["calendar_enabled"]): bool,
+                vol.Optional(CONF_ICS_FEED_ENABLED, default=c["ics_feed_enabled"]): bool,
                 vol.Optional(CONF_CALENDAR_PREGNANCY_EVENTS, default=c["calendar_pregnancy_events"]): bool,
                 vol.Optional(CONF_CALENDAR_CONTRACEPTION_EVENTS, default=c["calendar_contraception_events"]): bool,
                 vol.Optional(CONF_CALENDAR_LOGGED_PERIODS, default=c["calendar_logged_periods"]): bool,
@@ -1481,6 +1489,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_ONBOARDING_STAGE: new_onboarding_stage,
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
                 CONF_CALENDAR_ENABLED: d[CONF_CALENDAR_ENABLED],
+                CONF_ICS_FEED_ENABLED: d[CONF_ICS_FEED_ENABLED],
                 CONF_CALENDAR_PREGNANCY_EVENTS: d[CONF_CALENDAR_PREGNANCY_EVENTS],
                 CONF_CALENDAR_CONTRACEPTION_EVENTS: d[CONF_CALENDAR_CONTRACEPTION_EVENTS],
                 CONF_CALENDAR_LOGGED_PERIODS: d[CONF_CALENDAR_LOGGED_PERIODS],

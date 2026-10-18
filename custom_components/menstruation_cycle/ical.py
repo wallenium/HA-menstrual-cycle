@@ -13,6 +13,7 @@ from .const import (
     CONF_CALENDAR_LUTEAL_FORECAST,
     CONF_CALENDAR_OVULATION_EVENTS,
     CONF_CALENDAR_PREGNANCY_EVENTS,
+    CONF_ICS_FEED_ENABLED,
     CONF_PILL_PAUSE_DAYS,
     CONTRACEPTION_METHOD_PILL,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
@@ -20,11 +21,24 @@ from .const import (
     DEFAULT_CALENDAR_LUTEAL_FORECAST,
     DEFAULT_CALENDAR_OVULATION_EVENTS,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
+    DEFAULT_ICS_FEED_ENABLED,
     DEFAULT_PILL_PAUSE_DAYS,
     ICS_HORIZON_MONTHS_DEFAULT,
     ICS_HORIZON_MONTHS_MAX,
     NONCYCLE_CONTRACEPTION_RENEWED,
+    VISIBILITY_LEVEL_PRIVATE,
 )
+
+
+def ics_feed_available(options: Any, visibility_level: str) -> bool:
+    """Whether a profile's public ICS feed may be served at all.
+
+    Opt-in per profile (default off) and never for ``private`` profiles. The
+    route is unauthenticated by design (calendar apps cannot log in), so this
+    is the one place deciding whether the token URL answers or 404s.
+    """
+    enabled = bool((options or {}).get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED))
+    return enabled and visibility_level != VISIBILITY_LEVEL_PRIVATE
 from .model import (
     analyze_nfp_cycle,
     bleeding_blocks,

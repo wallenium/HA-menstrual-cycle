@@ -521,7 +521,13 @@ SERVICE_FIELD_ENABLED = "enabled"
 SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
 # ICS / iCalendar feed
-ATTR_ICS_URL = "ics_url"
+# Frenck review (hacs/default#9845): the feed URL carries the secret token, so
+# it is NOT published as a state attribute any more (recorder/logbook/templates
+# would hand it to every user). The feed is opt-in per profile and its URL is
+# only delivered to admins through a websocket command.
+CONF_ICS_FEED_ENABLED = "ics_feed_enabled"
+DEFAULT_ICS_FEED_ENABLED: bool = False
+WS_TYPE_ICS_URL = f"{DOMAIN}/ics_url"
 ICS_TOKEN_KEY = "ics_token"
 ICS_HORIZON_MONTHS_DEFAULT = 12
 ICS_HORIZON_MONTHS_MAX = 24

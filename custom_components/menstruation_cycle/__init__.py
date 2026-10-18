@@ -61,6 +61,9 @@ from .const import (
     CONF_VISIBILITY_LEVEL,
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_DASHBOARD_ENABLED,
+    CONF_ICS_FEED_ENABLED,
+    DEFAULT_ICS_FEED_ENABLED,
+    WS_TYPE_ICS_URL,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_PERIOD_ENABLED,
@@ -276,7 +279,7 @@ from .const import (
     DEFAULT_IMPORT_DATE_FORMAT,
     CYCLE_LENGTH_OVERRIDE_MIN,
 )
-from .ical import collect_extra_events, generate_ics
+from .ical import collect_extra_events, generate_ics, ics_feed_available
 from .model import (
     _count_pain_days,
     build_cycle_model,
@@ -334,6 +337,14 @@ def _load_manifest_version() -> str:
     except (OSError, TypeError, ValueError):
         return "0.0.0"
     return str(version or "0.0.0")
+
+
+def _read_bytes_or_none(path: Path) -> bytes | None:
+    """Blocking read for the executor; a missing file is None, not an error."""
+    try:
+        return path.read_bytes()
+    except (FileNotFoundError, IsADirectoryError):
+        return None
 
 
 def _build_card_static_url(filename: str) -> str:
@@ -3320,7 +3331,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # threshold on a long-running HA instance that's rarely restarted.
             from .repairs import async_check_stale_ics_token
 
-            async_check_stale_ics_token(hass, entry.entry_id, entry.title, runtime.ics_token_created_at)
+            if entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED):
+                async_check_stale_ics_token(hass, entry.entry_id, entry.title, runtime.ics_token_created_at)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight stale-ICS-token check failed for %s", entry.entry_id)
         try:
@@ -3523,6 +3535,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _register_domain_services(hass)
 
     await _async_register_http_handlers(hass)
+    _async_register_websocket_commands(hass)
     _async_schedule_lovelace_resource_registration(hass)
     try:
         await _async_sync_dashboard_sidebar_panel(hass)
@@ -3538,7 +3551,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .repairs import async_check_entity_naming, async_check_stale_ics_token
 
     async_check_entity_naming(hass, entry.entry_id, entry.title, friendly_name)
-    async_check_stale_ics_token(hass, entry.entry_id, entry.title, ics_token_created_at)
+    if entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED):
+        async_check_stale_ics_token(hass, entry.entry_id, entry.title, ics_token_created_at)
+    else:
+        # Feed off (default): a stale-token repair would be noise.
+        from .repairs import async_delete_stale_ics_token_issue
+
+        async_delete_stale_ics_token_issue(hass, entry.entry_id)
 
     # HA-17 Idee 7 ("weitere Ideen?" 27.09.2026, Simon: "Automatische
     # HA-Labels pro Profil") - same "cheap, safe to run on every load"
@@ -5723,6 +5742,40 @@ async def _maybe_await(result: Any) -> Any:
     return result
 
 
+_WS_REGISTERED_KEY = f"{DOMAIN}_ws_registered"
+
+
+def _ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
+    """Feed URL for one profile, or enabled=False when the feed is off."""
+    for entry_id, rt in hass.data.get(DOMAIN, {}).items():
+        if not isinstance(rt, MenstruationRuntime) or rt.profile != profile:
+            continue
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is not None and ics_feed_available(entry.options, rt.visibility_level):
+            return {"enabled": True, "url": f"/{DOMAIN}/ics/{rt.ics_token}.ics"}
+    return {"enabled": False, "url": None}
+
+
+def _async_register_websocket_commands(hass: HomeAssistant) -> None:
+    """Admin-only websocket command that hands the ICS URL to the panel."""
+    if hass.data.get(_WS_REGISTERED_KEY):
+        return
+    try:
+        from homeassistant.components import websocket_api
+    except ImportError:
+        _LOGGER.debug("websocket_api unavailable; ICS URL command not registered")
+        return
+
+    @websocket_api.require_admin
+    @websocket_api.websocket_command({vol.Required("type"): WS_TYPE_ICS_URL, vol.Required("profile"): cv.string})
+    @websocket_api.async_response
+    async def _ws_ics_url(hass_: HomeAssistant, connection, msg) -> None:  # type: ignore[no-untyped-def]
+        connection.send_result(msg["id"], _ics_url_payload(hass_, msg["profile"]))
+
+    websocket_api.async_register_command(hass, _ws_ics_url)
+    hass.data[_WS_REGISTERED_KEY] = True
+
+
 async def _async_register_http_handlers(hass: HomeAssistant) -> None:
     """Register HTTP routes to serve card JS files from www/ directory."""
     if hass.data.get(_HTTP_ROUTES_REGISTERED_KEY):
@@ -5736,11 +5789,10 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             raise HTTPBadRequest()
 
         file_path = WWW_DIR / filename
-        if not file_path.is_file():
+        content = await hass.async_add_executor_job(_read_bytes_or_none, file_path)
+        if content is None:
             _LOGGER.debug("Card file not found: %s", file_path)
             raise HTTPNotFound()
-
-        content = await hass.async_add_executor_job(file_path.read_bytes)
         return Response(
             body=content,
             content_type="application/javascript",
@@ -5758,11 +5810,10 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             raise HTTPBadRequest()
 
         file_path = ASSETS_DIR / subfolder / filename
-        if not file_path.is_file():
+        content = await hass.async_add_executor_job(_read_bytes_or_none, file_path)
+        if content is None:
             _LOGGER.debug("Asset file not found: %s", file_path)
             raise HTTPNotFound()
-
-        content = await hass.async_add_executor_job(file_path.read_bytes)
         return Response(
             body=content,
             content_type="image/svg+xml",
@@ -5777,11 +5828,10 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             raise HTTPBadRequest()
 
         file_path = WWW_DIR / "translations" / filename
-        if not file_path.is_file():
+        content = await hass.async_add_executor_job(_read_bytes_or_none, file_path)
+        if content is None:
             _LOGGER.debug("Translation file not found: %s", file_path)
             raise HTTPNotFound()
-
-        content = await hass.async_add_executor_job(file_path.read_bytes)
         return Response(
             body=content,
             content_type="application/json",
@@ -5824,6 +5874,12 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
                 break
 
         if matched_runtime is None or matched_entry_id is None:
+            raise HTTPNotFound()
+
+        # Opt-in per profile, never for private profiles. 404 (not 403) so a
+        # disabled feed is indistinguishable from an unknown token.
+        gate_entry = hass.config_entries.async_get_entry(matched_entry_id)
+        if gate_entry is None or not ics_feed_available(gate_entry.options, matched_runtime.visibility_level):
             raise HTTPNotFound()
 
         # Parse optional horizon_months query parameter

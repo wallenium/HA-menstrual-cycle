@@ -105,9 +105,9 @@ def _load_manifest_version_safe() -> str:
     logic. Defensive: diagnostics must never fail just because the manifest
     couldn't be read for some reason."""
     try:
-        from . import _load_manifest_version
+        from . import RESOURCE_VERSION  # read once at import, no I/O here
 
-        return _load_manifest_version()
+        return RESOURCE_VERSION
     except Exception:  # noqa: BLE001
         return "unknown"
 

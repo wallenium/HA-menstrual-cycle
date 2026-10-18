@@ -29,7 +29,7 @@ Each profile creates these entities (`<name>` is the slugified profile name):
 | `sensor.menstruation_<name>_cycle_length` | Length of the last completed cycle in days, with Home Assistant long-term statistics so you can chart it over months. |
 | `sensor.menstruation_<name>_products_today` | Period products used today (usage statistics). |
 | `sensor.menstruation_<name>_basal_temp` | Basal body temperature, when a temperature sensor is linked. |
-| `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. Five more options (off by default) add the pregnancy due date, contraception dates (renewal due, end of the pill pack, next patch/ring steps), your logged periods of the last 12 months, the period date from your own luteal phase (as long as it lies ahead) and the ovulation day your own logs show for each cycle of the last 12 months (temperature rise, otherwise the day after the first positive LH test); these also go into the calendar feed (ICS) and show only at visibility "Full" in the calendar. |
+| `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. Five more options (off by default) add the pregnancy due date, contraception dates (renewal due, end of the pill pack, next patch/ring steps), your logged periods of the last 12 months, the period date from your own luteal phase (as long as it lies ahead) and the ovulation day your own logs show for each cycle of the last 12 months (temperature rise, otherwise the day after the first positive LH test); these also go into the calendar feed (ICS, opt-in, see below) and show only at visibility "Full" in the calendar. |
 | `image.menstruation_<name>_cycle_phase` | Illustration of the current phase, for picture cards and wall tablets. |
 | `todo.menstruation_<name>_hospital_bag` | Editable hospital-bag checklist, only available during a pregnancy. Pre-filled in the Home Assistant language (German, English, Spanish, French, Swedish; English otherwise). |
 
@@ -97,6 +97,15 @@ Date reminders, the recap, overdue and checkup notifications are sent at **Notif
 - **Hormonal methods:** *No fertility notifications on hormonal contraception* skips the fertile-window and ovulation messages while the current method is hormonal. The sensor state and the dashboard stay unchanged.
 - **Partner target:** an optional second notify target that only receives the date reminders (period; fertile window and ovulation only at visibility level "Full"), never health details. Nothing is sent for private profiles.
 - **Check your setup:** call the service `menstruation_cycle.send_test_notification` (Developer tools → Actions). If the target does not exist or fails, a repair issue appears under **Settings → Repairs** and disappears again after the next successful delivery.
+
+## Calendar feed (ICS)
+
+Each profile can serve its predictions (period, fertile window, ovulation, optional extra events) as a calendar feed that Google/Apple/Outlook calendars can subscribe to. It is **off by default**; switch on "Public ICS calendar feed" in the profile's options.
+
+- **Anyone who knows the URL can read the feed without logging in to Home Assistant.** Calendar apps cannot log in, so the URL itself is the secret. Share it only deliberately and only with people who may see these predictions. If your Home Assistant is reachable from the internet, so is the feed.
+- The URL is not shown in any entity attribute. Administrators find it as the "Subscribe to calendar" link in the Cycle Dashboard; other users never get it.
+- Profiles with visibility "Private" are never served. Turning the option off makes the URL answer 404 immediately.
+- To invalidate a URL you shared, use the repair issue about an old feed token (shown once the token is a year old) or turn the feed off; a fresh token is created on rotation.
 
 ## Blueprints
 

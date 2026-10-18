@@ -329,17 +329,33 @@ class TestGenerateIcsHorizon(unittest.TestCase):
         self.assertIn("BEGIN:VCALENDAR", text)
 
 
+class TestIcsFeedAvailable(unittest.TestCase):
+    """Opt-in per profile (default off), never for private profiles."""
+
+    def test_default_is_off(self):
+        self.assertFalse(ical.ics_feed_available({}, "full"))
+        self.assertFalse(ical.ics_feed_available(None, "full"))
+
+    def test_enabled_serves_full_and_status_only(self):
+        self.assertTrue(ical.ics_feed_available({"ics_feed_enabled": True}, "full"))
+        self.assertTrue(ical.ics_feed_available({"ics_feed_enabled": True}, "status_only"))
+
+    def test_private_profile_never_served(self):
+        self.assertFalse(ical.ics_feed_available({"ics_feed_enabled": True}, "private"))
+
+    def test_explicitly_disabled(self):
+        self.assertFalse(ical.ics_feed_available({"ics_feed_enabled": False}, "full"))
+
+
 class TestIcsTokenConstants(unittest.TestCase):
     """Test ICS-related constants exist and are reasonable."""
 
     def test_constants_exist(self):
         from mctest.const import (
-            ATTR_ICS_URL,
             ICS_HORIZON_MONTHS_DEFAULT,
             ICS_HORIZON_MONTHS_MAX,
             ICS_TOKEN_KEY,
         )
-        self.assertEqual(ATTR_ICS_URL, "ics_url")
         self.assertEqual(ICS_TOKEN_KEY, "ics_token")
         self.assertGreater(ICS_HORIZON_MONTHS_DEFAULT, 0)
         self.assertGreaterEqual(ICS_HORIZON_MONTHS_MAX, ICS_HORIZON_MONTHS_DEFAULT)

@@ -6619,11 +6619,32 @@
       `;
     }
 
+    // The feed URL contains a secret token, so it is no longer a state
+    // attribute (visible to every user via states/recorder/templates). Admins
+    // fetch it over an admin-only websocket command; for everyone else, or when
+    // the opt-in feed is off, the command errors / returns no URL -> no link.
+    _fetchIcsUrl(profile) {
+      this._icsUrls = this._icsUrls || {};
+      if (profile in this._icsUrls || !this._hass?.connection?.sendMessagePromise) return;
+      this._icsUrls[profile] = '';
+      this._hass.connection.sendMessagePromise({ type: 'menstruation_cycle/ics_url', profile })
+        .then((result) => {
+          if (result && result.url) {
+            this._icsUrls[profile] = result.url;
+            this.render();
+          }
+        })
+        .catch(() => {});
+    }
+
     _renderIcsSubscribeLink(attrs) {
-      if (!attrs.ics_url) return '';
+      if (!attrs.profile) return '';
+      this._fetchIcsUrl(attrs.profile);
+      const icsUrl = this._icsUrls?.[attrs.profile];
+      if (!icsUrl) return '';
       let absoluteUrl;
       try {
-        absoluteUrl = new URL(attrs.ics_url, window.location.origin).toString();
+        absoluteUrl = new URL(icsUrl, window.location.origin).toString();
       } catch (_err) {
         return '';
       }
@@ -7234,7 +7255,7 @@
 
       this.shadowRoot.innerHTML = `
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+          /* No runtime font download (privacy): installed fonts are used, system fonts otherwise. */
           :host {
             display: block; height: 100%;
             color: var(--primary-text-color, #1f2937);
@@ -7255,8 +7276,8 @@
             --mc-amber-deep: color-mix(in srgb, #8a5a12 78%, var(--primary-text-color, #000) 22%);
             --mc-amber-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #E3A23D 12%);
             --mc-sand: color-mix(in srgb, var(--card-background-color, #fff) 88%, var(--mc-rose) 12%);
-            --mc-font-display: 'Fraunces', serif;
-            --mc-font-mono: 'IBM Plex Mono', monospace;
+            --mc-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+            --mc-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
           }
           .page { padding: 16px; display: grid; gap: 16px; }
           .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }

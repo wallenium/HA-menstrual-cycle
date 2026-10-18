@@ -71,6 +71,8 @@
 - New option "Hint for an unusual cycle length" (off by default, notifications): one neutral hint (no diagnosis) with a new period start when the last three cycles were all shorter than 21 or all longer than 38 days, or the last cycle was 10 or more days off the average of the earlier ones. A streak is announced once, not with every further cycle.
 
 ### Changed
+- **Calendar feed (ICS) is now opt-in per profile and off by default** (option "Public ICS calendar feed"). The secret feed URL is no longer published as the `ics_url` state attribute (it was visible to every user through states, history and templates); administrators get it through an admin-only websocket command that the dashboard panel uses for its "Subscribe to calendar" link. A disabled feed, an unknown token and a `private` profile all answer 404. Existing installations: switch the option on per profile to keep using a subscribed feed (the token and URL stay the same); the stale-token repair issue only appears while the feed is on. Breaking for anything that read the `ics_url` attribute.
+- The dashboard panel no longer loads Google Fonts at runtime (no third-party request, no visitor IP sent to Google); installed fonts are used, system fonts otherwise.
 - Reworked symptom-logging UI: single-line scrollable icon tiles, enlarged icons (matching the iOS app), added breast/digestion/pregnancy-symptom categories.
 - Household avatars now get a deterministic per-profile accent color; profiles are grouped by current cycle state.
 - 28 services that were only described in English now have names, descriptions and field labels in DE/EN/ES/FR/SV.
@@ -78,6 +80,7 @@
 - Cards and dashboard panel now load the translation file of any language that has one (Spanish, French and Swedish were never loaded before); other languages use English.
 
 ### Fixed
+- No blocking file I/O on the event loop any more: diagnostics reads the version without touching `manifest.json`, the HTTP handlers for card, asset and translation files and the cycle-phase image entity check and read files in the executor.
 - Countdown/timer card: the "time is up" browser notification threw an error (a `Notification` has no `.catch`), so the alert sound and the automatic reset were skipped; on browsers without the Notification API (iOS Safari) the card even showed its load-error state.
 - Several places used the system clock (`date.today()`) instead of Home Assistant's time zone to decide what "today" is (cycle model at the midnight run and on load, calendar, ICS feed, hospital-bag reminder, cycle predictions, date checks in the options form); around midnight they could work with the wrong day. A test now guards against it.
 - The basal-temperature import from a linked sensor only ran at midnight and on load, when the sensor still held yesterday's value: that value was stored under the new day and blocked the real morning reading. The import now runs when the sensor updates (and when the option is saved), stores a reading under the day it was taken, and ignores readings older than yesterday.

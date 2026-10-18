@@ -130,7 +130,7 @@ class MenstruationCyclePhaseImage(ImageEntity):
             today=today,
             cycle_length_override=runtime.cycle_length_override,
         )
-        new_path = self._resolve_asset_path(model)
+        new_path = await self.hass.async_add_executor_job(self._resolve_asset_path, model)
         if new_path != self._asset_path:
             self._asset_path = new_path
             self._attr_image_last_updated = dt_util.utcnow()
