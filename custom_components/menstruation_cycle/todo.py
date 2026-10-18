@@ -43,7 +43,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SIGNAL_HISTORY_UPDATED, menstruation_object_ids_for_profile
+from .const import DOMAIN, SIGNAL_HISTORY_UPDATED, history_signal_applies, menstruation_object_ids_for_profile
 from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -167,7 +167,9 @@ class MenstruationHospitalBagTodo(TodoListEntity):
         )
         await self._async_refresh()
 
-    async def _handle_history_updated(self) -> None:
+    async def _handle_history_updated(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids):
+            return
         await self._async_refresh()
         self.async_write_ha_state()
 

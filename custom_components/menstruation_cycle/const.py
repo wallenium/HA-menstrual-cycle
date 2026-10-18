@@ -520,6 +520,18 @@ SERVICE_FIELD_ENABLED = "enabled"
 
 SIGNAL_HISTORY_UPDATED = "menstruation_cycle_history_updated"
 
+
+def history_signal_applies(entry_id: str, entry_ids=None, sensors_follow: bool = False, *, sensor: bool = False) -> bool:
+    """Whether an entity of ``entry_id`` should react to SIGNAL_HISTORY_UPDATED.
+
+    Payload: ``entry_ids`` = the profiles that changed (None = all, as options saves
+    send it); ``sensors_follow`` = the sender refreshes the sensor entities itself
+    (blocking ``update_entity``), so sensors skip the signal instead of updating twice.
+    """
+    if sensor and sensors_follow:
+        return False
+    return entry_ids is None or entry_id in entry_ids
+
 # ICS / iCalendar feed
 # Frenck review (hacs/default#9845): the feed URL carries the secret token, so
 # it is NOT published as a state attribute any more (recorder/logbook/templates

@@ -53,13 +53,14 @@ from .const import (
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
+    history_signal_applies,
     VISIBILITY_LEVEL_FULL,
     VISIBILITY_LEVEL_PRIVATE,
     VISIBILITY_LEVEL_STATUS_ONLY,
     menstruation_object_ids_for_profile,
 )
 from .ical import _EVENT_SOURCE_KEYS, _ics_strings, collect_extra_events
-from .model import build_cycle_model, next_checkup_due, project_range_windows
+from .model import cached_cycle_model, next_checkup_due, project_range_windows
 from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,7 +121,9 @@ class MenstruationCycleCalendar(CalendarEntity):
         )
         await self._async_refresh_events()
 
-    async def _handle_history_updated(self) -> None:
+    async def _handle_history_updated(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids):
+            return
         await self._async_refresh_events()
         self.async_write_ha_state()
 
@@ -145,19 +148,7 @@ class MenstruationCycleCalendar(CalendarEntity):
         # Same call as __init__.py's _serve_ics_feed HTTP view - kept in sync
         # deliberately (both need period_forecast/fertility_forecast/
         # avg_cycle_length from the same cycle model).
-        cycle_model = await self.hass.async_add_executor_job(
-            build_cycle_model,
-            runtime.history,
-            runtime.period_duration_days,
-            runtime.symptom_history,
-            runtime.pregnancy_data,
-            runtime.menarche_data,
-            runtime.pre_menarche_data,
-            runtime.menopause_data,
-            runtime.noncycle_data,
-            today,
-            runtime.cycle_length_override,
-        )
+        cycle_model = await self.hass.async_add_executor_job(cached_cycle_model, runtime, today)
 
         range_start = today - timedelta(days=_LOOKBACK_DAYS)
         range_end = today + timedelta(days=_LOOKAHEAD_DAYS)

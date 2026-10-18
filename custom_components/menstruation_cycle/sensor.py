@@ -100,12 +100,14 @@ from .const import (
     DOMAIN,
     MAX_NUM_PREDICTIONS,
     SIGNAL_HISTORY_UPDATED,
+    history_signal_applies,
     SYMPTOM_MULTI_VALUE_KEYS,
 )
 from .badges import evaluate_badges, new_badges_this_week
 from .model import (
     bleeding_blocks,
     build_cycle_model,
+    cached_cycle_model,
     compute_contraception_status,
     compute_prediction_day_confidence,
     current_cycle_phase,
@@ -1183,17 +1185,9 @@ class MenstruationGaugeSensor(SensorEntity):
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         today = dt_util.now().date()
         self._icon = runtime.icon or None
-        model = build_cycle_model(
-            history=runtime.history,
-            period_duration_days=runtime.period_duration_days,
-            symptom_history=runtime.symptom_history,
-            pregnancy_data=runtime.pregnancy_data,
-            menarche_data=runtime.menarche_data,
-            pre_menarche_data=runtime.pre_menarche_data,
-            menopause_data=runtime.menopause_data,
-            noncycle_data=runtime.noncycle_data,
-            today=today,
-            cycle_length_override=runtime.cycle_length_override,
+        model = cached_cycle_model(
+            runtime,
+            today,
             nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
             onboarding_stage=getattr(runtime, "onboarding_stage", None),
         )
@@ -1732,7 +1726,9 @@ class MenstruationGaugeSensor(SensorEntity):
 
         self.hass.loop.call_soon_threadsafe(_do_update)
 
-    def _handle_runtime_update(self) -> None:
+    def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids, sensors_follow, sensor=True):
+            return
         self._safe_schedule_update()
 
     def _handle_daily_refresh(self, _now: datetime) -> None:
@@ -1840,7 +1836,9 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
 
         self.hass.loop.call_soon_threadsafe(_do_update)
 
-    def _handle_runtime_update(self) -> None:
+    def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids, sensors_follow, sensor=True):
+            return
         self._safe_schedule_update()
 
     def _handle_daily_refresh(self, _now: datetime) -> None:
@@ -1971,7 +1969,9 @@ class MenstruationBasalTempSensor(SensorEntity):
 
         self.hass.loop.call_soon_threadsafe(_do_update)
 
-    def _handle_runtime_update(self) -> None:
+    def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids, sensors_follow, sensor=True):
+            return
         self._safe_schedule_update()
 
 
@@ -2030,17 +2030,9 @@ class MenstruationNextOvulationSensor(SensorEntity):
             return
 
         today = dt_util.now().date()
-        model = build_cycle_model(
-            history=runtime.history,
-            period_duration_days=runtime.period_duration_days,
-            symptom_history=runtime.symptom_history,
-            pregnancy_data=runtime.pregnancy_data,
-            menarche_data=runtime.menarche_data,
-            pre_menarche_data=runtime.pre_menarche_data,
-            menopause_data=runtime.menopause_data,
-            noncycle_data=runtime.noncycle_data,
-            today=today,
-            cycle_length_override=runtime.cycle_length_override,
+        model = cached_cycle_model(
+            runtime,
+            today,
             nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
             onboarding_stage=getattr(runtime, "onboarding_stage", None),
         )
@@ -2064,7 +2056,9 @@ class MenstruationNextOvulationSensor(SensorEntity):
 
         self.hass.loop.call_soon_threadsafe(_do_update)
 
-    def _handle_runtime_update(self) -> None:
+    def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids, sensors_follow, sensor=True):
+            return
         self._safe_schedule_update()
 
 
@@ -2119,7 +2113,9 @@ class MenstruationCycleLengthSensor(SensorEntity):
     def available(self) -> bool:
         return self._visible and self._entry.entry_id in self.hass.data.get(DOMAIN, {})
 
-    def _handle_runtime_update(self) -> None:
+    def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if not history_signal_applies(self._entry.entry_id, entry_ids, sensors_follow, sensor=True):
+            return
         if self.hass:
             self.hass.loop.call_soon_threadsafe(lambda: self.async_schedule_update_ha_state(True))
 

@@ -73,7 +73,7 @@ class NoBlockingIoOnEventLoop(unittest.TestCase):
             handler = _function_source(source, name)
             self.assertNotIn(".is_file()", handler, name)
             self.assertNotIn(".exists()", handler, name)
-            self.assertIn("async_add_executor_job(_read_bytes_or_none", handler, name)
+            self.assertRegex(handler, r"async_add_executor_job\(_read_(bytes_or_none|card_file)", name)
 
     def test_diagnostics_uses_resource_version_not_manifest_read(self) -> None:
         diag = _read("diagnostics.py")

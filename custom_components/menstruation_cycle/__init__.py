@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import gzip
 import inspect
 import json
 import logging
@@ -284,6 +285,7 @@ from .model import (
     _count_pain_days,
     build_cycle_model,
     build_cycle_predictions,
+    cached_cycle_model,
     cycle_pattern_signals,
     cycle_wellness_score,
     current_cycle_phase,
@@ -346,6 +348,31 @@ def _read_bytes_or_none(path: Path) -> bytes | None:
         return path.read_bytes()
     except (FileNotFoundError, IsADirectoryError):
         return None
+
+
+_CARD_GZIP_CACHE: dict[tuple[Path, int, int], bytes] = {}
+
+
+def _read_card_file(path: Path, gzip_ok: bool) -> tuple[bytes | None, bool]:
+    """Blocking (executor): card file as ``(body, is_gzipped)``; missing file -> ``(None, False)``.
+
+    The card JS is ~1.2 MB (the dashboard panel alone 455 KB) and aiohttp does not
+    compress a plain Response, so gzip once per file version (path + mtime + size)
+    and keep it in memory instead of compressing on every request.
+    """
+    try:
+        if not gzip_ok:
+            return path.read_bytes(), False
+        stat = path.stat()
+        key = (path, stat.st_mtime_ns, stat.st_size)
+        body = _CARD_GZIP_CACHE.get(key)
+        if body is None:
+            for stale in [k for k in _CARD_GZIP_CACHE if k[0] == path]:
+                del _CARD_GZIP_CACHE[stale]
+            body = _CARD_GZIP_CACHE[key] = gzip.compress(path.read_bytes(), compresslevel=9)
+        return body, True
+    except (FileNotFoundError, IsADirectoryError):
+        return None, False
 
 
 def _build_card_static_url(filename: str) -> str:
@@ -456,6 +483,8 @@ class MenstruationRuntime:
     # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
     # erzeugt/rotiert wurde, siehe repairs.py::async_check_stale_ics_token.
     ics_token_created_at: str = ""
+    # cached_cycle_model() results of the current day/data state (see model.py)
+    model_cache: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -650,18 +679,9 @@ def _household_period_upcoming(hass: HomeAssistant, today: date) -> bool:
     for runtime in hass.data.get(DOMAIN, {}).values():
         if not isinstance(runtime, MenstruationRuntime) or runtime.visibility_level == VISIBILITY_LEVEL_PRIVATE:
             continue
-        model = build_cycle_model(
-            history=runtime.history,
-            period_duration_days=runtime.period_duration_days,
-            symptom_history=runtime.symptom_history,
-            pregnancy_data=runtime.pregnancy_data,
-            menarche_data=runtime.menarche_data,
-            pre_menarche_data=runtime.pre_menarche_data,
-            menopause_data=runtime.menopause_data,
-            noncycle_data=runtime.noncycle_data,
-            today=today,
-            cycle_length_override=runtime.cycle_length_override,
-            nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+        model = cached_cycle_model(
+            runtime,
+            today,
             onboarding_stage=getattr(runtime, "onboarding_stage", None),
         )
         days = model.days_until_next_start
@@ -1595,17 +1615,9 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     )
 
     today = dt_util.now().date()
-    model = build_cycle_model(
-        history=runtime.history,
-        period_duration_days=runtime.period_duration_days,
-        symptom_history=runtime.symptom_history,
-        pregnancy_data=runtime.pregnancy_data,
-        menarche_data=runtime.menarche_data,
-        pre_menarche_data=runtime.pre_menarche_data,
-        menopause_data=runtime.menopause_data,
-        noncycle_data=runtime.noncycle_data,
-        today=today,
-        cycle_length_override=runtime.cycle_length_override,
+    model = cached_cycle_model(
+        runtime,
+        today,
         nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
     )
@@ -2523,8 +2535,6 @@ def _target_entry_ids_for_call(hass: HomeAssistant, call: ServiceCall | None = N
 
 async def _async_refresh_cycle_model(hass: HomeAssistant, entry_ids: set[str] | None = None) -> None:
     """Trigger recalculation for loaded cycle sensors and force entity updates."""
-    async_dispatcher_send(hass, SIGNAL_HISTORY_UPDATED)
-
     entity_registry = er.async_get(hass)
     target_entry_ids = entry_ids or set(hass.data.get(DOMAIN, {}))
     entity_ids: list[str] = []
@@ -2533,6 +2543,10 @@ async def _async_refresh_cycle_model(hass: HomeAssistant, entry_ids: set[str] | 
         for entity_entry in er.async_entries_for_config_entry(entity_registry, entry_id):
             if entity_entry.domain == Platform.SENSOR:
                 entity_ids.append(entity_entry.entity_id)
+
+    # Only the changed profiles react; sensors are refreshed once, by the blocking
+    # update_entity below, so they ignore the signal when that follows.
+    async_dispatcher_send(hass, SIGNAL_HISTORY_UPDATED, frozenset(target_entry_ids), bool(entity_ids))
 
     if entity_ids:
         await hass.services.async_call(
@@ -3344,19 +3358,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # load/restart.
             from .repairs import async_check_low_prediction_confidence
 
-            _midnight_model = build_cycle_model(
-                history=runtime.history,
-                period_duration_days=runtime.period_duration_days,
-                symptom_history=runtime.symptom_history,
-                pregnancy_data=runtime.pregnancy_data,
-                menarche_data=runtime.menarche_data,
-                pre_menarche_data=runtime.pre_menarche_data,
-                menopause_data=runtime.menopause_data,
-                noncycle_data=runtime.noncycle_data,
-                cycle_length_override=runtime.cycle_length_override,
+            _midnight_model = cached_cycle_model(
+                runtime,
+                dt_util.now().date(),
                 nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
                 onboarding_stage=getattr(runtime, "onboarding_stage", None),
-                today=dt_util.now().date(),
             )
             async_check_low_prediction_confidence(
                 hass, entry.entry_id, entry.title, _midnight_model.prediction_gating
@@ -3570,19 +3576,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # directly above.
     from .repairs import async_check_low_prediction_confidence
 
-    _setup_model = build_cycle_model(
-        history=runtime.history,
-        period_duration_days=runtime.period_duration_days,
-        symptom_history=runtime.symptom_history,
-        pregnancy_data=runtime.pregnancy_data,
-        menarche_data=runtime.menarche_data,
-        pre_menarche_data=runtime.pre_menarche_data,
-        menopause_data=runtime.menopause_data,
-        noncycle_data=runtime.noncycle_data,
-        cycle_length_override=runtime.cycle_length_override,
+    _setup_model = cached_cycle_model(
+        runtime,
+        dt_util.now().date(),
         nfp_mode=entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
         onboarding_stage=getattr(runtime, "onboarding_stage", None),
-        today=dt_util.now().date(),
     )
     async_check_low_prediction_confidence(hass, entry.entry_id, entry.title, _setup_model.prediction_gating)
 
@@ -5793,15 +5791,15 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             raise HTTPBadRequest()
 
         file_path = WWW_DIR / filename
-        content = await hass.async_add_executor_job(_read_bytes_or_none, file_path)
+        gzip_ok = "gzip" in request.headers.get("Accept-Encoding", "")
+        content, gzipped = await hass.async_add_executor_job(_read_card_file, file_path, gzip_ok)
         if content is None:
             _LOGGER.debug("Card file not found: %s", file_path)
             raise HTTPNotFound()
-        return Response(
-            body=content,
-            content_type="application/javascript",
-            headers={"Cache-Control": "public, max-age=3600, s-maxage=3600"},
-        )
+        headers = {"Cache-Control": "public, max-age=3600, s-maxage=3600", "Vary": "Accept-Encoding"}
+        if gzipped:
+            headers["Content-Encoding"] = "gzip"
+        return Response(body=content, content_type="application/javascript", headers=headers)
 
     async def _serve_asset_file(request):  # type: ignore[no-untyped-def]
         from aiohttp.web import HTTPBadRequest, HTTPNotFound, Response

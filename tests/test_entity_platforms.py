@@ -693,7 +693,7 @@ class ImageEntityTests(unittest.TestCase):
     def test_update_sets_asset_availability_and_timestamp_only_on_change(self) -> None:
         entity, _ = self._entity()
         model = SimpleNamespace(state="period", weeks_pregnant=None)
-        with patch.object(image, "build_cycle_model", return_value=model):
+        with patch.object(image, "cached_cycle_model", return_value=model):
             run(entity.async_update())
             first = entity._attr_image_last_updated
             self.assertTrue(entity._attr_available)
@@ -707,7 +707,7 @@ class ImageEntityTests(unittest.TestCase):
     def test_private_profile_shows_nothing(self) -> None:
         entity, _ = self._entity(visibility_level="private")
         entity._asset_path = Path("x")
-        with patch.object(image, "build_cycle_model", side_effect=AssertionError("must not compute")):
+        with patch.object(image, "cached_cycle_model", side_effect=AssertionError("must not compute")):
             run(entity.async_update())
         self.assertFalse(entity._attr_available)
         self.assertIsNone(entity._asset_path)
@@ -719,7 +719,7 @@ class ImageEntityTests(unittest.TestCase):
             (Path(tmp) / "state").mkdir()
             (Path(tmp) / "state" / "neutral.svg").write_bytes(b"<svg/>")
             with patch.object(image, "_ASSETS_DIR", Path(tmp)), patch.object(
-                image, "build_cycle_model", return_value=SimpleNamespace(state="neutral", weeks_pregnant=None)
+                image, "cached_cycle_model", return_value=SimpleNamespace(state="neutral", weeks_pregnant=None)
             ):
                 run(entity.async_update())
             self.assertEqual(run(entity.async_image()), b"<svg/>")

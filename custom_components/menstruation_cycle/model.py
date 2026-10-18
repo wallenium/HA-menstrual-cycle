@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -3460,3 +3461,54 @@ def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
     if not pause_days or not last or not 0 < streak <= pack_days:
         return None
     return date.fromisoformat(last) + timedelta(days=pack_days - streak)
+
+
+def cached_cycle_model(
+    runtime: Any,
+    today: date,
+    nfp_mode: str = DEFAULT_NFP_ANALYSIS_MODE,
+    onboarding_stage: str | None = None,
+) -> CycleModel:
+    """build_cycle_model(...) for one profile's runtime, reused while nothing changed.
+
+    The key is the day plus a fingerprint of every input the model depends on, so
+    no invalidation hooks are needed: any edit to history/symptoms/modes changes
+    the fingerprint and a new day changes ``today``. Entries of an older day or
+    data state are dropped on the next miss, so the cache never grows past the few
+    option combinations (nfp_mode/stage) the callers use. The returned model is
+    shared - callers must treat it as read-only.
+
+    ponytail: repr() fingerprint (~1 ms for years of data vs ~10 ms to build) and no
+    lock - two threads missing at once just build twice. Add a lock if that ever matters.
+    """
+    inputs = (
+        runtime.history, runtime.period_duration_days, runtime.symptom_history, runtime.pregnancy_data,
+        runtime.menarche_data, runtime.pre_menarche_data, runtime.menopause_data, runtime.noncycle_data,
+        runtime.cycle_length_override,
+    )
+    fingerprint = hashlib.blake2b(repr(inputs).encode(), digest_size=16).digest()
+    key = (today, fingerprint, nfp_mode, onboarding_stage)
+    cache = getattr(runtime, "model_cache", None)
+    if cache is None:
+        cache = {}
+        runtime.model_cache = cache
+    model = cache.get(key)
+    if model is None:
+        model = build_cycle_model(
+            history=runtime.history,
+            period_duration_days=runtime.period_duration_days,
+            symptom_history=runtime.symptom_history,
+            pregnancy_data=runtime.pregnancy_data,
+            menarche_data=runtime.menarche_data,
+            pre_menarche_data=runtime.pre_menarche_data,
+            menopause_data=runtime.menopause_data,
+            noncycle_data=runtime.noncycle_data,
+            today=today,
+            cycle_length_override=runtime.cycle_length_override,
+            nfp_mode=nfp_mode,
+            onboarding_stage=onboarding_stage,
+        )
+        for stale in [k for k in cache if k[0] != today or k[1] != fingerprint]:
+            del cache[stale]
+        cache[key] = model
+    return model

@@ -35,11 +35,12 @@ from homeassistant.util import dt as dt_util
 from .const import (
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
+    history_signal_applies,
     STATE_PREGNANT,
     VISIBILITY_LEVEL_PRIVATE,
     menstruation_object_ids_for_profile,
 )
-from .model import build_cycle_model
+from .model import cached_cycle_model
 from .sensor import _device_info_for_entry
 
 _ASSETS_DIR = Path(__file__).parent / "assets"
@@ -102,8 +103,9 @@ class MenstruationCyclePhaseImage(ImageEntity):
         )
         self.async_schedule_update_ha_state(True)
 
-    async def _handle_runtime_update(self) -> None:
-        self.async_schedule_update_ha_state(True)
+    async def _handle_runtime_update(self, entry_ids=None, sensors_follow=False) -> None:
+        if history_signal_applies(self._entry.entry_id, entry_ids):
+            self.async_schedule_update_ha_state(True)
 
     async def _handle_daily_refresh(self, now) -> None:
         self.async_schedule_update_ha_state(True)
@@ -118,18 +120,7 @@ class MenstruationCyclePhaseImage(ImageEntity):
             return
 
         today = dt_util.now().date()
-        model = build_cycle_model(
-            history=runtime.history,
-            period_duration_days=runtime.period_duration_days,
-            symptom_history=runtime.symptom_history,
-            pregnancy_data=runtime.pregnancy_data,
-            menarche_data=runtime.menarche_data,
-            pre_menarche_data=runtime.pre_menarche_data,
-            menopause_data=runtime.menopause_data,
-            noncycle_data=runtime.noncycle_data,
-            today=today,
-            cycle_length_override=runtime.cycle_length_override,
-        )
+        model = cached_cycle_model(runtime, today)
         new_path = await self.hass.async_add_executor_job(self._resolve_asset_path, model)
         if new_path != self._asset_path:
             self._asset_path = new_path
