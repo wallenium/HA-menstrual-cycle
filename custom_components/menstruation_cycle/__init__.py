@@ -293,6 +293,7 @@ from .model import (
     build_cycle_model,
     build_cycle_predictions,
     cached_cycle_model,
+    forecast_view_stage,
     cycle_pattern_signals,
     cycle_wellness_score,
     current_cycle_phase,
@@ -2363,20 +2364,23 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
 async def _async_require_readable(hass: HomeAssistant, call: ServiceCall, runtime: MenstruationRuntime) -> None:
     """Read services hand out a profile's data only at visibility "Full" - below that only to administrators.
 
-    Calls without a user (automations, scripts, the integration itself) are not restricted. ponytail: the visibility
-    itself can still be changed by any user (see set_profile_visibility), so this stops casual reads, not a user who
-    first raises the level.
+    Calls without a user (automations, scripts, the integration itself) are not restricted.
     """
     if runtime.visibility_level == VISIBILITY_LEVEL_FULL:
         return
+    await _async_require_admin(
+        hass, call, f"The data of profile '{runtime.profile}' is only available to administrators below visibility 'Full'."
+    )
+
+
+async def _async_require_admin(hass: HomeAssistant, call: ServiceCall, message: str = "") -> None:
+    """Raise unless the call comes from an administrator or has no user (automation, script, the integration itself)."""
     user_id = getattr(getattr(call, "context", None), "user_id", None)
     if user_id is None:
         return
     user = await hass.auth.async_get_user(user_id)
     if user is None or not user.is_admin:
-        raise HomeAssistantError(
-            f"The data of profile '{runtime.profile}' is only available to administrators below visibility 'Full'."
-        )
+        raise HomeAssistantError(message or "Only administrators may do this.")
 
 
 def _write_private_text(path: Path, content: str) -> None:
@@ -4366,15 +4370,12 @@ async def _async_handle_set_profile_visibility(hass: HomeAssistant, call: Servic
     """Set how much of this profile's sensitive data appears in its sensor
     attributes (Feature-Wunsch 02.09.2026, "abgestufte Eltern-Sichtbarkeit").
 
-    Bewusst wie set_period_duration ein einfacher, direkter Setter ohne
-    weitere Bedingungen - jede Person, die den Service aufrufen kann, darf
-    das fuer jedes konfigurierte Profil aendern (siehe const.py-Kommentar an
-    CONF_VISIBILITY_LEVEL: diese Integration unterscheidet nicht zwischen
-    aufrufenden Geraeten/Personen). Die Absicht ist, dass die App dies nur
-    auf dem eigenen Geraet der jeweiligen Person fuer ihr eigenes Profil
-    aufruft, technisch durchsetzbar ist das serverseitig aber nicht.
+    Only administrators (and calls without a user, such as automations) may change it: otherwise any user could
+    raise a private profile's level and read it, which would make the read-service check in
+    _async_require_readable pointless.
     """
     runtime = _runtime_for_call(hass, call)
+    await _async_require_admin(hass, call)
     level = str(call.data[SERVICE_FIELD_VISIBILITY_LEVEL]).strip().lower()
     if level not in VISIBILITY_LEVELS:
         raise HomeAssistantError(
@@ -6083,7 +6084,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
                 matched_runtime,
                 today,
                 nfp_mode=gate_entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-                onboarding_stage=getattr(matched_runtime, "onboarding_stage", None),
+                onboarding_stage=forecast_view_stage(getattr(matched_runtime, "onboarding_stage", None)),
             )
         )
 

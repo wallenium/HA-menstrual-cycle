@@ -726,6 +726,12 @@ class ImageEntityTests(unittest.TestCase):
             run(entity.async_update())
         self.assertEqual(m.call_args.kwargs, {"nfp_mode": "strict", "onboarding_stage": "early_menarche"})
 
+    def test_established_cycle_is_not_passed_on_so_new_profiles_keep_their_estimate(self) -> None:
+        entity, _ = self._entity(onboarding_stage="established_cycle")
+        with patch.object(image, "cached_cycle_model", return_value=SimpleNamespace(state="neutral", weeks_pregnant=None)) as m:
+            run(entity.async_update())
+        self.assertIsNone(m.call_args.kwargs["onboarding_stage"])
+
     def test_private_profile_shows_nothing(self) -> None:
         entity, _ = self._entity(visibility_level="private")
         entity._asset_path = Path("x")

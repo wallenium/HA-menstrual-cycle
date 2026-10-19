@@ -1705,6 +1705,37 @@ class ReadServicesVisibilityTests(unittest.TestCase):
             self.assertTrue(self._check(level, "u1", admin=True), level)
             self.assertTrue(self._check(level, None), level)
 
+    def test_changing_the_visibility_is_admin_only(self) -> None:
+        import ast
+
+        source = Path(integration.__file__).read_text(encoding="utf-8")
+        node = next(
+            n for n in ast.walk(ast.parse(source))
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "_async_handle_set_profile_visibility"
+        )
+        self.assertIn("_async_require_admin(", ast.get_source_segment(source, node))
+        users = {"admin": types.SimpleNamespace(is_admin=True), "member": types.SimpleNamespace(is_admin=False)}
+
+        async def _get_user(uid):
+            return users.get(uid)
+
+        hass = types.SimpleNamespace(auth=types.SimpleNamespace(async_get_user=_get_user))
+
+        def allowed(user_id):
+            call = types.SimpleNamespace(context=types.SimpleNamespace(user_id=user_id))
+            try:
+                asyncio.run(integration._async_require_admin(hass, call))
+            except integration.HomeAssistantError:
+                return False
+            return True
+
+        self.assertEqual([allowed("admin"), allowed("member"), allowed("gone"), allowed(None)], [True, False, False, True])
+
+    def test_forecast_views_only_get_the_menarche_stages(self) -> None:
+        stage = integration.forecast_view_stage
+        self.assertEqual([stage("pre_menarche"), stage("early_menarche")], ["pre_menarche", "early_menarche"])
+        self.assertEqual([stage("established_cycle"), stage(None), stage("x")], [None, None, None])
+
     def test_every_service_that_returns_profile_data_checks_it(self) -> None:
         import ast
 
@@ -1725,10 +1756,10 @@ class IcsFeedRouteTests(unittest.TestCase):
         async def async_save_ics_token(self, token: str) -> None:
             pass
 
-    def _setup(self, **options):
-        # six regular cycles, the last one started 10 days ago: enough for a fertile window in hybrid mode
-        start = date.today() - timedelta(days=28 * 5 + 10)
-        history = [(start + timedelta(days=28 * i)).isoformat() for i in range(6)]
+    def _setup(self, cycles: int = 6, **options):
+        # regular cycles, the last one started 10 days ago
+        start = date.today() - timedelta(days=28 * (cycles - 1) + 10)
+        history = [(start + timedelta(days=28 * i)).isoformat() for i in range(cycles)]
         runtime = integration.MenstruationRuntime(
             storage=self._Storage(), profile="anna", friendly_name="Anna", icon="", history=history,
             period_duration_days=5, symptom_history=[], product_usage=[], ics_token=self.TOKEN, ics_feed_enabled=True,
@@ -1785,6 +1816,13 @@ class IcsFeedRouteTests(unittest.TestCase):
         self.assertEqual(self._summaries(partner), {"Period (predicted)", "Fertile window (predicted)"})
         self.assertIsNone(self._get(handler, "nope"))
         self.assertEqual(set(runtime.ics_last_fetch), {"full", "partner"})
+
+    def test_a_new_profile_with_few_cycles_still_gets_its_fertile_window(self) -> None:
+        # the sensors withhold it until enough cycles are logged; the feed keeps its estimate for everyone but "strict"
+        _hass, _entry, _rt, handler = self._setup(cycles=3)
+        self.assertIn("Fertile window (predicted)", self._summaries(self._get(handler, self.TOKEN)))
+        _hass, _entry, _rt, handler = self._setup(cycles=3, **{const.CONF_NFP_ANALYSIS_MODE: "strict"})
+        self.assertNotIn("Fertile window (predicted)", self._summaries(self._get(handler, self.TOKEN)))
 
     def test_partner_content_option(self) -> None:
         for content, expected in (("fertile", {"Fertile window (predicted)"}), ("period", {"Period (predicted)"})):

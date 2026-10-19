@@ -42,7 +42,7 @@ from .const import (
     VISIBILITY_LEVEL_PRIVATE,
     menstruation_object_ids_for_profile,
 )
-from .model import cached_cycle_model
+from .model import cached_cycle_model, forecast_view_stage
 from .sensor import _device_info_for_entry
 
 _ASSETS_DIR = Path(__file__).parent / "assets"
@@ -126,7 +126,7 @@ class MenstruationCyclePhaseImage(ImageEntity):
             runtime,
             today,
             nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-            onboarding_stage=getattr(runtime, "onboarding_stage", None),
+            onboarding_stage=forecast_view_stage(getattr(runtime, "onboarding_stage", None)),
         )
         new_path = await self.hass.async_add_executor_job(self._resolve_asset_path, model)
         if new_path != self._asset_path:

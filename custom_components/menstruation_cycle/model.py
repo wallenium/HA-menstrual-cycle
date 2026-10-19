@@ -3463,6 +3463,15 @@ def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
     return date.fromisoformat(last) + timedelta(days=pack_days - streak)
 
 
+def forecast_view_stage(stage: str | None) -> str | None:
+    """Onboarding stage to hand to the calendar, ICS feed and phase image.
+
+    Only the pre-menarche and early-menarche modes are passed on. For an established cycle the views keep their
+    estimated fertile window and ovulation day even while the sensors still withhold them for lack of logged cycles.
+    """
+    return stage if stage in (ONBOARDING_STAGE_PRE_MENARCHE, ONBOARDING_STAGE_EARLY_MENARCHE) else None
+
+
 def cached_cycle_model(
     runtime: Any,
     today: date,

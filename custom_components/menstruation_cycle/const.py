@@ -63,12 +63,11 @@ CONF_LINKED_PERSON_ENTITY_ID = "linked_person_entity_id"
 # M-Cycle-App-Nachtrag Abschnitt 4.35): steuert, welche Attribute
 # MenstruationGaugeSensor.async_update ueberhaupt in extra_state_attributes
 # schreibt, siehe sensor.py::_filter_attributes_for_visibility. Betrifft
-# NUR die Sensor-Attribute (Dashboard/Lovelace, sowie die Uebersichts-
-# Ansichten der Companion-App) - Services wie get_full_history/
-# get_cycle_predictions, die bewusst und gezielt aufgerufen werden, bleiben
-# unveraendert, da die Integration keine Moeglichkeit hat, zwischen
-# verschiedenen aufrufenden Geraeten/Personen zu unterscheiden (kein
-# ServiceCall.context.user_id-Handling in dieser Integration).
+# die Sensor-Attribute (Dashboard/Lovelace, sowie die Uebersichts-
+# Ansichten der Companion-App), Entities und Ereignisse. Die lesenden
+# Services (get_full_history, get_cycle_predictions, ...) liefern unterhalb
+# von "full" nur noch Administratoren Daten, und auch nur Administratoren
+# duerfen die Stufe per Service aendern (__init__.py::_async_require_admin).
 CONF_VISIBILITY_LEVEL = "visibility_level"
 CONF_SHOW_CYCLE_DASHBOARD = "show_cycle_dashboard"
 CONF_DASHBOARD_DISCREET_MODE = "dashboard_discreet_mode"

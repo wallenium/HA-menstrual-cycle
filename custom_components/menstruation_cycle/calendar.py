@@ -63,7 +63,7 @@ from .const import (
     menstruation_object_ids_for_profile,
 )
 from .ical import _EVENT_SOURCE_KEYS, _ics_strings, collect_extra_events
-from .model import cached_cycle_model, next_checkup_due, project_range_windows
+from .model import cached_cycle_model, forecast_view_stage, next_checkup_due, project_range_windows
 from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -157,7 +157,7 @@ class MenstruationCycleCalendar(CalendarEntity):
                 runtime,
                 today,
                 nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-                onboarding_stage=getattr(runtime, "onboarding_stage", None),
+                onboarding_stage=forecast_view_stage(getattr(runtime, "onboarding_stage", None)),
             )
         )
 

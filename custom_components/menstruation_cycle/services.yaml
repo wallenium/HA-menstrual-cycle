@@ -1253,9 +1253,9 @@ set_profile_visibility:
     forecast-only values (next predicted start, average cycle length,
     period duration) - no symptom, mood, contraception, pregnancy or
     menarche details. "private" hides everything except that the profile
-    exists. Note: this only affects the sensor's passive/at-a-glance
-    attributes, not services like get_full_history/get_cycle_predictions
-    that are called deliberately by whoever has access to this integration.
+    exists. Below "full", the services that return a profile's data
+    (get_full_history, get_cycle_predictions, ...) answer administrators
+    only. Only administrators may call this service.
   fields:
     entity_id:
       required: false
