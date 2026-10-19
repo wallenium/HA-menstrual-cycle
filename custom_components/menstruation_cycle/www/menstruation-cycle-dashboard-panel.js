@@ -5470,7 +5470,54 @@
       }).join('');
 
       return `<div>${items}</div>
-        <p class="helper" style="margin-top:4px;font-size:0.68rem;">${this._t('dashboard_menarche_checklist_hint') || 'Antippen, um ein Anzeichen zu erfassen. Fließt automatisch in die Schätzung oben ein.'}</p>`;
+        <p class="helper" style="margin-top:4px;font-size:0.68rem;">${this._t('dashboard_menarche_checklist_hint') || 'Antippen, um ein Anzeichen zu erfassen. Fließt automatisch in die Schätzung oben ein.'}</p>
+        ${this._renderMenarcheTimeline(signs)}`;
+    }
+
+    // Additional to the checklist: the logged signs in the order they were first noticed, with "x months ago",
+    // and an open end for the first period. No date is predicted here (the estimate above does that); the one
+    // general sentence about breast development mirrors the offset that estimate uses.
+    _renderMenarcheTimeline(signs) {
+      const todayIso = this._todayIso();
+      const monthsSince = (iso) => {
+        const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+        const [ty, tm, td] = todayIso.split('-').map(Number);
+        if (!y || !m || !d) return null;
+        return Math.max(0, (ty - y) * 12 + (tm - m) - (td < d ? 1 : 0));
+      };
+      const entries = PRE_MENARCHE_SIGN_KEYS
+        .map((key) => ({ key, entry: _normalizeSignEntry(signs[key]) }))
+        .filter(({ entry }) => entry && entry.loggedAt && monthsSince(entry.loggedAt) !== null)
+        .sort((a, b) => String(a.entry.loggedAt).localeCompare(String(b.entry.loggedAt)));
+      if (!entries.length) return '';
+
+      const ago = (months) => (months < 1
+        ? this._t('dashboard_dev_ago_lt_month')
+        : months === 1 ? this._t('dashboard_dev_ago_one') : this._t('dashboard_dev_ago_months').replace('{n}', String(months)));
+      const rows = entries.map(({ key, entry }) => {
+        const stageKey = `opt_${entry.stage}`;
+        const stage = this._t(stageKey) !== stageKey ? this._t(stageKey) : entry.stage;
+        return `<li class="dev-step" style="display:flex;gap:12px;align-items:flex-start;margin:0 0 10px;">
+          <span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:var(--mc-sage);flex:none;margin-top:4px;"></span>
+          <span style="font-size:13px;"><strong>${escapeHtml(this._t(PRE_MENARCHE_SIGNS[key].checklistLabelKey))}</strong>: ${escapeHtml(stage)}
+            <span style="display:block;font-size:11px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(this._formatDate(entry.loggedAt))} · ${escapeHtml(ago(monthsSince(entry.loggedAt)))}</span></span>
+        </li>`;
+      }).join('');
+      const breastNote = entries.some(({ key }) => key === 'breast_development')
+        ? `<p class="helper" style="margin:6px 0 0;font-size:0.72rem;">${escapeHtml(this._t('dashboard_dev_note_breast'))}</p>` : '';
+      return `<div class="dev-timeline" style="margin-top:14px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${escapeHtml(this._t('dashboard_dev_title'))}</div>
+        <ol style="list-style:none;margin:0;padding:0;border-left:2px solid var(--divider-color,#e5e7eb);padding-left:14px;">
+          ${rows}
+          <li class="dev-step dev-open" style="display:flex;gap:12px;align-items:flex-start;">
+            <span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;border:2px dashed var(--mc-rose-deep);flex:none;margin-top:4px;"></span>
+            <span style="font-size:13px;"><strong>${escapeHtml(this._t('dashboard_dev_first_period'))}</strong>
+              <span style="display:block;font-size:11px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(this._t('dashboard_dev_first_period_hint'))}</span></span>
+          </li>
+        </ol>
+        ${breastNote}
+        <p class="helper" style="margin:6px 0 0;font-size:0.68rem;">${escapeHtml(this._t('dashboard_dev_disclaimer'))}</p>
+      </div>`;
     }
 
 

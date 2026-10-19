@@ -230,6 +230,10 @@ The `custom:menstruation-support-card` provides age-appropriate, practical educa
 | 🧼 Hygiene how-to cards | Step-by-step guides for washing period underwear and using a period cup (basics) |
 | 💛 Reassurance cards | Short "Is this normal?" cards covering irregular timing, flow variation, and spotting, each with a gentle escalation prompt |
 
+### Journey timeline (dashboard panel)
+
+In the pre-menarche stage the sign checklist of the dashboard panel is followed by "Your journey so far": the signs you logged with a date, oldest first, each with "x months ago", ending with an open "First period" step. It shows no predicted date (the estimate above stays the only one) and one general sentence about the average time between the start of breast development and the first period. It is built from the signs already logged; nothing new is stored.
+
 ### Visibility
 
 - Shown **by default** in `pre_menarche` and `early_menarche` modes.

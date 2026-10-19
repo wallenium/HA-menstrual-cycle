@@ -1263,5 +1263,13 @@
   "pill_card_state_today": "due today",
   "pill_card_state_missed": "not logged",
   "pill_card_state_pause": "pause",
-  "pill_card_state_upcoming": "upcoming"
+  "pill_card_state_upcoming": "upcoming",
+  "dashboard_dev_title": "Your journey so far",
+  "dashboard_dev_ago_lt_month": "less than a month ago",
+  "dashboard_dev_ago_one": "1 month ago",
+  "dashboard_dev_ago_months": "{n} months ago",
+  "dashboard_dev_first_period": "First period",
+  "dashboard_dev_first_period_hint": "Still ahead - it comes at a different time for everyone.",
+  "dashboard_dev_note_breast": "On average, the first period comes about two years after the breasts start to develop. For some it is earlier, for others later.",
+  "dashboard_dev_disclaimer": "Every body develops at its own pace. If you are worried about anything, talk to a trusted adult or a doctor."
 }

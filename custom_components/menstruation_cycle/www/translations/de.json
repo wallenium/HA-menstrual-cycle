@@ -1263,5 +1263,13 @@
   "pill_card_state_today": "heute fällig",
   "pill_card_state_missed": "nicht eingetragen",
   "pill_card_state_pause": "Pause",
-  "pill_card_state_upcoming": "kommt noch"
+  "pill_card_state_upcoming": "kommt noch",
+  "dashboard_dev_title": "Dein Weg bis jetzt",
+  "dashboard_dev_ago_lt_month": "vor weniger als einem Monat",
+  "dashboard_dev_ago_one": "vor 1 Monat",
+  "dashboard_dev_ago_months": "vor {n} Monaten",
+  "dashboard_dev_first_period": "Erste Periode",
+  "dashboard_dev_first_period_hint": "Liegt noch vor dir - sie kommt bei jedem zu einer anderen Zeit.",
+  "dashboard_dev_note_breast": "Im Durchschnitt kommt die erste Periode etwa zwei Jahre nachdem die Brust zu wachsen beginnt. Bei manchen früher, bei manchen später.",
+  "dashboard_dev_disclaimer": "Jeder Körper entwickelt sich in seinem eigenen Tempo. Wenn dich etwas beunruhigt, sprich mit einer Vertrauensperson oder einer Ärztin oder einem Arzt."
 }

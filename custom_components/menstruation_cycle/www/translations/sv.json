@@ -1263,5 +1263,13 @@
   "pill_card_state_today": "ska tas i dag",
   "pill_card_state_missed": "inte loggat",
   "pill_card_state_pause": "uppehåll",
-  "pill_card_state_upcoming": "kommande"
+  "pill_card_state_upcoming": "kommande",
+  "dashboard_dev_title": "Din resa hittills",
+  "dashboard_dev_ago_lt_month": "för mindre än en månad sedan",
+  "dashboard_dev_ago_one": "för 1 månad sedan",
+  "dashboard_dev_ago_months": "för {n} månader sedan",
+  "dashboard_dev_first_period": "Första mensen",
+  "dashboard_dev_first_period_hint": "Ligger fortfarande framför dig - den kommer vid olika tidpunkter för alla.",
+  "dashboard_dev_note_breast": "I genomsnitt kommer första mensen ungefär två år efter att brösten börjar växa. För vissa tidigare, för andra senare.",
+  "dashboard_dev_disclaimer": "Varje kropp utvecklas i sin egen takt. Om du oroar dig för något, prata med en vuxen du litar på eller en läkare."
 }

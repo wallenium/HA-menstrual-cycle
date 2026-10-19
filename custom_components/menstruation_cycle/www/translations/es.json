@@ -1263,5 +1263,13 @@
   "pill_card_state_today": "toca hoy",
   "pill_card_state_missed": "sin registrar",
   "pill_card_state_pause": "descanso",
-  "pill_card_state_upcoming": "pendiente"
+  "pill_card_state_upcoming": "pendiente",
+  "dashboard_dev_title": "Tu camino hasta ahora",
+  "dashboard_dev_ago_lt_month": "hace menos de un mes",
+  "dashboard_dev_ago_one": "hace 1 mes",
+  "dashboard_dev_ago_months": "hace {n} meses",
+  "dashboard_dev_first_period": "Primera regla",
+  "dashboard_dev_first_period_hint": "Aún está por llegar: viene en un momento distinto para cada persona.",
+  "dashboard_dev_note_breast": "En promedio, la primera regla llega unos dos años después de que empiecen a desarrollarse los pechos. En algunas es antes, en otras después.",
+  "dashboard_dev_disclaimer": "Cada cuerpo se desarrolla a su propio ritmo. Si algo te preocupa, habla con un adulto de confianza o con un médico."
 }

@@ -1263,5 +1263,13 @@
   "pill_card_state_today": "à prendre aujourd'hui",
   "pill_card_state_missed": "non enregistrée",
   "pill_card_state_pause": "pause",
-  "pill_card_state_upcoming": "à venir"
+  "pill_card_state_upcoming": "à venir",
+  "dashboard_dev_title": "Ton parcours jusqu'ici",
+  "dashboard_dev_ago_lt_month": "il y a moins d'un mois",
+  "dashboard_dev_ago_one": "il y a 1 mois",
+  "dashboard_dev_ago_months": "il y a {n} mois",
+  "dashboard_dev_first_period": "Premières règles",
+  "dashboard_dev_first_period_hint": "C'est encore à venir - cela arrive à un moment différent pour chacune.",
+  "dashboard_dev_note_breast": "En moyenne, les premières règles arrivent environ deux ans après le début du développement des seins. Pour certaines plus tôt, pour d'autres plus tard.",
+  "dashboard_dev_disclaimer": "Chaque corps se développe à son propre rythme. Si quelque chose t'inquiète, parles-en à un adulte de confiance ou à un médecin."
 }
