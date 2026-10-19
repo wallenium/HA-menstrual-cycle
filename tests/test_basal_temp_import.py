@@ -228,7 +228,7 @@ class WiringTests(unittest.TestCase):
         source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
         setup = source[source.index("_register_notification_timer(hass, entry, runtime)\n    _register_basal"):]
         self.assertIn("_register_basal_temp_listener(hass, entry, runtime)", setup[:200])
-        options = source[source.index("async def _async_options_update_listener"):][:900]
+        options = source[source.index("async def _async_options_update_listener"):][:1600]
         self.assertIn("_register_basal_temp_listener(hass, entry, _updated_runtime)", options)
         unload = source[source.index("async def async_unload_entry"):][:1400]
         self.assertIn("runtime.unregister_basal_temp_listener()", unload)

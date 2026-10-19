@@ -671,6 +671,8 @@
   "dashboard_confidence_medium": "Confiance moyenne",
   "dashboard_ics_subscribe": "S'abonner au calendrier",
   "dashboard_ics_hint": "(flux iCal, p. ex. pour Google/Apple Calendrier)",
+  "dashboard_ics_rotate": "Nouvelle URL du flux",
+  "dashboard_ics_rotate_confirm": "Créer une nouvelle URL du flux ? L'URL actuelle cesse de fonctionner immédiatement et les calendriers abonnés doivent être réabonnés.",
   "dashboard_widget_progress_badges": "Progression",
   "dashboard_badge_earned_on": "Obtenu le",
   "badge_first_entry": "Première entrée enregistrée",

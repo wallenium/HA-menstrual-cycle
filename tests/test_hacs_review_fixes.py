@@ -51,6 +51,13 @@ class IcsFeedExposure(unittest.TestCase):
         self.assertIn("websocket_api.require_admin", reg)
         self.assertIn("WS_TYPE_ICS_URL", reg)
 
+    def test_rotate_command_is_admin_only_and_gated_by_the_feed(self) -> None:
+        source = _read("__init__.py")
+        reg = _function_source(source, "_async_register_websocket_commands")
+        self.assertEqual(reg.count("websocket_api.require_admin"), 2)
+        self.assertIn("WS_TYPE_ICS_ROTATE", reg)
+        self.assertIn("ics_feed_available(", _function_source(source, "_async_rotate_ics_url_payload"))
+
     def test_url_payload_is_gated_by_the_same_helper(self) -> None:
         self.assertIn("ics_feed_available(", _function_source(_read("__init__.py"), "_ics_url_payload"))
 

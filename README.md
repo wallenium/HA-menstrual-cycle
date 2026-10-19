@@ -2,7 +2,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)
 
 
 HA Menstruation Cycle is a Home Assistant custom integration for tracking cycle history, showing cycle phases, and powering Lovelace dashboards with interactive menstrual-cycle cards.
@@ -105,7 +105,7 @@ Each profile can serve its predictions (period, fertile window, ovulation, optio
 - **Anyone who knows the URL can read the feed without logging in to Home Assistant.** Calendar apps cannot log in, so the URL itself is the secret. Share it only deliberately and only with people who may see these predictions. If your Home Assistant is reachable from the internet, so is the feed.
 - The URL is not shown in any entity attribute. Administrators find it as the "Subscribe to calendar" link in the Cycle Dashboard; other users never get it.
 - Profiles with visibility "Private" are never served. Turning the option off makes the URL answer 404 immediately.
-- To invalidate a URL you shared, use the repair issue about an old feed token (shown once the token is a year old) or turn the feed off; a fresh token is created on rotation.
+- **Invalidate a URL at any time:** click "New feed URL" next to the "Subscribe to calendar" link in the Cycle Dashboard (administrators only). The old URL stops working immediately, and calendars subscribed to it must subscribe again with the new one. Turning the feed off also makes the URL answer 404, and **every time the feed is switched on again a new token is created**, so a URL from an earlier time (including one that older versions showed in the `ics_url` attribute) never works again. The repair issue about an old token (shown once it is a year old) does the same.
 
 ## Blueprints
 
@@ -128,7 +128,7 @@ Ready-made automations for the common cases. Click **Import** to add one to Home
 | Light during PMS | Sets lights to a colour while the PMS phase is active. | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fpms_light.yaml) |
 | Action on cycle state | Runs any action when a profile enters a chosen state (period, fertile, ...). | [Import](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fwallenium%2FHA-menstrual-cycle%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmenstruation_cycle%2Fprofile_state_action.yaml) |
 
-For your own automations the integration also fires the events `menstruation_cycle_cycle_start_logged`, `menstruation_cycle_pill_taken` and `menstruation_cycle_lh_positive` (the first positive ovulation test of a cycle), `menstruation_cycle_ovulation_confirmed` (the temperature rise is newly confirmed, once per cycle; date = day of the rise; not repeated after a restart) (all three with the data `entry_id`, `profile`, `friendly_name`, `date`; not fired for private profiles), `menstruation_cycle_product_consumed` and `menstruation_cycle_state_changed`.
+For your own automations the integration also fires the events `menstruation_cycle_cycle_start_logged`, `menstruation_cycle_pill_taken` and `menstruation_cycle_lh_positive` (the first positive ovulation test of a cycle), `menstruation_cycle_ovulation_confirmed` (the temperature rise is newly confirmed, once per cycle; date = day of the rise; not repeated after a restart) (all three with the data `entry_id`, `profile`, `friendly_name`, `date`; only fired at visibility "Full", because the logbook is readable by every user), `menstruation_cycle_product_consumed` and `menstruation_cycle_state_changed`.
 
 ## Disclaimer summary
 

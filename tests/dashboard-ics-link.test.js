@@ -71,5 +71,30 @@ assert.ok(!/googleapis|gstatic|@import url\(/.test(source), 'no runtime font dow
   denied._renderIcsSubscribeLink({ profile: 'anna' });
   await new Promise((r) => setImmediate(r));
   assert.strictEqual(denied._renderIcsSubscribeLink({ profile: 'anna' }), '');
+  // Rotation: admin button asks first, sends the command and swaps in the new URL; "cancel" sends nothing.
+  const rotSent = [];
+  const rot = make((msg) => {
+    rotSent.push(msg);
+    return Promise.resolve(msg.type === 'menstruation_cycle/ics_url'
+      ? { enabled: true, url: '/menstruation_cycle/ics/OLD.ics' }
+      : { enabled: true, url: '/menstruation_cycle/ics/NEW.ics' });
+  });
+  rot._renderIcsSubscribeLink({ profile: 'anna' });
+  await new Promise((r) => setImmediate(r));
+  assert.ok(rot._renderIcsSubscribeLink({ profile: 'anna' }).includes('data-action="rotate-ics-url"'), 'rotate button next to the link');
+  global.window.confirm = () => false;
+  await rot._rotateIcsUrl('anna');
+  assert.strictEqual(rotSent.length, 1, 'cancelled: no command sent');
+  global.window.confirm = () => true;
+  await rot._rotateIcsUrl('anna');
+  assert.deepStrictEqual(rotSent[1], { type: 'menstruation_cycle/rotate_ics_token', profile: 'anna' });
+  const rotated = rot._renderIcsSubscribeLink({ profile: 'anna' });
+  assert.ok(rotated.includes('/ics/NEW.ics') && !rotated.includes('OLD'), rotated);
+  assert.strictEqual(rotSent.length, 2, 'no extra fetch after rotation');
+  // Feed switched off meanwhile: the link disappears.
+  const gone = make(() => Promise.resolve({ enabled: false, url: null }));
+  global.window.confirm = () => true;
+  await gone._rotateIcsUrl('anna');
+  assert.strictEqual(gone._renderIcsSubscribeLink({ profile: 'anna' }), '');
   console.log('dashboard-ics-link: ok');
 })().catch((err) => { console.error(err); process.exit(1); });

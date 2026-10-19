@@ -1570,7 +1570,8 @@ class LhPositiveEventTests(unittest.TestCase):
     def setUp(self) -> None:
         NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
 
-    def _log(self, symptom_data, day_offset=-2, *, symptoms=(), starts=(-10,), visibility="full", save=True):
+    def _log(self, symptom_data, day_offset=-2, *, symptoms=(), starts=(-10,), visibility="full", save=True, event=None):
+        event = event or const.EVENT_LH_POSITIVE
         history = [_iso(s + k) for s in starts for k in range(3)]
         runtime = _runtime(
             history=history, symptom_history=[dict(e) for e in symptoms], profile="anna", visibility_level=visibility
@@ -1585,7 +1586,7 @@ class LhPositiveEventTests(unittest.TestCase):
             integration.dt_util, "now", lambda: NOW[0]
         ):
             _run(integration._async_handle_add_symptom(hass, call, save=save))
-        return [c.args for c in hass.bus.async_fire.call_args_list if c.args[0] == const.EVENT_LH_POSITIVE]
+        return [c.args for c in hass.bus.async_fire.call_args_list if c.args[0] == event]
 
     def test_first_positive_test_of_the_cycle_fires_once_with_the_profile(self) -> None:
         (name, data), = self._log({"test": ["positive_ovulation"]})
@@ -1625,6 +1626,14 @@ class LhPositiveEventTests(unittest.TestCase):
         self.assertEqual(self._log({"test": ["positive_ovulation"]}, save=False), [])
         self.assertEqual(self._log({"test": ["positive_ovulation"]}, starts=()), [])
         self.assertEqual(self._log({"test": ["positive_ovulation"]}, -20), [])
+
+    def test_events_are_only_fired_at_visibility_full(self) -> None:
+        # the logbook shows them to every user, so "Status only" must not leak them
+        pill = {const.SYMPTOM_CONTRACEPTION_METHOD: const.CONTRACEPTION_METHOD_PILL}
+        for event, data in ((const.EVENT_LH_POSITIVE, {"test": ["positive_ovulation"]}), (const.EVENT_PILL_TAKEN, pill)):
+            self.assertEqual(len(self._log(data, event=event)), 1, event)
+            self.assertEqual(self._log(data, visibility="status_only", event=event), [], event)
+            self.assertEqual(self._log(data, visibility="private", event=event), [], event)
 
 
 if __name__ == "__main__":

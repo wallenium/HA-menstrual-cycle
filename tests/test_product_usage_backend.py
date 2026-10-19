@@ -1650,6 +1650,81 @@ class LovelaceResourceDuplicateTests(unittest.TestCase):
         self.assertEqual(collection.deleted, ["r2", "r3"])
 
 
+class IcsTokenRotationTests(unittest.TestCase):
+    """A token is never reused when the feed is switched on again, and admins can rotate it on demand."""
+
+    class _Storage:
+        def __init__(self) -> None:
+            self.saved: list[str] = []
+
+        async def async_save_ics_token(self, token: str) -> None:
+            self.saved.append(token)
+
+    def _setup(self, *, feed: bool, visibility: str = "full"):
+        runtime = integration.MenstruationRuntime(
+            storage=self._Storage(), profile="anna", friendly_name="Anna", icon="mdi:flower",
+            history=[], period_duration_days=5, symptom_history=[], product_usage=[],
+            ics_token="OLD", ics_feed_enabled=feed, visibility_level=visibility,
+        )
+        entry = types.SimpleNamespace(entry_id="e1", options={const.CONF_ICS_FEED_ENABLED: feed})
+        hass = types.SimpleNamespace(
+            data={const.DOMAIN: {"e1": runtime}},
+            config_entries=types.SimpleNamespace(async_get_entry=lambda entry_id: entry),
+        )
+        return hass, entry, runtime
+
+    def _options_changed(self, hass, entry) -> None:
+        async def _noop(*_a, **_k):
+            return None
+
+        with patch.object(integration, "_register_notification_timer"), patch.object(
+            integration, "_register_basal_temp_listener"
+        ), patch.object(integration, "_async_import_basal_temp_from_linked_sensor", _noop), patch.object(
+            integration, "_async_sync_dashboard_sidebar_panel", _noop
+        ), patch.object(integration, "async_dispatcher_send"):
+            asyncio.run(integration._async_options_update_listener(hass, entry))
+
+    def test_switching_the_feed_on_issues_a_new_token_every_time(self) -> None:
+        hass, entry, runtime = self._setup(feed=False)
+        self._options_changed(hass, entry)  # unrelated option change while off
+        self.assertEqual(runtime.ics_token, "OLD")
+
+        entry.options = {const.CONF_ICS_FEED_ENABLED: True}
+        self._options_changed(hass, entry)
+        first = runtime.ics_token
+        self.assertNotEqual(first, "OLD")
+        self.assertEqual(runtime.storage.saved, [first])
+        self.assertTrue(runtime.ics_feed_enabled)
+
+        self._options_changed(hass, entry)  # other option saved while the feed stays on
+        self.assertEqual(runtime.ics_token, first)
+
+        entry.options = {const.CONF_ICS_FEED_ENABLED: False}
+        self._options_changed(hass, entry)
+        self.assertEqual(runtime.ics_token, first)  # off alone changes nothing, the route answers 404
+        entry.options = {const.CONF_ICS_FEED_ENABLED: True}
+        self._options_changed(hass, entry)
+        self.assertNotIn(runtime.ics_token, ("OLD", first))
+
+    def test_rotation_on_demand_replaces_the_token_and_returns_the_new_url(self) -> None:
+        hass, _entry, runtime = self._setup(feed=True)
+        payload = asyncio.run(integration._async_rotate_ics_url_payload(hass, "anna"))
+        self.assertNotEqual(runtime.ics_token, "OLD")
+        self.assertEqual(payload, {"enabled": True, "url": f"/{const.DOMAIN}/ics/{runtime.ics_token}.ics"})
+        self.assertEqual(runtime.storage.saved, [runtime.ics_token])
+
+    def test_rotation_does_nothing_while_the_feed_is_off_or_private(self) -> None:
+        for feed, visibility in ((False, "full"), (True, "private")):
+            hass, _entry, runtime = self._setup(feed=feed, visibility=visibility)
+            payload = asyncio.run(integration._async_rotate_ics_url_payload(hass, "anna"))
+            self.assertEqual(payload, {"enabled": False, "url": None})
+            self.assertEqual(runtime.ics_token, "OLD")
+            self.assertEqual(runtime.storage.saved, [])
+        hass, _entry, runtime = self._setup(feed=True)
+        asyncio.run(integration._async_rotate_ics_url_payload(hass, "unknown"))
+        self.assertEqual(runtime.ics_token, "OLD")
+
+
 class ManifestMetadataTests(unittest.TestCase):
     def test_manifest_omits_frontend_extra_module_url_and_matches_resource_version(self) -> None:
         with (COMPONENT_ROOT / "manifest.json").open(encoding="utf-8") as manifest_file:

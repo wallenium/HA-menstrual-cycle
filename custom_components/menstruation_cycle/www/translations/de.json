@@ -704,6 +704,8 @@
   "dashboard_confidence_medium": "Mittlere Konfidenz",
   "dashboard_ics_subscribe": "Kalender abonnieren",
   "dashboard_ics_hint": "(als iCal-Feed, z. B. für Google/Apple Kalender)",
+  "dashboard_ics_rotate": "Neue Feed-URL erzeugen",
+  "dashboard_ics_rotate_confirm": "Neue Feed-URL erzeugen? Die aktuelle URL wird sofort ungültig, abonnierte Kalender müssen neu abonniert werden.",
   "dashboard_widget_progress_badges": "Fortschritt",
   "dashboard_badge_earned_on": "Erreicht am",
   "badge_first_entry": "Erster Eintrag erfasst",

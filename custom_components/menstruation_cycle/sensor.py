@@ -1520,7 +1520,7 @@ class MenstruationGaugeSensor(SensorEntity):
             return False
         runtime.noncycle_data[NONCYCLE_OVULATION_CONFIRMED_CYCLE] = cycle
         silent = marker is None and not self._state_initialized
-        if not silent and visibility_level != VISIBILITY_LEVEL_PRIVATE:
+        if not silent and visibility_level == VISIBILITY_LEVEL_FULL:
             self.hass.bus.async_fire(
                 EVENT_OVULATION_CONFIRMED,
                 {

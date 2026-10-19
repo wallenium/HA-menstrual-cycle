@@ -704,6 +704,8 @@
   "dashboard_confidence_medium": "Medium confidence",
   "dashboard_ics_subscribe": "Subscribe to calendar",
   "dashboard_ics_hint": "(as an iCal feed, e.g. for Google/Apple Calendar)",
+  "dashboard_ics_rotate": "New feed URL",
+  "dashboard_ics_rotate_confirm": "Create a new feed URL? The current one stops working immediately, and calendars subscribed to it must be subscribed again.",
   "dashboard_widget_progress_badges": "Progress",
   "dashboard_badge_earned_on": "Earned on",
   "badge_first_entry": "First entry logged",

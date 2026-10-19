@@ -395,6 +395,13 @@ class TestOvulationConfirmedEvent(unittest.TestCase):
         entity = self._sensor(initialized=True)
         self.assertEqual(self._update(entity, "2026-06-15", visibility="private")[1], [])
 
+    def test_status_only_profiles_fire_nothing_but_still_record_the_cycle(self) -> None:
+        # the logbook is readable by every user: "Status only" hides health details, so no event
+        entity = self._sensor(initialized=True)
+        changed, calls = self._update(entity, "2026-06-15", visibility="status_only")
+        self.assertEqual(calls, [])
+        self.assertTrue(changed)
+
 
 class TestCycleLengthSensor(unittest.TestCase):
     """The cycle-length measurement sensor: value, attributes, visibility and identity."""

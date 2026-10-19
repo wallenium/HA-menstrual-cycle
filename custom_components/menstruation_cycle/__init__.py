@@ -65,6 +65,7 @@ from .const import (
     CONF_DASHBOARD_ENABLED,
     CONF_ICS_FEED_ENABLED,
     DEFAULT_ICS_FEED_ENABLED,
+    WS_TYPE_ICS_ROTATE,
     WS_TYPE_ICS_URL,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
@@ -487,6 +488,9 @@ class MenstruationRuntime:
     # HA-Idee 6 (weitere Ideen, 15.09.2026): wann der aktuelle ics_token
     # erzeugt/rotiert wurde, siehe repairs.py::async_check_stale_ics_token.
     ics_token_created_at: str = ""
+    # Whether the opt-in ICS feed was on when the options were last applied; an off -> on switch
+    # issues a fresh token (see _async_options_update_listener), so old URLs never come back.
+    ics_feed_enabled: bool = False
     # cached_cycle_model() results of the current day/data state (see model.py)
     model_cache: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)
 
@@ -2508,9 +2512,9 @@ async def _async_rotate_ics_token(hass: HomeAssistant, entry_id: str) -> None:
     """Generate a fresh ICS calendar-feed token for one profile and persist
     it, invalidating any URL built from the previous token immediately.
 
-    Called from repairs.py::StaleIcsTokenRepairFlow when the user clicks
-    *Fix* on the stale-ICS-token repair issue (HA-Idee 6, "weitere Ideen"
-    15.09.2026). Mirrors the same generate-and-save pattern used for the
+    Called from repairs.py::StaleIcsTokenRepairFlow (*Fix* on the stale-token
+    issue), from the admin-only rotate websocket command (dashboard button)
+    and when the feed is switched from off to on. Mirrors the same generate-and-save pattern used for the
     token's very first creation in async_setup_entry above.
     """
     runtime: MenstruationRuntime | None = hass.data.get(DOMAIN, {}).get(entry_id)
@@ -3323,6 +3327,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         onboarding_stage=onboarding_stage,
         visibility_level=visibility_level,
         cycle_length_override=stored.get("cycle_length_override"),
+        ics_feed_enabled=bool(entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED)),
     )
 
     async def _async_handle_midnight_refresh(_now: datetime) -> None:
@@ -3884,6 +3889,15 @@ async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry
     """Handle options updates: sync dashboard panel non-fatally without a full reload."""
     _updated_runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if _updated_runtime is not None:
+        # Switching the feed on always starts with a new token: the previous one may have been shared,
+        # or (releases up to 1.8.0) published as the ics_url state attribute and written to the recorder.
+        feed_on = bool(entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED))
+        if feed_on and not _updated_runtime.ics_feed_enabled:
+            try:
+                await _async_rotate_ics_token(hass, entry.entry_id)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Options update: could not issue a new ICS token for %s", entry.entry_id)
+        _updated_runtime.ics_feed_enabled = feed_on
         _register_notification_timer(hass, entry, _updated_runtime)
         _register_basal_temp_listener(hass, entry, _updated_runtime)
         try:
@@ -5336,11 +5350,11 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
 
     if save:
         await _async_save_and_notify(hass, runtime)
-        # Described in logbook.py; skipped for private profiles like EVENT_CYCLE_START_LOGGED.
+        # Described in logbook.py; only fired at visibility "Full" (the logbook is readable by every user).
         if (
             next_symptom_data.get(SYMPTOM_CONTRACEPTION_METHOD) == CONTRACEPTION_METHOD_PILL
             and not was_pill
-            and runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE
+            and runtime.visibility_level == VISIBILITY_LEVEL_FULL
         ):
             hass.bus.async_fire(
                 EVENT_PILL_TAKEN,
@@ -5355,7 +5369,7 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         if (
             lh_was_open
             and first_positive_lh_day(runtime.symptom_history, *lh_cycle) == date.fromisoformat(date_iso)
-            and runtime.visibility_level != VISIBILITY_LEVEL_PRIVATE
+            and runtime.visibility_level == VISIBILITY_LEVEL_FULL
         ):
             hass.bus.async_fire(
                 EVENT_LH_POSITIVE,
@@ -5762,6 +5776,18 @@ def _ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
     return {"enabled": False, "url": None}
 
 
+async def _async_rotate_ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
+    """Issue a new feed token for one profile (only while its feed is available) and return the new URL payload."""
+    for entry_id, rt in hass.data.get(DOMAIN, {}).items():
+        if not isinstance(rt, MenstruationRuntime) or rt.profile != profile:
+            continue
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is not None and ics_feed_available(entry.options, rt.visibility_level):
+            await _async_rotate_ics_token(hass, entry_id)
+            break
+    return _ics_url_payload(hass, profile)
+
+
 def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Admin-only websocket command that hands the ICS URL to the panel."""
     if hass.data.get(_WS_REGISTERED_KEY):
@@ -5778,7 +5804,14 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     async def _ws_ics_url(hass_: HomeAssistant, connection, msg) -> None:  # type: ignore[no-untyped-def]
         connection.send_result(msg["id"], _ics_url_payload(hass_, msg["profile"]))
 
+    @websocket_api.require_admin
+    @websocket_api.websocket_command({vol.Required("type"): WS_TYPE_ICS_ROTATE, vol.Required("profile"): cv.string})
+    @websocket_api.async_response
+    async def _ws_rotate_ics_token(hass_: HomeAssistant, connection, msg) -> None:  # type: ignore[no-untyped-def]
+        connection.send_result(msg["id"], await _async_rotate_ics_url_payload(hass_, msg["profile"]))
+
     websocket_api.async_register_command(hass, _ws_ics_url)
+    websocket_api.async_register_command(hass, _ws_rotate_ics_token)
     hass.data[_WS_REGISTERED_KEY] = True
 
 

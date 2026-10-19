@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.1
+
+### Changed
+- **ICS feed token:** every time the feed is switched from off to on, a new token is created, so URLs from earlier versions (when the token was published as the `ics_url` attribute) or from an earlier period of use never work again. Administrators can also rotate the token at any time with the new "New feed URL" button next to the "Subscribe to calendar" link in the dashboard (admin-only websocket command `menstruation_cycle/rotate_ics_token`); the old URL stops working immediately. The README explains how to invalidate a URL.
+- The events `menstruation_cycle_pill_taken`, `menstruation_cycle_lh_positive` and `menstruation_cycle_ovulation_confirmed` (and so their logbook entries) are only fired at visibility "Full" instead of "Full" and "Status only", because the logbook is readable by every user. Automations that rely on these events for a "Status only" profile need visibility "Full".
+
 ## 1.9.0
 
 ### Added
