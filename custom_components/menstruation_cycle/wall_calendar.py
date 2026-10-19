@@ -11,6 +11,7 @@ from html import escape
 from typing import Any
 
 WALL_CALENDAR_LANGUAGES = ("de", "en", "es", "fr", "sv")
+WALL_CALENDAR_TITLE_MAX = 100
 
 # Fields of a symptom entry that count for the small dot under a day (not temperature, tests, contraception, sex).
 SYMPTOM_DOT_FIELDS = (
@@ -184,6 +185,8 @@ def generate_wall_calendar_html(
         notes.insert(0, text["rough"])
     return (
         '<!DOCTYPE html>\n<html lang="{lang}"><head><meta charset="utf-8">'
+        # nothing but inline styles may ever run or load here, even if some text were not escaped
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         "<title>{title}</title><style>{css}</style></head><body>"
         "<h1>{title}</h1><div class=\"year\">{months}</div><div class=\"legend\">{legend}</div>{notes}</body></html>\n"

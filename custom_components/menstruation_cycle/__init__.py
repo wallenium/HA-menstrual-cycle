@@ -9,6 +9,7 @@ from functools import partial
 import inspect
 import json
 import logging
+import os
 import re
 import secrets
 from collections.abc import Callable, Iterable
@@ -322,6 +323,7 @@ from .statistics import (
 from .storage import MenstruationStorage
 from .wall_calendar import (
     WALL_CALENDAR_LANGUAGES,
+    WALL_CALENDAR_TITLE_MAX,
     generate_wall_calendar_html,
     symptom_days as wall_calendar_symptom_days,
     windows_to_days,
@@ -2569,12 +2571,18 @@ async def _async_require_admin(hass: HomeAssistant, call: ServiceCall, message: 
 
 
 def _write_private_text(path: Path, content: str) -> None:
-    """Write an export file readable by the HA user only (best effort; it holds health data)."""
-    path.write_text(content, encoding="utf-8")
-    try:
-        path.chmod(0o600)
-    except OSError:
-        pass
+    """Write an export file readable by the HA user only; it holds health data.
+
+    Created with mode 0600 from the start (no moment where it is world-readable) and never through a symlink, which
+    matters for the fixed file names (wall calendar, named history export).
+    """
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(path, flags, 0o600), "w", encoding="utf-8") as handle:
+        try:
+            os.fchmod(handle.fileno(), 0o600)  # a file that already existed keeps its old mode otherwise
+        except (AttributeError, OSError):
+            pass
+        handle.write(content)
 
 
 def _days_until_expected_start(model: Any, options: Any, today: date) -> int | None:
@@ -3322,7 +3330,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
             **common_profile_field,
             vol.Optional(SERVICE_FIELD_YEAR): vol.All(vol.Coerce(int), vol.Range(min=2000, max=2100)),
             vol.Optional(SERVICE_FIELD_LANGUAGE): vol.In(list(WALL_CALENDAR_LANGUAGES)),
-            vol.Optional(SERVICE_FIELD_TITLE): cv.string,
+            vol.Optional(SERVICE_FIELD_TITLE): vol.All(cv.string, vol.Length(max=WALL_CALENDAR_TITLE_MAX)),
         })
     }
     if SupportsResponse is not None:
@@ -4303,7 +4311,7 @@ async def _async_handle_export_wall_calendar(hass: HomeAssistant, call: ServiceC
     today = dt_util.now().date()
     year = int(call.data.get(SERVICE_FIELD_YEAR) or today.year)
     language = str(call.data.get(SERVICE_FIELD_LANGUAGE) or hass.config.language or "en").strip().lower()[:2]
-    title = str(call.data.get(SERVICE_FIELD_TITLE) or "").strip() or f"{runtime.friendly_name} {year}"
+    title = (str(call.data.get(SERVICE_FIELD_TITLE) or "").strip() or f"{runtime.friendly_name} {year}")[:WALL_CALENDAR_TITLE_MAX]
 
     model = await hass.async_add_executor_job(
         partial(
@@ -4346,7 +4354,7 @@ async def _async_handle_export_wall_calendar(hass: HomeAssistant, call: ServiceC
         _write_private_text(target_path, html_content)
 
     await hass.async_add_executor_job(_write_file)
-    _LOGGER.info("Exported wall calendar %s for profile '%s'", year, runtime.profile)
+    _LOGGER.debug("Exported wall calendar %s", year)
     return {"filename": target_path.name, "path": str(target_path), "html": html_content}
 
 

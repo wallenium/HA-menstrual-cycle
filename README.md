@@ -127,7 +127,7 @@ Each profile has a visibility level (options, or the service `set_profile_visibi
 
 Always restricted to administrators (and automations), whatever the level: `set_profile_visibility`, `erase_all_history`, `import_full_backup`, `repair_storage`, the feed URL and its renewal in the dashboard, and the options of the integration. Logging periods, symptoms and products stays open to every user. The feed URLs are secret links that need no login: anyone who has one can read what that feed contains, so share them deliberately (see below).
 
-Nothing the integration logs contains health data, diagnostics only report counts, and exported files (doctor report, wall calendar, history, backup) are written readable by the Home Assistant user only, outside the web-served `www` folder.
+Nothing the integration logs contains health data, diagnostics only report counts, and exported files (doctor report, wall calendar, history, backup) are written readable by the Home Assistant user only, outside the web-served `www` folder. Exports are created owner-only from the start and never written through a symlink; they stay in the export folder until you delete them (erasing history does not remove files already exported).
 
 ## Blueprints
 

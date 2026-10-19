@@ -75,6 +75,12 @@ class WallCalendarHtmlTests(unittest.TestCase):
         self.assertEqual(_count(html, "today"), 1)
         self.assertEqual(_count(_html(today=date(2027, 1, 1)), "today"), 0)
 
+    def test_page_forbids_scripts_and_external_loads(self) -> None:
+        html = _html()
+        self.assertIn("Content-Security-Policy", html)
+        self.assertIn("default-src 'none'", html)
+        self.assertNotRegex(html.lower(), r"<script|<link|<img|<iframe|src=|href=|javascript:")
+
     def test_title_is_escaped(self) -> None:
         html = _html(title='<script>alert("x")</script>')
         self.assertNotIn("<script>", html)

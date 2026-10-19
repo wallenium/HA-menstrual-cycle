@@ -1661,7 +1661,33 @@ class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
 
     def test_every_export_goes_through_the_private_writer(self) -> None:
         source = (Path(integration.__file__)).read_text(encoding="utf-8")
-        self.assertEqual(source.count(".write_text("), 1, "only _write_private_text may write files directly")
+        self.assertEqual(source.count(".write_text("), 0, "exports must use _write_private_text")
+        self.assertEqual(source.count("os.open("), 1, "only _write_private_text creates files directly")
+
+    def test_private_writer_is_never_world_readable_and_ignores_symlinks(self) -> None:
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            old_umask = os.umask(0)  # the worst case: a new file would be 0666 until a later chmod
+            try:
+                fresh = Path(tmp) / "fresh.html"
+                integration._write_private_text(fresh, "x")
+                self.assertEqual(fresh.stat().st_mode & 0o777, 0o600)
+                loose = Path(tmp) / "loose.html"
+                loose.write_text("old", encoding="utf-8")
+                loose.chmod(0o644)
+                integration._write_private_text(loose, "new")
+                self.assertEqual((loose.read_text(encoding="utf-8"), loose.stat().st_mode & 0o777), ("new", 0o600))
+                if hasattr(os, "O_NOFOLLOW"):
+                    victim = Path(tmp) / "victim.txt"
+                    victim.write_text("keep", encoding="utf-8")
+                    link = Path(tmp) / "link.html"
+                    link.symlink_to(victim)
+                    with self.assertRaises(OSError):
+                        integration._write_private_text(link, "overwritten")
+                    self.assertEqual(victim.read_text(encoding="utf-8"), "keep")
+            finally:
+                os.umask(old_umask)
 
     def test_read_services_do_not_log_the_health_data_they_return(self) -> None:
         source = (Path(integration.__file__)).read_text(encoding="utf-8")

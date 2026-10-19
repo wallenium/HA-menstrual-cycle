@@ -1269,6 +1269,35 @@ class WallCalendarServiceTests(unittest.TestCase):
         self.assertIn("<title>Rückblick</title>", html)
         self.assertEqual((self._count(html, "predicted"), self._count(html, "fertile"), self._count(html, "today")), (0, 0, 0))
 
+    def test_a_long_title_is_cut_and_the_schema_rejects_it(self) -> None:
+        html = self._export({const.SERVICE_FIELD_TITLE: "x" * 5000})["html"]
+        self.assertIn("<title>" + "x" * 100 + "</title>", html)
+        source = (Path(integration.__file__)).read_text(encoding="utf-8")
+        self.assertIn("vol.Length(max=WALL_CALENDAR_TITLE_MAX)", source)
+
+    def test_file_name_cannot_leave_the_export_folder(self) -> None:
+        import tempfile
+
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        runtime = _runtime(profile="../../etc/x", history=[])
+        with tempfile.TemporaryDirectory() as tmp:
+            hass = _hass()
+            hass.config.path = lambda *parts: str(Path(tmp, *parts))
+            hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: _entry())
+
+            async def _executor(func, *args):
+                return func(*args)
+
+            hass.async_add_executor_job = _executor
+            with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+                integration, "_entry_id_for_runtime", lambda h, r: "e1"
+            ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+                result = _run(integration._async_handle_export_wall_calendar(hass, SimpleNamespace(data={})))
+            path = Path(result["path"])
+            self.assertEqual(path.parent, Path(tmp, integration.EXPORT_DIR_NAME))
+            self.assertNotIn("/", result["filename"])
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
     def test_language_defaults_to_home_assistant_and_can_be_chosen(self) -> None:
         self.assertIn("Oktober", self._export({}, language="de")["html"])
         self.assertIn("octobre", self._export({const.SERVICE_FIELD_LANGUAGE: "fr"}, language="de")["html"])
