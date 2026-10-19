@@ -203,7 +203,7 @@ set_period_duration:
 erase_all_history:
   name: Erase all cycle history
   description: |
-    Destructive action. Deletes the complete stored history.
+    Destructive action. Deletes the complete stored history. Administrators only.
     Safety checks:
     - works only when `erase_all` is exactly `true`
     - requires explicit `entity_id` (sensor id)
@@ -289,7 +289,7 @@ export_full_backup:
 import_full_backup:
   name: Import full backup (all profiles)
   description: |
-    Restores data from a file previously written by export_full_backup. Only
+    Administrators only. Restores data from a file previously written by export_full_backup. Only
     restores into profiles that are ALREADY configured (matched by profile
     slug) — this never creates a new profile/config entry, and profiles in
     the backup with no current match are skipped and reported back.
@@ -1288,7 +1288,7 @@ set_profile_visibility:
 repair_storage:
   name: Repair/diagnose storage
   description: |
-    Read-only diagnostic across every configured profile's stored data. Reports
+    Administrators only. Read-only diagnostic across every configured profile's stored data. Reports
     where normalization silently discarded or reset an invalid value (e.g. an
     out-of-range cycle_length_override, an unrecognized onboarding_stage or
     visibility_level, unparsable history/symptom/product-usage entries) as well

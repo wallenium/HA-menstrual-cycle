@@ -84,6 +84,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "source_lh": "Source: ovulation test",
         "source_prefix": "Source",
         "confidence": "confidence",
+        "rough_estimate": "Rough estimate: too little logged data for a precise forecast yet",
     },
     "de": {
         "calname": "Zyklusvorhersagen",
@@ -108,6 +109,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "source_lh": "Quelle: Ovulationstest",
         "source_prefix": "Quelle",
         "confidence": "Konfidenz",
+        "rough_estimate": "Grobe Schätzung: noch zu wenige Einträge für eine genaue Vorhersage",
     },
     "fr": {
         "calname": "Prévisions du cycle menstruel",
@@ -132,6 +134,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "source_lh": "Source : test d'ovulation",
         "source_prefix": "Source",
         "confidence": "confiance",
+        "rough_estimate": "Estimation approximative : pas encore assez de données saisies pour une prévision précise",
     },
     "es": {
         "calname": "Predicciones del ciclo menstrual",
@@ -156,6 +159,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "source_lh": "Fuente: prueba de ovulación",
         "source_prefix": "Fuente",
         "confidence": "confianza",
+        "rough_estimate": "Estimación aproximada: aún hay pocos datos registrados para una previsión precisa",
     },
     "sv": {
         "calname": "Cykelprognoser",
@@ -180,6 +184,7 @@ _ICS_STRINGS: dict[str, dict[str, str]] = {
         "source_lh": "Källa: ägglossningstest",
         "source_prefix": "Källa",
         "confidence": "konfidens",
+        "rough_estimate": "Grov uppskattning: ännu för få loggade uppgifter för en exakt prognos",
     },
 }
 
@@ -374,6 +379,7 @@ def generate_ics(
     extra_events: list[tuple[str, date, date, str]] | None = None,
     partner: bool = False,
     partner_content: str = "both",
+    rough_estimate: bool = False,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -392,6 +398,8 @@ def generate_ics(
     partner: reduced feed for a partner: predicted periods and the fertile window only - no ovulation day,
             checkup, contraception/pregnancy/logged events, reminders, or source/confidence notes.
         partner_content: with ``partner``, "both", "fertile" (no periods) or "period" (no fertile window).
+        rough_estimate: adds a note to the fertile window and ovulation events that the forecast rests on too
+            little logged data (the sensors withhold it in that case).
 
     Returns:
         UTF-8 encoded VCALENDAR bytes (CRLF line endings per RFC 5545).
@@ -421,6 +429,9 @@ def generate_ics(
         f"X-WR-CALNAME:{strings['calname']}",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+        # how often subscribing calendar apps should re-fetch (RFC 7986 / the older Microsoft-Apple hint)
+        "REFRESH-INTERVAL;VALUE=DURATION:PT12H",
+        "X-PUBLISHED-TTL:PT12H",
     ]
 
     if checkup_due is not None:
@@ -487,6 +498,8 @@ def generate_ics(
             fw_desc = "" if partner else f"{strings['source_prefix']}: {fertility_source}"
             if fertility_confidence and not partner:
                 fw_desc += f"; {strings['confidence']}: {fertility_confidence}"
+            if rough_estimate:
+                fw_desc = f"{fw_desc}. {strings['rough_estimate']}" if fw_desc else strings["rough_estimate"]
             lines.extend(
                 _vevent_lines(
                     uid=fw_uid,
@@ -504,6 +517,8 @@ def generate_ics(
             ov_desc = f"{strings['source_prefix']}: {fertility_source}"
             if fertility_confidence:
                 ov_desc += f"; {strings['confidence']}: {fertility_confidence}"
+            if rough_estimate:
+                ov_desc = f"{ov_desc}. {strings['rough_estimate']}"
             lines.extend(
                 _vevent_lines(
                     uid=ov_uid,

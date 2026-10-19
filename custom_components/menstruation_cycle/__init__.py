@@ -4386,6 +4386,7 @@ async def _async_handle_set_profile_visibility(hass: HomeAssistant, call: Servic
 
 
 async def _async_handle_erase_all_history(hass: HomeAssistant, call: ServiceCall) -> None:
+    await _async_require_admin(hass, call)
     entity_id = str(call.data.get(SERVICE_FIELD_ENTITY_ID, "")).strip()
     if not entity_id:
         raise HomeAssistantError("Refusing to erase history. Provide entity_id explicitly for safety.")
@@ -4570,6 +4571,7 @@ async def _async_handle_repair_storage(hass: HomeAssistant, call: ServiceCall) -
     storage-integrity repair issue (see repairs.py::async_check_storage_
     integrity) so both surfaces always agree.
     """
+    await _async_require_admin(hass, call)  # reports on every profile, whatever its visibility
     domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
     if not domain_data:
         raise HomeAssistantError("No menstruation_cycle profiles are currently loaded.")
@@ -4915,6 +4917,7 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
     A profile present in the backup but not currently configured is skipped
     and reported back, not silently dropped without a trace.
     """
+    await _async_require_admin(hass, call)
     if call.data.get(SERVICE_FIELD_CONFIRM) is not True:
         raise HomeAssistantError("Refusing to import backup. Set confirm: true to confirm this write operation.")
 
@@ -5954,6 +5957,7 @@ def _build_ics_body(
         ),
         partner,
         partner_content,
+        not (cycle_model.prediction_gating or {}).get("precision_allowed"),
     )
 
 

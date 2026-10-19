@@ -58,7 +58,7 @@ class IcsFeedExposure(unittest.TestCase):
         self.assertIn("secrets.compare_digest(derive_partner_token(rt.ics_token, epoch), token)", feed)
         body = _function_source(init, "_build_ics_body")
         self.assertIn("if partner\n        else collect_extra_events(", body)
-        self.assertRegex(body, r"\n\s+partner,\n\s+partner_content,\n\s+\)")
+        self.assertRegex(body, r"\n\s+partner,\n\s+partner_content,\n[^\n]*precision_allowed[^\n]*\n\s+\)")
 
     def test_url_command_is_admin_only(self) -> None:
         reg = _function_source(_read("__init__.py"), "_async_register_websocket_commands")

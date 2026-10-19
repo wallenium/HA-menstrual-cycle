@@ -599,6 +599,19 @@ class CalendarEntityTests(unittest.TestCase):
         self.assertTrue(entity._attr_available)
         self.assertEqual([e.start for e in entity._events], sorted(e.start for e in entity._events))
 
+    def test_entity_marks_the_estimate_while_the_sensors_still_withhold_it(self) -> None:
+        entity = self._entity()  # four cycles, no symptom entries: no precise forecast yet
+        run(entity._async_refresh_events())
+        fertile = [e for e in entity._events if e.summary == "Fertile window (predicted)"]
+        self.assertTrue(fertile and all("Rough estimate" in (e.description or "") for e in fertile))
+
+    def test_rough_estimate_note_only_on_fertile_window_and_ovulation(self) -> None:
+        events = calendar._build_events(_windows(), "en", rough_estimate=True)
+        noted = {e.summary for e in events if e.description and "Rough estimate" in e.description}
+        self.assertEqual(noted, {"Fertile window (predicted)", "Ovulation (predicted)"})
+        plain = calendar._build_events(_windows(), "en")
+        self.assertFalse([e for e in plain if e.description and "Rough estimate" in e.description])
+
     def test_strict_nfp_profile_gets_no_predicted_fertile_window(self) -> None:
         # strict mode withholds ovulation/fertile window without observed temperature data (same as the sensor)
         entity = self._entity(options={const.CONF_NFP_ANALYSIS_MODE: "strict"})

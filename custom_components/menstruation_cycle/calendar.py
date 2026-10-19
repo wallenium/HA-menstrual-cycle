@@ -181,7 +181,10 @@ class MenstruationCycleCalendar(CalendarEntity):
         extra = collect_extra_events(
             self._entry.options, runtime, cycle_model.due_date, self.hass.config.language, today, luteal.get("predicted_start")
         )
-        self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due, extra)
+        # The sensors withhold the fertile window until the forecast is precise; the calendar keeps showing the
+        # estimate, so say so on those events.
+        rough = not (cycle_model.prediction_gating or {}).get("precision_allowed")
+        self._events = _build_events(windows, self.hass.config.language, visibility_level, checkup_due, extra, rough)
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
@@ -219,6 +222,7 @@ def _build_events(
     visibility_level: str = VISIBILITY_LEVEL_FULL,
     checkup_due: date | None = None,
     extra_events: list[tuple[str, date, date, str]] | None = None,
+    rough_estimate: bool = False,
 ) -> list[CalendarEvent]:
     """Turn project_range_windows()'s output into CalendarEvent objects.
 
@@ -295,6 +299,7 @@ def _build_events(
                     start=f_start,
                     end=f_end + timedelta(days=1),
                     summary=strings["fertile_window"],
+                    description=strings["rough_estimate"] if rough_estimate else None,
                     uid=f"fertile-{window['fertile_start']}",
                 )
             )
@@ -303,6 +308,7 @@ def _build_events(
                     start=ov,
                     end=ov + timedelta(days=1),
                     summary=strings["ovulation"],
+                    description=strings["rough_estimate"] if rough_estimate else None,
                     uid=f"ovulation-{window['ovulation']}",
                 )
             )

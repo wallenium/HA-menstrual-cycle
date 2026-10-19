@@ -105,9 +105,28 @@ Each profile can serve its predictions (period, fertile window, ovulation, optio
 - **Anyone who knows the URL can read the feed without logging in to Home Assistant.** Calendar apps cannot log in, so the URL itself is the secret. Share it only deliberately and only with people who may see these predictions. If your Home Assistant is reachable from the internet, so is the feed.
 - The URL is not shown in any entity attribute. Administrators find it as the "Subscribe to calendar" link in the Cycle Dashboard; other users never get it.
 - Profiles with visibility "Private" are never served. Turning the option off makes the URL answer 404 immediately.
-- **Partner link (reduced feed):** next to the feed link, administrators get "Copy partner link". That URL only contains the predicted periods and the fertile window (the option "Partner link content" can narrow it to just one of the two) - no ovulation day, checkup, contraception or pregnancy dates, logged periods, reminders or source/confidence notes - so a partner can subscribe without seeing the rest. It works whenever the feed is switched on and is derived from the main token (nothing extra is stored). "New partner link" renews only the partner link and leaves the calendar feed URL valid; renewing the main token (or switching the feed off and on) renews both.
+- **Partner link (reduced feed):** next to the feed link, administrators get "Copy partner link". That URL only contains the predicted periods and the fertile window (the option "Partner link content" can narrow it to just one of the two) - no ovulation day, checkup, contraception or pregnancy dates, logged periods, reminders or source/confidence notes (only the "rough estimate" note on the fertile window while the data is thin) - so a partner can subscribe without seeing the rest. It works whenever the feed is switched on and is derived from the main token (nothing extra is stored). "New partner link" renews only the partner link and leaves the calendar feed URL valid; renewing the main token (or switching the feed off and on) renews both.
 - **Last fetched:** the dashboard shows when the feed and the partner link were last fetched (since the last restart of Home Assistant), so a link that is used unexpectedly - or never - is noticeable. The feed is served with an ETag, so calendar apps that revalidate get a short "not modified" answer.
 - **Invalidate a URL at any time:** click "New feed URL" next to the "Subscribe to calendar" link in the Cycle Dashboard (administrators only). The old URL stops working immediately, and calendars subscribed to it must subscribe again with the new one. Turning the feed off also makes the URL answer 404, and **every time the feed is switched on again a new token is created**, so a URL from an earlier time (including one that older versions showed in the `ics_url` attribute) never works again. The repair issue about an old token (shown once it is a year old) does the same.
+
+## Who can see what (visibility and permissions)
+
+Each profile has a visibility level (options, or the service `set_profile_visibility`). Home Assistant shows entity states, attributes, the logbook and events to every user, so the level decides what the integration puts there. Services are checked separately by user role.
+
+| Where | Full | Status only | Private |
+|---|---|---|---|
+| Sensor state and attributes | everything | forecast values (next start, days until, predicted starts, average cycle length, period duration, cycle phase and tip) plus the identity attributes below | state "private" and identity attributes only: profile name, onboarding stage, learning-phase flag, forecast confidence |
+| Basal temperature, product use and next ovulation sensors, hospital-bag to-do list | available | unavailable | unavailable |
+| Calendar entity | period, fertile window, ovulation, opt-in dates | period events only | nothing |
+| Cycle-phase image | shown | shown | unavailable |
+| Events and logbook (pill taken, LH positive, ovulation confirmed, product use) | fired | not fired | not fired |
+| Household overview (`get_household_summary`) | all fields | status only | listed as private, no cycle data |
+| Read services (`get_symptom`, `get_full_history`, `get_cycle_predictions`, `compare_current_cycle`, `get_last_cycle_summary`, `get_menarche_info`, `export_doctor_report`) | every user | administrators and automations only | administrators and automations only |
+| Calendar feed (ICS) and partner link | when switched on | when switched on | never served |
+
+Always restricted to administrators (and automations), whatever the level: `set_profile_visibility`, `erase_all_history`, `import_full_backup`, `repair_storage`, the feed URL and its renewal in the dashboard, and the options of the integration. Logging periods, symptoms and products stays open to every user. The feed URLs are secret links that need no login: anyone who has one can read what that feed contains, so share them deliberately (see below).
+
+Nothing the integration logs contains health data, diagnostics only report counts, and exported files (doctor report, history, backup) are written readable by the Home Assistant user only, outside the web-served `www` folder.
 
 ## Blueprints
 

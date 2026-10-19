@@ -1731,6 +1731,15 @@ class ReadServicesVisibilityTests(unittest.TestCase):
 
         self.assertEqual([allowed("admin"), allowed("member"), allowed("gone"), allowed(None)], [True, False, False, True])
 
+    def test_destructive_and_cross_profile_services_are_admin_only(self) -> None:
+        import ast
+
+        source = Path(integration.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        for name in ("_async_handle_erase_all_history", "_async_handle_import_full_backup", "_async_handle_repair_storage"):
+            node = next(n for n in ast.walk(tree) if isinstance(n, ast.AsyncFunctionDef) and n.name == name)
+            self.assertIn("_async_require_admin(", ast.get_source_segment(source, node), name)
+
     def test_forecast_views_only_get_the_menarche_stages(self) -> None:
         stage = integration.forecast_view_stage
         self.assertEqual([stage("pre_menarche"), stage("early_menarche")], ["pre_menarche", "early_menarche"])
