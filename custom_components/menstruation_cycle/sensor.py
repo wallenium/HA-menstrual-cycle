@@ -96,8 +96,10 @@ from .const import (
     DEFAULT_MENARCHE_AGE_TYPICAL,
     CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
+    CONF_PILL_PAUSE_DAYS,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
+    DEFAULT_PILL_PAUSE_DAYS,
     DOMAIN,
     MAX_NUM_PREDICTIONS,
     SIGNAL_HISTORY_UPDATED,
@@ -110,6 +112,7 @@ from .model import (
     build_cycle_model,
     cached_cycle_model,
     compute_contraception_status,
+    pill_pack_view,
     compute_prediction_day_confidence,
     current_cycle_phase,
     cycle_wellness_score,
@@ -1359,6 +1362,11 @@ class MenstruationGaugeSensor(SensorEntity):
         # unveraendert durchgereicht, keine Home-Assistant-interne URL-
         # Aufloesung noetig.
         linked_person_entity_id = str(self._entry.options.get(CONF_LINKED_PERSON_ENTITY_ID) or "") or None
+        contraception_status = compute_contraception_status(
+            model.symptom_history,
+            today=today,
+            renewed=model.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED),
+        )
         profile_picture: str | None = None
         if linked_person_entity_id:
             person_state = self.hass.states.get(linked_person_entity_id)
@@ -1432,10 +1440,10 @@ class MenstruationGaugeSensor(SensorEntity):
             # per-profile sensors (product usage, basal temp) also carry profile+
             # entry_id and no longer happened to be excluded by name.
             "is_primary_profile_sensor": True,
-            "contraception_status": compute_contraception_status(
-                model.symptom_history,
-                today=today,
-                renewed=model.noncycle_data.get(NONCYCLE_CONTRACEPTION_RENEWED),
+            "contraception_status": contraception_status,
+            # Blister view for the pill card (None unless the current method is the pill)
+            "pill_pack": pill_pack_view(
+                contraception_status, today, self._entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)
             ),
             "product_usage_today": usage_stats["today"],
             "product_usage_this_cycle": usage_stats["this_cycle"],

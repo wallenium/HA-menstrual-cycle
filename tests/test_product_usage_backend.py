@@ -1677,7 +1677,7 @@ class ReadServicesVisibilityTests(unittest.TestCase):
     READ_HANDLERS = (
         "_async_handle_get_symptom", "_async_handle_get_full_history", "_async_handle_get_cycle_predictions",
         "_async_handle_compare_current_cycle", "_async_handle_get_last_cycle_summary",
-        "_async_handle_get_menarche_info", "_async_handle_export_doctor_report",
+        "_async_handle_get_menarche_info", "_async_handle_export_doctor_report", "_async_handle_export_wall_calendar",
     )
 
     def _check(self, visibility: str, user_id: str | None, admin: bool = False) -> bool:

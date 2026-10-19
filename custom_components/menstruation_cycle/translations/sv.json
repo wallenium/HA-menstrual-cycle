@@ -99,6 +99,7 @@
               "notify_cycle_hint": "Påminnelse vid ovanlig cykellängd",
               "notify_test_hint": "Påminnelse om tidpunkt för graviditetstest (barnönskan)",
               "notify_lh_hint": "Påminnelse: börja med ovulationstester",
+              "notify_pattern_hint": "Påminnelse om återkommande symtom",
               "notify_temp_reminder": "Påminnelse om basaltemperatur",
               "notify_period_luteal": "Mensavisering via lutealfasen"
             },
@@ -124,6 +125,7 @@
               "notify_cycle_hint": "Skickar efter en ny menstruationsstart en neutral påminnelse när de tre senaste cyklerna alla var kortare än 21 eller alla längre än 38 dagar, eller när den senaste cykeln avvek 10 dagar eller mer från ditt genomsnitt. Det är ingen diagnos; det föreslår bara att nämna det vid nästa kontroll.",
               "notify_test_hint": "Skickar 14 dagar efter en ägglossning som bekräftats av dina temperatur- och slem-/livmoderhalsloggar ett neutralt meddelande: ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd. Skickas inte under graviditet eller vid hormonell preventivmetod om fertilitetsnotiserna är avstängda för den. Utan bekräftad ägglossning används i stället dagen efter cykelns första positiva LH-test. Av som standard.",
               "notify_lh_hint": "Skickar en gång per cykel några dagar före den förväntade ägglossningen ett neutralt meddelande om att det nu är en bra tidpunkt att börja med ovulationstester (LH). Skickas inte om cykeln redan har ett positivt LH-test eller en bekräftad ägglossning. Bara en tumregel, inget medicinskt råd. Hoppas över medan fertilitetsaviseringarna är tystade på grund av hormonell preventivmedel. Av som standard.",
+              "notify_pattern_hint": "En gång per cykel och symtom, strax innan ett symtom som du själv loggat brukar dyka upp (till exempel huvudvärk eller uppsvälldhet ungefär samma dagar i de flesta av dina senaste cykler), kommer ett kort, neutralt meddelande. Bara dina egna anteckningar räknas, inga medicinska råd och ingen diagnos. Kräver minst fyra loggade cykler. Skickas bara till ditt eget aviseringsmål, aldrig till partnern. Av som standard.",
               "notify_temp_reminder": "Vid aviseringstiden påminner den om att mäta och registrera basaltemperaturen kring den förväntade ägglossningen, så länge ingen temperaturstigning är bekräftad. Endast för personer som regelbundet registrerar sin temperatur (minst 3 av de senaste 7 dagarna) och bara om dagens temperatur inte är registrerad ännu. Av som standard.",
               "notify_period_luteal": "Använder för ”mens väntas” datumet från din egen lutealfaslängd (ägglossning plus inlärd lutealfas) så snart det kan beräknas; annars används kalenderdatumet. Påminnelsen ”mens försenad” och reparationsnotisen räknar också från det datumet. Av som standard."
             }
@@ -1089,6 +1091,36 @@
         "language": {
           "name": "Språk",
           "description": "Rapportens språk."
+        }
+      }
+    },
+    "export_wall_calendar": {
+      "name": "Exportera väggkalender (HTML)",
+      "description": "Skriver en utskrivbar årskalender på en sida till `/config/menstruation_cycle_exports/`. Öppna filen i en webbläsare och skriv ut den eller använd \"Skriv ut som PDF\".",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Målsensor (menstruationsmätare)."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Konfigurerad profil-slug."
+        },
+        "entry_id": {
+          "name": "Post-ID",
+          "description": "Identifierare för konfigurationsposten."
+        },
+        "year": {
+          "name": "År",
+          "description": "Kalenderår (standard: innevarande år)."
+        },
+        "language": {
+          "name": "Språk",
+          "description": "Kalenderns språk."
+        },
+        "title": {
+          "name": "Rubrik",
+          "description": "Kalenderns rubrik."
         }
       }
     },

@@ -700,6 +700,7 @@ class ImageEntityTests(unittest.TestCase):
             self.assertTrue((image._ASSETS_DIR / "state" / filename).is_file(), filename)
         for month in range(1, 10):
             self.assertTrue((image._ASSETS_DIR / "pregnancy" / f"preg_{month:02d}.svg").is_file(), month)
+            self.assertTrue((image._ASSETS_DIR / "pregnancy" / f"month_{month}.svg").is_file(), month)
 
     def test_state_selection(self) -> None:
         entity, _ = self._entity()

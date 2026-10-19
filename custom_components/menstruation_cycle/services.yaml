@@ -1244,6 +1244,60 @@ export_doctor_report:
             - "fr"
             - "sv"
 
+export_wall_calendar:
+  name: Export wall calendar (HTML)
+  description: |
+    Writes a printable one-page year calendar to `/config/menstruation_cycle_exports/`
+    (next to the doctor report) and returns it as `html`. Logged period days are solid,
+    expected periods outlined, estimated fertile days and ovulation green, logged
+    everyday symptoms a small dot. Open the file in a browser and print it or use
+    "Print to PDF". Requires the same permission as the other read services.
+  fields:
+    entity_id:
+      required: false
+      example: "sensor.anna_zyklus"
+      selector:
+        entity:
+          domain: sensor
+    profile:
+      required: false
+      example: "anna"
+      selector:
+        text:
+    entry_id:
+      required: false
+      example: "a1b2c3d4e5f6..."
+      selector:
+        text:
+    year:
+      required: false
+      example: 2026
+      description: Calendar year (default is the current year). Expected days are only drawn from today on.
+      selector:
+        number:
+          min: 2000
+          max: 2100
+          mode: box
+    language:
+      required: false
+      example: "de"
+      description: Language of the calendar (de, en, es, fr or sv). Default is the Home Assistant language.
+      selector:
+        select:
+          translation_key: report_language
+          options:
+            - "de"
+            - "en"
+            - "es"
+            - "fr"
+            - "sv"
+    title:
+      required: false
+      example: "Anna 2026"
+      description: Heading of the calendar (default is the profile name and the year).
+      selector:
+        text:
+
 set_profile_visibility:
   name: Set profile visibility
   description: >-

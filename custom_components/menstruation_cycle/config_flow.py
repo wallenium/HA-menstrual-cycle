@@ -68,6 +68,7 @@ from .const import (
     CONF_NOTIFY_CYCLE_HINT,
     CONF_NOTIFY_TEST_HINT,
     CONF_NOTIFY_LH_HINT,
+    CONF_NOTIFY_PATTERN_HINT,
     CONF_NOTIFY_TEMP_REMINDER,
     CONF_NOTIFY_PERIOD_LUTEAL,
     CONF_CALENDAR_PREGNANCY_EVENTS,
@@ -110,6 +111,7 @@ from .const import (
     DEFAULT_NOTIFY_CYCLE_HINT,
     DEFAULT_NOTIFY_TEST_HINT,
     DEFAULT_NOTIFY_LH_HINT,
+    DEFAULT_NOTIFY_PATTERN_HINT,
     DEFAULT_NOTIFY_TEMP_REMINDER,
     DEFAULT_NOTIFY_PERIOD_LUTEAL,
     DEFAULT_CALENDAR_PREGNANCY_EVENTS,
@@ -434,6 +436,7 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
         CONF_NOTIFY_CYCLE_HINT,
         CONF_NOTIFY_TEST_HINT,
         CONF_NOTIFY_LH_HINT,
+        CONF_NOTIFY_PATTERN_HINT,
         CONF_NOTIFY_TEMP_REMINDER,
         CONF_NOTIFY_PERIOD_LUTEAL,
     ),
@@ -647,6 +650,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
             "notify_cycle_hint": bool(self._entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT)),
             "notify_test_hint": bool(self._entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT)),
             "notify_lh_hint": bool(self._entry.options.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT)),
+            "notify_pattern_hint": bool(self._entry.options.get(CONF_NOTIFY_PATTERN_HINT, DEFAULT_NOTIFY_PATTERN_HINT)),
             "notify_temp_reminder": bool(self._entry.options.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER)),
             "notify_period_luteal": bool(self._entry.options.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL)),
             "calendar_pregnancy_events": bool(
@@ -811,6 +815,8 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 lines.append("  - Pregnancy test timing hint")
             if d.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT):
                 lines.append("  - Ovulation test start hint")
+            if d.get(CONF_NOTIFY_PATTERN_HINT, DEFAULT_NOTIFY_PATTERN_HINT):
+                lines.append("  - Heads-up for recurring symptoms")
             if d.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER):
                 lines.append("  - Basal temperature reminder")
             if d.get(CONF_NOTIFY_PERIOD_LUTEAL, DEFAULT_NOTIFY_PERIOD_LUTEAL):
@@ -1007,6 +1013,9 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_NOTIFY_LH_HINT] = bool(
                     user_input.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT)
                 )
+                self._data[CONF_NOTIFY_PATTERN_HINT] = bool(
+                    user_input.get(CONF_NOTIFY_PATTERN_HINT, DEFAULT_NOTIFY_PATTERN_HINT)
+                )
                 self._data[CONF_NOTIFY_TEMP_REMINDER] = bool(
                     user_input.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER)
                 )
@@ -1183,6 +1192,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_NOTIFY_CYCLE_HINT, default=c["notify_cycle_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_TEST_HINT, default=c["notify_test_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_LH_HINT, default=c["notify_lh_hint"]): bool,
+                vol.Optional(CONF_NOTIFY_PATTERN_HINT, default=c["notify_pattern_hint"]): bool,
                 vol.Optional(CONF_NOTIFY_TEMP_REMINDER, default=c["notify_temp_reminder"]): bool,
                 vol.Optional(CONF_NOTIFY_PERIOD_LUTEAL, default=c["notify_period_luteal"]): bool,
                 vol.Optional(
@@ -1537,6 +1547,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFY_CYCLE_HINT: d[CONF_NOTIFY_CYCLE_HINT],
                 CONF_NOTIFY_TEST_HINT: d[CONF_NOTIFY_TEST_HINT],
                 CONF_NOTIFY_LH_HINT: d[CONF_NOTIFY_LH_HINT],
+                CONF_NOTIFY_PATTERN_HINT: d[CONF_NOTIFY_PATTERN_HINT],
                 CONF_NOTIFY_TEMP_REMINDER: d[CONF_NOTIFY_TEMP_REMINDER],
                 CONF_NOTIFY_PERIOD_LUTEAL: d[CONF_NOTIFY_PERIOD_LUTEAL],
                 CONF_CHECKUP_INTERVAL_MONTHS: d[CONF_CHECKUP_INTERVAL_MONTHS],

@@ -79,10 +79,11 @@ The integration can notify you itself (**Configure → Notifications**), no auto
 | Pill reminder | today's pill is not logged yet, plus an optional follow-up after 1-12 hours | Pill reminder (+ time, follow-up) | off, 09:00 |
 | Pill hint | 2 or more days in a row without a logged pill (neutral hint to check the leaflet) | Hint when pill intakes are missing | off |
 | Patch / ring | on each step of the usual 28-day rhythm (patch: change on days 7 and 14, remove on day 21, new patch on day 28; ring: remove on day 21, new ring on day 28), sent with the pill reminder time | Pill reminder (also covers patch and ring) | off |
-| Pregnancy week | pregnancy mode is on: one short, neutral message per week on the weekday of the pregnancy start (current week and calculated due date), with a trimester note when the 2nd or 3rd trimester begins (no medical advice) | Weekly pregnancy message | off |
+| Pregnancy week | pregnancy mode is on: one short, neutral message per week on the weekday of the pregnancy start (current week, calculated due date and, from week 4, a size comparison such as "about the size of a fig"), with a trimester note when the 2nd or 3rd trimester begins (no medical advice) | Weekly pregnancy message | off |
 | Unusual cycle length | with a new period start: the last three cycles were all shorter than 21 or all longer than 38 days, or the last cycle was 10+ days off your average; one neutral hint to mention it at the next check-up (no diagnosis; a streak is announced once) | Hint for an unusual cycle length | off |
 | Pregnancy test timing | 14 days after an ovulation confirmed by your temperature and mucus/cervix logs (for people trying to conceive): one neutral message that a test is meaningful from about now; a rule of thumb, no medical advice; skipped while the fertility notifications are muted for hormonal contraception | Pregnancy test timing hint | off |
 | Ovulation test start | 7 days before the expected ovulation (window of 3 days), once per cycle: one neutral message that now is a good time to start ovulation (LH) tests; not sent once a positive LH test or a confirmed ovulation moved the estimate; skipped while the fertility notifications are muted for hormonal contraception | Hint to start ovulation tests | off |
+| Recurring symptom | up to 2 days before a symptom you logged yourself (headache, migraine, cramps, tender breasts, lower back pain, bloating, breakouts, low energy, poor sleep) usually shows up: one neutral message per symptom and cycle, sent only to your own notification target (never the partner). Needs at least four logged cycles and the symptom at about the same cycle days (±1 day) in at least 60 % of the last six (at least 3). Plain counting of your own entries, no medical advice or diagnosis | Heads-up for recurring symptoms | off |
 | Basal temperature | At the notification time from the start of the fertile window until 3 days after the expected ovulation, as long as no temperature rise is confirmed: reminds you to measure and log your temperature; only if you logged it on at least 3 of the last 7 days and not yet today | Basal temperature reminder | off |
 | Period from luteal phase | Switches the "Period reminder" to the date from your own luteal phase length (needs a confirmed ovulation in the running cycle and learned luteal phases); otherwise the calendar date stays; the overdue hint and repair notice use the same date | Period reminder from the luteal phase | off |
 | Unprotected intercourse | unprotected intercourse was logged for today or one of the last 5 days: one neutral hint to ask a pharmacy or doctor about emergency contraception (no dosing or medical advice; not during pregnancy or menopause) | Hint after unprotected intercourse | off |
@@ -121,12 +122,12 @@ Each profile has a visibility level (options, or the service `set_profile_visibi
 | Cycle-phase image | shown | shown | unavailable |
 | Events and logbook (pill taken, LH positive, ovulation confirmed, product use) | fired | not fired | not fired |
 | Household overview (`get_household_summary`) | all fields | status only | listed as private, no cycle data |
-| Read services (`get_symptom`, `get_full_history`, `get_cycle_predictions`, `compare_current_cycle`, `get_last_cycle_summary`, `get_menarche_info`, `export_doctor_report`) | every user | administrators and automations only | administrators and automations only |
+| Read services (`get_symptom`, `get_full_history`, `get_cycle_predictions`, `compare_current_cycle`, `get_last_cycle_summary`, `get_menarche_info`, `export_doctor_report`, `export_wall_calendar`) | every user | administrators and automations only | administrators and automations only |
 | Calendar feed (ICS) and partner link | when switched on | when switched on | never served |
 
 Always restricted to administrators (and automations), whatever the level: `set_profile_visibility`, `erase_all_history`, `import_full_backup`, `repair_storage`, the feed URL and its renewal in the dashboard, and the options of the integration. Logging periods, symptoms and products stays open to every user. The feed URLs are secret links that need no login: anyone who has one can read what that feed contains, so share them deliberately (see below).
 
-Nothing the integration logs contains health data, diagnostics only report counts, and exported files (doctor report, history, backup) are written readable by the Home Assistant user only, outside the web-served `www` folder.
+Nothing the integration logs contains health data, diagnostics only report counts, and exported files (doctor report, wall calendar, history, backup) are written readable by the Home Assistant user only, outside the web-served `www` folder.
 
 ## Blueprints
 
@@ -189,6 +190,31 @@ Otherwise the integration degrades to low-confidence window output and suppresse
 ### Switching stage later
 
 You can change the onboarding stage at any time in **Settings → Devices & Services → Menstruation Cycle → Configure** (`onboarding_stage` option).
+
+## Printable wall calendar
+
+`menstruation_cycle.export_wall_calendar` writes a one-page year calendar (HTML, A3 landscape for printing, or "Print to PDF" in the browser) to the export folder `/config/menstruation_cycle_exports/`, next to the doctor report, and returns it as `html` as well. Logged period days are solid red, expected periods outlined, estimated fertile days and ovulation green, and days with a logged everyday symptom (pain, digestion, skin, energy, sleep, mood, breasts, urinary, vulva/vagina, hot flashes) get a small dot. Fields: `year` (default: this year), `language` (de, en, es, fr, sv; default: the Home Assistant language) and `title` (default: profile name and year); the profile is chosen like in the other services.
+
+```yaml
+action: menstruation_cycle.export_wall_calendar
+data:
+  entity_id: sensor.menstruation_anna
+  year: 2027
+```
+
+Expected periods, fertile days and ovulation are projected from today on, so the days before today only show what was logged (past cycles have no stored fertile window). The fertile days are estimates and no contraception method; with few logged cycles the calendar says so.
+
+## Pill blister card
+
+`custom:menstruation-pill-card` shows your pill pack as a 28-day blister: taken pills are filled, pause days are gray, days without a logged pill are outlined, and today's pill is highlighted - tap it to log today's intake (the same entry as "Pill taken" in the notification). It reads the `pill_pack` attribute of the cycle sensor, which only exists while the current contraception method is the pill and the profile visibility is "Full". The pack break length comes from the option "Pill break (days per pack)" (0 = continuous use, 28 pills).
+
+```yaml
+type: custom:menstruation-pill-card
+entity: sensor.menstruation_anna   # the cycle sensor of the profile
+title: Pill pack                   # optional
+```
+
+The pack is assumed to start with the last unbroken run of logged intakes, so a profile that began logging in the middle of a pack sees a shifted blister until the next pack.
 
 ## Young Girls Support
 

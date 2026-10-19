@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import importlib.util
 import re
 import sys
@@ -142,9 +143,13 @@ def _entry(**options):
 
 
 def _hass():
+    async def _executor(func, *args):
+        return func(*args)
+
     return SimpleNamespace(
         config=SimpleNamespace(language="en"),
         states=SimpleNamespace(get=lambda entity_id: None),
+        async_add_executor_job=_executor,
     )
 
 
@@ -366,7 +371,18 @@ class PregnancyUpdateTests(unittest.TestCase):
         self.assertEqual(title, "Pregnancy")
         self.assertIn("week 11 of the pregnancy", message)
         self.assertIn("Calculated due date", message)
+        self.assertTrue(message.endswith("Your baby is now about the size of a fig."), message)  # week 11
         self.assertEqual(self.runtime.noncycle_data["notified_pregnancy_week"], 11)
+
+    def test_baby_size_sentence_for_every_week_and_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            for week in range(4, 41):
+                sentence = integration._baby_size_sentence(lang, week)
+                self.assertTrue(sentence and "{" not in sentence, (lang, week))
+            for week in (1, 3, 41):
+                self.assertEqual(integration._baby_size_sentence(lang, week), "", (lang, week))
+        self.assertEqual(integration._baby_size_sentence("de", 8), "Dein Baby ist jetzt so groß wie eine Himbeere.")
+        self.assertEqual(integration._baby_size_sentence("xx", 8), integration._baby_size_sentence("en", 8))
 
     def test_nothing_on_other_weekdays_in_week_one_or_when_already_sent(self) -> None:
         self.assertEqual(self._titles_and_messages(71), [])
@@ -924,6 +940,86 @@ class PregnancyTestHintTests(unittest.TestCase):
             strings["testhint_lh_message"].format(name="A", date="2026-10-01", days=14)
 
 
+class SymptomPatternHintTests(unittest.TestCase):
+    """Opt-in heads-up shortly before a symptom the person logged on about the same cycle days in most recent cycles."""
+
+    def setUp(self) -> None:
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+
+    def _send(self, cycle_day, *, option=True, noncycle=None, language="en", symptom_days=(8, 9), pregnant=False, pain=("headache",)):
+        start = -(cycle_day - 1)  # today is this day of the current 28-day cycle
+        starts = [start - 28 * k for k in range(7)]
+        history = [_iso(s + j) for s in starts for j in range(5)]
+        symptoms = []
+        for s in starts[1:]:  # the finished cycles
+            symptoms += [{"date": _iso(s + d - 1), "pain": list(pain)} for d in symptom_days]
+            symptoms += [{"date": _iso(s + d - 1), "mood": "ok"} for d in (2, 3)]
+        extra = {"pregnancy_data": {"is_pregnant": True, "start_date": _iso(-30)}} if pregnant else {}
+        runtime = _runtime(history=history, symptom_history=symptoms, noncycle_data=dict(noncycle or {}), **extra)
+        entry = _entry(**{
+            const.CONF_NOTIFY_PERIOD_ENABLED: False, const.CONF_NOTIFY_FERTILE_ENABLED: False,
+            const.CONF_NOTIFY_OVULATION_ENABLED: False, const.CONF_NOTIFY_RECAP_ENABLED: False,
+            const.CONF_NOTIFY_OVERDUE_ENABLED: False, const.CONF_NOTIFY_CHECKUP_ENABLED: False,
+            const.CONF_NOTIFY_PATTERN_HINT: option,
+        })
+        hass, sent = _hass(), _Sent()
+        hass.config.language = language
+        with patch.object(integration, "_async_send_notification", sent), patch.object(
+            integration, "_async_save_and_notify", AsyncMock()
+        ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        self.runtime, self.start = runtime, start
+        return [(title, message) for title, message, _ in sent.calls]
+
+    def test_heads_up_shortly_before_the_usual_window_once_per_cycle(self) -> None:
+        (title, message), = self._send(7)  # the window starts on cycle day 8 = tomorrow
+        self.assertEqual(title, "Recurring symptom")
+        for part in ("headaches", "on cycle days 8-9", "6 of your last 6 cycles", "starts tomorrow", "not a diagnosis"):
+            self.assertIn(part, message)
+        self.assertEqual(self.runtime.noncycle_data["notified_pattern_hint"], {"headache": _iso(self.start)})
+        self.assertIn("starts in 2 days", self._send(6)[0][1])  # two days ahead is still in the lead time
+        done = {"notified_pattern_hint": {"headache": _iso(-6)}}
+        self.assertEqual(self._send(7, noncycle=done), [])
+
+    def test_one_message_per_run_the_next_symptom_follows(self) -> None:
+        (title, first), = self._send(7, pain=("headache", "cramps"))
+        self.assertIn("cramps", first)  # 6 of 6 each; ties are ordered by symptom key
+        done = dict(self.runtime.noncycle_data)
+        (title, second), = self._send(7, pain=("headache", "cramps"), noncycle=done)
+        self.assertIn("headaches", second)
+        both = dict(self.runtime.noncycle_data)
+        self.assertEqual(self._send(7, pain=("headache", "cramps"), noncycle=both), [])
+
+    def test_nothing_too_early_or_after_the_window_started_long_ago(self) -> None:
+        self.assertEqual(self._send(4), [])
+        self.assertEqual(self._send(10), [])
+
+    def test_off_by_default_and_silent_while_pregnant(self) -> None:
+        self.assertEqual(self._send(7, option=False), [])
+        self.assertEqual(self._send(7, pregnant=True), [])
+        # life stages without cycles keep their history but get no cycle heads-up
+        real = integration.cached_cycle_model
+        for state in ("menopause", "postpartum", "pre_menarche", "menarche"):
+            with patch.object(integration, "cached_cycle_model", lambda *a, state=state, **k: dataclasses.replace(real(*a, **k), state=state)):
+                self.assertEqual(self._send(7), [], state)
+
+    def test_no_pattern_no_message(self) -> None:
+        self.assertEqual(self._send(7, symptom_days=()), [])
+
+    def test_texts_exist_and_format_in_every_language(self) -> None:
+        for lang in ("en", "de", "fr", "es", "sv"):
+            strings = integration._notify_strings(lang)
+            for symptom in sys.modules[f"{_PKG}.model"].PATTERN_SYMPTOMS:
+                self.assertTrue(strings[f"pattern_symptom_{symptom}"], (lang, symptom))
+            for key in ("pattern_window_start", "pattern_window_end", "pattern_when_n"):
+                strings[key].format(first=8, last=9, days=2)
+            strings["pattern_message"].format(name="A", symptom="x", window="y", hits=5, total=6, when="z")
+            self.assertTrue(all(strings[k] for k in (
+                "pattern_title", "pattern_window_start_one", "pattern_window_end_one", "pattern_window_end_day",
+                "pattern_when_0", "pattern_when_1")), lang)
+        self.assertIn("Kopfschmerzen", self._send(7, language="de")[0][1])
+
+
 class OvulationTestAndTemperatureHintTests(unittest.TestCase):
     """Opt-in hint to start LH tests and opt-in basal temperature reminder around the expected ovulation."""
 
@@ -1118,6 +1214,65 @@ class DoctorReportResponseTests(unittest.TestCase):
             self.assertIn("<html", result["html"].lower())
             self.assertEqual(Path(result["path"]).read_text(encoding="utf-8"), result["html"])
             self.assertEqual(Path(result["path"]).name, result["filename"])
+
+
+class WallCalendarServiceTests(unittest.TestCase):
+    """export_wall_calendar writes the year poster next to the doctor report and returns it."""
+
+    def _export(self, data, *, language="en", history_offsets=None):
+        import tempfile
+
+        NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
+        offsets = history_offsets if history_offsets is not None else [-28 * k - j for k in range(7) for j in range(5)]
+        symptoms = [{"date": _iso(-3), "pain": ["cramps"]}]
+        runtime = self.runtime = _runtime(profile="anna", history=[_iso(o) for o in offsets], symptom_history=symptoms)
+        with tempfile.TemporaryDirectory() as tmp:
+            hass = _hass()
+            hass.config.path = lambda *parts: str(Path(tmp, *parts))
+            hass.config.language = language
+            hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: _entry())
+
+            async def _executor(func, *args):
+                return func(*args)
+
+            hass.async_add_executor_job = _executor
+            with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+                integration, "_entry_id_for_runtime", lambda h, r: "e1"
+            ), patch.object(integration.dt_util, "now", lambda: NOW[0]):
+                result = _run(integration._async_handle_export_wall_calendar(hass, SimpleNamespace(data=data)))
+            written = Path(result["path"]).read_text(encoding="utf-8")
+        self.assertEqual(written, result["html"])
+        return result
+
+    @staticmethod
+    def _count(html, cls):
+        return len(re.findall(rf'<td class="[^"]*\b{cls}\b[^"]*">', html))
+
+    def test_current_year_has_logged_expected_and_fertile_days(self) -> None:
+        result = self._export({})
+        self.assertEqual(set(result), {"filename", "path", "html"})
+        self.assertEqual(result["filename"], "wall_calendar_anna_2026.html")
+        html = result["html"]
+        self.assertIn(f"<title>{self.runtime.friendly_name} 2026</title>", html)
+        logged_2026 = sum(1 for k in range(7) for j in range(5) if (NOW[0].date() + timedelta(days=-28 * k - j)).year == 2026)
+        self.assertEqual(self._count(html, "period"), logged_2026)
+        self.assertGreater(self._count(html, "predicted"), 0)
+        self.assertGreater(self._count(html, "fertile"), 0)
+        self.assertGreater(self._count(html, "ovulation"), 0)
+        self.assertEqual(html.count('class="dot"'), 1)
+        self.assertEqual(self._count(html, "today"), 1)
+
+    def test_past_years_show_only_what_was_logged(self) -> None:
+        result = self._export({const.SERVICE_FIELD_YEAR: 2025, const.SERVICE_FIELD_TITLE: "Rückblick"}, history_offsets=[-300, -299, -298])
+        html = result["html"]
+        self.assertEqual(result["filename"], "wall_calendar_anna_2025.html")
+        self.assertIn("<title>Rückblick</title>", html)
+        self.assertEqual((self._count(html, "predicted"), self._count(html, "fertile"), self._count(html, "today")), (0, 0, 0))
+
+    def test_language_defaults_to_home_assistant_and_can_be_chosen(self) -> None:
+        self.assertIn("Oktober", self._export({}, language="de")["html"])
+        self.assertIn("octobre", self._export({const.SERVICE_FIELD_LANGUAGE: "fr"}, language="de")["html"])
+        self.assertIn("October", self._export({}, language="pt-BR")["html"])
 
 
 class UnprotectedHintTests(unittest.TestCase):

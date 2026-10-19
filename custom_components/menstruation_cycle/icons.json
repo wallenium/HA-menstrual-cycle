@@ -127,6 +127,9 @@
     "export_doctor_report": {
       "service": "mdi:stethoscope"
     },
+    "export_wall_calendar": {
+      "service": "mdi:calendar-month"
+    },
     "set_profile_visibility": {
       "service": "mdi:eye-lock"
     },

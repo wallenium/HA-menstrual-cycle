@@ -57,6 +57,10 @@ from .const import (
     STATE_PMS,
     STATE_NEUTRAL,
     STATE_PRIVATE,
+    STATE_MENARCHE,
+    STATE_MENOPAUSE,
+    STATE_POSTPARTUM,
+    STATE_PRE_MENARCHE,
     STATE_PREGNANT,
     VISIBILITY_LEVEL_FULL,
     VISIBILITY_LEVEL_PRIVATE,
@@ -105,6 +109,7 @@ from .const import (
     CONF_NOTIFY_CYCLE_HINT,
     CONF_NOTIFY_TEST_HINT,
     CONF_NOTIFY_LH_HINT,
+    CONF_NOTIFY_PATTERN_HINT,
     CONF_NOTIFY_TEMP_REMINDER,
     CONF_NOTIFY_PERIOD_LUTEAL,
     SUPPLY_CHECK_LEAD_DAYS,
@@ -117,6 +122,7 @@ from .const import (
     DEFAULT_NOTIFY_CYCLE_HINT,
     DEFAULT_NOTIFY_TEST_HINT,
     DEFAULT_NOTIFY_LH_HINT,
+    DEFAULT_NOTIFY_PATTERN_HINT,
     DEFAULT_NOTIFY_TEMP_REMINDER,
     DEFAULT_NOTIFY_PERIOD_LUTEAL,
     TEST_HINT_DAYS_AFTER_OVULATION,
@@ -240,6 +246,9 @@ from .const import (
     SERVICE_FIELD_PREFS,
     SERVICE_SAVE_TIMER_STATE,
     SERVICE_EXPORT_DOCTOR_REPORT,
+    SERVICE_EXPORT_WALL_CALENDAR,
+    SERVICE_FIELD_TITLE,
+    SERVICE_FIELD_YEAR,
     SERVICE_FIELD_DAYS_BACK,
     SERVICE_FIELD_FUTURE_CYCLES,
     SERVICE_FIELD_PATIENT_NAME,
@@ -294,6 +303,7 @@ from .model import (
     build_cycle_predictions,
     cached_cycle_model,
     forecast_view_stage,
+    project_range_windows,
     cycle_pattern_signals,
     cycle_wellness_score,
     current_cycle_phase,
@@ -310,6 +320,12 @@ from .statistics import (
     generate_doctor_report_html,
 )
 from .storage import MenstruationStorage
+from .wall_calendar import (
+    WALL_CALENDAR_LANGUAGES,
+    generate_wall_calendar_html,
+    symptom_days as wall_calendar_symptom_days,
+    windows_to_days,
+)
 from . import repairs as _repairs_preload  # noqa: F401 - import at load time (executor), not lazily on the event loop
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
@@ -410,6 +426,7 @@ CARD_FILES = [
     "menstruation-cycle-history-card-row.js",
     "menstruation-statistics-card.js",
     "menstruation-support-card.js",
+    "menstruation-pill-card.js",
     DASHBOARD_PANEL_FILE,
 ]
 LOVELACE_RESOURCES = [
@@ -1325,6 +1342,25 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "testhint_lh_message": "{name}: it is {days} days since the ovulation estimated from your positive LH test ({date}). A pregnancy test is meaningful from about now. This is only a rule of thumb, not medical advice.",
         "lhhint_title": "Ovulation tests",
         "lhhint_message": "{name}: ovulation is expected in about {days} days ({date}). If you use ovulation (LH) tests, now is a good time to start testing. This is only a rule of thumb, not medical advice.",
+        "pattern_title": "Recurring symptom",
+        "pattern_message": "{name}: you often logged {symptom} {window} ({hits} of your last {total} cycles). That window starts {when}. A rough pattern from your own entries, not a diagnosis.",
+        "pattern_window_start": "on cycle days {first}-{last}",
+        "pattern_window_start_one": "on cycle day {first}",
+        "pattern_window_end": "about {first}-{last} days before your period",
+        "pattern_window_end_one": "about {first} days before your period",
+        "pattern_window_end_day": "on the day before your period",
+        "pattern_when_0": "today",
+        "pattern_when_1": "tomorrow",
+        "pattern_when_n": "in {days} days",
+        "pattern_symptom_headache": "headaches",
+        "pattern_symptom_migraine": "migraines",
+        "pattern_symptom_cramps": "cramps",
+        "pattern_symptom_tender_breasts": "tender breasts",
+        "pattern_symptom_lower_back": "lower back pain",
+        "pattern_symptom_bloating": "bloating",
+        "pattern_symptom_breakouts": "breakouts",
+        "pattern_symptom_low_energy": "low energy",
+        "pattern_symptom_poor_sleep": "poor sleep",
         "tempreminder_title": "Basal temperature",
         "tempreminder_message": "{name}: the fertile window is near (ovulation expected around {date}). Please measure and log your basal body temperature today.",
         "overdue_title": "Period overdue",
@@ -1379,6 +1415,25 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "testhint_lh_message": "{name}: Seit dem aus deinem positiven LH-Test geschätzten Eisprung ({date}) sind {days} Tage vergangen. Ein Schwangerschaftstest ist ungefähr ab jetzt aussagekräftig. Das ist nur ein Richtwert, keine medizinische Beratung.",
         "lhhint_title": "Ovulationstests",
         "lhhint_message": "{name}: Der Eisprung wird in etwa {days} Tagen erwartet ({date}). Wenn du Ovulationstests (LH) verwendest, ist jetzt ein guter Zeitpunkt, mit dem Testen zu beginnen. Das ist nur ein Richtwert, keine medizinische Beratung.",
+        "pattern_title": "Wiederkehrendes Symptom",
+        "pattern_message": "{name}: Du hast {symptom} oft {window} eingetragen ({hits} von deinen letzten {total} Zyklen). Dieses Zeitfenster beginnt {when}. Nur ein grobes Muster aus deinen eigenen Einträgen, keine Diagnose.",
+        "pattern_window_start": "an den Zyklustagen {first}-{last}",
+        "pattern_window_start_one": "am Zyklustag {first}",
+        "pattern_window_end": "etwa {first}-{last} Tage vor deiner Periode",
+        "pattern_window_end_one": "etwa {first} Tage vor deiner Periode",
+        "pattern_window_end_day": "am Tag vor deiner Periode",
+        "pattern_when_0": "heute",
+        "pattern_when_1": "morgen",
+        "pattern_when_n": "in {days} Tagen",
+        "pattern_symptom_headache": "Kopfschmerzen",
+        "pattern_symptom_migraine": "Migräne",
+        "pattern_symptom_cramps": "Krämpfe",
+        "pattern_symptom_tender_breasts": "Brustspannen",
+        "pattern_symptom_lower_back": "Rückenschmerzen",
+        "pattern_symptom_bloating": "Blähbauch",
+        "pattern_symptom_breakouts": "Hautunreinheiten",
+        "pattern_symptom_low_energy": "wenig Energie",
+        "pattern_symptom_poor_sleep": "schlechten Schlaf",
         "tempreminder_title": "Basaltemperatur",
         "tempreminder_message": "{name}: Das fruchtbare Fenster rückt näher (Eisprung etwa am {date}). Bitte miss heute deine Basaltemperatur und trage sie ein.",
         "overdue_title": "Periode überfällig",
@@ -1433,6 +1488,25 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "testhint_lh_message": "{name} : {days} jours se sont écoulés depuis l'ovulation estimée d'après votre test LH positif ({date}). Un test de grossesse est fiable à partir d'environ ce moment. Ce n'est qu'un repère, pas un avis médical.",
         "lhhint_title": "Tests d'ovulation",
         "lhhint_message": "{name} : l'ovulation est attendue dans environ {days} jours ({date}). Si vous utilisez des tests d'ovulation (LH), c'est le bon moment pour commencer. Ce n'est qu'un repère, pas un avis médical.",
+        "pattern_title": "Symptôme récurrent",
+        "pattern_message": "{name} : vous avez souvent noté {symptom} {window} ({hits} de vos {total} derniers cycles). Cette période commence {when}. Simple tendance tirée de vos propres entrées, pas un diagnostic.",
+        "pattern_window_start": "aux jours {first}-{last} du cycle",
+        "pattern_window_start_one": "au jour {first} du cycle",
+        "pattern_window_end": "environ {first}-{last} jours avant vos règles",
+        "pattern_window_end_one": "environ {first} jours avant vos règles",
+        "pattern_window_end_day": "la veille de vos règles",
+        "pattern_when_0": "aujourd'hui",
+        "pattern_when_1": "demain",
+        "pattern_when_n": "dans {days} jours",
+        "pattern_symptom_headache": "des maux de tête",
+        "pattern_symptom_migraine": "des migraines",
+        "pattern_symptom_cramps": "des crampes",
+        "pattern_symptom_tender_breasts": "des seins sensibles",
+        "pattern_symptom_lower_back": "des douleurs lombaires",
+        "pattern_symptom_bloating": "des ballonnements",
+        "pattern_symptom_breakouts": "des boutons",
+        "pattern_symptom_low_energy": "peu d'énergie",
+        "pattern_symptom_poor_sleep": "un mauvais sommeil",
         "tempreminder_title": "Température basale",
         "tempreminder_message": "{name} : la fenêtre de fertilité approche (ovulation attendue vers le {date}). Pensez à mesurer et enregistrer votre température basale aujourd'hui.",
         "overdue_title": "Règles en retard",
@@ -1487,6 +1561,25 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "testhint_lh_message": "{name}: han pasado {days} días desde la ovulación estimada a partir de tu prueba LH positiva ({date}). Una prueba de embarazo es fiable aproximadamente a partir de ahora. Es solo una pauta orientativa, no un consejo médico.",
         "lhhint_title": "Pruebas de ovulación",
         "lhhint_message": "{name}: se espera la ovulación en unos {days} días ({date}). Si usas pruebas de ovulación (LH), ahora es un buen momento para empezar. Es solo una pauta orientativa, no un consejo médico.",
+        "pattern_title": "Síntoma recurrente",
+        "pattern_message": "{name}: has anotado a menudo {symptom} {window} ({hits} de tus últimos {total} ciclos). Ese intervalo empieza {when}. Es solo un patrón aproximado de tus propios registros, no un diagnóstico.",
+        "pattern_window_start": "en los días {first}-{last} del ciclo",
+        "pattern_window_start_one": "en el día {first} del ciclo",
+        "pattern_window_end": "unos {first}-{last} días antes de la regla",
+        "pattern_window_end_one": "unos {first} días antes de la regla",
+        "pattern_window_end_day": "el día antes de la regla",
+        "pattern_when_0": "hoy",
+        "pattern_when_1": "mañana",
+        "pattern_when_n": "en {days} días",
+        "pattern_symptom_headache": "dolor de cabeza",
+        "pattern_symptom_migraine": "migraña",
+        "pattern_symptom_cramps": "calambres",
+        "pattern_symptom_tender_breasts": "sensibilidad en los pechos",
+        "pattern_symptom_lower_back": "dolor lumbar",
+        "pattern_symptom_bloating": "hinchazón",
+        "pattern_symptom_breakouts": "granitos",
+        "pattern_symptom_low_energy": "poca energía",
+        "pattern_symptom_poor_sleep": "mal sueño",
         "tempreminder_title": "Temperatura basal",
         "tempreminder_message": "{name}: la ventana fértil se acerca (ovulación esperada hacia el {date}). Mide y registra hoy tu temperatura basal.",
         "overdue_title": "Menstruación retrasada",
@@ -1541,6 +1634,25 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "testhint_lh_message": "{name}: Det har gått {days} dagar sedan den ägglossning som uppskattats utifrån ditt positiva LH-test ({date}). Ett graviditetstest är ungefär från nu tillförlitligt. Det är bara en tumregel, inget medicinskt råd.",
         "lhhint_title": "Ovulationstester",
         "lhhint_message": "{name}: Ägglossning förväntas om cirka {days} dagar ({date}). Om du använder ovulationstester (LH) är det nu en bra tidpunkt att börja. Det är bara en tumregel, inget medicinskt råd.",
+        "pattern_title": "Återkommande symtom",
+        "pattern_message": "{name}: du har ofta loggat {symptom} {window} ({hits} av dina senaste {total} cykler). Det fönstret börjar {when}. Ett grovt mönster från dina egna anteckningar, ingen diagnos.",
+        "pattern_window_start": "på cykeldagarna {first}-{last}",
+        "pattern_window_start_one": "på cykeldag {first}",
+        "pattern_window_end": "ungefär {first}-{last} dagar före mensen",
+        "pattern_window_end_one": "ungefär {first} dagar före mensen",
+        "pattern_window_end_day": "dagen före mensen",
+        "pattern_when_0": "i dag",
+        "pattern_when_1": "i morgon",
+        "pattern_when_n": "om {days} dagar",
+        "pattern_symptom_headache": "huvudvärk",
+        "pattern_symptom_migraine": "migrän",
+        "pattern_symptom_cramps": "kramper",
+        "pattern_symptom_tender_breasts": "ömma bröst",
+        "pattern_symptom_lower_back": "ryggvärk",
+        "pattern_symptom_bloating": "uppsvälldhet",
+        "pattern_symptom_breakouts": "finnar",
+        "pattern_symptom_low_energy": "lite energi",
+        "pattern_symptom_poor_sleep": "dålig sömn",
         "tempreminder_title": "Basaltemperatur",
         "tempreminder_message": "{name}: Det fertila fönstret närmar sig (ägglossning väntas runt {date}). Mät och registrera din basaltemperatur idag.",
         "overdue_title": "Mensen är försenad",
@@ -1559,6 +1671,22 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
 def _notify_strings(lang: str | None) -> dict[str, str]:
     key = str(lang or "en").strip().lower()[:2]
     return _NOTIFY_STRINGS.get(key, _NOTIFY_STRINGS["en"])
+
+
+def _baby_size_sentence(lang: str | None, week: int) -> str:
+    """One size-comparison sentence for a pregnancy week (4-40), read from the dashboard translations so the card and
+    the weekly message share one text; "" when there is none (weeks before 4, or a language without it falls back to en)."""
+    key = str(lang or "en").strip().lower()[:2]
+    for code in (key, "en"):
+        try:
+            texts = json.loads((WWW_DIR / "translations" / f"{code}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        item = texts.get(f"baby_size_w{week}")
+        sentence = texts.get("dashboard_baby_size_sentence")
+        if item and sentence:
+            return str(sentence).replace("{item}", str(item))
+    return ""
 
 
 async def _async_check_and_send_notifications(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
@@ -1600,6 +1728,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     cycle_hint_enabled = bool(entry.options.get(CONF_NOTIFY_CYCLE_HINT, DEFAULT_NOTIFY_CYCLE_HINT))
     test_hint_enabled = bool(entry.options.get(CONF_NOTIFY_TEST_HINT, DEFAULT_NOTIFY_TEST_HINT))
     lh_hint_enabled = bool(entry.options.get(CONF_NOTIFY_LH_HINT, DEFAULT_NOTIFY_LH_HINT))
+    pattern_hint_enabled = bool(entry.options.get(CONF_NOTIFY_PATTERN_HINT, DEFAULT_NOTIFY_PATTERN_HINT))
     temp_reminder_enabled = bool(entry.options.get(CONF_NOTIFY_TEMP_REMINDER, DEFAULT_NOTIFY_TEMP_REMINDER))
     if not any(
         (
@@ -1613,6 +1742,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             cycle_hint_enabled,
             test_hint_enabled,
             lh_hint_enabled,
+            pattern_hint_enabled,
             temp_reminder_enabled,
         )
     ):
@@ -1633,6 +1763,8 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         cycle_length_hint,
         next_checkup_due,
         pregnancy_week_notification,
+        recurring_symptom_patterns,
+        upcoming_symptom_patterns,
     )
 
     today = dt_util.now().date()
@@ -1818,6 +1950,48 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
             runtime.noncycle_data["notified_lh_hint"] = model.grouped_starts[-1]
             notified_something = True
 
+    # Heads-up for a symptom the person logged around the same time in most recent cycles: one message at a time, once per
+    # symptom and cycle, only to their own target (never the partner), neutral wording, no medical claim.
+    if (
+        pattern_hint_enabled
+        and model.grouped_starts
+        and model.state not in (STATE_PREGNANT, STATE_POSTPARTUM, STATE_MENOPAUSE, STATE_PRE_MENARCHE, STATE_MENARCHE)
+    ):
+        cycle_start = date.fromisoformat(model.grouped_starts[-1])
+        next_start = date.fromisoformat(model.next_predicted_start) if model.next_predicted_start else None
+        notified = runtime.noncycle_data.get("notified_pattern_hint")
+        notified = notified if isinstance(notified, dict) else {}
+        patterns = recurring_symptom_patterns(
+            runtime.symptom_history, model.grouped_starts, today, model.period_duration_days
+        )
+        for pattern in upcoming_symptom_patterns(patterns, today, cycle_start, next_start):
+            if notified.get(pattern["symptom"]) == cycle_start.isoformat():
+                continue
+            first, last = pattern["first"], pattern["last"]
+            if pattern["anchor"] == "start":
+                window = strings["pattern_window_start" if first != last else "pattern_window_start_one"]
+            elif first == last == 1:
+                window = strings["pattern_window_end_day"]
+            else:
+                window = strings["pattern_window_end" if first != last else "pattern_window_end_one"]
+            days = pattern["in_days"]
+            when = strings[f"pattern_when_{days}"] if days < 2 else strings["pattern_when_n"]
+            await _send(
+                strings["pattern_title"],
+                strings["pattern_message"].format(
+                    name=runtime.friendly_name,
+                    symptom=strings[f"pattern_symptom_{pattern['symptom']}"],
+                    window=window.format(first=first, last=last),
+                    hits=pattern["cycles_seen"],
+                    total=pattern["cycles_total"],
+                    when=when.format(days=days),
+                ),
+            )
+            notified[pattern["symptom"]] = cycle_start.isoformat()
+            runtime.noncycle_data["notified_pattern_hint"] = notified
+            notified_something = True
+            break
+
     # Basal temperature reminder: around the expected ovulation, until a temperature rise is confirmed, for people who
     # log their temperature regularly and have not logged today's value yet.
     if (
@@ -1893,10 +2067,21 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         )
         if due is not None:
             key = "pregnancy_trimester_message" if due["trimester"] else "pregnancy_week_message"
+            size = await hass.async_add_executor_job(_baby_size_sentence, hass.config.language, due["week"])
             await _send(
                 strings["pregnancy_title"],
-                strings[key].format(
-                    name=runtime.friendly_name, week=due["week"], trimester=due["trimester"], date=model.due_date or "?"
+                " ".join(
+                    part
+                    for part in (
+                        strings[key].format(
+                            name=runtime.friendly_name,
+                            week=due["week"],
+                            trimester=due["trimester"],
+                            date=model.due_date or "?",
+                        ),
+                        size,
+                    )
+                    if part
                 ),
             )
             runtime.noncycle_data["notified_pregnancy_week"] = due["week"]
@@ -2721,6 +2906,9 @@ def _register_domain_services(hass: HomeAssistant) -> None:
     async def async_export_doctor_report(call: ServiceCall) -> dict[str, Any]:
         return await _async_handle_export_doctor_report(hass, call)
 
+    async def async_export_wall_calendar(call: ServiceCall) -> dict[str, Any]:
+        return await _async_handle_export_wall_calendar(hass, call)
+
     async def async_set_profile_visibility(call: ServiceCall) -> None:
         await _async_handle_set_profile_visibility(hass, call)
 
@@ -3127,6 +3315,20 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         _export_doctor_report_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
     hass.services.async_register(
         DOMAIN, SERVICE_EXPORT_DOCTOR_REPORT, async_export_doctor_report, **_export_doctor_report_register_kwargs
+    )
+
+    _export_wall_calendar_register_kwargs: dict[str, Any] = {
+        "schema": vol.Schema({
+            **common_profile_field,
+            vol.Optional(SERVICE_FIELD_YEAR): vol.All(vol.Coerce(int), vol.Range(min=2000, max=2100)),
+            vol.Optional(SERVICE_FIELD_LANGUAGE): vol.In(list(WALL_CALENDAR_LANGUAGES)),
+            vol.Optional(SERVICE_FIELD_TITLE): cv.string,
+        })
+    }
+    if SupportsResponse is not None:
+        _export_wall_calendar_register_kwargs["supports_response"] = SupportsResponse.OPTIONAL
+    hass.services.async_register(
+        DOMAIN, SERVICE_EXPORT_WALL_CALENDAR, async_export_wall_calendar, **_export_wall_calendar_register_kwargs
     )
 
     hass.services.async_register(
@@ -3911,6 +4113,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
             SERVICE_CREATE_PERIODS_FROM_BLEEDING,
             SERVICE_EXPORT_DOCTOR_REPORT,
+            SERVICE_EXPORT_WALL_CALENDAR,
             SERVICE_GET_CYCLE_PREDICTIONS,
             SERVICE_GET_DASHBOARD_PREFS,
             SERVICE_GET_HOUSEHOLD_SUMMARY,
@@ -4084,6 +4287,66 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
         runtime.noncycle_data["doctor_report_exported"] = True
         await _async_save_and_notify(hass, runtime)
 
+    return {"filename": target_path.name, "path": str(target_path), "html": html_content}
+
+
+async def _async_handle_export_wall_calendar(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Write a printable one-page year calendar (HTML) to the export folder, next to the doctor report.
+
+    Logged period days and symptom dots come from the history; the expected period, fertile days and ovulation are
+    the same projections the calendar entity uses, from today on (past cycles have no stored fertile window).
+    """
+    runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
+    entry = hass.config_entries.async_get_entry(_entry_id_for_runtime(hass, runtime))
+    options = entry.options if entry is not None else {}
+    today = dt_util.now().date()
+    year = int(call.data.get(SERVICE_FIELD_YEAR) or today.year)
+    language = str(call.data.get(SERVICE_FIELD_LANGUAGE) or hass.config.language or "en").strip().lower()[:2]
+    title = str(call.data.get(SERVICE_FIELD_TITLE) or "").strip() or f"{runtime.friendly_name} {year}"
+
+    model = await hass.async_add_executor_job(
+        partial(
+            cached_cycle_model,
+            runtime,
+            today,
+            nfp_mode=options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            onboarding_stage=forecast_view_stage(getattr(runtime, "onboarding_stage", None)),
+        )
+    )
+    windows = None
+    if year >= today.year:
+        windows = project_range_windows(
+            model.period_forecast,
+            model.fertility_forecast,
+            max(today, date(year, 1, 1)).isoformat(),
+            date(year, 12, 31).isoformat(),
+            model.avg_cycle_length,
+        )
+    expected, fertile, ovulation = windows_to_days(windows, year)
+    logged = {date.fromisoformat(item) for item in runtime.history if str(item).startswith(f"{year}-")}
+    html_content = generate_wall_calendar_html(
+        year,
+        language,
+        title,
+        logged,
+        expected,
+        fertile,
+        ovulation,
+        wall_calendar_symptom_days(runtime.symptom_history, year),
+        today,
+        rough_estimate=not (model.prediction_gating or {}).get("precision_allowed"),
+    )
+
+    target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
+    target_path = target_dir / f"{_sanitize_export_filename(f'wall_calendar_{runtime.profile}_{year}')}.html"
+
+    def _write_file() -> None:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        _write_private_text(target_path, html_content)
+
+    await hass.async_add_executor_job(_write_file)
+    _LOGGER.info("Exported wall calendar %s for profile '%s'", year, runtime.profile)
     return {"filename": target_path.name, "path": str(target_path), "html": html_content}
 
 

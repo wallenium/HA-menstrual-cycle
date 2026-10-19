@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -678,6 +679,159 @@ def current_cycle_phase(model: "CycleModel", today: date) -> str | None:
         fertile_window_end_iso=model.fertile_window_end,
         ovulation_day_iso=model.ovulation_day,
     )
+
+
+# --- Recurring symptom patterns ("heads-up before it usually starts") -------------------------------------------------
+# symptom key -> (symptom field, option value). Only a few everyday symptoms; the keys are also the label keys of the
+# notification texts.
+PATTERN_SYMPTOMS: dict[str, tuple[str, str]] = {
+    "headache": ("pain", "headache"),
+    "migraine": ("pain", "migraine"),
+    "cramps": ("pain", "cramps"),
+    "tender_breasts": ("pain", "tender_breasts"),
+    "lower_back": ("pain", "lower_back"),
+    "bloating": ("digestion", "bloating"),
+    "breakouts": ("skin", "breakouts"),
+    "low_energy": ("energy_level", "low"),
+    "poor_sleep": ("sleep_quality", "poor"),
+}
+PATTERN_MAX_CYCLES = 6  # look at the last finished cycles
+PATTERN_MIN_CYCLES = 4  # ... but only judge with at least this many that were logged at all
+PATTERN_MIN_LOGGED_DAYS = 3  # a cycle with fewer logged days says nothing about "no symptom"
+PATTERN_SHARE = 0.6  # the symptom must show up in at least this share of those cycles (and in 3)
+PATTERN_TOLERANCE_DAYS = 1  # +/- days around a day that still count as "about the same time"
+PATTERN_ANCHOR_SWITCH_DAY = 14  # up to this cycle day count from the period start, later days back from the next one
+PATTERN_LEAD_DAYS = 2  # warn this many days before a usual window starts
+
+
+def _symptom_has(entry: dict[str, Any], field: str, value: str) -> bool:
+    raw = entry.get(field)
+    return value in raw if isinstance(raw, list) else str(raw) == value
+
+
+def recurring_symptom_patterns(
+    symptom_history: list[dict[str, Any]] | None,
+    grouped_starts: list[str],
+    today: date,
+    period_duration_days: int = DEFAULT_PERIOD_DURATION_DAYS,
+) -> list[dict[str, Any]]:
+    """Symptoms that came back at about the same point in most of the last finished cycles.
+
+    The point is a cycle day while it is in the first half (counted from the period start) and "days before the
+    next period" in the second half, because late symptoms follow the next period more closely than the last one.
+    Days of the period itself are skipped (cramps on day 1 are no news). Plain counting over the person's own
+    entries - no medical claim, no model.
+
+    Each result: symptom, anchor ("start" / "end"), first/last (cycle days, or days before the period, larger
+    number first), cycles_seen, cycles_total.
+    """
+    starts: list[date] = []
+    for raw in grouped_starts:
+        try:
+            starts.append(date.fromisoformat(str(raw)))
+        except ValueError:
+            continue
+    starts = sorted(set(d for d in starts if d <= today))
+    entries = [e for e in (symptom_history or []) if isinstance(e, dict)]
+    by_date: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        by_date[str(entry.get("date"))] = entry
+
+    # the last finished cycles with a plausible length and enough logged days
+    cycles: list[tuple[date, int]] = []
+    for begin, following in zip(starts, starts[1:]):
+        length = (following - begin).days
+        if not 18 <= length <= 60:
+            continue
+        logged = sum(1 for offset in range(length) if (begin + timedelta(days=offset)).isoformat() in by_date)
+        if logged >= PATTERN_MIN_LOGGED_DAYS:
+            cycles.append((begin, length))
+    cycles = cycles[-PATTERN_MAX_CYCLES:]
+    if len(cycles) < PATTERN_MIN_CYCLES:
+        return []
+    need = max(3, math.ceil(PATTERN_SHARE * len(cycles)))
+
+    patterns: list[dict[str, Any]] = []
+    for key, (field, value) in PATTERN_SYMPTOMS.items():
+        per_cycle: list[dict[str, set[int]]] = []
+        for begin, length in cycles:
+            positions: dict[str, set[int]] = {"start": set(), "end": set()}
+            for offset in range(length):
+                entry = by_date.get((begin + timedelta(days=offset)).isoformat())
+                if entry is None or not _symptom_has(entry, field, value):
+                    continue
+                cycle_day = offset + 1
+                if cycle_day <= PATTERN_ANCHOR_SWITCH_DAY:
+                    if cycle_day > period_duration_days:
+                        positions["start"].add(cycle_day)
+                else:
+                    positions["end"].add(-(length - cycle_day + 1))
+            per_cycle.append(positions)
+
+        best: dict[str, Any] | None = None
+        for anchor in ("start", "end"):
+            candidates = sorted({pos for cycle in per_cycle for pos in cycle[anchor]})
+            qualifying: list[tuple[int, int]] = []  # (position, cycles with the symptom about then)
+            for pos in candidates:
+                count = sum(
+                    1
+                    for cycle in per_cycle
+                    if any(abs(other - pos) <= PATTERN_TOLERANCE_DAYS for other in cycle[anchor])
+                )
+                if count >= need:
+                    qualifying.append((pos, count))
+            run: list[tuple[int, int]] = []
+            for item in qualifying + [(10**6, 0)]:
+                if run and item[0] - run[-1][0] > 1:
+                    peak = max(c for _, c in run)
+                    low, high = run[0][0], run[-1][0]
+                    candidate = {
+                        "symptom": key,
+                        "anchor": anchor,
+                        "first": low if anchor == "start" else -low,
+                        "last": high if anchor == "start" else -high,
+                        "cycles_seen": peak,
+                        "cycles_total": len(cycles),
+                    }
+                    if best is None or (peak, high - low) > (best["cycles_seen"], abs(best["last"] - best["first"])):
+                        best = candidate
+                    run = []
+                run.append(item)
+        if best is not None:
+            patterns.append(best)
+    patterns.sort(key=lambda p: (-p["cycles_seen"], p["symptom"]))
+    return patterns
+
+
+def pattern_window_start(
+    pattern: dict[str, Any], current_cycle_start: date, next_predicted_start: date | None
+) -> date | None:
+    """The first day of a pattern's usual window in the current cycle (None when it cannot be placed)."""
+    if pattern["anchor"] == "start":
+        return current_cycle_start + timedelta(days=int(pattern["first"]) - 1)
+    if next_predicted_start is None:
+        return None
+    return next_predicted_start - timedelta(days=int(pattern["first"]))
+
+
+def upcoming_symptom_patterns(
+    patterns: list[dict[str, Any]],
+    today: date,
+    current_cycle_start: date | None,
+    next_predicted_start: date | None,
+) -> list[dict[str, Any]]:
+    """Patterns whose usual window starts today or within the next PATTERN_LEAD_DAYS days (with ``in_days``)."""
+    if current_cycle_start is None:
+        return []
+    upcoming: list[dict[str, Any]] = []
+    for pattern in patterns:
+        start = pattern_window_start(pattern, current_cycle_start, next_predicted_start)
+        if start is None:
+            continue
+        lead = (start - today).days
+        if 0 <= lead <= PATTERN_LEAD_DAYS:
+            upcoming.append({**pattern, "in_days": lead})
+    return upcoming
 
 
 def cycle_wellness_score(model: "CycleModel", today: date) -> dict[str, Any] | None:
@@ -3461,6 +3615,44 @@ def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
     if not pause_days or not last or not 0 < streak <= pack_days:
         return None
     return date.fromisoformat(last) + timedelta(days=pack_days - streak)
+
+
+PILL_PACK_DAYS = 28  # blister view: 21 + 7, 24 + 4 ... (active pills + pause days); with no pause all 28 are pills
+
+
+def pill_pack_view(status: dict[str, Any], today: date, pause_days: int) -> dict[str, Any] | None:
+    """Where today sits in a 28-day pill blister, from the logged intakes (None unless the current method is the pill).
+
+    Keys: active (pill cells), pause (pause cells), taken (1-based cells with a pill), position (today's cell, 1-28),
+    in_pause (today is a pause day), today_taken, new_pack (no pill logged yet, or the last pack ended long ago).
+    The pack is assumed to have started with the last unbroken run of intakes, so a profile that started logging
+    mid-pack sees a shifted blister (ponytail: no pack start date is stored; add one if that matters).
+    """
+    if status.get("current_method") != CONTRACEPTION_METHOD_PILL:
+        return None
+    pause = max(0, min(int(pause_days or 0), PILL_PACK_DAYS - 1))
+    active = PILL_PACK_DAYS - pause
+    view: dict[str, Any] = {
+        "active": active, "pause": pause, "taken": [], "position": 1,
+        "in_pause": False, "today_taken": False, "new_pack": True,
+    }
+    last = status.get("pill_last_taken")
+    run = int(status.get("pill_last_run_days") or 0)
+    if not last or run < 1:
+        return view
+    gap = (today - date.fromisoformat(last)).days
+    last_cell = (run - 1) % active + 1
+    position = last_cell + max(gap, 0)
+    if position > PILL_PACK_DAYS:
+        return view
+    view.update(
+        taken=list(range(1, last_cell + 1)),
+        position=position,
+        in_pause=position > active,
+        today_taken=gap == 0,
+        new_pack=False,
+    )
+    return view
 
 
 def forecast_view_stage(stage: str | None) -> str | None:

@@ -5393,14 +5393,28 @@
                alt="${escapeHtml(weekUnit)} ${week}" style="max-width:100%;height:auto;" loading="lazy"
                onerror="this.style.display='none';"/>`}
         </div>`;
+      // Additional to the icon above: the detailed baby illustration of this month plus one size-comparison sentence
+      // for this exact week (falls back to the two-week stage label while a translation is missing).
+      const babyItemKey = `baby_size_w${week}`;
+      const babyItem = this._t(babyItemKey);
+      const sizeLine = babyItem && babyItem !== babyItemKey
+        ? this._t('dashboard_baby_size_sentence').replace('{item}', babyItem)
+        : `${this._t('dashboard_fetal_size_label')}: ${this._t(stage.sizeKey)}`;
+      const babyStage = `
+        <div style="width:110px;flex:none;">
+          <img src="/menstruation_cycle/assets/pregnancy/month_${Number(assetIdx)}.svg" width="110"
+               alt="${escapeHtml(weekUnit)} ${week}" style="max-width:100%;height:auto;" loading="lazy"
+               onerror="this.style.display='none';"/>
+        </div>`;
 
       return `
         <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
           ${illustration}
+          ${babyStage}
           <div class="kpi-item mc-rose" style="min-width:150px;">
             <span class="kpi-icon" aria-hidden="true">🌱</span>
             <span class="kpi-value">${escapeHtml(weekUnit)} ${week}</span>
-            <span class="kpi-label">${this._t('dashboard_fetal_size_label')}: ${escapeHtml(this._t(stage.sizeKey))}</span>
+            <span class="kpi-label">${escapeHtml(sizeLine)}</span>
           </div>
           <div style="flex:1;min-width:220px;display:grid;gap:8px;">${skillItems}</div>
         </div>
