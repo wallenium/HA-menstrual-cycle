@@ -41,7 +41,10 @@ from .const import (
     CONF_CALENDAR_ENABLED,
     CONF_DASHBOARD_ENABLED,
     CONF_ICS_FEED_ENABLED,
+    CONF_ICS_PARTNER_CONTENT,
     DEFAULT_ICS_FEED_ENABLED,
+    DEFAULT_ICS_PARTNER_CONTENT,
+    ICS_PARTNER_CONTENT_OPTIONS,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_PERIOD_ENABLED,
@@ -582,6 +585,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._entry.options.get(CONF_CALENDAR_ENABLED, DEFAULT_CALENDAR_ENABLED)
             ),
             "ics_feed_enabled": bool(self._entry.options.get(CONF_ICS_FEED_ENABLED, DEFAULT_ICS_FEED_ENABLED)),
+            "ics_partner_content": str(self._entry.options.get(CONF_ICS_PARTNER_CONTENT, DEFAULT_ICS_PARTNER_CONTENT)),
             "notifications_enabled": bool(
                 self._entry.options.get(CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED)
             ),
@@ -897,6 +901,10 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 self._data[CONF_ICS_FEED_ENABLED] = bool(
                     user_input.get(CONF_ICS_FEED_ENABLED, self._current['ics_feed_enabled'])
                 )
+                partner_content = str(user_input.get(CONF_ICS_PARTNER_CONTENT, self._current["ics_partner_content"]))
+                self._data[CONF_ICS_PARTNER_CONTENT] = (
+                    partner_content if partner_content in ICS_PARTNER_CONTENT_OPTIONS else DEFAULT_ICS_PARTNER_CONTENT
+                )
                 self._data[CONF_CALENDAR_PREGNANCY_EVENTS] = bool(
                     user_input.get(CONF_CALENDAR_PREGNANCY_EVENTS, DEFAULT_CALENDAR_PREGNANCY_EVENTS)
                 )
@@ -1099,6 +1107,13 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(CONF_DASHBOARD_ENABLED, default=c["show_dashboard"]): bool,
                 vol.Optional(CONF_CALENDAR_ENABLED, default=c["calendar_enabled"]): bool,
                 vol.Optional(CONF_ICS_FEED_ENABLED, default=c["ics_feed_enabled"]): bool,
+                vol.Optional(CONF_ICS_PARTNER_CONTENT, default=c["ics_partner_content"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=ICS_PARTNER_CONTENT_OPTIONS,
+                        translation_key="ics_partner_content",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(CONF_CALENDAR_PREGNANCY_EVENTS, default=c["calendar_pregnancy_events"]): bool,
                 vol.Optional(CONF_CALENDAR_CONTRACEPTION_EVENTS, default=c["calendar_contraception_events"]): bool,
                 vol.Optional(CONF_CALENDAR_LOGGED_PERIODS, default=c["calendar_logged_periods"]): bool,
@@ -1490,6 +1505,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 CONF_DASHBOARD_ENABLED: d[CONF_DASHBOARD_ENABLED],
                 CONF_CALENDAR_ENABLED: d[CONF_CALENDAR_ENABLED],
                 CONF_ICS_FEED_ENABLED: d[CONF_ICS_FEED_ENABLED],
+                CONF_ICS_PARTNER_CONTENT: d[CONF_ICS_PARTNER_CONTENT],
                 CONF_CALENDAR_PREGNANCY_EVENTS: d[CONF_CALENDAR_PREGNANCY_EVENTS],
                 CONF_CALENDAR_CONTRACEPTION_EVENTS: d[CONF_CALENDAR_CONTRACEPTION_EVENTS],
                 CONF_CALENDAR_LOGGED_PERIODS: d[CONF_CALENDAR_LOGGED_PERIODS],

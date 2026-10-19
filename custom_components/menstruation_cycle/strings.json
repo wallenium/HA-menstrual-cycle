@@ -48,6 +48,7 @@
           "dashboard_enabled": "Show Cycle Dashboard in sidebar",
           "calendar_enabled": "Show cycle calendar entity",
           "ics_feed_enabled": "Public ICS calendar feed",
+          "ics_partner_content": "Partner link content",
           "calendar_pregnancy_events": "Calendar: pregnancy due date",
           "calendar_contraception_events": "Calendar: contraception dates",
           "calendar_logged_periods": "Calendar: logged periods",
@@ -63,6 +64,7 @@
           "dashboard_enabled": "Adds an optional dedicated Cycle Dashboard page to the Home Assistant sidebar.",
           "calendar_enabled": "Creates a native calendar.profile_cycle entity with predicted period, fertile window and ovulation events, usable in Home Assistant's own Calendar dashboard and calendar.* automation triggers. Disable if you don't need it - the same events remain available via the separate ICS feed export.",
           "ics_feed_enabled": "Serves a calendar feed (ICS) with the predicted period, fertile window and ovulation for this profile under a secret URL. Off by default. Anyone who knows the URL can read these predictions without logging in to Home Assistant, so share it only deliberately (e.g. with a partner's calendar app). Not available for private profiles. Administrators get the URL from the Cycle Dashboard; to invalidate a shared URL, use the repair issue or turn the feed off.",
+          "ics_partner_content": "What the partner link of the calendar feed contains: predicted periods and fertile window (default), only the fertile window, or only the periods. The partner link is shown next to the feed link in the Cycle Dashboard and never contains the ovulation day, appointments, contraception or pregnancy dates.",
           "calendar_pregnancy_events": "Adds the calculated due date as an all-day event to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_contraception_events": "Adds renewal dates (IUD, implant, injection), the end of the pill pack and the next patch/ring steps to the cycle calendar and the ICS feed. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
           "calendar_logged_periods": "Shows your logged periods (the last 12 months) as events in the cycle calendar and the ICS feed, not only the predictions. Off by default - the ICS feed is shared via its token (e.g. with a partner's calendar).",
@@ -1244,6 +1246,13 @@
       "options": {
         "hybrid": "Hybrid (recommended)",
         "strict": "Strict"
+      }
+    },
+    "ics_partner_content": {
+      "options": {
+        "both": "Periods and fertile window",
+        "fertile": "Fertile window only",
+        "period": "Periods only"
       }
     },
     "visibility_level": {

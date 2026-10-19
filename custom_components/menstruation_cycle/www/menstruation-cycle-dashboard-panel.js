@@ -276,6 +276,10 @@
     dashboard_ics_rotate_confirm: 'Create a new feed URL? The current one stops working immediately, and calendars subscribed to it must be subscribed again.',
     dashboard_ics_partner: 'Copy partner link (periods and fertile window only)',
     dashboard_ics_partner_copied: 'Copied',
+    dashboard_ics_partner_rotate: 'New partner link',
+    dashboard_ics_partner_rotate_confirm: 'Create a new partner link? The current one stops working immediately; the calendar feed link stays valid.',
+    dashboard_ics_fetched_full: 'Feed last fetched: {when}',
+    dashboard_ics_fetched_partner: 'Partner link last fetched: {when}',
     dashboard_widget_progress_badges: 'Progress',
     dashboard_badge_earned_on: 'Earned on',
     badge_first_entry: 'First entry logged',
@@ -3813,6 +3817,11 @@
         return;
       }
 
+      if (action === 'rotate-ics-partner-url') {
+        this._rotateIcsPartnerUrl(target.dataset.profile);
+        return;
+      }
+
       if (action === 'copy-ics-partner-url') {
         this._copyIcsPartnerUrl(target.dataset.profile, target);
         return;
@@ -6660,13 +6669,20 @@
       this._hass.connection.sendMessagePromise({ type: 'menstruation_cycle/ics_url', profile })
         .then((result) => {
           if (result && result.url) {
-            this._icsUrls[profile] = result.url;
-            this._icsPartnerUrls = this._icsPartnerUrls || {};
-            this._icsPartnerUrls[profile] = result.partner_url || '';
+            this._storeIcsPayload(profile, result);
             this.render();
           }
         })
         .catch(() => {});
+    }
+
+    _storeIcsPayload(profile, result) {
+      this._icsUrls = this._icsUrls || {};
+      this._icsPartnerUrls = this._icsPartnerUrls || {};
+      this._icsLastFetch = this._icsLastFetch || {};
+      this._icsUrls[profile] = (result && result.url) || '';
+      this._icsPartnerUrls[profile] = (result && result.partner_url) || '';
+      this._icsLastFetch[profile] = (result && result.last_fetch) || {};
     }
 
     // Admin-only: a new token makes the old URL useless (e.g. after it was shared).
@@ -6675,13 +6691,36 @@
       if (typeof window.confirm === 'function' && !window.confirm(this._t('dashboard_ics_rotate_confirm'))) return Promise.resolve();
       return this._hass.connection.sendMessagePromise({ type: 'menstruation_cycle/rotate_ics_token', profile })
         .then((result) => {
-          this._icsUrls = this._icsUrls || {};
-          this._icsUrls[profile] = (result && result.url) || '';
-          this._icsPartnerUrls = this._icsPartnerUrls || {};
-          this._icsPartnerUrls[profile] = (result && result.partner_url) || '';
+          this._storeIcsPayload(profile, result);
           this.render();
         })
         .catch(() => {});
+    }
+
+    // Admin-only: renews just the partner link; the calendar feed link stays valid.
+    _rotateIcsPartnerUrl(profile) {
+      if (!profile || !this._hass?.connection?.sendMessagePromise) return Promise.resolve();
+      if (typeof window.confirm === 'function' && !window.confirm(this._t('dashboard_ics_partner_rotate_confirm'))) return Promise.resolve();
+      return this._hass.connection.sendMessagePromise({ type: 'menstruation_cycle/rotate_ics_partner_token', profile })
+        .then((result) => {
+          this._storeIcsPayload(profile, result);
+          this.render();
+        })
+        .catch(() => {});
+    }
+
+    // "Last fetched" lines for the main feed and the partner link (only what has been fetched since the last restart).
+    _renderIcsLastFetch(profile) {
+      const fetched = this._icsLastFetch?.[profile] || {};
+      const fmt = (iso) => {
+        const d = new Date(iso);
+        return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(this._localeCode(), { dateStyle: 'medium', timeStyle: 'short' });
+      };
+      return ['full', 'partner']
+        .filter((kind) => fetched[kind] && fmt(fetched[kind]))
+        .map((kind) => this._t(`dashboard_ics_fetched_${kind}`).replace('{when}', fmt(fetched[kind])))
+        .map((line) => `<span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${escapeHtml(line)}</span>`)
+        .join('');
     }
 
     // Reduced feed for a partner (periods + fertile window only): copied, not subscribed here, since it is meant for their device.
@@ -6712,7 +6751,8 @@
           </a>
           <span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${this._t('dashboard_ics_hint') || '(als iCal-Feed, z. B. für Google/Apple Kalender)'}</span>
           <button type="button" data-action="rotate-ics-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_rotate'))}</button>
-          ${this._icsPartnerUrls?.[attrs.profile] ? `<button type="button" data-action="copy-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner'))}</button>` : ''}
+          ${this._icsPartnerUrls?.[attrs.profile] ? `<button type="button" data-action="copy-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner'))}</button><button type="button" data-action="rotate-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner_rotate'))}</button>` : ''}
+          ${this._renderIcsLastFetch(attrs.profile)}
         </div>
       `;
     }

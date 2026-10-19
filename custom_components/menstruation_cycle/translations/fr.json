@@ -48,6 +48,7 @@
           "dashboard_enabled": "Afficher le tableau de bord du cycle dans la barre latérale",
           "calendar_enabled": "Afficher l'entité calendrier du cycle",
           "ics_feed_enabled": "Flux de calendrier ICS public",
+          "ics_partner_content": "Contenu du lien partenaire",
           "calendar_pregnancy_events": "Calendrier : date prévue d'accouchement",
           "calendar_contraception_events": "Calendrier : dates de contraception",
           "calendar_logged_periods": "Calendrier : règles enregistrées",
@@ -63,6 +64,7 @@
           "dashboard_enabled": "Ajoute une page facultative dédiée au tableau de bord du cycle dans la barre latérale de Home Assistant.",
           "calendar_enabled": "Crée une entité native calendar.PROFIL_cycle avec les événements prévus de règles, fenêtre fertile et ovulation, utilisable dans le tableau de bord Calendrier de Home Assistant et les déclencheurs d'automatisation calendar.*. Désactivez si vous n'en avez pas besoin - les mêmes événements restent disponibles via le flux ICS séparé.",
           "ics_feed_enabled": "Fournit un flux de calendrier (ICS) avec les règles prévues, la fenêtre fertile et l'ovulation de ce profil sous une URL secrète. Désactivé par défaut. Toute personne connaissant l'URL peut lire ces prévisions sans se connecter à Home Assistant : ne la partagez que délibérément (p. ex. avec l'application calendrier d'un partenaire). Indisponible pour les profils privés. Les administrateurs obtiennent l'URL dans le tableau de bord du cycle ; pour invalider une URL partagée, utilisez le problème de réparation ou désactivez le flux.",
+          "ics_partner_content": "Ce que contient le lien partenaire du flux de calendrier : règles prévues et fenêtre fertile (par défaut), seulement la fenêtre fertile ou seulement les règles. Le lien figure à côté du lien du flux dans le tableau de bord du cycle et ne contient jamais le jour d'ovulation, de rendez-vous ni de données de contraception ou de grossesse.",
           "calendar_pregnancy_events": "Ajoute la date prévue d'accouchement calculée comme événement sur la journée au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_contraception_events": "Ajoute les dates de renouvellement (stérilet, implant, injection), la fin de la plaquette de pilule et les prochaines étapes du patch/anneau au calendrier du cycle et au flux ICS. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
           "calendar_logged_periods": "Affiche les règles enregistrées (des 12 derniers mois) comme événements dans le calendrier du cycle et le flux ICS, et pas seulement les prévisions. Désactivé par défaut - le flux ICS est partagé via son jeton (p. ex. avec l'agenda d'un partenaire).",
@@ -1244,6 +1246,13 @@
       "options": {
         "hybrid": "Hybride (recommandé)",
         "strict": "Strict"
+      }
+    },
+    "ics_partner_content": {
+      "options": {
+        "both": "Règles et fenêtre fertile",
+        "fertile": "Fenêtre fertile uniquement",
+        "period": "Règles uniquement"
       }
     },
     "visibility_level": {

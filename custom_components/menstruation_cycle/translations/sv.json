@@ -48,6 +48,7 @@
           "dashboard_enabled": "Visa cykelöversikt i sidopanelen",
           "calendar_enabled": "Visa cykelkalenderentitet",
           "ics_feed_enabled": "Offentligt ICS-kalenderflöde",
+          "ics_partner_content": "Innehåll i partnerlänken",
           "calendar_pregnancy_events": "Kalender: beräknat förlossningsdatum",
           "calendar_contraception_events": "Kalender: preventivmedelsdatum",
           "calendar_logged_periods": "Kalender: loggade menstruationer",
@@ -63,6 +64,7 @@
           "dashboard_enabled": "Lägger till en valfri, dedikerad cykelöversiktssida i Home Assistants sidopanel.",
           "calendar_enabled": "Skapar en inbyggd calendar.PROFIL_cycle-entitet med förutspådda mens-, fertila fönster- och ägglossningshändelser, användbar i Home Assistants egen kalendervy och för calendar.*-automationsutlösare. Inaktivera om du inte behöver den - samma händelser finns kvar via det separata ICS-flödet.",
           "ics_feed_enabled": "Tillhandahåller ett kalenderflöde (ICS) med förutspådd mens, fertilt fönster och ägglossning för den här profilen under en hemlig URL. Av som standard. Alla som känner till URL:en kan läsa dessa prognoser utan att logga in i Home Assistant, så dela den bara medvetet (t.ex. med en partners kalenderapp). Inte tillgängligt för privata profiler. Administratörer hittar URL:en i cykelpanelen; för att göra en delad URL ogiltig, använd reparationsmeddelandet eller stäng av flödet.",
+          "ics_partner_content": "Vad partnerlänken i kalenderflödet innehåller: förutspådd mens och fertilt fönster (standard), bara det fertila fönstret eller bara mensen. Länken visas bredvid flödeslänken i cykelpanelen och innehåller aldrig ägglossningsdag, tider, preventivmedels- eller graviditetsdatum.",
           "calendar_pregnancy_events": "Lägger till det beräknade förlossningsdatumet som heldagshändelse i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_contraception_events": "Lägger till förnyelsedatum (spiral, implantat, spruta), slutet på p-pillerkartan och nästa steg för plåster/ring i cykelkalendern och ICS-flödet. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
           "calendar_logged_periods": "Visar loggade menstruationer (de senaste 12 månaderna) som händelser i cykelkalendern och ICS-flödet, inte bara prognoserna. Av som standard - ICS-flödet delas via sin token (t.ex. med partnerns kalender).",
@@ -1244,6 +1246,13 @@
       "options": {
         "hybrid": "Hybrid (rekommenderas)",
         "strict": "Strikt"
+      }
+    },
+    "ics_partner_content": {
+      "options": {
+        "both": "Mens och fertilt fönster",
+        "fertile": "Bara fertilt fönster",
+        "period": "Bara mens"
       }
     },
     "visibility_level": {

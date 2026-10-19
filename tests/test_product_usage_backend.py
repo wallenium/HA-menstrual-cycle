@@ -7,6 +7,7 @@ import importlib.abc
 import importlib.machinery
 import importlib.util
 import json
+import re
 import sys
 import types
 import unittest
@@ -1648,6 +1649,178 @@ class LovelaceResourceDuplicateTests(unittest.TestCase):
 
         self.assertEqual(collection.create_calls, [])
         self.assertEqual(collection.deleted, ["r2", "r3"])
+
+
+class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
+    def test_exports_are_written_owner_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "report.html"
+            integration._write_private_text(target, "x")
+            self.assertEqual(target.read_text(encoding="utf-8"), "x")
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
+    def test_every_export_goes_through_the_private_writer(self) -> None:
+        source = (Path(integration.__file__)).read_text(encoding="utf-8")
+        self.assertEqual(source.count(".write_text("), 1, "only _write_private_text may write files directly")
+
+    def test_read_services_do_not_log_the_health_data_they_return(self) -> None:
+        source = (Path(integration.__file__)).read_text(encoding="utf-8")
+        for name in ("_async_handle_get_symptom", "_async_handle_get_menarche_info"):
+            body = source[source.index(f"async def {name}") :][:800]
+            self.assertNotIn("_LOGGER.info", body, name)
+            self.assertNotRegex(body, r"_LOGGER\.\w+\([^)]*(entry\b|menarche_data)", name)
+
+
+class ReadServicesVisibilityTests(unittest.TestCase):
+    """Below visibility "Full" the read services answer administrators and user-less calls only."""
+
+    READ_HANDLERS = (
+        "_async_handle_get_symptom", "_async_handle_get_full_history", "_async_handle_get_cycle_predictions",
+        "_async_handle_compare_current_cycle", "_async_handle_get_last_cycle_summary",
+        "_async_handle_get_menarche_info", "_async_handle_export_doctor_report",
+    )
+
+    def _check(self, visibility: str, user_id: str | None, admin: bool = False) -> bool:
+        users = {"u1": types.SimpleNamespace(is_admin=admin)}
+
+        async def _get_user(uid):
+            return users.get(uid)
+
+        hass = types.SimpleNamespace(auth=types.SimpleNamespace(async_get_user=_get_user))
+        runtime = types.SimpleNamespace(profile="anna", visibility_level=visibility)
+        call = types.SimpleNamespace(context=types.SimpleNamespace(user_id=user_id))
+        try:
+            asyncio.run(integration._async_require_readable(hass, call, runtime))
+        except integration.HomeAssistantError:
+            return False
+        return True
+
+    def test_full_is_readable_by_everyone(self) -> None:
+        self.assertTrue(self._check("full", "u1"))
+
+    def test_below_full_only_admins_and_userless_calls(self) -> None:
+        for level in ("status_only", "private"):
+            self.assertFalse(self._check(level, "u1"), level)
+            self.assertFalse(self._check(level, "unknown-user"), level)
+            self.assertTrue(self._check(level, "u1", admin=True), level)
+            self.assertTrue(self._check(level, None), level)
+
+    def test_every_service_that_returns_profile_data_checks_it(self) -> None:
+        import ast
+
+        source = Path(integration.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        for name in self.READ_HANDLERS:
+            node = next(n for n in ast.walk(tree) if isinstance(n, ast.AsyncFunctionDef) and n.name == name)
+            self.assertIn("_async_require_readable(", ast.get_source_segment(source, node), name)
+
+
+@unittest.skipUnless(importlib.util.find_spec("aiohttp"), "aiohttp is not installed")
+class IcsFeedRouteTests(unittest.TestCase):
+    """The route end to end: full link, reduced partner link, ETag/304, last fetch, separate partner renewal."""
+
+    TOKEN = "T" * 43
+
+    class _Storage:
+        async def async_save_ics_token(self, token: str) -> None:
+            pass
+
+    def _setup(self, **options):
+        # six regular cycles, the last one started 10 days ago: enough for a fertile window in hybrid mode
+        start = date.today() - timedelta(days=28 * 5 + 10)
+        history = [(start + timedelta(days=28 * i)).isoformat() for i in range(6)]
+        runtime = integration.MenstruationRuntime(
+            storage=self._Storage(), profile="anna", friendly_name="Anna", icon="", history=history,
+            period_duration_days=5, symptom_history=[], product_usage=[], ics_token=self.TOKEN, ics_feed_enabled=True,
+        )
+        entry = types.SimpleNamespace(entry_id="e1", options={const.CONF_ICS_FEED_ENABLED: True, **options})
+        routes = {}
+
+        class _Router:
+            def add_get(self, path, handler):
+                routes[path] = handler
+
+        class _Hass:
+            data = {const.DOMAIN: {"e1": runtime}}
+            http = types.SimpleNamespace(app=types.SimpleNamespace(router=_Router()))
+            config = types.SimpleNamespace(language="en")
+            config_entries = types.SimpleNamespace(
+                async_get_entry=lambda _id: entry,
+                async_update_entry=lambda e, options=None, **_k: setattr(e, "options", dict(options)),
+            )
+
+            async def async_add_executor_job(self, func, *args):
+                return func(*args)
+
+        hass = _Hass()
+        asyncio.run(integration._async_register_http_handlers(hass))
+        now = datetime.now()
+        patcher = patch.object(integration.dt_util, "now", lambda: now)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return hass, entry, runtime, routes[f"/{const.DOMAIN}/ics/{{token}}.ics"]
+
+    def _get(self, handler, token, **headers):
+        from aiohttp.web import HTTPNotFound
+
+        class _Request:
+            match_info = {"token": token}
+            rel_url = types.SimpleNamespace(query={})
+
+        _Request.headers = headers
+        try:
+            return asyncio.run(handler(_Request()))
+        except HTTPNotFound:
+            return None
+
+    @staticmethod
+    def _summaries(response) -> set[str]:
+        return set(re.findall(r"^SUMMARY:(.*?)\r?$", response.body.decode(), re.M))
+
+    def test_full_and_partner_links_serve_different_content(self) -> None:
+        _hass, _entry, runtime, handler = self._setup()
+        full = self._get(handler, self.TOKEN)
+        partner = self._get(handler, integration.derive_partner_token(self.TOKEN))
+        self.assertIn("Ovulation (predicted)", self._summaries(full))
+        self.assertEqual(self._summaries(partner), {"Period (predicted)", "Fertile window (predicted)"})
+        self.assertIsNone(self._get(handler, "nope"))
+        self.assertEqual(set(runtime.ics_last_fetch), {"full", "partner"})
+
+    def test_partner_content_option(self) -> None:
+        for content, expected in (("fertile", {"Fertile window (predicted)"}), ("period", {"Period (predicted)"})):
+            _hass, _entry, _rt, handler = self._setup(**{const.CONF_ICS_PARTNER_CONTENT: content})
+            self.assertEqual(self._summaries(self._get(handler, integration.derive_partner_token(self.TOKEN))), expected)
+
+    def test_etag_gives_304_and_body_is_reused_until_the_data_changes(self) -> None:
+        _hass, _entry, runtime, handler = self._setup()
+        first = self._get(handler, self.TOKEN)
+        etag = first.headers["ETag"]
+        self.assertEqual(self._get(handler, self.TOKEN, **{"If-None-Match": etag}).status, 304)
+        self.assertEqual(self._get(handler, self.TOKEN).body, first.body)  # same DTSTAMP: served from the cache
+        self.assertEqual(len(runtime.ics_cache), 1)
+        runtime.cycle_length_override = 35
+        changed = self._get(handler, self.TOKEN)
+        self.assertNotEqual(changed.headers["ETag"], etag)
+        self.assertEqual(self._get(handler, self.TOKEN, **{"If-None-Match": etag}).status, 200)
+
+    def test_partner_link_is_renewed_on_its_own(self) -> None:
+        hass, entry, runtime, handler = self._setup()
+        old = integration.derive_partner_token(self.TOKEN)
+        self.assertEqual(self._get(handler, old).status, 200)
+        payload = asyncio.run(integration._async_rotate_ics_partner_payload(hass, "anna"))
+        new = integration.derive_partner_token(self.TOKEN, 1)
+        self.assertEqual(payload["partner_url"], f"/{const.DOMAIN}/ics/{new}.ics")
+        self.assertEqual(payload["url"], f"/{const.DOMAIN}/ics/{self.TOKEN}.ics")
+        self.assertIsNone(self._get(handler, old))
+        self.assertEqual(self._get(handler, new).status, 200)
+        self.assertEqual(self._get(handler, self.TOKEN).status, 200)
+        self.assertIsNone(payload["last_fetch"]["partner"])  # reset with the link
+
+    def test_main_token_rotation_resets_fetch_times_and_cache(self) -> None:
+        hass, _entry, runtime, handler = self._setup()
+        self._get(handler, self.TOKEN)
+        asyncio.run(integration._async_rotate_ics_token(hass, "e1"))
+        self.assertEqual((runtime.ics_last_fetch, runtime.ics_cache), ({}, {}))
 
 
 class IcsTokenRotationTests(unittest.TestCase):

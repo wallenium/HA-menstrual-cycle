@@ -103,6 +103,29 @@ assert.ok(!/googleapis|gstatic|@import url\(/.test(source), 'no runtime font dow
   await partner._copyIcsPartnerUrl('anna', button);
   assert.deepStrictEqual(partnerSent, ['http://ha.local:8123/menstruation_cycle/ics/PARTNER.ics']);
   assert.strictEqual(button.textContent, 'Copied');
+  // Partner link renewal sends its own command, keeps the main URL and shows when each link was last fetched.
+  const prSent = [];
+  const pr = make((msg) => {
+    prSent.push(msg);
+    return Promise.resolve(msg.type === 'menstruation_cycle/rotate_ics_partner_token'
+      ? { enabled: true, url: '/menstruation_cycle/ics/MAIN.ics', partner_url: '/menstruation_cycle/ics/P2.ics', last_fetch: { full: '2026-10-01T08:30:00Z', partner: null } }
+      : { enabled: true, url: '/menstruation_cycle/ics/MAIN.ics', partner_url: '/menstruation_cycle/ics/P1.ics', last_fetch: { full: '2026-10-01T08:30:00Z', partner: '2026-10-02T09:00:00Z' } });
+  });
+  pr._renderIcsSubscribeLink({ profile: 'anna' });
+  await new Promise((r) => setImmediate(r));
+  const prHtml = pr._renderIcsSubscribeLink({ profile: 'anna' });
+  assert.ok(prHtml.includes('data-action="rotate-ics-partner-url"'), prHtml);
+  assert.ok(/Feed last fetched: .*2026/.test(prHtml) && /Partner link last fetched: .*2026/.test(prHtml), prHtml);
+  global.window.confirm = () => false;
+  await pr._rotateIcsPartnerUrl('anna');
+  assert.strictEqual(prSent.length, 1, 'cancelled: no command sent');
+  global.window.confirm = () => true;
+  await pr._rotateIcsPartnerUrl('anna');
+  assert.deepStrictEqual(prSent[1], { type: 'menstruation_cycle/rotate_ics_partner_token', profile: 'anna' });
+  assert.strictEqual(pr._icsPartnerUrls.anna, '/menstruation_cycle/ics/P2.ics');
+  assert.strictEqual(pr._icsUrls.anna, '/menstruation_cycle/ics/MAIN.ics');
+  const prAfter = pr._renderIcsSubscribeLink({ profile: 'anna' });
+  assert.ok(/Feed last fetched/.test(prAfter) && !/Partner link last fetched/.test(prAfter), prAfter);
   // Feed switched off meanwhile: the link disappears.
   const gone = make(() => Promise.resolve({ enabled: false, url: null }));
   global.window.confirm = () => true;

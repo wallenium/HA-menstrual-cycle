@@ -281,13 +281,14 @@ def _format_dtstamp(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%SZ")
 
 
-def derive_partner_token(token: str) -> str:
+def derive_partner_token(token: str, epoch: int = 0) -> str:
     """Separate secret for the reduced partner feed, derived one-way from the profile's ICS token.
 
     Whoever holds the partner URL cannot compute the full-feed token, and rotating the main token rotates this
-    one too, so nothing extra is stored. ponytail: no independent revoke for just the partner link.
+    one too. The epoch (a counter in the config entry's options) renews only the partner link.
     """
-    return base64.urlsafe_b64encode(hmac.new(token.encode(), b"partner-feed", hashlib.sha256).digest()).decode().rstrip("=")
+    message = b"partner-feed" if not epoch else f"partner-feed:{int(epoch)}".encode()
+    return base64.urlsafe_b64encode(hmac.new(token.encode(), message, hashlib.sha256).digest()).decode().rstrip("=")
 
 
 def _deterministic_uid(entry_id: str, event_type: str, start_date: str) -> str:
@@ -372,6 +373,7 @@ def generate_ics(
     today: date | None = None,
     extra_events: list[tuple[str, date, date, str]] | None = None,
     partner: bool = False,
+    partner_content: str = "both",
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -389,6 +391,7 @@ def generate_ics(
 
     partner: reduced feed for a partner: predicted periods and the fertile window only - no ovulation day,
             checkup, contraception/pregnancy/logged events, reminders, or source/confidence notes.
+        partner_content: with ``partner``, "both", "fertile" (no periods) or "period" (no fertile window).
 
     Returns:
         UTF-8 encoded VCALENDAR bytes (CRLF line endings per RFC 5545).
@@ -450,7 +453,7 @@ def generate_ics(
         fertility_confidence = (fertility_forecast or {}).get("confidence", "")
         fertility_source = (fertility_forecast or {}).get("source", "estimated")
 
-        for window in windows.get("period_windows", []):
+        for window in ([] if partner and partner_content == "fertile" else windows.get("period_windows", [])):
             try:
                 p_start = date.fromisoformat(str(window["start"]))
                 p_end = date.fromisoformat(str(window["end"]))
@@ -472,7 +475,7 @@ def generate_ics(
                 )
             )
 
-        for window in windows.get("fertility_windows", []):
+        for window in ([] if partner and partner_content == "period" else windows.get("fertility_windows", [])):
             try:
                 f_start = date.fromisoformat(str(window["fertile_start"]))
                 f_end = date.fromisoformat(str(window["fertile_end"]))

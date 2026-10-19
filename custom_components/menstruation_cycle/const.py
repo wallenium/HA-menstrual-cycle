@@ -541,6 +541,12 @@ CONF_ICS_FEED_ENABLED = "ics_feed_enabled"
 DEFAULT_ICS_FEED_ENABLED: bool = False
 WS_TYPE_ICS_URL = f"{DOMAIN}/ics_url"
 WS_TYPE_ICS_ROTATE = f"{DOMAIN}/rotate_ics_token"
+WS_TYPE_ICS_ROTATE_PARTNER = f"{DOMAIN}/rotate_ics_partner_token"
+# What the partner link of the ICS feed contains; the epoch is bumped to invalidate only that link.
+CONF_ICS_PARTNER_CONTENT = "ics_partner_content"
+ICS_PARTNER_CONTENT_OPTIONS = ["both", "fertile", "period"]
+DEFAULT_ICS_PARTNER_CONTENT = "both"
+CONF_ICS_PARTNER_EPOCH = "ics_partner_epoch"
 ICS_TOKEN_KEY = "ics_token"
 ICS_HORIZON_MONTHS_DEFAULT = 12
 ICS_HORIZON_MONTHS_MAX = 24

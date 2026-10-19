@@ -44,7 +44,7 @@ class IcsFeedExposure(unittest.TestCase):
     def test_feed_route_checks_opt_in_before_building_anything(self) -> None:
         feed = _function_source(_read("__init__.py"), "_serve_ics_feed")
         self.assertIn("ics_feed_available(", feed)
-        self.assertLess(feed.index("ics_feed_available("), feed.index("build_cycle_model"))
+        self.assertLess(feed.index("ics_feed_available("), feed.index("cached_cycle_model"))
 
     def test_feed_and_household_overview_use_the_profiles_nfp_mode(self) -> None:
         # a strict profile must not get a fertile window here that its sensor withholds
@@ -54,9 +54,11 @@ class IcsFeedExposure(unittest.TestCase):
 
     def test_partner_token_only_serves_the_reduced_feed(self) -> None:
         feed = _function_source(_read("__init__.py"), "_serve_ics_feed")
-        self.assertIn("secrets.compare_digest(derive_partner_token(rt.ics_token), token)", feed)
-        self.assertIn("[] if partner else collect_extra_events(", feed)
-        self.assertRegex(feed, r"\n\s+partner,\n\s+\)")
+        init = _read("__init__.py")
+        self.assertIn("secrets.compare_digest(derive_partner_token(rt.ics_token, epoch), token)", feed)
+        body = _function_source(init, "_build_ics_body")
+        self.assertIn("if partner\n        else collect_extra_events(", body)
+        self.assertRegex(body, r"\n\s+partner,\n\s+partner_content,\n\s+\)")
 
     def test_url_command_is_admin_only(self) -> None:
         reg = _function_source(_read("__init__.py"), "_async_register_websocket_commands")
@@ -66,9 +68,11 @@ class IcsFeedExposure(unittest.TestCase):
     def test_rotate_command_is_admin_only_and_gated_by_the_feed(self) -> None:
         source = _read("__init__.py")
         reg = _function_source(source, "_async_register_websocket_commands")
-        self.assertEqual(reg.count("websocket_api.require_admin"), 2)
+        self.assertEqual(reg.count("websocket_api.require_admin"), 3)
         self.assertIn("WS_TYPE_ICS_ROTATE", reg)
+        self.assertIn("WS_TYPE_ICS_ROTATE_PARTNER", reg)
         self.assertIn("ics_feed_available(", _function_source(source, "_async_rotate_ics_url_payload"))
+        self.assertIn("ics_feed_available(", _function_source(source, "_async_rotate_ics_partner_payload"))
 
     def test_url_payload_is_gated_by_the_same_helper(self) -> None:
         self.assertIn("ics_feed_available(", _function_source(_read("__init__.py"), "_ics_url_payload"))

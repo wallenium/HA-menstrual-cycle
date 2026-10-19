@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import gzip
 import hashlib
+from functools import partial
 import inspect
 import json
 import logging
@@ -64,6 +65,10 @@ from .const import (
     CONF_SHOW_CYCLE_DASHBOARD,
     CONF_DASHBOARD_ENABLED,
     CONF_ICS_FEED_ENABLED,
+    CONF_ICS_PARTNER_CONTENT,
+    CONF_ICS_PARTNER_EPOCH,
+    DEFAULT_ICS_PARTNER_CONTENT,
+    WS_TYPE_ICS_ROTATE_PARTNER,
     DEFAULT_ICS_FEED_ENABLED,
     WS_TYPE_ICS_ROTATE,
     WS_TYPE_ICS_URL,
@@ -491,6 +496,11 @@ class MenstruationRuntime:
     # Whether the opt-in ICS feed was on when the options were last applied; an off -> on switch
     # issues a fresh token (see _async_options_update_listener), so old URLs never come back.
     ics_feed_enabled: bool = False
+    # When each feed link was last fetched ("full" / "partner", ISO UTC), in memory only: shown to admins so a
+    # link in unexpected hands (or never used) is noticeable. ponytail: resets on restart, no storage writes per poll.
+    ics_last_fetch: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
+    # Generated feed bodies keyed by link/content/day/data state, for ETag/304 (see _serve_ics_feed).
+    ics_cache: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)
     # cached_cycle_model() results of the current day/data state (see model.py)
     model_cache: dict[Any, Any] = field(default_factory=dict, repr=False, compare=False)
 
@@ -2350,6 +2360,34 @@ def _runtime_for_call(hass: HomeAssistant, call: ServiceCall) -> MenstruationRun
     )
 
 
+async def _async_require_readable(hass: HomeAssistant, call: ServiceCall, runtime: MenstruationRuntime) -> None:
+    """Read services hand out a profile's data only at visibility "Full" - below that only to administrators.
+
+    Calls without a user (automations, scripts, the integration itself) are not restricted. ponytail: the visibility
+    itself can still be changed by any user (see set_profile_visibility), so this stops casual reads, not a user who
+    first raises the level.
+    """
+    if runtime.visibility_level == VISIBILITY_LEVEL_FULL:
+        return
+    user_id = getattr(getattr(call, "context", None), "user_id", None)
+    if user_id is None:
+        return
+    user = await hass.auth.async_get_user(user_id)
+    if user is None or not user.is_admin:
+        raise HomeAssistantError(
+            f"The data of profile '{runtime.profile}' is only available to administrators below visibility 'Full'."
+        )
+
+
+def _write_private_text(path: Path, content: str) -> None:
+    """Write an export file readable by the HA user only (best effort; it holds health data)."""
+    path.write_text(content, encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+
+
 def _days_until_expected_start(model: Any, options: Any, today: date) -> int | None:
     """Days until the next period for the "overdue" checks (negative = late).
 
@@ -2528,6 +2566,8 @@ async def _async_rotate_ics_token(hass: HomeAssistant, entry_id: str) -> None:
     await runtime.storage.async_save_ics_token(new_token)
     runtime.ics_token = new_token
     runtime.ics_token_created_at = dt_util.utcnow().isoformat()
+    runtime.ics_last_fetch.clear()
+    runtime.ics_cache.clear()
     _LOGGER.info("Rotated ICS calendar-feed token for profile '%s'.", runtime.profile)
 
 
@@ -3993,6 +4033,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
     browser right away (the folder is not served over HTTP).
     """
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     days_back = max(30, min(730, int(call.data.get(SERVICE_FIELD_DAYS_BACK, 180))))
     patient_name = call.data.get(SERVICE_FIELD_PATIENT_NAME)
     patient_birthdate = call.data.get(SERVICE_FIELD_PATIENT_BIRTHDATE)
@@ -4026,7 +4067,7 @@ async def _async_handle_export_doctor_report(hass: HomeAssistant, call: ServiceC
 
     def _write_file() -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(html_content, encoding="utf-8")
+        _write_private_text(target_path, html_content)
 
     await hass.async_add_executor_job(_write_file)
     _LOGGER.info(
@@ -4385,7 +4426,7 @@ async def _async_handle_export_history(hass: HomeAssistant, call: ServiceCall) -
 
     def _write_file() -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(content, encoding="utf-8")
+        _write_private_text(target_path, content)
 
     await hass.async_add_executor_job(_write_file)
     _LOGGER.info("Exported menstruation history for profile '%s' to %s", runtime.profile, target_path)
@@ -4767,7 +4808,7 @@ async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | Non
 
     def _write_file() -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(content, encoding="utf-8")
+        _write_private_text(target_path, content)
 
     await hass.async_add_executor_job(_write_file)
     _LOGGER.info("Exported full backup of %d profile(s) to %s", len(profiles), target_path)
@@ -5409,14 +5450,15 @@ async def _async_handle_remove_symptom(hass: HomeAssistant, call: ServiceCall) -
 async def _async_handle_get_symptom(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Get symptom data for a date."""
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     date_iso = _normalize_date_or_raise(call.data[SERVICE_FIELD_DATE])
 
     for entry in runtime.symptom_history:
         if entry.get("date") == date_iso:
-            _LOGGER.info("Symptom data for %s: %s", date_iso, entry)
+            _LOGGER.debug("Symptom data found for %s", date_iso)  # the entry itself is health data, never logged
             return dict(entry)
 
-    _LOGGER.info("No symptom data found for %s", date_iso)
+    _LOGGER.debug("No symptom data found for %s", date_iso)
     return {"date": date_iso, "found": False}
 
 
@@ -5442,6 +5484,7 @@ async def _async_handle_get_full_history(hass: HomeAssistant, call: ServiceCall)
     how large the profile's overall tracking history has grown.
     """
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     raw_days = call.data.get(SERVICE_FIELD_DAYS, 180)
     try:
         days = max(1, min(730, int(raw_days)))
@@ -5481,6 +5524,7 @@ async def _async_handle_get_cycle_predictions(hass: HomeAssistant, call: Service
     shows.
     """
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     raw_days_back = call.data.get(SERVICE_FIELD_DAYS_BACK, 365)
     raw_future_cycles = call.data.get(SERVICE_FIELD_FUTURE_CYCLES, 3)
     try:
@@ -5532,6 +5576,7 @@ async def _async_handle_compare_current_cycle(hass: HomeAssistant, call: Service
     same set of cycles. Read-only, changes nothing.
     """
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     starts = grouped_cycle_starts(runtime.history)
     if not starts:
         raise HomeAssistantError("No cycle history recorded for this profile yet.")
@@ -5588,6 +5633,7 @@ async def _async_handle_compare_current_cycle(hass: HomeAssistant, call: Service
 async def _async_handle_get_last_cycle_summary(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Summary of the last completed cycle (read-only), see statistics.py::compute_last_cycle_summary."""
     runtime = _runtime_for_call(hass, call)
+    await _async_require_readable(hass, call, runtime)
     summary = compute_last_cycle_summary(runtime.history, runtime.symptom_history, runtime.period_duration_days)
     if summary is None:
         raise HomeAssistantError("At least two cycle starts are needed for a completed cycle.")
@@ -5698,7 +5744,7 @@ async def _async_handle_log_first_period(hass: HomeAssistant, call: ServiceCall)
 async def _async_handle_get_menarche_info(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Get menarche and pre-menarche information."""
     runtime = _runtime_for_call(hass, call)
-    _LOGGER.info("Menarche info for profile '%s': %s", runtime.profile, runtime.menarche_data)
+    await _async_require_readable(hass, call, runtime)
     return {
         "menarche_data": dict(runtime.menarche_data),
         "pre_menarche_data": dict(runtime.pre_menarche_data),
@@ -5780,6 +5826,13 @@ async def _maybe_await(result: Any) -> Any:
 _WS_REGISTERED_KEY = f"{DOMAIN}_ws_registered"
 
 
+def _ics_partner_epoch(entry: Any) -> int:
+    try:
+        return max(0, int(entry.options.get(CONF_ICS_PARTNER_EPOCH, 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
     """Feed URL for one profile, or enabled=False when the feed is off."""
     for entry_id, rt in hass.data.get(DOMAIN, {}).items():
@@ -5790,7 +5843,8 @@ def _ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
             return {
                 "enabled": True,
                 "url": f"/{DOMAIN}/ics/{rt.ics_token}.ics",
-                "partner_url": f"/{DOMAIN}/ics/{derive_partner_token(rt.ics_token)}.ics",
+                "partner_url": f"/{DOMAIN}/ics/{derive_partner_token(rt.ics_token, _ics_partner_epoch(entry))}.ics",
+                "last_fetch": {"full": rt.ics_last_fetch.get("full"), "partner": rt.ics_last_fetch.get("partner")},
             }
     return {"enabled": False, "url": None}
 
@@ -5803,6 +5857,21 @@ async def _async_rotate_ics_url_payload(hass: HomeAssistant, profile: str) -> di
         entry = hass.config_entries.async_get_entry(entry_id)
         if entry is not None and ics_feed_available(entry.options, rt.visibility_level):
             await _async_rotate_ics_token(hass, entry_id)
+            break
+    return _ics_url_payload(hass, profile)
+
+
+async def _async_rotate_ics_partner_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
+    """Renew only the partner link of one profile (the main feed URL stays valid) and return the URL payload."""
+    for entry_id, rt in hass.data.get(DOMAIN, {}).items():
+        if not isinstance(rt, MenstruationRuntime) or rt.profile != profile:
+            continue
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is not None and ics_feed_available(entry.options, rt.visibility_level):
+            hass.config_entries.async_update_entry(
+                entry, options={**entry.options, CONF_ICS_PARTNER_EPOCH: _ics_partner_epoch(entry) + 1}
+            )
+            rt.ics_last_fetch.pop("partner", None)
             break
     return _ics_url_payload(hass, profile)
 
@@ -5829,9 +5898,62 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     async def _ws_rotate_ics_token(hass_: HomeAssistant, connection, msg) -> None:  # type: ignore[no-untyped-def]
         connection.send_result(msg["id"], await _async_rotate_ics_url_payload(hass_, msg["profile"]))
 
+    @websocket_api.require_admin
+    @websocket_api.websocket_command({vol.Required("type"): WS_TYPE_ICS_ROTATE_PARTNER, vol.Required("profile"): cv.string})
+    @websocket_api.async_response
+    async def _ws_rotate_ics_partner_token(hass_: HomeAssistant, connection, msg) -> None:  # type: ignore[no-untyped-def]
+        connection.send_result(msg["id"], await _async_rotate_ics_partner_payload(hass_, msg["profile"]))
+
     websocket_api.async_register_command(hass, _ws_ics_url)
     websocket_api.async_register_command(hass, _ws_rotate_ics_token)
+    websocket_api.async_register_command(hass, _ws_rotate_ics_partner_token)
     hass.data[_WS_REGISTERED_KEY] = True
+
+
+def _build_ics_body(
+    entry_id: str,
+    runtime: MenstruationRuntime,
+    entry: ConfigEntry,
+    cycle_model: Any,
+    horizon_months: int,
+    language: str,
+    today: date,
+    partner: bool,
+    partner_content: str,
+) -> bytes:
+    """Render the feed for one profile (runs in the executor)."""
+    from .model import next_checkup_due
+
+    # The period-reminder lead days double as the feed's own VALARM lead time (HA-Idee 2, 28.09.2026).
+    period_alarm_days_before = int(entry.options.get(CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS))
+    # Routine checkup due date; the ICS feed is a token-guarded capability URL, so no visibility gating (see ical.py).
+    checkup_due = next_checkup_due(
+        runtime.symptom_history,
+        int(entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)),
+    )
+    return generate_ics(
+        entry_id,
+        cycle_model.period_forecast,
+        cycle_model.fertility_forecast,
+        cycle_model.avg_cycle_length,
+        horizon_months,
+        language,
+        period_alarm_days_before,
+        checkup_due,
+        today,
+        []
+        if partner
+        else collect_extra_events(
+            entry.options,
+            runtime,
+            cycle_model.due_date,
+            language,
+            today,
+            ((cycle_model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start"),
+        ),
+        partner,
+        partner_content,
+    )
 
 
 async def _async_register_http_handlers(hass: HomeAssistant) -> None:
@@ -5926,7 +6048,9 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             if secrets.compare_digest(rt.ics_token, token):
                 matched_runtime, matched_entry_id = rt, entry_id
                 break
-            if secrets.compare_digest(derive_partner_token(rt.ics_token), token):
+            owner = hass.config_entries.async_get_entry(entry_id)
+            epoch = _ics_partner_epoch(owner) if owner is not None else 0
+            if secrets.compare_digest(derive_partner_token(rt.ics_token, epoch), token):
                 matched_runtime, matched_entry_id, partner = rt, entry_id, True
                 break
 
@@ -5948,79 +6072,41 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
         except Exception:
             horizon_months = ICS_HORIZON_MONTHS_DEFAULT
 
-        # Build cycle model to get forecasts
-        from .model import build_cycle_model, next_checkup_due
+        matched_runtime.ics_last_fetch["partner" if partner else "full"] = dt_util.utcnow().isoformat()
+
+        today = dt_util.now().date()
+        partner_content = str(gate_entry.options.get(CONF_ICS_PARTNER_CONTENT, DEFAULT_ICS_PARTNER_CONTENT))
+        # Same mode/stage as the sensors, else a strict profile's feed would publish a fertile window the sensors withhold.
         cycle_model = await hass.async_add_executor_job(
-            build_cycle_model,
-            matched_runtime.history,
-            matched_runtime.period_duration_days,
-            matched_runtime.symptom_history,
-            matched_runtime.pregnancy_data,
-            matched_runtime.menarche_data,
-            matched_runtime.pre_menarche_data,
-            matched_runtime.menopause_data,
-            matched_runtime.noncycle_data,
-            dt_util.now().date(),
-            matched_runtime.cycle_length_override,
-            # Same mode/stage as the sensors, else a strict profile's feed would publish a fertile window the sensors withhold.
-            gate_entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
-            getattr(matched_runtime, "onboarding_stage", None),
-        )
-
-        # HA-Idee 2 ("weitere Ideen fuer Features?" 28.09.2026): reuses the
-        # existing period-reminder lead-days setting for the ICS feed's own
-        # VALARM, rather than adding a second, separate config option - the
-        # same number of days already means "how long before the period
-        # should I be reminded" for the HA-native notify_service path.
-        matched_entry = hass.config_entries.async_get_entry(matched_entry_id)
-        period_alarm_days_before = (
-            int(
-                matched_entry.options.get(
-                    CONF_NOTIFY_PERIOD_LEAD_DAYS, DEFAULT_NOTIFY_PERIOD_LEAD_DAYS
-                )
-            )
-            if matched_entry is not None
-            else DEFAULT_NOTIFY_PERIOD_LEAD_DAYS
-        )
-
-        # Routine checkup due date; the ICS feed is a token-guarded capability URL, so no visibility gating (see ical.py).
-        checkup_due = next_checkup_due(
-            matched_runtime.symptom_history,
-            int(
-                matched_entry.options.get(CONF_CHECKUP_INTERVAL_MONTHS, DEFAULT_CHECKUP_INTERVAL_MONTHS)
-                if matched_entry is not None
-                else DEFAULT_CHECKUP_INTERVAL_MONTHS
-            ),
-        )
-
-        ics_bytes = await hass.async_add_executor_job(
-            generate_ics,
-            matched_entry_id,
-            cycle_model.period_forecast,
-            cycle_model.fertility_forecast,
-            cycle_model.avg_cycle_length,
-            horizon_months,
-            hass.config.language,
-            period_alarm_days_before,
-            checkup_due,
-            dt_util.now().date(),
-            [] if partner else collect_extra_events(
-                matched_entry.options if matched_entry is not None else {},
+            partial(
+                cached_cycle_model,
                 matched_runtime,
-                cycle_model.due_date,
-                hass.config.language,
-                dt_util.now().date(),
-                ((cycle_model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start"),
-            ),
-            partner,
+                today,
+                nfp_mode=gate_entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+                onboarding_stage=getattr(matched_runtime, "onboarding_stage", None),
+            )
         )
 
-        return Response(
-            body=ics_bytes,
-            content_type="text/calendar",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
-        )
+        # The body only changes with the day, the data (-> a new cached model object) and the options, so it is
+        # built once per such state and served with an ETag; calendar apps that revalidate get a 304.
+        cache_key = (partner, partner_content, horizon_months, hass.config.language, today, repr(sorted(gate_entry.options.items(), key=str)), id(cycle_model))
+        cached = matched_runtime.ics_cache.get(cache_key)
+        if cached is None:
+            ics_bytes = await hass.async_add_executor_job(
+                _build_ics_body, matched_entry_id, matched_runtime, gate_entry, cycle_model, horizon_months,
+                hass.config.language, today, partner, partner_content,
+            )
+            etag = f'"{hashlib.blake2b(ics_bytes, digest_size=8).hexdigest()}"'
+            if len(matched_runtime.ics_cache) >= 8:
+                matched_runtime.ics_cache.clear()
+            # the model is kept in the value so its id() cannot be reused while this entry lives
+            cached = matched_runtime.ics_cache[cache_key] = (ics_bytes, etag, cycle_model)
+        ics_bytes, etag, _model = cached
+
+        headers = {"Cache-Control": "private, no-cache", "ETag": etag}
+        if request.headers.get("If-None-Match") == etag:
+            return Response(status=304, headers=headers)
+        return Response(body=ics_bytes, content_type="text/calendar", charset="utf-8", headers=headers)
 
     try:
         hass.http.app.router.add_get(f"/{DOMAIN}/translations/{{filename}}", _serve_translation_file)
