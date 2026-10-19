@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 import logging
+from functools import partial
 from typing import Any
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
@@ -49,8 +50,10 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_CALENDAR_ENABLED,
     CONF_CHECKUP_INTERVAL_MONTHS,
+    CONF_NFP_ANALYSIS_MODE,
     DEFAULT_CALENDAR_ENABLED,
     DEFAULT_CHECKUP_INTERVAL_MONTHS,
+    DEFAULT_NFP_ANALYSIS_MODE,
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
     history_signal_applies,
@@ -148,7 +151,15 @@ class MenstruationCycleCalendar(CalendarEntity):
         # Same call as __init__.py's _serve_ics_feed HTTP view - kept in sync
         # deliberately (both need period_forecast/fertility_forecast/
         # avg_cycle_length from the same cycle model).
-        cycle_model = await self.hass.async_add_executor_job(cached_cycle_model, runtime, today)
+        cycle_model = await self.hass.async_add_executor_job(
+            partial(
+                cached_cycle_model,
+                runtime,
+                today,
+                nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+                onboarding_stage=getattr(runtime, "onboarding_stage", None),
+            )
+        )
 
         range_start = today - timedelta(days=_LOOKBACK_DAYS)
         range_end = today + timedelta(days=_LOOKAHEAD_DAYS)

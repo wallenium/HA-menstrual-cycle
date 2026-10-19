@@ -1710,7 +1710,8 @@ class IcsTokenRotationTests(unittest.TestCase):
         hass, _entry, runtime = self._setup(feed=True)
         payload = asyncio.run(integration._async_rotate_ics_url_payload(hass, "anna"))
         self.assertNotEqual(runtime.ics_token, "OLD")
-        self.assertEqual(payload, {"enabled": True, "url": f"/{const.DOMAIN}/ics/{runtime.ics_token}.ics"})
+        self.assertEqual(payload["url"], f"/{const.DOMAIN}/ics/{runtime.ics_token}.ics")
+        self.assertEqual(payload["partner_url"], f"/{const.DOMAIN}/ics/{integration.derive_partner_token(runtime.ics_token)}.ics")
         self.assertEqual(runtime.storage.saved, [runtime.ics_token])
 
     def test_rotation_does_nothing_while_the_feed_is_off_or_private(self) -> None:

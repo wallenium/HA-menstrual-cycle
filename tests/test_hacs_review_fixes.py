@@ -46,6 +46,18 @@ class IcsFeedExposure(unittest.TestCase):
         self.assertIn("ics_feed_available(", feed)
         self.assertLess(feed.index("ics_feed_available("), feed.index("build_cycle_model"))
 
+    def test_feed_and_household_overview_use_the_profiles_nfp_mode(self) -> None:
+        # a strict profile must not get a fertile window here that its sensor withholds
+        init = _read("__init__.py")
+        for name in ("_serve_ics_feed", "_async_handle_get_household_summary"):
+            self.assertIn("CONF_NFP_ANALYSIS_MODE", _function_source(init, name), name)
+
+    def test_partner_token_only_serves_the_reduced_feed(self) -> None:
+        feed = _function_source(_read("__init__.py"), "_serve_ics_feed")
+        self.assertIn("secrets.compare_digest(derive_partner_token(rt.ics_token), token)", feed)
+        self.assertIn("[] if partner else collect_extra_events(", feed)
+        self.assertRegex(feed, r"\n\s+partner,\n\s+\)")
+
     def test_url_command_is_admin_only(self) -> None:
         reg = _function_source(_read("__init__.py"), "_async_register_websocket_commands")
         self.assertIn("websocket_api.require_admin", reg)

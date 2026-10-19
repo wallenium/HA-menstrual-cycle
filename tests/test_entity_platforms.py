@@ -599,6 +599,12 @@ class CalendarEntityTests(unittest.TestCase):
         self.assertTrue(entity._attr_available)
         self.assertEqual([e.start for e in entity._events], sorted(e.start for e in entity._events))
 
+    def test_strict_nfp_profile_gets_no_predicted_fertile_window(self) -> None:
+        # strict mode withholds ovulation/fertile window without observed temperature data (same as the sensor)
+        entity = self._entity(options={const.CONF_NFP_ANALYSIS_MODE: "strict"})
+        run(entity._async_refresh_events())
+        self.assertEqual({e.summary for e in entity._events}, {"Period (predicted)"})
+
     def test_refresh_respects_visibility_and_language(self) -> None:
         entity = self._entity(visibility="status_only", language="de")
         run(entity._async_refresh_events())
@@ -712,6 +718,13 @@ class ImageEntityTests(unittest.TestCase):
             model.state = "fertile"
             run(entity.async_update())
             self.assertTrue(str(entity._asset_path).endswith("state/fertile.svg"))
+
+    def test_update_uses_the_profiles_nfp_mode_and_stage(self) -> None:
+        runtime = _runtime(onboarding_stage="early_menarche")
+        entity = image.MenstruationCyclePhaseImage(_hass(runtime), _entry(**{const.CONF_NFP_ANALYSIS_MODE: "strict"}))
+        with patch.object(image, "cached_cycle_model", return_value=SimpleNamespace(state="neutral", weeks_pregnant=None)) as m:
+            run(entity.async_update())
+        self.assertEqual(m.call_args.kwargs, {"nfp_mode": "strict", "onboarding_stage": "early_menarche"})
 
     def test_private_profile_shows_nothing(self) -> None:
         entity, _ = self._entity(visibility_level="private")

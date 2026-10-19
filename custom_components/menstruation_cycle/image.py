@@ -33,6 +33,8 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_NFP_ANALYSIS_MODE,
+    DEFAULT_NFP_ANALYSIS_MODE,
     DOMAIN,
     SIGNAL_HISTORY_UPDATED,
     history_signal_applies,
@@ -120,7 +122,12 @@ class MenstruationCyclePhaseImage(ImageEntity):
             return
 
         today = dt_util.now().date()
-        model = cached_cycle_model(runtime, today)
+        model = cached_cycle_model(
+            runtime,
+            today,
+            nfp_mode=self._entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            onboarding_stage=getattr(runtime, "onboarding_stage", None),
+        )
         new_path = await self.hass.async_add_executor_job(self._resolve_asset_path, model)
         if new_path != self._asset_path:
             self._asset_path = new_path

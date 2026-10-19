@@ -2,6 +2,9 @@
 
 ## 1.9.1
 
+### Added
+- **Partner link for the ICS feed:** "Copy partner link" in the dashboard (next to "New feed URL", administrators only) gives a second, reduced calendar URL with only the predicted periods and the fertile window (no ovulation day, checkup, contraception/pregnancy dates, logged periods, reminders or source/confidence notes). It is derived one-way from the profile's ICS token, so the full-feed token cannot be computed from it, and it stops working whenever the token is rotated or renewed. The websocket commands `ics_url` and `rotate_ics_token` return it as `partner_url`.
+
 ### Changed
 - **ICS feed token:** every time the feed is switched from off to on, a new token is created, so URLs from earlier versions (when the token was published as the `ics_url` attribute) or from an earlier period of use never work again. Administrators can also rotate the token at any time with the new "New feed URL" button next to the "Subscribe to calendar" link in the dashboard (admin-only websocket command `menstruation_cycle/rotate_ics_token`); the old URL stops working immediately. The README explains how to invalidate a URL.
 - The events `menstruation_cycle_pill_taken`, `menstruation_cycle_lh_positive` and `menstruation_cycle_ovulation_confirmed` (and so their logbook entries) are only fired at visibility "Full" instead of "Full" and "Status only", because the logbook is readable by every user. Automations that rely on these events for a "Status only" profile need visibility "Full".
@@ -9,6 +12,7 @@
 
 ### Fixed
 - The ICS feed route compares the token in constant time.
+- The calendar entity, the cycle-phase image, the ICS feed and the household overview built their cycle model without the profile's NFP mode (and, for calendar/image/feed, without its onboarding stage). A profile set to "strict" therefore got a predicted fertile window, ovulation day or "fertile" state there that its sensors correctly withhold; they now use the same mode and stage as the sensors.
 
 ## 1.9.0
 

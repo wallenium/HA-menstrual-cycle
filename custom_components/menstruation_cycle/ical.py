@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import hmac
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -279,6 +281,15 @@ def _format_dtstamp(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%SZ")
 
 
+def derive_partner_token(token: str) -> str:
+    """Separate secret for the reduced partner feed, derived one-way from the profile's ICS token.
+
+    Whoever holds the partner URL cannot compute the full-feed token, and rotating the main token rotates this
+    one too, so nothing extra is stored. ponytail: no independent revoke for just the partner link.
+    """
+    return base64.urlsafe_b64encode(hmac.new(token.encode(), b"partner-feed", hashlib.sha256).digest()).decode().rstrip("=")
+
+
 def _deterministic_uid(entry_id: str, event_type: str, start_date: str) -> str:
     """Generate a deterministic UID for an event so clients update instead of duplicating."""
     raw = f"{entry_id}-{event_type}-{start_date}"
@@ -360,6 +371,7 @@ def generate_ics(
     checkup_due: date | None = None,
     today: date | None = None,
     extra_events: list[tuple[str, date, date, str]] | None = None,
+    partner: bool = False,
 ) -> bytes:
     """Generate RFC 5545-compatible VCALENDAR bytes for cycle predictions.
 
@@ -375,9 +387,15 @@ def generate_ics(
             external calendar apps with no per-request browser language
             available. Falls back to English if unset/unsupported.
 
+    partner: reduced feed for a partner: predicted periods and the fertile window only - no ovulation day,
+            checkup, contraception/pregnancy/logged events, reminders, or source/confidence notes.
+
     Returns:
         UTF-8 encoded VCALENDAR bytes (CRLF line endings per RFC 5545).
     """
+    if partner:
+        checkup_due, extra_events, period_alarm_days_before = None, None, None
+        entry_id = f"{entry_id}:partner"  # own UIDs, so subscribing to both feeds never merges events
     strings = _ics_strings(lang)
     horizon_months = max(1, min(ICS_HORIZON_MONTHS_MAX, int(horizon_months)))
     today = today or date.today()
@@ -439,8 +457,8 @@ def generate_ics(
             except (KeyError, TypeError, ValueError):
                 continue
             uid = _deterministic_uid(entry_id, "period", window["start"])
-            desc = strings["source_predicted"]
-            if period_confidence:
+            desc = "" if partner else strings["source_predicted"]
+            if period_confidence and not partner:
                 desc += f"; {strings['confidence']}: {period_confidence}"
             lines.extend(
                 _vevent_lines(
@@ -463,8 +481,8 @@ def generate_ics(
                 continue
 
             fw_uid = _deterministic_uid(entry_id, "fertile", window["fertile_start"])
-            fw_desc = f"{strings['source_prefix']}: {fertility_source}"
-            if fertility_confidence:
+            fw_desc = "" if partner else f"{strings['source_prefix']}: {fertility_source}"
+            if fertility_confidence and not partner:
                 fw_desc += f"; {strings['confidence']}: {fertility_confidence}"
             lines.extend(
                 _vevent_lines(
@@ -477,6 +495,8 @@ def generate_ics(
                 )
             )
 
+            if partner:
+                continue
             ov_uid = _deterministic_uid(entry_id, "ovulation", window["ovulation"])
             ov_desc = f"{strings['source_prefix']}: {fertility_source}"
             if fertility_confidence:

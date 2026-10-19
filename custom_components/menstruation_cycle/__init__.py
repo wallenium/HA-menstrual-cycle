@@ -282,7 +282,7 @@ from .const import (
     DEFAULT_IMPORT_DATE_FORMAT,
     CYCLE_LENGTH_OVERRIDE_MIN,
 )
-from .ical import collect_extra_events, generate_ics, ics_feed_available
+from .ical import collect_extra_events, derive_partner_token, generate_ics, ics_feed_available
 from .model import (
     _count_pain_days,
     build_cycle_model,
@@ -4607,7 +4607,12 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
             noncycle_data=runtime.noncycle_data,
             today=today,
             cycle_length_override=runtime.cycle_length_override,
-            nfp_mode=DEFAULT_NFP_ANALYSIS_MODE,
+            # Same mode as the profile's own sensor, else a "strict" profile shows a fertile state/window here that the sensor withholds.
+            nfp_mode=(
+                config_entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE)
+                if config_entry is not None
+                else DEFAULT_NFP_ANALYSIS_MODE
+            ),
             onboarding_stage=getattr(runtime, "onboarding_stage", None),
         )
         profile_entry["state"] = model.state
@@ -5782,7 +5787,11 @@ def _ics_url_payload(hass: HomeAssistant, profile: str) -> dict[str, Any]:
             continue
         entry = hass.config_entries.async_get_entry(entry_id)
         if entry is not None and ics_feed_available(entry.options, rt.visibility_level):
-            return {"enabled": True, "url": f"/{DOMAIN}/ics/{rt.ics_token}.ics"}
+            return {
+                "enabled": True,
+                "url": f"/{DOMAIN}/ics/{rt.ics_token}.ics",
+                "partner_url": f"/{DOMAIN}/ics/{derive_partner_token(rt.ics_token)}.ics",
+            }
     return {"enabled": False, "url": None}
 
 
@@ -5910,10 +5919,15 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
         domain_data: dict[str, MenstruationRuntime] = hass.data.get(DOMAIN, {})
         matched_runtime: MenstruationRuntime | None = None
         matched_entry_id: str | None = None
+        partner = False
         for entry_id, rt in domain_data.items():
-            if isinstance(rt, MenstruationRuntime) and rt.ics_token and secrets.compare_digest(rt.ics_token, token):
-                matched_runtime = rt
-                matched_entry_id = entry_id
+            if not (isinstance(rt, MenstruationRuntime) and rt.ics_token):
+                continue
+            if secrets.compare_digest(rt.ics_token, token):
+                matched_runtime, matched_entry_id = rt, entry_id
+                break
+            if secrets.compare_digest(derive_partner_token(rt.ics_token), token):
+                matched_runtime, matched_entry_id, partner = rt, entry_id, True
                 break
 
         if matched_runtime is None or matched_entry_id is None:
@@ -5948,6 +5962,9 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             matched_runtime.noncycle_data,
             dt_util.now().date(),
             matched_runtime.cycle_length_override,
+            # Same mode/stage as the sensors, else a strict profile's feed would publish a fertile window the sensors withhold.
+            gate_entry.options.get(CONF_NFP_ANALYSIS_MODE, DEFAULT_NFP_ANALYSIS_MODE),
+            getattr(matched_runtime, "onboarding_stage", None),
         )
 
         # HA-Idee 2 ("weitere Ideen fuer Features?" 28.09.2026): reuses the
@@ -5987,7 +6004,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
             period_alarm_days_before,
             checkup_due,
             dt_util.now().date(),
-            collect_extra_events(
+            [] if partner else collect_extra_events(
                 matched_entry.options if matched_entry is not None else {},
                 matched_runtime,
                 cycle_model.due_date,
@@ -5995,6 +6012,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
                 dt_util.now().date(),
                 ((cycle_model.nfp_analysis or {}).get("luteal_forecast") or {}).get("predicted_start"),
             ),
+            partner,
         )
 
         return Response(

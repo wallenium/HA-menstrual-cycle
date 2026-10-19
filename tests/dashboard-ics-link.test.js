@@ -91,6 +91,18 @@ assert.ok(!/googleapis|gstatic|@import url\(/.test(source), 'no runtime font dow
   const rotated = rot._renderIcsSubscribeLink({ profile: 'anna' });
   assert.ok(rotated.includes('/ics/NEW.ics') && !rotated.includes('OLD'), rotated);
   assert.strictEqual(rotSent.length, 2, 'no extra fetch after rotation');
+  // Partner link: separate URL, copied to the clipboard (absolute), never part of the main link markup.
+  const partnerSent = [];
+  const partner = make(() => Promise.resolve({ enabled: true, url: '/menstruation_cycle/ics/MAIN.ics', partner_url: '/menstruation_cycle/ics/PARTNER.ics' }));
+  partner._renderIcsSubscribeLink({ profile: 'anna' });
+  await new Promise((r) => setImmediate(r));
+  const partnerHtml = partner._renderIcsSubscribeLink({ profile: 'anna' });
+  assert.ok(partnerHtml.includes('data-action="copy-ics-partner-url"') && !partnerHtml.includes('PARTNER'), partnerHtml);
+  Object.defineProperty(global, 'navigator', { value: { language: 'en', clipboard: { writeText: (t) => { partnerSent.push(t); return Promise.resolve(); } } }, configurable: true });
+  const button = { textContent: '' };
+  await partner._copyIcsPartnerUrl('anna', button);
+  assert.deepStrictEqual(partnerSent, ['http://ha.local:8123/menstruation_cycle/ics/PARTNER.ics']);
+  assert.strictEqual(button.textContent, 'Copied');
   // Feed switched off meanwhile: the link disappears.
   const gone = make(() => Promise.resolve({ enabled: false, url: null }));
   global.window.confirm = () => true;

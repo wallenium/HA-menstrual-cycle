@@ -274,6 +274,8 @@
     dashboard_ics_hint: '(as an iCal feed, e.g. for Google/Apple Calendar)',
     dashboard_ics_rotate: 'New feed URL',
     dashboard_ics_rotate_confirm: 'Create a new feed URL? The current one stops working immediately, and calendars subscribed to it must be subscribed again.',
+    dashboard_ics_partner: 'Copy partner link (periods and fertile window only)',
+    dashboard_ics_partner_copied: 'Copied',
     dashboard_widget_progress_badges: 'Progress',
     dashboard_badge_earned_on: 'Earned on',
     badge_first_entry: 'First entry logged',
@@ -3811,6 +3813,11 @@
         return;
       }
 
+      if (action === 'copy-ics-partner-url') {
+        this._copyIcsPartnerUrl(target.dataset.profile, target);
+        return;
+      }
+
       if (action === 'create-doctor-report') {
         this._createDoctorReport();
         return;
@@ -6654,6 +6661,8 @@
         .then((result) => {
           if (result && result.url) {
             this._icsUrls[profile] = result.url;
+            this._icsPartnerUrls = this._icsPartnerUrls || {};
+            this._icsPartnerUrls[profile] = result.partner_url || '';
             this.render();
           }
         })
@@ -6668,8 +6677,19 @@
         .then((result) => {
           this._icsUrls = this._icsUrls || {};
           this._icsUrls[profile] = (result && result.url) || '';
+          this._icsPartnerUrls = this._icsPartnerUrls || {};
+          this._icsPartnerUrls[profile] = (result && result.partner_url) || '';
           this.render();
         })
+        .catch(() => {});
+    }
+
+    // Reduced feed for a partner (periods + fertile window only): copied, not subscribed here, since it is meant for their device.
+    _copyIcsPartnerUrl(profile, button) {
+      const partnerUrl = this._icsPartnerUrls?.[profile];
+      if (!partnerUrl || !navigator.clipboard?.writeText) return Promise.resolve();
+      return navigator.clipboard.writeText(new URL(partnerUrl, window.location.origin).toString())
+        .then(() => { if (button) button.textContent = this._t('dashboard_ics_partner_copied'); })
         .catch(() => {});
     }
 
@@ -6692,6 +6712,7 @@
           </a>
           <span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${this._t('dashboard_ics_hint') || '(als iCal-Feed, z. B. für Google/Apple Kalender)'}</span>
           <button type="button" data-action="rotate-ics-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_rotate'))}</button>
+          ${this._icsPartnerUrls?.[attrs.profile] ? `<button type="button" data-action="copy-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner'))}</button>` : ''}
         </div>
       `;
     }
