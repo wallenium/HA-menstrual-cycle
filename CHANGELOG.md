@@ -5,6 +5,10 @@
 ### Changed
 - **ICS feed token:** every time the feed is switched from off to on, a new token is created, so URLs from earlier versions (when the token was published as the `ics_url` attribute) or from an earlier period of use never work again. Administrators can also rotate the token at any time with the new "New feed URL" button next to the "Subscribe to calendar" link in the dashboard (admin-only websocket command `menstruation_cycle/rotate_ics_token`); the old URL stops working immediately. The README explains how to invalidate a URL.
 - The events `menstruation_cycle_pill_taken`, `menstruation_cycle_lh_positive` and `menstruation_cycle_ovulation_confirmed` (and so their logbook entries) are only fired at visibility "Full" instead of "Full" and "Status only", because the logbook is readable by every user. Automations that rely on these events for a "Status only" profile need visibility "Full".
+- **Visibility "Status only" / "Private" now covers more places** (follow-up to the event change above). Below visibility "Full": the basal-temperature sensor and the "Period products today" sensor are unavailable (like the next-ovulation sensor); the hospital-bag to-do list is unavailable even during a pregnancy (its presence revealed one); `prediction_gating` shrinks to `precision_allowed` and `confidence` (cycle count, spread, logged entries and the `missing` hints stay at "Full"); the basal-temperature statistics backfill is skipped; and logging product use still lowers the household stock but no longer names the profile in the household log or fires `menstruation_cycle_product_consumed` (and so no logbook entry). Entries already in the household log keep their names.
+
+### Fixed
+- The ICS feed route compares the token in constant time.
 
 ## 1.9.0
 

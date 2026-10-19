@@ -427,7 +427,13 @@ def _filter_attributes_for_visibility(raw_attrs: dict[str, Any], level: str) -> 
     if level == VISIBILITY_LEVEL_FULL:
         return raw_attrs
     allowed = _VISIBILITY_STATUS_ONLY_KEYS if level == VISIBILITY_LEVEL_STATUS_ONLY else _VISIBILITY_ALWAYS_KEPT_KEYS
-    return {key: value for key, value in raw_attrs.items() if key in allowed}
+    filtered = {key: value for key, value in raw_attrs.items() if key in allowed}
+    gating = filtered.get(ATTR_PREDICTION_GATING)
+    if isinstance(gating, dict):
+        # The data-quality details (cycle count, spread, log entries, what is missing, e.g. "no recent
+        # temperature") describe what the person logs: only the coarse verdict stays below "Full".
+        filtered[ATTR_PREDICTION_GATING] = {k: gating[k] for k in ("precision_allowed", "confidence") if k in gating}
+    return filtered
 
 
 def _build_compact_sensor_attributes(raw_attrs: dict[str, Any]) -> dict[str, StateType]:
@@ -1773,6 +1779,7 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
         self._attr_native_unit_of_measurement = "items"
         self._attr_native_value = 0
         self._attrs: dict[str, StateType] = {}
+        self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1795,6 +1802,12 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
     async def async_update(self) -> None:
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         self._friendly_name = runtime.friendly_name
+        # Product use is a health detail: like the next-ovulation sensor, unavailable below visibility "Full".
+        self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
+        if not self._visible:
+            self._attr_native_value = None
+            self._attrs = {}
+            return
 
         stats = _build_product_usage_stats(
             runtime.history,
@@ -1834,7 +1847,7 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
-        return self._entry.entry_id in self.hass.data.get(DOMAIN, {})
+        return self._visible and self._entry.entry_id in self.hass.data.get(DOMAIN, {})
 
     def _safe_schedule_update(self) -> None:
         """Schedule a state refresh on the HA event loop (thread-safe)."""
@@ -1912,6 +1925,7 @@ class MenstruationBasalTempSensor(SensorEntity):
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_basal_temp"]
         self._attr_native_value: float | None = None
         self._attrs: dict[str, StateType] = {}
+        self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1933,6 +1947,12 @@ class MenstruationBasalTempSensor(SensorEntity):
     async def async_update(self) -> None:
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
         self._friendly_name = runtime.friendly_name
+        # A temperature reading is a health detail: unavailable below visibility "Full" (see the next-ovulation sensor).
+        self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
+        if not self._visible:
+            self._attr_native_value = None
+            self._attrs = {}
+            return
 
         latest_date: str | None = None
         latest_value: float | None = None
@@ -1968,7 +1988,7 @@ class MenstruationBasalTempSensor(SensorEntity):
 
     @property
     def available(self) -> bool:
-        return self._entry.entry_id in self.hass.data.get(DOMAIN, {})
+        return self._visible and self._entry.entry_id in self.hass.data.get(DOMAIN, {})
 
     def _safe_schedule_update(self) -> None:
         if not self.hass:
@@ -2144,7 +2164,7 @@ async def _async_backfill_basal_temp_statistics(
     integration setup, just skip the backfill and log a warning.
     """
     runtime = hass.data[DOMAIN][entry.entry_id]
-    if runtime.noncycle_data.get("basal_temp_stats_backfilled"):
+    if runtime.noncycle_data.get("basal_temp_stats_backfilled") or runtime.visibility_level != VISIBILITY_LEVEL_FULL:
         return
 
     try:

@@ -6,6 +6,7 @@ import sys
 import threading
 import types
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -457,6 +458,56 @@ class TestCycleLengthSensor(unittest.TestCase):
     def test_it_is_set_up_with_the_other_sensors(self) -> None:
         source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")
         self.assertIn("MenstruationCycleLengthSensor(hass, entry),", source)
+
+
+class TestHealthSensorsHiddenBelowFull(unittest.TestCase):
+    """Basal temperature and product use are health details: unavailable and empty unless visibility is "full"."""
+
+    def _runtime(self, visibility):
+        return types.SimpleNamespace(
+            friendly_name="Test", profile="test", history=["2026-07-01"], visibility_level=visibility,
+            symptom_history=[{"date": "2026-07-01", "basal_temp": 36.6}],
+            product_usage=[{"date": "2026-07-01", "product": "tampon", "quantity": 2, "action": "used"}],
+        )
+
+    def _update(self, cls, visibility):
+        import asyncio
+
+        hass = _make_fake_hass()
+        hass.data[const.DOMAIN]["entry-1"] = self._runtime(visibility)
+        entity = cls(hass, types.SimpleNamespace(entry_id="entry-1"))
+        with patch.object(sensor_module.dt_util, "now", lambda: datetime(2026, 7, 10, 12, 0)):
+            asyncio.run(entity.async_update())
+        return entity
+
+    def test_basal_temperature_sensor(self) -> None:
+        full = self._update(sensor_module.MenstruationBasalTempSensor, "full")
+        self.assertEqual(full._attr_native_value, 36.6)
+        self.assertTrue(full.available)
+        for level in ("status_only", "private"):
+            hidden = self._update(sensor_module.MenstruationBasalTempSensor, level)
+            self.assertIsNone(hidden._attr_native_value, level)
+            self.assertEqual(hidden.extra_state_attributes, {}, level)
+            self.assertFalse(hidden.available, level)
+
+    def test_product_usage_sensor(self) -> None:
+        full = self._update(sensor_module.ProductUsageStatsConsolidatedSensor, "full")
+        self.assertIn("this_cycle", full.extra_state_attributes)
+        self.assertTrue(full.available)
+        for level in ("status_only", "private"):
+            hidden = self._update(sensor_module.ProductUsageStatsConsolidatedSensor, level)
+            self.assertIsNone(hidden.native_value, level)
+            self.assertEqual(hidden.extra_state_attributes, {}, level)
+            self.assertFalse(hidden.available, level)
+
+    def test_prediction_gating_details_stay_at_full(self) -> None:
+        gating = {"precision_allowed": True, "confidence": "high", "valid_cycles": 6, "cycle_std_days": 1.4,
+                  "recent_log_entries": 12, "missing": ["no_recent_temperature"], "thresholds": {"min_valid_cycles": 4}}
+        raw = {"prediction_gating": gating, "cycle_day": 3}
+        self.assertEqual(sensor_module._filter_attributes_for_visibility(raw, "full")["prediction_gating"], gating)
+        for level in ("status_only", "private"):
+            kept = sensor_module._filter_attributes_for_visibility(raw, level)["prediction_gating"]
+            self.assertEqual(kept, {"precision_allowed": True, "confidence": "high"}, level)
 
 
 if __name__ == "__main__":

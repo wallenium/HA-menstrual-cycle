@@ -33,7 +33,7 @@ Each profile creates these entities (`<name>` is the slugified profile name):
 | `image.menstruation_<name>_cycle_phase` | Illustration of the current phase, for picture cards and wall tablets. |
 | `todo.menstruation_<name>_hospital_bag` | Editable hospital-bag checklist, only available during a pregnancy. Pre-filled in the Home Assistant language (German, English, Spanish, French, Swedish; English otherwise). |
 
-Entities follow the profile's visibility level: at "Private" nothing is shown, at "Status only" only period events remain in the calendar. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook, and repair issues point out things like an old calendar feed (ICS) token an unreachable notify target, or pregnancy mode still being on 14 days after the due date.
+Entities follow the profile's visibility level: at "Private" nothing is shown, at "Status only" only period events remain in the calendar. At "Status only" and "Private" the sensors for basal temperature and product use, the pregnancy to-do list and the detailed data-quality attributes are hidden as well. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook (pill intake and product use only for profiles with visibility "Full"), and repair issues point out things like an old calendar feed (ICS) token an unreachable notify target, or pregnancy mode still being on 14 days after the due date.
 
 ## Quick Start
 

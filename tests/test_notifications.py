@@ -1564,6 +1564,48 @@ class OverdueFromLutealPhaseTests(unittest.TestCase):
             self.assertNotIn(f"{model}.days_until_next_start", source)
 
 
+class ProductUsageVisibilityTests(unittest.TestCase):
+    """Who used which product is a health detail: named in the household log and logbook at "Full" only."""
+
+    def _log(self, visibility):
+        runtime = _runtime(product_usage=[], profile="anna", visibility_level=visibility)
+        call = SimpleNamespace(data={const.SERVICE_FIELD_PRODUCT: "tampon", const.SERVICE_FIELD_QUANTITY: 2})
+        register = AsyncMock()
+        with patch.object(integration, "_runtime_for_call", lambda h, c: runtime), patch.object(
+            integration, "_async_register_consumption", register
+        ), patch.object(integration, "_async_save_and_notify", AsyncMock()), patch.object(
+            integration.dt_util, "now", lambda: NOW[0]
+        ):
+            _run(integration._async_handle_log_product_usage(_hass(), call))
+        return runtime, register
+
+    def test_full_visibility_names_the_member_and_announces(self) -> None:
+        _runtime_obj, register = self._log("full")
+        (_, product, quantity, member), kwargs = register.await_args
+        self.assertEqual((product, quantity, member), ("tampon", 2, "Test"))
+        self.assertTrue(kwargs["announce"])
+
+    def test_below_full_the_stock_still_drops_but_nobody_is_named_or_announced(self) -> None:
+        for level in ("status_only", "private"):
+            runtime, register = self._log(level)
+            (_, product, quantity, member), kwargs = register.await_args
+            self.assertEqual((product, quantity, member), ("tampon", 2, ""), level)
+            self.assertFalse(kwargs["announce"], level)
+            self.assertEqual(len(runtime.product_usage), 1, level)
+
+    def test_the_event_is_only_fired_when_announced(self) -> None:
+        source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
+        body = source[source.index("async def _async_register_consumption") :]
+        self.assertRegex(body, r"if announce:\s+hass\.bus\.async_fire\(EVENT_PRODUCT_CONSUMED")
+
+
+class IcsTokenCompareTests(unittest.TestCase):
+    def test_feed_route_compares_the_token_in_constant_time(self) -> None:
+        source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
+        route = source[source.index("async def _serve_ics_feed") :][:900]
+        self.assertIn("secrets.compare_digest(rt.ics_token, token)", route)
+
+
 class LhPositiveEventTests(unittest.TestCase):
     """The first positive ovulation test of a cycle fires an event for automations and the logbook."""
 

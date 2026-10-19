@@ -43,7 +43,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SIGNAL_HISTORY_UPDATED, history_signal_applies, menstruation_object_ids_for_profile
+from .const import (
+    DOMAIN,
+    SIGNAL_HISTORY_UPDATED,
+    VISIBILITY_LEVEL_FULL,
+    history_signal_applies,
+    menstruation_object_ids_for_profile,
+)
 from .sensor import _device_info_for_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -175,7 +181,8 @@ class MenstruationHospitalBagTodo(TodoListEntity):
 
     async def _async_refresh(self) -> None:
         runtime = self.hass.data[DOMAIN][self._entry.entry_id]
-        is_pregnant = bool(runtime.pregnancy_data.get("is_pregnant"))
+        # The list only exists during a pregnancy, so its mere presence would reveal one: Full visibility only.
+        is_pregnant = bool(runtime.pregnancy_data.get("is_pregnant")) and runtime.visibility_level == VISIBILITY_LEVEL_FULL
         self._attr_available = is_pregnant
         if not is_pregnant:
             return

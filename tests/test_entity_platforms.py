@@ -245,6 +245,15 @@ class HospitalBagTodoTests(unittest.TestCase):
         entity = todo.MenstruationHospitalBagTodo(_hass(runtime, language), _entry())
         return entity, runtime
 
+    def test_not_available_below_full_visibility_even_when_pregnant(self) -> None:
+        # the list only exists during a pregnancy: showing it would reveal one
+        for level in ("status_only", "private"):
+            runtime = _runtime(pregnancy_data={"is_pregnant": True}, storage=_Storage(), visibility_level=level)
+            entity = todo.MenstruationHospitalBagTodo(_hass(runtime), _entry())
+            run(entity._async_refresh())
+            self.assertFalse(entity._attr_available, level)
+            self.assertEqual(entity._attr_todo_items, [], level)
+
     def test_identity_and_start_state(self) -> None:
         entity, _ = self._entity()
         self.assertEqual(entity._attr_unique_id, "e1_hospital_bag")

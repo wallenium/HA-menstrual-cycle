@@ -926,6 +926,7 @@ async def _async_register_consumption(
     *,
     source: str,
     area_id: str | None = None,
+    announce: bool = True,
 ) -> None:
     household_data = hass.data.get(HOUSEHOLD_INVENTORY_DATA_KEY)
     if not isinstance(household_data, dict):
@@ -966,8 +967,9 @@ async def _async_register_consumption(
             entry["area_id"] = area_id
             entry["area_name"] = area.name
 
-    # Fired for every consumption, from either service path; described in logbook.py.
-    hass.bus.async_fire(EVENT_PRODUCT_CONSUMED, dict(entry))
+    # Described in logbook.py; not for profiles below visibility "Full" (the logbook is readable by every user).
+    if announce:
+        hass.bus.async_fire(EVENT_PRODUCT_CONSUMED, dict(entry))
     household_data["last_usage"] = entry
     log = household_data.setdefault("consumption_log", [])
     if isinstance(log, list):
@@ -5084,8 +5086,16 @@ async def _async_handle_log_product_usage(hass: HomeAssistant, call: ServiceCall
     )
     area_id = str(call.data.get(SERVICE_FIELD_AREA_ID, "")).strip() or None
     if action == "used":
+        # The stock still goes down, but who used what is a health detail: named and announced at "Full" only.
+        named = runtime.visibility_level == VISIBILITY_LEVEL_FULL
         await _async_register_consumption(
-            hass, product, max(1, quantity), runtime.friendly_name, source="log_product_usage", area_id=area_id
+            hass,
+            product,
+            max(1, quantity),
+            runtime.friendly_name if named else "",
+            source="log_product_usage",
+            area_id=area_id,
+            announce=named,
         )
     await _async_save_and_notify(hass, runtime)
 
@@ -5901,7 +5911,7 @@ async def _async_register_http_handlers(hass: HomeAssistant) -> None:
         matched_runtime: MenstruationRuntime | None = None
         matched_entry_id: str | None = None
         for entry_id, rt in domain_data.items():
-            if isinstance(rt, MenstruationRuntime) and rt.ics_token == token:
+            if isinstance(rt, MenstruationRuntime) and rt.ics_token and secrets.compare_digest(rt.ics_token, token):
                 matched_runtime = rt
                 matched_entry_id = entry_id
                 break
