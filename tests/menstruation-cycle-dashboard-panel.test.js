@@ -61,6 +61,7 @@ const baseTranslations = {
   dashboard_widget_gauge_card: 'Gauge',
   dashboard_widget_calendar_card: 'Calendar',
   dashboard_widget_statistics_card: 'Statistics',
+  dashboard_widget_pill_card: 'Pill pack',
   dashboard_no_entity_selected: 'No profile selected.',
   dashboard_component_unavailable: 'Card component not loaded.',
   dashboard_edit_mode: 'Edit dashboard',
@@ -430,6 +431,16 @@ const makeHass = (stateObj) => ({
   const timerMount = source.slice(source.indexOf('data-mount="timer-card"'), source.indexOf('data-mount="statistics-card"'));
   assert.ok(timerMount.includes('{ entity: this._selectedEntityId }'), 'timer card must get the profile sensor');
   assert.ok(!timerMount.includes('entity: `menstruation_cycle_timer'), 'timer card must not get the timer-state entity');
+
+  // pill blister widget: only profiles with a pill_pack get it, mounted as the real card without its own heading
+  const noPill = panelGeneral._renderWidget('pill_card', panelGeneral._hass.states[panelGeneral._selectedEntityId], false);
+  assert.strictEqual(noPill, '', 'no pill_pack, no widget');
+  const pillState = { attributes: { pill_pack: { active: 21, pause: 7, taken: [], position: 1, in_pause: false, today_taken: false, new_pack: true } } };
+  const pillHtml = panelGeneral._renderWidget('pill_card', pillState, false);
+  assert.ok(pillHtml.includes('data-mount="pill-card"') && pillHtml.includes('Pill pack'), 'pill_pack renders the mount with the widget title');
+  const pillMount = source.slice(source.indexOf('data-mount="pill-card"'));
+  assert.ok(pillMount.includes("tag: 'menstruation-pill-card'") && pillMount.includes("title: ''"), 'pill card is mounted without a duplicate title');
+  assert.ok(source.includes("'menstruation-pill-card': 'menstruation-pill-card.js'"), 'panel loads the pill card script itself');
 
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {

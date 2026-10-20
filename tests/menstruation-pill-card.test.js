@@ -79,6 +79,13 @@ window.menstruationCycleI18n.cache.de = readLang('de');
 assert.ok(make(pack, { language: 'de' }).html().includes('Tag 10 von 21'));
 assert.throws(() => new Card().setConfig({}), /entity is required/);
 
+// title '' (used inside the dashboard panel, which has its own heading) hides the card heading
+const untitled = make(pack);
+untitled.card.setConfig({ entity: 'sensor.menstruation', title: '' });
+assert.ok(!untitled.html().includes('class="title"'));
+assert.ok(untitled.html().includes('class="blister"'));
+assert.ok(make(pack).html().includes('class="title"'));
+
 // every key used by the card exists in all five translation files
 const keys = [...source.matchAll(/'(pill_card_[a-z_]+)'|`(pill_card_state_)\$\{state\}`/g)].map((m) => m[1]).filter(Boolean);
 for (const lang of ['en', 'de', 'fr', 'es', 'sv']) {

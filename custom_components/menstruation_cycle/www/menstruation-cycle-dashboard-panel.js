@@ -359,6 +359,7 @@
     dashboard_pain_types_count: 'Number of pain types',
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
+    dashboard_widget_pill_card: 'Pill pack',
     dashboard_widget_support_card: 'Support & Education',
     dashboard_birth: 'Birth',
     days: 'days',
@@ -524,6 +525,7 @@
     { id: 'product_usage', title: 'dashboard_widget_product_usage', sensitive: false, span: 12 },
     { id: 'inventory_card', title: 'dashboard_widget_inventory_card', sensitive: false, span: 6 },
     { id: 'timer_card', title: 'dashboard_widget_timer_card', sensitive: false, span: 6 },
+    { id: 'pill_card', title: 'dashboard_widget_pill_card', sensitive: false, span: 6 },
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
     { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
     { id: 'long_term_trend', title: 'dashboard_widget_long_term_trend', sensitive: false, span: 12 },
@@ -549,6 +551,7 @@
     'product_usage',
     'inventory_card',
     'timer_card',
+    'pill_card',
     'statistics_card',
     'support_card',
     'long_term_trend',
@@ -595,6 +598,7 @@
         product_usage: true,
         inventory_card: true,
         timer_card: true,
+        pill_card: true,
         statistics_card: false,
         // Shown by default in pre-menarche/early-menarche modes, matching the
         // card's own documented default visibility.
@@ -626,6 +630,7 @@
         product_usage: true,
         inventory_card: true,
         timer_card: true,
+        pill_card: true,
         statistics_card: true,
         // Hidden by default in established_cycle mode, matching the card's own
         // documented default visibility — still available via edit mode.
@@ -922,6 +927,7 @@
         'menstruation-product-inventory-card': 'menstruation-product-inventory-card.js',
         'menstruation-countdown-timer': 'menstruation-countdown-timer.js',
         'menstruation-statistics-card': 'menstruation-statistics-card.js',
+        'menstruation-pill-card': 'menstruation-pill-card.js',
       };
       if (typeof customElements !== 'undefined') {
         Object.entries(embeddedCardScripts).forEach(([tag, fileName]) => {
@@ -4296,6 +4302,7 @@
         'inventory-card': 'menstruation-product-inventory-card',
         'timer-card': 'menstruation-countdown-timer',
         'statistics-card': 'menstruation-statistics-card',
+        'pill-card': 'menstruation-pill-card',
       };
       return map[mountKey] || null;
     }
@@ -6978,6 +6985,11 @@
       if (widgetId === 'timer_card') body = this._renderEmbeddedCardMount('timer-card');
       if (widgetId === 'statistics_card') body = this._renderEmbeddedCardMount('statistics-card');
       if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
+      // Only profiles whose current method is the pill have a pill_pack attribute; everyone else sees no widget.
+      if (widgetId === 'pill_card') {
+        if (!stateObj?.attributes?.pill_pack) return '';
+        body = this._renderEmbeddedCardMount('pill-card');
+      }
       if (widgetId === 'long_term_trend') body = this._renderLongTermTrendChart(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
       if (widgetId === 'phase_donut') body = this._renderPhaseDonut(stateObj, discreetMode);
@@ -8344,6 +8356,11 @@
         {
           selector: '[data-mount="statistics-card"]', tag: 'menstruation-statistics-card',
           config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
+        },
+        {
+          // The widget title is the panel's own <h2>, so the card's title is left empty.
+          selector: '[data-mount="pill-card"]', tag: 'menstruation-pill-card',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId, title: '' } : null),
         },
       ];
 

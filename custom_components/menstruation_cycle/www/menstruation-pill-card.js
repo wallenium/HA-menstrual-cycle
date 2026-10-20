@@ -105,6 +105,8 @@ class MenstruationPillCard extends HTMLElement {
       else status = `${this._t('pill_card_day', { day: pack.position, active: pack.active })}. ${this._t(pack.today_taken ? 'pill_card_taken_today' : 'pill_card_tap')}`;
       body = `<div class="blister">${cells.join('')}</div><div class="status">${this._esc(status)}</div>`;
     }
+    // title: '' hides the heading (the dashboard panel renders its own).
+    const title = this._config.title ?? this._t('pill_card_title');
     this.shadowRoot.innerHTML = `
       <style>
         ha-card { padding: 16px; }
@@ -122,7 +124,7 @@ class MenstruationPillCard extends HTMLElement {
         .status, .note { margin-top: 12px; font-size: 0.85rem; color: var(--secondary-text-color); }
       </style>
       <ha-card>
-        <div class="title">${this._esc(this._config.title || this._t('pill_card_title'))}</div>
+        ${title ? `<div class="title">${this._esc(title)}</div>` : ''}
         ${body}
       </ha-card>`;
   }
