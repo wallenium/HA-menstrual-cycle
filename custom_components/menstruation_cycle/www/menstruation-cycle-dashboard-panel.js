@@ -3863,6 +3863,11 @@
         return;
       }
 
+      if (action === 'dismiss-welcome') {
+        this._dismissWelcome();
+        return;
+      }
+
       if (action === 'confirm-contraception-renewal') {
         this._confirmContraceptionRenewal();
         return;
@@ -6963,6 +6968,43 @@
       `;
     }
 
+    // One-time card after the first period was logged (exactly one start, at most 60 days ago); "Got it" hides it
+    // for this profile in this browser. Nothing is stored on the server.
+    _welcomeKey() {
+      return `menstruation_cycle.welcome_dismissed.${this._activeProfile || 'default'}`;
+    }
+
+    _dismissWelcome() {
+      try {
+        localStorage.setItem(this._welcomeKey(), '1');
+      } catch (_err) {
+        // storage unavailable: the card then comes back after a reload
+      }
+      this._welcomeHidden = this._welcomeKey();
+      this.render();
+    }
+
+    _renderFirstPeriodWelcome(stateObj, mode) {
+      if (mode !== 'cycle' || this._welcomeHidden === this._welcomeKey()) return '';
+      const starts = stateObj?.attributes?.grouped_starts;
+      if (!Array.isArray(starts) || starts.length !== 1) return '';
+      const ageDays = (Date.parse(`${this._todayIso()}T00:00:00`) - Date.parse(`${starts[0]}T00:00:00`)) / 86400000;
+      if (!(ageDays >= 0 && ageDays <= 60)) return '';
+      try {
+        if (localStorage.getItem(this._welcomeKey()) === '1') return '';
+      } catch (_err) {
+        // storage unavailable: show the card
+      }
+      const points = ['next_log', 'irregular', 'kit', 'tell', 'fertile']
+        .map((key) => `<li>${escapeHtml(this._t(`dashboard_welcome_${key}`))}</li>`).join('');
+      return `<article class="card span-12" aria-label="${escapeHtml(this._t('dashboard_welcome_title'))}">
+        <h2>${escapeHtml(this._t('dashboard_welcome_title'))}</h2>
+        <p>${escapeHtml(this._t('dashboard_welcome_intro'))}</p>
+        <ul>${points}</ul>
+        <button type="button" data-action="dismiss-welcome">${escapeHtml(this._t('dashboard_welcome_dismiss'))}</button>
+      </article>`;
+    }
+
     _renderWidget(widgetId, stateObj, discreetMode) {
       if (this._prefs?.widgetVisibility?.[widgetId] === false) return '';
       const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
@@ -7416,7 +7458,7 @@
           </div>`;
       } else {
         cardHtml = cards.length
-          ? cards.join('')
+          ? this._renderFirstPeriodWelcome(stateObj, mode) + cards.join('')
           : `<div class="empty-state" role="status">
               <p>${this._t('dashboard_empty_state')}</p>
               <p class="helper">${this._t('dashboard_empty_state_hint')}</p>

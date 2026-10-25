@@ -331,3 +331,64 @@ function renderWithHass(el, shadow, onboardingStage) {
 }
 
 console.log('\nAll menstruation-support-card tests passed. ✅');
+
+// ---------------------------------------------------------------------------
+// K) Packing list and school situations
+// ---------------------------------------------------------------------------
+
+{
+  const store = new Map();
+  window.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+  };
+  const langs = {};
+  for (const l of ['en', 'de', 'fr', 'es', 'sv']) {
+    langs[l] = JSON.parse(fs.readFileSync(
+      path.join(__dirname, `../custom_components/menstruation_cycle/www/translations/${l}.json`), 'utf8'));
+  }
+
+  const { el, shadow } = makeCard({});
+  el._strings = langs.en;
+  renderWithHass(el, shadow, 'pre_menarche');
+  el._strings = langs.en;
+  el._render();
+  assert.ok(shadow.innerHTML.includes('ygs-kit-heading') && shadow.innerHTML.includes('ygs-school-heading'), 'K1: both sections render by default');
+  assert.strictEqual((shadow.innerHTML.match(/data-kit-item=/g) || []).length, 6, 'K2: six packing list items');
+  assert.ok(shadow.innerHTML.includes('0 of 6 packed'), 'K3: progress starts at 0');
+
+  el._toggleKit('products');
+  el._toggleKit('bag');
+  assert.ok(shadow.innerHTML.includes('2 of 6 packed') && /data-kit-item="products" checked/.test(shadow.innerHTML), 'K4: ticks are shown');
+  assert.strictEqual(store.get('menstruation_cycle.support_kit.sensor.menstruation'), '["products","bag"]', 'K5: ticks are saved per entity');
+  el._toggleKit('products');
+  assert.ok(shadow.innerHTML.includes('1 of 6 packed'), 'K6: untick works');
+  el._toggleKit('not-an-item');
+  assert.strictEqual(el._kitChecked.size, 1, 'K7: unknown ids are ignored');
+
+  // a new card reads the saved ticks; damaged or unavailable storage starts empty
+  const fresh = makeCard({});
+  assert.deepStrictEqual([...fresh.el._loadKit()], ['bag'], 'K8: saved ticks come back');
+  store.set('menstruation_cycle.support_kit.sensor.menstruation', '{broken');
+  assert.strictEqual(fresh.el._loadKit().size, 0, 'K9: damaged storage starts empty');
+  window.localStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  assert.strictEqual(fresh.el._loadKit().size, 0, 'K10: blocked storage starts empty');
+  fresh.el._toggleKit('wipes');
+  assert.ok(fresh.el._kitChecked.has('wipes'), 'K11: ticking still works without storage');
+  delete window.localStorage;
+
+  // switches
+  const off = makeCard({ show_kit_list: false, show_school_scenarios: false });
+  renderWithHass(off.el, off.shadow, 'pre_menarche');
+  assert.ok(!off.shadow.innerHTML.includes('ygs-kit-heading') && !off.shadow.innerHTML.includes('ygs-school-heading'), 'K12: both can be switched off');
+
+  // all languages: no raw key is shown
+  for (const [lang, strings] of Object.entries(langs)) {
+    const c = makeCard({});
+    c.el._strings = strings;
+    c.el._render();
+    const html = c.el._renderKitList() + c.el._renderSchoolScenarios();
+    assert.ok(!/ygs_kit_|ygs_school_|\{done\}/.test(html), `K13 ${lang}: ${html.slice(0, 200)}`);
+  }
+  console.log('K) Packing list and school situations: PASS');
+}

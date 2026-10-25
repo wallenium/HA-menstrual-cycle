@@ -10,6 +10,7 @@
  *  - Menstrual cycle phases graphic with accessibility text
  *  - Hygiene / how-to cards (period underwear care, period cup basics)
  *  - "Is this normal?" reassurance cards
+ *  - Packing list (tick off what is in the bag) and tips for situations at school
  *
  * Scope: UI/content only — no forecast-engine changes.
  *
@@ -67,6 +68,13 @@ const REMINDER_PRESETS = [
   { id: 'rest_cue',        icon: '🌙', defaultTime: '20:00', schoolOnly: false },
 ];
 
+// Packing list items (texts: ygs_kit_item_<id>); ticks are kept per browser, never sent anywhere.
+const KIT_ITEMS = ['products', 'underwear', 'pouch', 'wipes', 'bag', 'layer'];
+const KIT_STORAGE_KEY = 'menstruation_cycle.support_kit';
+
+// School situations (texts: ygs_school_<id>_title / _body)
+const SCHOOL_TOPICS = ['leak', 'no_product', 'cramps', 'toilet', 'tell'];
+
 // ---------------------------------------------------------------------------
 // Cycle phases definition (for graphic)
 // ---------------------------------------------------------------------------
@@ -92,6 +100,8 @@ class YoungGirlsSupportCard extends HTMLElement {
       show_phases_graphic: true,
       show_hygiene_cards: true,
       show_reassurance_cards: true,
+      show_kit_list: true,
+      show_school_scenarios: true,
     };
   }
 
@@ -116,8 +126,11 @@ class YoungGirlsSupportCard extends HTMLElement {
       show_phases_graphic: true,
       show_hygiene_cards: true,
       show_reassurance_cards: true,
+      show_kit_list: true,
+      show_school_scenarios: true,
       ...config,
     };
+    this._kitChecked = this._loadKit();
     // Reminder state: { [id]: { enabled, time, schoolOnly } }
     this._reminderState = {};
     REMINDER_PRESETS.forEach((r) => {
@@ -232,6 +245,8 @@ class YoungGirlsSupportCard extends HTMLElement {
     if (cfg.show_glossary !== false) sections.push(safeRender('glossary', this._renderGlossary));
     if (cfg.show_phases_graphic !== false) sections.push(safeRender('phases_graphic', this._renderPhasesGraphic));
     if (cfg.show_hygiene_cards !== false) sections.push(safeRender('hygiene_cards', this._renderHygieneCards));
+    if (cfg.show_kit_list !== false) sections.push(safeRender('kit_list', this._renderKitList));
+    if (cfg.show_school_scenarios !== false) sections.push(safeRender('school_scenarios', this._renderSchoolScenarios));
     if (cfg.show_reassurance_cards !== false) sections.push(safeRender('reassurance_cards', this._renderReassuranceCards));
 
     this.shadowRoot.innerHTML = `
@@ -579,6 +594,78 @@ class YoungGirlsSupportCard extends HTMLElement {
     `;
   }
 
+  // ---- Packing list ------------------------------------------------------
+
+  _kitKey() {
+    return `${KIT_STORAGE_KEY}.${this._config?.entity || 'default'}`;
+  }
+
+  _loadKit() {
+    try {
+      const raw = JSON.parse(window.localStorage?.getItem(this._kitKey()) || '[]');
+      return new Set(Array.isArray(raw) ? raw.filter((id) => KIT_ITEMS.includes(id)) : []);
+    } catch (_err) {
+      return new Set(); // storage unavailable (private mode) or damaged: start empty
+    }
+  }
+
+  _toggleKit(id) {
+    if (!KIT_ITEMS.includes(id)) return;
+    if (this._kitChecked.has(id)) this._kitChecked.delete(id);
+    else this._kitChecked.add(id);
+    try {
+      window.localStorage?.setItem(this._kitKey(), JSON.stringify([...this._kitChecked]));
+    } catch (_err) {
+      // the ticks then only last until the page is reloaded
+    }
+    this._render();
+  }
+
+  _renderKitList() {
+    const checked = this._kitChecked || new Set();
+    const done = KIT_ITEMS.filter((id) => checked.has(id)).length;
+    const items = KIT_ITEMS.map((id) => `
+      <li>
+        <label class="kit-item">
+          <input type="checkbox" data-kit-item="${id}" ${checked.has(id) ? 'checked' : ''} />
+          <span>${_ygsEsc(this._t('ygs_kit_item_' + id))}</span>
+        </label>
+      </li>`).join('');
+    const progress = this._t('ygs_kit_progress').replace('{done}', done).replace('{total}', KIT_ITEMS.length);
+    return `
+      <section class="ygs-section" aria-labelledby="ygs-kit-heading">
+        <h3 id="ygs-kit-heading" class="ygs-section-title">
+          <span aria-hidden="true">🎒</span> ${_ygsEsc(this._t('ygs_kit_title'))}
+        </h3>
+        <p class="ygs-section-desc">${_ygsEsc(this._t('ygs_kit_desc'))}</p>
+        <ul class="kit-list">${items}</ul>
+        <p class="kit-progress" role="status">${_ygsEsc(progress)}</p>
+        <p class="ygs-disclaimer-note">${_ygsEsc(this._t('ygs_kit_note'))}</p>
+      </section>
+    `;
+  }
+
+  // ---- School situations -------------------------------------------------
+
+  _renderSchoolScenarios() {
+    const cards = SCHOOL_TOPICS.map((topic) => `
+      <div class="reassurance-card">
+        <h4 class="reassurance-topic">${_ygsEsc(this._t('ygs_school_' + topic + '_title'))}</h4>
+        <p class="reassurance-body">${_ygsEsc(this._t('ygs_school_' + topic + '_body'))}</p>
+      </div>
+    `).join('');
+    return `
+      <section class="ygs-section" aria-labelledby="ygs-school-heading">
+        <h3 id="ygs-school-heading" class="ygs-section-title">
+          <span aria-hidden="true">🏫</span> ${_ygsEsc(this._t('ygs_school_title'))}
+        </h3>
+        <p class="ygs-section-desc">${_ygsEsc(this._t('ygs_school_desc'))}</p>
+        <div class="reassurance-grid">${cards}</div>
+        <p class="ygs-disclaimer-note">${_ygsEsc(this._t('ygs_school_disclaimer'))}</p>
+      </section>
+    `;
+  }
+
   // ---- Event listeners ---------------------------------------------------
 
   _attachEventListeners() {
@@ -594,6 +681,11 @@ class YoungGirlsSupportCard extends HTMLElement {
           this._render();
         }
       });
+    });
+
+    // Packing list ticks
+    root.querySelectorAll('input[data-kit-item]').forEach((input) => {
+      input.addEventListener('change', (e) => this._toggleKit(e.target.dataset.kitItem));
     });
 
     // Reminder settings button
@@ -1109,6 +1201,11 @@ class YoungGirlsSupportCard extends HTMLElement {
         font-style: italic;
       }
 
+      /* Packing list */
+      .kit-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+      .kit-item { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+      .kit-progress { margin: 0 0 6px; font-size: 0.85rem; color: var(--ygs-secondary-text); }
+
       /* Reassurance */
       .reassurance-grid {
         display: grid;
@@ -1163,6 +1260,8 @@ class MenstruationSupportCardEditor extends HTMLElement {
     ['show_phases_graphic', 'Cycle phases graphic'],
     ['show_hygiene_cards', 'Hygiene guides'],
     ['show_reassurance_cards', 'Reassurance cards'],
+    ['show_kit_list', 'Packing list'],
+    ['show_school_scenarios', 'School situations'],
   ];
 
   setConfig(config) {
@@ -1173,6 +1272,8 @@ class MenstruationSupportCardEditor extends HTMLElement {
       show_phases_graphic: true,
       show_hygiene_cards: true,
       show_reassurance_cards: true,
+      show_kit_list: true,
+      show_school_scenarios: true,
       ...config,
     };
     this._render();
@@ -1194,6 +1295,8 @@ class MenstruationSupportCardEditor extends HTMLElement {
         show_phases_graphic: 'Cycle phases graphic',
         show_hygiene_cards: 'Hygiene guides',
         show_reassurance_cards: 'Reassurance cards',
+        show_kit_list: 'Packing list',
+        show_school_scenarios: 'School situations',
       },
       de: {
         entity: 'Entität',
@@ -1202,6 +1305,8 @@ class MenstruationSupportCardEditor extends HTMLElement {
         show_phases_graphic: 'Zyklusphasen-Grafik',
         show_hygiene_cards: 'Hygiene-Anleitungen',
         show_reassurance_cards: 'Beruhigungs-Karten',
+        show_kit_list: 'Packliste',
+        show_school_scenarios: 'Schulsituationen',
       },
     };
     return (i18n[lang] && i18n[lang][key]) || i18n.en[key] || key;

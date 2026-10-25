@@ -229,10 +229,16 @@ The `custom:menstruation-support-card` provides age-appropriate, practical educa
 | 🔵 Cycle phases graphic | Abstract SVG donut chart of period / follicular / ovulation / luteal phases with legend and ARIA description |
 | 🧼 Hygiene how-to cards | Step-by-step guides for washing period underwear and using a period cup (basics) |
 | 💛 Reassurance cards | Short "Is this normal?" cards covering irregular timing, flow variation, and spotting, each with a gentle escalation prompt |
+| 🎒 Packing list | What belongs in the bag (`show_kit_list`): tick items off; the ticks are kept in this browser only |
+| 🏫 School situations | Short tips for a leak, no product at hand, cramps in class, changing during the day and who to tell (`show_school_scenarios`) |
 
 ### Journey timeline (dashboard panel)
 
 In the pre-menarche stage the sign checklist of the dashboard panel is followed by "Your journey so far": the signs you logged with a date, oldest first, each with "x months ago", ending with an open "First period" step. It shows no predicted date (the estimate above stays the only one) and one general sentence about the average time between the start of breast development and the first period. It is built from the signs already logged; nothing new is stored.
+
+### First period welcome (dashboard panel)
+
+Once exactly one period start is logged (at most 60 days ago), the dashboard panel shows a card "Your first period is logged" above the widgets: what to do next, that irregular periods are normal at the start, the packing list, who to talk to, and a note on contraception. "Got it" hides it for that profile in this browser.
 
 ### Visibility
 
