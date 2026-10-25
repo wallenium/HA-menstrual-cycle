@@ -7,6 +7,7 @@
 
 ### Fixed
 - Two user-facing texts (`strings.json` and `translations/*.json`) still described the old behavior: the description of the option "Public ICS calendar feed" now mentions the dashboard button "New feed URL" for invalidating a shared URL, and the description of the service `set_profile_visibility` now says that below visibility "Full" the services that return a profile's data answer administrators only (as in `services.yaml`).
+- Reconfiguring a profile (name, icon, onboarding stage) no longer reloads the entry from inside the config flow while an options update listener exists, which Home Assistant deprecated in 2026.6 and turns into an error in 2026.12. The listener now reloads the entry itself when one of these values differs from the running profile; saving the options wizard still does not reload.
 
 ## 1.9.1
 

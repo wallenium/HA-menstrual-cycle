@@ -4142,9 +4142,26 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
+def _entry_identity_changed(entry: ConfigEntry, runtime: MenstruationRuntime) -> bool:
+    """True when name, icon or onboarding stage of the entry differ from what the running profile uses.
+
+    The options flow applies these to the runtime itself before it updates the entry, so only the reconfigure flow
+    (which just writes the entry) shows up as a difference here.
+    """
+    stage = str(entry.options.get(CONF_ONBOARDING_STAGE) or entry.data.get(CONF_ONBOARDING_STAGE) or "").strip().lower()
+    return (_friendly_name_from_entry(entry), _icon_from_entry(entry)) != (runtime.friendly_name, runtime.icon) or (
+        stage in ONBOARDING_STAGES and stage != runtime.onboarding_stage
+    )
+
+
 async def _async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options updates: sync dashboard panel non-fatally without a full reload."""
     _updated_runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if _updated_runtime is not None and _entry_identity_changed(entry, _updated_runtime):
+        # Reconfigure changed name/icon/stage, which are only read at setup. The reload happens here and not in the
+        # flow: a flow that reloads while an update listener exists is deprecated (error from HA 2026.12).
+        hass.config_entries.async_schedule_reload(entry.entry_id)
+        return
     if _updated_runtime is not None:
         # Switching the feed on always starts with a new token: the previous one may have been shared,
         # or (releases up to 1.8.0) published as the ics_url state attribute and written to the recorder.

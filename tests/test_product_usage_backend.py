@@ -1912,10 +1912,16 @@ class IcsTokenRotationTests(unittest.TestCase):
             history=[], period_duration_days=5, symptom_history=[], product_usage=[],
             ics_token="OLD", ics_feed_enabled=feed, visibility_level=visibility,
         )
-        entry = types.SimpleNamespace(entry_id="e1", options={const.CONF_ICS_FEED_ENABLED: feed})
+        entry = types.SimpleNamespace(
+            entry_id="e1", options={const.CONF_ICS_FEED_ENABLED: feed},
+            data={const.CONF_FRIENDLY_NAME: "Anna", const.CONF_ICON: "mdi:flower"},
+        )
+        self.reloads: list[str] = []
         hass = types.SimpleNamespace(
             data={const.DOMAIN: {"e1": runtime}},
-            config_entries=types.SimpleNamespace(async_get_entry=lambda entry_id: entry),
+            config_entries=types.SimpleNamespace(
+                async_get_entry=lambda entry_id: entry, async_schedule_reload=self.reloads.append
+            ),
         )
         return hass, entry, runtime
 
@@ -1929,6 +1935,30 @@ class IcsTokenRotationTests(unittest.TestCase):
             integration, "_async_sync_dashboard_sidebar_panel", _noop
         ), patch.object(integration, "async_dispatcher_send"):
             asyncio.run(integration._async_options_update_listener(hass, entry))
+
+    def test_reconfigure_reloads_the_entry_but_the_options_flow_does_not(self) -> None:
+        hass, entry, runtime = self._setup(feed=False)
+        self._options_changed(hass, entry)  # options flow: runtime already has the values the entry now holds
+        self.assertEqual(self.reloads, [])
+
+        entry.data = {**entry.data, const.CONF_FRIENDLY_NAME: "Anna K."}  # reconfigure: only the entry changed
+        entry.options = {const.CONF_ICS_FEED_ENABLED: True}
+        self._options_changed(hass, entry)
+        self.assertEqual(self.reloads, ["e1"])
+        self.assertEqual(runtime.ics_token, "OLD", "the reload redoes the setup, the listener does nothing else")
+
+        self.reloads.clear()
+        entry.data = {**entry.data, const.CONF_FRIENDLY_NAME: "Anna", const.CONF_ICON: "mdi:star"}
+        self._options_changed(hass, entry)
+        self.assertEqual(self.reloads, ["e1"], "a new icon alone reloads as well")
+
+        self.reloads.clear()
+        entry.data = {**entry.data, const.CONF_ICON: "mdi:flower", const.CONF_ONBOARDING_STAGE: "bogus"}
+        self._options_changed(hass, entry)
+        self.assertEqual(self.reloads, [], "an invalid stage is ignored, as at setup")
+        entry.data[const.CONF_ONBOARDING_STAGE] = const.ONBOARDING_STAGE_PRE_MENARCHE
+        self._options_changed(hass, entry)
+        self.assertEqual(self.reloads, ["e1"], "a new onboarding stage reloads as well")
 
     def test_switching_the_feed_on_issues_a_new_token_every_time(self) -> None:
         hass, entry, runtime = self._setup(feed=False)

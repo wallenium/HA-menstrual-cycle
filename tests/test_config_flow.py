@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import inspect
 import re
 import sys
 import types
@@ -73,7 +74,7 @@ def _stubs() -> dict[str, types.ModuleType]:
         def async_show_form(self, *, step_id, data_schema=None, errors=None, description_placeholders=None):
             return {"type": "form", "step_id": step_id, "schema": data_schema, "errors": errors or {}}
 
-        def async_update_reload_and_abort(self, entry, *, data=None, title=None):
+        def async_update_and_abort(self, entry, *, data=None, title=None):
             return {"type": "abort", "data": data, "title": title}
 
         def _get_reconfigure_entry(self):
@@ -256,6 +257,11 @@ class ReconfigureTests(unittest.TestCase):
         self.assertEqual(result["title"], "Anna K.")
         self.assertEqual(result["data"][const.CONF_PROFILE], "anna")
         self.assertEqual(result["data"][const.CONF_ONBOARDING_STAGE], const.DEFAULT_ONBOARDING_STAGE)
+
+    def test_reconfigure_leaves_the_reload_to_the_update_listener(self) -> None:
+        source = inspect.getsource(config_flow.MenstruationGaugeConfigFlow.async_step_reconfigure)
+        self.assertNotIn("async_update_reload_and_abort", source)
+        self.assertIn("async_update_and_abort", source)
 
 
 class HelperTests(unittest.TestCase):

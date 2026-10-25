@@ -391,7 +391,8 @@ class MenstruationGaugeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             stage_raw = str(user_input.get(CONF_ONBOARDING_STAGE, current_stage)).strip().lower()
             onboarding_stage = stage_raw if stage_raw in ONBOARDING_STAGES else DEFAULT_ONBOARDING_STAGE
 
-            return self.async_update_reload_and_abort(
+            # No reload here: the update listener in __init__.py reloads the entry when the identity changed.
+            return self.async_update_and_abort(
                 entry,
                 data={
                     **entry.data,
