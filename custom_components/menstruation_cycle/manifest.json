@@ -2,6 +2,7 @@
   "domain": "menstruation_cycle",
   "name": "Menstruation Cycle",
   "after_dependencies": ["recorder"],
+  "categories": ["health_wellbeing"],
   "codeowners": ["@wallenium"],
   "config_flow": true,
   "dependencies": ["lovelace"],

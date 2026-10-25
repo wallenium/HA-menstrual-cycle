@@ -117,8 +117,8 @@ assert.ok(
   'Central i18n file does not load translations from expected relative path'
 );
 assert.ok(
-  centralContent.includes('/hacsfiles/menstruation-cycle-card/translations/'),
-  'Central i18n file does not contain hacsfiles translation fallback URL'
+  !centralContent.includes('/hacsfiles/'),
+  'Central i18n file must not depend on HACS resource paths (the Marketplace replaces HACS in HA 2026.11)'
 );
 assert.ok(
   centralContent.includes('/menstruation_cycle/translations/'),
@@ -131,13 +131,6 @@ const scriptRelativePathIdx = centralContent.indexOf('./translations/${lang}.jso
 assert.ok(
   stableDomainPathIdx < scriptRelativePathIdx,
   'Central i18n file does not prefer the stable HA domain translation path before script-relative paths'
-);
-
-// Verify the stable HA path is tried before the hacsfiles fallback.
-const hacsfilesPathIdx = centralContent.indexOf('/hacsfiles/menstruation-cycle-card/translations/');
-assert.ok(
-  stableDomainPathIdx < hacsfilesPathIdx,
-  'Central i18n file does not try the stable HA domain path before the hacsfiles fallback'
 );
 
 for (const lang of ['en', 'de']) {

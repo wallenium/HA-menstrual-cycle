@@ -71,7 +71,6 @@
     // Cards are loaded as ES modules and do not appear in document.scripts,
     // so script-relative baseUrl detection is unreliable as a primary source.
     urls.push(`/menstruation_cycle/translations/${lang}.json${versionSuffix}`);
-    urls.push(`/hacsfiles/menstruation-cycle-card/translations/${lang}.json${versionSuffix}`);
     // Script-relative paths as fallbacks for custom or legacy setups.
     if (baseUrl) urls.push(new URL(`./translations/${lang}.json`, baseUrl).href);
     if (i18n.baseUrl) urls.push(new URL(`./translations/${lang}.json`, i18n.baseUrl).href);
