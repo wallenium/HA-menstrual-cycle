@@ -12,14 +12,14 @@ entries, or free-text notes/mood the way a typical integration's diagnostics
 export would - only structure, counts, and non-identifying settings. A bug
 report should be useful without becoming a second, less-protected copy of
 someone's health data sitting in a GitHub issue. In particular: exact period
-dates are excluded even from the summary (only count + earliest/latest date
-of the range, not every date), since a full list of dates over time reveals
-cycle regularity - itself sensitive.
+dates are excluded even from the summary (only the count and the span of the
+range in days, no calendar date at all), since dates reveal cycle regularity
+and where someone currently is in the cycle - both sensitive.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -82,8 +82,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
         "cycle_length_override": runtime.cycle_length_override,
         "history": {
             "entry_count": len(history),
-            "earliest": min(history) if history else None,
-            "latest": max(history) if history else None,
+            "span_days": _span_days(history),
         },
         "symptom_history": {
             "entry_count": len(symptom_history),
@@ -102,6 +101,15 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
         "ics_token_age_days": _ics_token_age_days(getattr(runtime, "ics_token_created_at", "")),
     }
     return diagnostics
+
+
+def _span_days(history: list[str]) -> int | None:
+    """Days between the first and last logged period start, or None if fewer than two parseable dates."""
+    try:
+        days = sorted(date.fromisoformat(str(d)) for d in history)
+    except ValueError:
+        return None
+    return (days[-1] - days[0]).days if len(days) > 1 else None
 
 
 def _load_manifest_version_safe() -> str:

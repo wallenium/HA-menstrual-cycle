@@ -88,6 +88,20 @@ class DiagnosticsRedactionTests(unittest.TestCase):
         self.assertGreaterEqual(len(keys), 6)
         self.assertEqual(sorted(keys - diagnostics._REDACT_ENTRY_KEYS), [])
 
+    def test_history_shows_a_span_but_no_calendar_date(self) -> None:
+        runtime = types.SimpleNamespace(
+            history=["2026-01-03", "2026-02-01", "2026-03-02"], symptom_history=[], product_usage=[],
+            onboarding_stage="adult", visibility_level="full", period_duration_days=5, cycle_length_override=None,
+            pregnancy_data={}, menarche_data={}, menopause_data={}, noncycle_data={}, ics_token_created_at="",
+        )
+        entry = types.SimpleNamespace(entry_id="e1", data={}, options={})
+        hass = types.SimpleNamespace(data={const.DOMAIN: {"e1": runtime}})
+        result = asyncio.run(diagnostics.async_get_config_entry_diagnostics(hass, entry))
+        self.assertEqual(result["profile"]["history"], {"entry_count": 3, "span_days": 58})
+        self.assertNotIn("2026-0", json.dumps(result))
+        self.assertIsNone(diagnostics._span_days(["2026-01-03"]))
+        self.assertIsNone(diagnostics._span_days(["garbage", "2026-01-03"]))
+
 
 if __name__ == "__main__":
     unittest.main()
