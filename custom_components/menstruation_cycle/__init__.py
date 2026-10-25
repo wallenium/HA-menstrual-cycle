@@ -4136,6 +4136,31 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete the removed profile's exports that carry the default name (doctor report, wall calendar, history).
+
+    Files saved under a name chosen by the user and the full backup (all profiles in one file) are left alone.
+    """
+    profile = re.escape(_profile_from_entry(entry))
+    own = re.compile(
+        rf"doctor_report_{profile}_\d{{8}}_\d{{6}}\.html|wall_calendar_{profile}_\d{{4}}\.html"
+        rf"|menstruation_history_{profile}_\d{{8}}_\d{{6}}\.(csv|txt)"
+    )
+    target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
+
+    def _delete() -> None:
+        if not target_dir.is_dir():
+            return
+        for path in target_dir.iterdir():
+            if own.fullmatch(path.name) and path.is_file() and not path.is_symlink():
+                try:
+                    path.unlink()
+                except OSError as err:
+                    _LOGGER.warning("Could not delete export %s: %s", path.name, err)
+
+    await hass.async_add_executor_job(_delete)
+
+
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)

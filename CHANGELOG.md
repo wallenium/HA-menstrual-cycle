@@ -6,6 +6,7 @@
 - The dashboard panel shows the pill blister as the widget "Pill pack" (only for profiles whose current contraception method is the pill; reorder or hide it in the edit mode).
 
 ### Changed
+- Removing a profile now also deletes its export files with the default name (doctor report, wall calendar, history export). Files saved under a name you chose and the full backup are left alone.
 - The manifest declares the integration category (`health_wellbeing`), and the translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed

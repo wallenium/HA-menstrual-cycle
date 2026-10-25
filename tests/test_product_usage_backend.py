@@ -1659,6 +1659,31 @@ class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8"), "x")
             self.assertEqual(target.stat().st_mode & 0o777, 0o600)
 
+    def test_removing_a_profile_deletes_only_its_default_named_exports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / integration.EXPORT_DIR_NAME
+            folder.mkdir()
+            mine = ["doctor_report_anna_20260101_101010.html", "wall_calendar_anna_2026.html",
+                    "menstruation_history_anna_20260101_101010.csv", "menstruation_history_anna_20260101_101010.txt"]
+            kept = ["doctor_report_anna_k_20260101_101010.html", "wall_calendar_anna_k_2026.html",
+                    "my_own_name.csv", "menstruation_full_backup_20260101_101010.json", "doctor_report_anna_x.html"]
+            for name in mine + kept:
+                (folder / name).write_text("x", encoding="utf-8")
+
+            async def _run_job(func):
+                return func()
+
+            hass = types.SimpleNamespace(
+                config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / name)), async_add_executor_job=_run_job
+            )
+            entry = types.SimpleNamespace(data={const.CONF_PROFILE: "anna"})
+            asyncio.run(integration.async_remove_entry(hass, entry))
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), sorted(kept))
+
+            asyncio.run(integration.async_remove_entry(
+                types.SimpleNamespace(config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / "none")),
+                                      async_add_executor_job=_run_job), entry))  # no export folder: nothing to do
+
     def test_every_export_goes_through_the_private_writer(self) -> None:
         source = (Path(integration.__file__)).read_text(encoding="utf-8")
         self.assertEqual(source.count(".write_text("), 0, "exports must use _write_private_text")
