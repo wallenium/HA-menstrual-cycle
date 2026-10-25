@@ -84,11 +84,55 @@ class PillPackViewTests(unittest.TestCase):
         self.assertEqual(_view(3, 0, pause=-4)["active"], 28)
 
 
+class PillPackStartDateTests(unittest.TestCase):
+    """With a pack start date the position comes from the calendar, the taken cells from the logged run."""
+
+    def _view(self, start: date, run: int, ended_days_ago: int, pause: int = 7):
+        last = TODAY - timedelta(days=ended_days_ago)
+        history = [{"date": (last - timedelta(days=i)).isoformat(), "contraception_method": "pill"} for i in range(run)]
+        status = model.compute_contraception_status(history, today=TODAY)
+        return model.pill_pack_view(status, TODAY, pause, start.isoformat())
+
+    def test_start_in_the_middle_of_a_pack_fixes_the_shift(self) -> None:
+        # pack started 10 days ago, but logging only began 3 days ago: the blister shows the real position
+        view = self._view(TODAY - timedelta(days=10), 4, 0)
+        self.assertEqual(view["position"], 11)
+        self.assertEqual(view["taken"], [8, 9, 10, 11])  # missed days stay empty, no filled run from cell 1
+        self.assertTrue(view["today_taken"] and not view["new_pack"])
+        self.assertEqual(_view(4, 0)["taken"], [1, 2, 3, 4], "without a start date the old guess is unchanged")
+
+    def test_todays_pill_due_and_the_pause(self) -> None:
+        view = self._view(TODAY - timedelta(days=10), 10, 1)
+        self.assertEqual((view["position"], view["taken"][-1], view["today_taken"]), (11, 10, False))
+        pause = self._view(TODAY - timedelta(days=22), 21, 1)
+        self.assertEqual((pause["position"], pause["in_pause"]), (23, True))
+
+    def test_later_packs_follow_without_a_gap(self) -> None:
+        view = self._view(TODAY - timedelta(days=28 * 3 + 4), 5, 0)  # fourth pack after the entered one, cell 5
+        self.assertEqual((view["position"], view["taken"]), (5, [1, 2, 3, 4, 5]))
+        last_cell = self._view(TODAY - timedelta(days=27), 1, 0)
+        self.assertEqual((last_cell["position"], last_cell["in_pause"]), (28, True))
+        self.assertEqual(self._view(TODAY - timedelta(days=28), 1, 0)["position"], 1)
+
+    def test_last_intake_in_the_previous_pack_leaves_the_new_one_empty(self) -> None:
+        view = self._view(TODAY - timedelta(days=2), 20, 5)  # the run ended before this pack began
+        self.assertEqual((view["position"], view["taken"], view["today_taken"]), (3, [], False))
+
+    def test_unusable_start_dates_fall_back_to_the_guess(self) -> None:
+        status = model.compute_contraception_status(
+            [{"date": TODAY.isoformat(), "contraception_method": "pill"}], today=TODAY
+        )
+        guess = model.pill_pack_view(status, TODAY, 7)
+        for bad in ("", None, "not a date", (TODAY + timedelta(days=3)).isoformat()):
+            self.assertEqual(model.pill_pack_view(status, TODAY, 7, bad), guess, bad)
+
+
 class PillPackSensorAttributeTests(unittest.TestCase):
     def test_attribute_is_exposed_at_full_visibility_only(self) -> None:
         source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")
         self.assertIn('"pill_pack": pill_pack_view(', source)
         self.assertIn("CONF_PILL_PAUSE_DAYS", source)
+        self.assertIn("CONF_PILL_PACK_START", source)
         allowlists = source[source.index("_VISIBILITY_ALWAYS_KEPT_KEYS = "):source.index("def _filter_attributes_for_visibility")]
         self.assertNotIn("pill_pack", allowlists)  # hidden below "Full" like the rest of the contraception data
 

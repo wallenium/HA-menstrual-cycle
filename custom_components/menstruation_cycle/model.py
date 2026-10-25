@@ -3620,13 +3620,17 @@ def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
 PILL_PACK_DAYS = 28  # blister view: 21 + 7, 24 + 4 ... (active pills + pause days); with no pause all 28 are pills
 
 
-def pill_pack_view(status: dict[str, Any], today: date, pause_days: int) -> dict[str, Any] | None:
+def pill_pack_view(
+    status: dict[str, Any], today: date, pause_days: int, pack_start: str | None = None
+) -> dict[str, Any] | None:
     """Where today sits in a 28-day pill blister, from the logged intakes (None unless the current method is the pill).
 
     Keys: active (pill cells), pause (pause cells), taken (1-based cells with a pill), position (today's cell, 1-28),
     in_pause (today is a pause day), today_taken, new_pack (no pill logged yet, or the last pack ended long ago).
     The pack is assumed to have started with the last unbroken run of intakes, so a profile that started logging
-    mid-pack sees a shifted blister (ponytail: no pack start date is stored; add one if that matters).
+    mid-pack sees a shifted blister, unless `pack_start` (first day of any pack, ISO date) is given: today's cell is then
+    (days since that date) mod 28, so later packs are assumed to follow without a gap, and the cells that count as taken
+    are the unbroken run of intakes ending at the last one, inside the current pack.
     """
     if status.get("current_method") != CONTRACEPTION_METHOD_PILL:
         return None
@@ -3638,6 +3642,19 @@ def pill_pack_view(status: dict[str, Any], today: date, pause_days: int) -> dict
     }
     last = status.get("pill_last_taken")
     run = int(status.get("pill_last_run_days") or 0)
+    try:
+        start = date.fromisoformat(pack_start) if pack_start else None
+    except ValueError:
+        start = None
+    if start is not None and start <= today:
+        offset = (today - start).days % PILL_PACK_DAYS
+        position = offset + 1
+        view.update(position=position, in_pause=position > active, new_pack=False)
+        if last and run >= 1:
+            last_cell = (date.fromisoformat(last) - (today - timedelta(days=offset))).days + 1
+            if 1 <= last_cell <= position:
+                view.update(taken=list(range(max(1, last_cell - run + 1), last_cell + 1)), today_taken=last_cell == position)
+        return view
     if not last or run < 1:
         return view
     gap = (today - date.fromisoformat(last)).days

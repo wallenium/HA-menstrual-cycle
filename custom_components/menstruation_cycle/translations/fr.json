@@ -138,6 +138,7 @@
               "notify_pill_time": "Heure du rappel de pilule",
               "notify_pill_followup_hours": "Rappel de pilule supplémentaire (heures)",
               "pill_pause_days": "Pause de pilule (jours par plaquette)",
+              "pill_pack_start": "Début de la plaquette en cours",
               "notify_pill_gap_enabled": "Avertissement en cas de prises manquantes"
             },
             "data_description": {
@@ -145,6 +146,7 @@
               "notify_pill_time": "Heure du rappel de pilule (par défaut 09:00).",
               "notify_pill_followup_hours": "Heures après le rappel de pilule pour un second rappel si la pilule du jour n'est toujours pas enregistrée. 0 = désactivé (par défaut, maximum 12 ; ignoré s'il tombait après minuit).",
               "pill_pause_days": "Jours sans pilule entre deux plaquettes (p. ex. 7 pour 21/7, 4 pour 24/4). Aucun rappel n'est envoyé pendant cette pause, reconnue après au moins 21 jours de pilule enregistrés d'affilée. 0 = prise continue sans pause (par défaut, maximum 7).",
+              "pill_pack_start": "Premier jour de la plaquette que tu prends actuellement (facultatif). La carte pilule place alors aujourd'hui dans la plaquette à partir de cette date au lieu de le déduire de tes prises enregistrées. Les plaquettes suivantes sont supposées s'enchaîner sans interruption : indique une nouvelle date si ton rythme change. Laisse vide pour une estimation à partir de tes enregistrements.",
               "notify_pill_gap_enabled": "Ajoute au rappel de pilule un avertissement neutre dès que 2 jours consécutifs ou plus n'ont aucune prise saisie : la protection peut être réduite en cas d'oubli, voir la notice. Nécessite une pause de pilule définie ci-dessus (ou une interruption de plus de 7 jours) pour ne pas confondre une pause normale avec un oubli. Désactivé par défaut. Nécessite le rappel de pilule."
             }
           },

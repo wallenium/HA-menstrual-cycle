@@ -4,6 +4,7 @@
 
 ### Added
 - **Support card: packing list and school situations** (new switches `show_kit_list` and `show_school_scenarios`, both on by default): a tick-off list of what belongs in the bag (kept in the browser only) and five short tips for situations at school. Texts in five languages.
+- **Pill pack start date** (new option "Start of the current pill pack" in the pill group of the options): the blister card places today in the pack from that date instead of guessing from the logged intakes, so starting to log in the middle of a pack no longer shifts the blister, and days without a logged pill show as empty cells. Later packs are assumed to follow without a gap; leave the field empty for the old estimate. Texts in five languages.
 - **Welcome card for the first period** in the dashboard panel: shown once after the first period is logged (one start, at most 60 days ago) with what comes next; "Got it" hides it for that profile in this browser.
 - The dashboard panel shows the pill blister as the widget "Pill pack" (only for profiles whose current contraception method is the pill; reorder or hide it in the edit mode).
 

@@ -138,6 +138,7 @@
               "notify_pill_time": "Pill reminder time",
               "notify_pill_followup_hours": "Pill follow-up reminder (hours)",
               "pill_pause_days": "Pill break (days per pack)",
+              "pill_pack_start": "Start of the current pill pack",
               "notify_pill_gap_enabled": "Hint when pill intakes are missing"
             },
             "data_description": {
@@ -145,6 +146,7 @@
               "notify_pill_time": "Time of day for the pill reminder (default 09:00).",
               "notify_pill_followup_hours": "Hours after the pill reminder for a second reminder if today's pill is still not logged. 0 = off (default, max 12; skipped if it would fall after midnight).",
               "pill_pause_days": "Days without pills between packs (e.g. 7 for 21/7, 4 for 24/4). No pill reminder is sent during that break, which is recognised after a run of at least 21 logged pill days. 0 = continuous use, no break (default, max 7).",
+              "pill_pack_start": "First day of the pack you are on now (optional). The pill card then places today in the pack from this date instead of guessing it from your logged intakes. Later packs are assumed to follow without a gap, so enter a new date if you change your rhythm. Leave empty to estimate it from your logs.",
               "notify_pill_gap_enabled": "Extends the pill reminder with a neutral hint once 2 or more days in a row have no logged intake: protection may be reduced if pills were missed, see the leaflet. Needs a pack break set above (or a gap of more than 7 days) so a normal break is not mistaken for forgotten pills. Off by default. Requires the pill reminder."
             }
           },

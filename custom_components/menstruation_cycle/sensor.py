@@ -96,6 +96,7 @@ from .const import (
     DEFAULT_MENARCHE_AGE_TYPICAL,
     CONF_NFP_ANALYSIS_MODE,
     CONF_NUM_PREDICTIONS,
+    CONF_PILL_PACK_START,
     CONF_PILL_PAUSE_DAYS,
     DEFAULT_NFP_ANALYSIS_MODE,
     DEFAULT_NUM_PREDICTIONS,
@@ -1443,7 +1444,10 @@ class MenstruationGaugeSensor(SensorEntity):
             "contraception_status": contraception_status,
             # Blister view for the pill card (None unless the current method is the pill)
             "pill_pack": pill_pack_view(
-                contraception_status, today, self._entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)
+                contraception_status,
+                today,
+                self._entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS),
+                self._entry.options.get(CONF_PILL_PACK_START) or None,
             ),
             "product_usage_today": usage_stats["today"],
             "product_usage_this_cycle": usage_stats["this_cycle"],

@@ -138,6 +138,7 @@
               "notify_pill_time": "Hora del recordatorio de la píldora",
               "notify_pill_followup_hours": "Segundo recordatorio de la píldora (horas)",
               "pill_pause_days": "Descanso de la píldora (días por envase)",
+              "pill_pack_start": "Inicio del blíster actual",
               "notify_pill_gap_enabled": "Aviso si faltan tomas de la píldora"
             },
             "data_description": {
@@ -145,6 +146,7 @@
               "notify_pill_time": "Hora del recordatorio de la píldora (por defecto 09:00).",
               "notify_pill_followup_hours": "Horas tras el recordatorio de la píldora para un segundo recordatorio si la píldora de hoy sigue sin registrarse. 0 = desactivado (por defecto, máximo 12; se omite si cayera después de medianoche).",
               "pill_pause_days": "Días sin píldora entre dos envases (p. ej. 7 en 21/7, 4 en 24/4). Durante ese descanso no se envía recordatorio; se reconoce tras al menos 21 días seguidos de píldora registrados. 0 = toma continua sin descanso (por defecto, máximo 7).",
+              "pill_pack_start": "Primer día del blíster que estás tomando ahora (opcional). La tarjeta de la píldora sitúa entonces hoy en el blíster a partir de esta fecha en lugar de deducirlo de las tomas registradas. Se supone que los blísteres siguientes se encadenan sin pausa, así que indica una fecha nueva si cambias de ritmo. Déjalo vacío para estimarlo a partir de tus registros.",
               "notify_pill_gap_enabled": "Añade al recordatorio de la píldora un aviso neutro cuando hay 2 o más días seguidos sin toma registrada: si se olvidaron tomas, la protección puede verse reducida, consulta el prospecto. Requiere una pausa de la píldora configurada arriba (o una interrupción de más de 7 días) para no confundir una pausa normal con un olvido. Desactivado por defecto. Requiere el recordatorio de la píldora."
             }
           },

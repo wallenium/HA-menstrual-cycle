@@ -17,6 +17,7 @@ SOURCE = (Path(__file__).resolve().parents[1] / "custom_components" / "menstruat
 # Options with their own handling: the two notify targets default from a local variable, the life-stage
 # toggles are handled by the follow-up steps instead of the generic parse/save path.
 SPECIAL = {
+    "CONF_PILL_PACK_START",  # a date: built with _optional_date_key (no default for an empty selector), checked below
     "CONF_NOTIFY_SERVICE",
     "CONF_NOTIFY_PARTNER_SERVICE",
     "CONF_PREGNANCY_ENABLED",
@@ -66,6 +67,12 @@ class OptionsFlowConsistencyTests(unittest.TestCase):
                 if not re.search(rf"{name}:\s*d\[{name}\]", FINISH):
                     problems.append(f"{section}/{name}: not written to the entry options in _async_finish")
         self.assertEqual(problems, [])
+
+    def test_pill_pack_start_is_wired_end_to_end(self) -> None:
+        self.assertIn('_optional_date_key(CONF_PILL_PACK_START, c["pill_pack_start"] or None)', INIT_STEP)
+        self.assertIn('"pill_pack_start"', RESOLVE)
+        self.assertIn("self._data[CONF_PILL_PACK_START]", INIT_STEP)
+        self.assertRegex(FINISH, r"CONF_PILL_PACK_START:\s*d\[CONF_PILL_PACK_START\]")
 
     def test_no_option_is_in_two_sections(self) -> None:
         names = [name for values in _sections().values() for name in values]

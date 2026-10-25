@@ -152,6 +152,9 @@ CONF_NOTIFY_PILL_GAP_ENABLED = "notify_pill_gap_enabled"
 DEFAULT_NOTIFY_PILL_GAP_ENABLED = False
 # Pill break: a pill run of at least PILL_ACTIVE_DAYS_MIN days followed by up to CONF_PILL_PAUSE_DAYS days without an intake is treated as the pack break (no reminder), 0 = continuous use.
 CONF_PILL_PAUSE_DAYS = "pill_pause_days"
+# Optional first day of the pill pack you are on now (ISO date); the blister card then places today in the pack from it
+# instead of guessing from the logged intakes. Later packs are assumed to follow without a gap. "" = not set.
+CONF_PILL_PACK_START = "pill_pack_start"
 DEFAULT_PILL_PAUSE_DAYS = 0
 PILL_PAUSE_DAYS_MAX = 7
 PILL_ACTIVE_DAYS_MIN = 21

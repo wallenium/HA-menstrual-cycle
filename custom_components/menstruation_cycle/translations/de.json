@@ -138,6 +138,7 @@
               "notify_pill_time": "Uhrzeit der Pillen-Erinnerung",
               "notify_pill_followup_hours": "Pillen-Nachfass-Erinnerung (Stunden)",
               "pill_pause_days": "Pillen-Pause (Tage pro Packung)",
+              "pill_pack_start": "Beginn der aktuellen Pillenpackung",
               "notify_pill_gap_enabled": "Hinweis bei fehlenden Pilleneinnahmen"
             },
             "data_description": {
@@ -145,6 +146,7 @@
               "notify_pill_time": "Uhrzeit der Pillen-Erinnerung (Standard 09:00).",
               "notify_pill_followup_hours": "Stunden nach der Pillen-Erinnerung für eine zweite Erinnerung, falls die heutige Pille noch nicht eingetragen ist. 0 = aus (Standard, maximal 12; entfällt, wenn sie nach Mitternacht läge).",
               "pill_pause_days": "Tage ohne Pille zwischen zwei Packungen (z. B. 7 bei 21/7, 4 bei 24/4). In dieser Pause wird nicht erinnert, sie wird nach mindestens 21 eingetragenen Pillentagen in Folge erkannt. 0 = Dauereinnahme ohne Pause (Standard, maximal 7).",
+              "pill_pack_start": "Erster Tag der Packung, die du gerade nimmst (optional). Die Pillenkarte ordnet den heutigen Tag dann anhand dieses Datums in die Packung ein, statt ihn aus den geloggten Einnahmen zu schätzen. Folgepackungen werden ohne Lücke angenommen; trag ein neues Datum ein, wenn sich dein Rhythmus ändert. Leer lassen, um es aus deinen Einträgen zu schätzen.",
               "notify_pill_gap_enabled": "Ergänzt die Pillen-Erinnerung um einen neutralen Hinweis, sobald 2 oder mehr Tage in Folge keine Einnahme eingetragen sind: Bei vergessenen Pillen kann der Schutz eingeschränkt sein, siehe Beipackzettel. Braucht oben eine eingestellte Pillen-Pause (oder eine Lücke von mehr als 7 Tagen), damit eine normale Pause nicht als Vergessen gilt. Standardmäßig aus. Erfordert die Pillen-Erinnerung."
             }
           },
