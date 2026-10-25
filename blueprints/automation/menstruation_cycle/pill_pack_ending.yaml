@@ -1,0 +1,65 @@
+blueprint:
+  name: Menstruation Cycle - Pill pack ending soon
+  description: >
+    Runs your own actions a chosen number of days before the last active pill
+    of the current pack (a reminder to buy or pick up the next pack, a note
+    for a second person, ...). It reads the pack position of the pill
+    blister, which is exact when "Start of the current pill pack" is set in the
+    integration's options. Only runs while the pill is the profile's current
+    contraception method, a pack break is configured, and the profile's
+    visibility is "Full".
+  domain: automation
+  source_url: https://github.com/wallenium/HA-menstrual-cycle/blob/main/blueprints/automation/menstruation_cycle/pill_pack_ending.yaml
+  input:
+    cycle_sensor:
+      name: Cycle sensor
+      description: The menstruation cycle sensor for the profile to watch.
+      selector:
+        entity:
+          filter:
+            integration: menstruation_cycle
+            domain: sensor
+    check_time:
+      name: Check time
+      description: When to check the pack position each day.
+      default: "09:00:00"
+      selector:
+        time: {}
+    lead_days:
+      name: Lead time (days)
+      description: How many days before the last active pill to run the actions (0 = on that day).
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 21
+          mode: box
+    reminder_actions:
+      name: Actions
+      description: What to run. The variables "profile" and "days_left" are available.
+      selector:
+        action: {}
+
+trigger:
+  - platform: time
+    at: !input check_time
+
+trigger_variables:
+  cycle_sensor: !input cycle_sensor
+  lead_days: !input lead_days
+
+condition:
+  - condition: template
+    value_template: >
+      {% set pack = state_attr(cycle_sensor, 'pill_pack') %}
+      {% if pack and pack.pause | int(0) > 0 and not pack.in_pause %}
+        {{ (pack.active | int(0)) - (pack.position | int(0)) == (lead_days | int) }}
+      {% else %}
+        false
+      {% endif %}
+
+variables:
+  profile: "{{ state_attr(cycle_sensor, 'friendly_name') or cycle_sensor }}"
+  days_left: "{{ lead_days | int }}"
+
+action: !input reminder_actions
