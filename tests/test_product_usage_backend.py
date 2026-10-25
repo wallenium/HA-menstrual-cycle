@@ -228,6 +228,7 @@ class _FakeHass:
         self.data = {const.DOMAIN: {"entry-1": runtime}} if runtime is not None else {const.DOMAIN: {}}
         self.services = _FakeServices()
         self.states = types.SimpleNamespace(get=lambda entity_id: None)
+        self.config_entries = types.SimpleNamespace(async_get_entry=lambda entry_id: None)
 
 
 class _FakeCall:
@@ -1510,6 +1511,7 @@ class FullBackupRoundTripTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 hass = self._hass(folder)
+                hass.config_entries = types.SimpleNamespace(async_get_entry=lambda entry_id: None)
                 source = self._runtime(hass)
                 source.history = ["2026-04-01", "2026-04-29", "2026-05-27"]
                 source.period_duration_days = 6
