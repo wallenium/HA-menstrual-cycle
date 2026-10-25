@@ -92,6 +92,8 @@ assert.strictEqual(panel._renderFirstPeriodWelcome(state(['2026-06-01']), 'cycle
 assert.strictEqual(panel._renderFirstPeriodWelcome(state(['2026-10-20']), 'cycle'), '', 'start in the future');
 assert.strictEqual(panel._renderFirstPeriodWelcome(state(['2026-09-20']), 'menarche'), '');
 assert.strictEqual(panel._renderFirstPeriodWelcome({ attributes: {} }, 'cycle'), '');
+// reduced visibility levels drop grouped_starts (privacy), so no card appears there - intended
+assert.strictEqual(panel._renderFirstPeriodWelcome({ attributes: { visibility_level: 'status_only', next_predicted_start: '2026-10-18' } }, 'cycle'), '');
 
 // "Got it" hides it for this profile only, and remembers that
 panel._dismissWelcome();

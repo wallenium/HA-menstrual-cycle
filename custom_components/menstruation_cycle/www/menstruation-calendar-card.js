@@ -1899,4 +1899,11 @@ window.customCards.push({
   type: 'menstruation-calendar-card',
   name: 'Menstruation Calendar Card',
   description: 'Standalone full-month calendar with period, fertile window, and ovulation markers.',
+  // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
+  getEntitySuggestion: (hass, entityId) => {
+    const a = hass?.states?.[entityId]?.attributes;
+    return a && 'visibility_level' in a && 'onboarding_stage' in a
+      ? { config: { type: 'custom:menstruation-calendar-card', entity: entityId } }
+      : null;
+  },
 });

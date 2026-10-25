@@ -238,7 +238,7 @@ In the pre-menarche stage the sign checklist of the dashboard panel is followed 
 
 ### First period welcome (dashboard panel)
 
-Once exactly one period start is logged (at most 60 days ago), the dashboard panel shows a card "Your first period is logged" above the widgets: what to do next, that irregular periods are normal at the start, the packing list, who to talk to, and a note on contraception. "Got it" hides it for that profile in this browser.
+Once exactly one period start is logged (at most 60 days ago), the dashboard panel shows a card "Your first period is logged" above the widgets: what to do next, that irregular periods are normal at the start, the packing list, who to talk to, and a note on contraception. "Got it" hides it for that profile in this browser. Under the visibility levels "Status only" and "Private" the card is not shown on purpose: it would reveal that a first period was logged.
 
 ### Visibility
 

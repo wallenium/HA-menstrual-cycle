@@ -151,4 +151,11 @@ window.customCards.push({
   type: 'menstruation-pill-card',
   name: 'Menstruation Pill Pack',
   description: 'Pill blister: taken pills, pause days, tap today\'s pill to log it',
+  // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
+  getEntitySuggestion: (hass, entityId) => {
+    const a = hass?.states?.[entityId]?.attributes;
+    return a && 'visibility_level' in a && 'onboarding_stage' in a && 'pill_pack' in a
+      ? { config: { type: 'custom:menstruation-pill-card', entity: entityId } }
+      : null;
+  },
 });

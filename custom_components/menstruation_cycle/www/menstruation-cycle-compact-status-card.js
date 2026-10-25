@@ -909,4 +909,11 @@ window.customCards.push({
   type: 'menstruation-cycle-compact-status',
   name: 'Menstruation Cycle Compact Status',
   description: 'Compact cycle status with circular day indicator and status icon',
+  // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
+  getEntitySuggestion: (hass, entityId) => {
+    const a = hass?.states?.[entityId]?.attributes;
+    return a && 'visibility_level' in a && 'onboarding_stage' in a
+      ? { config: { type: 'custom:menstruation-cycle-compact-status', entity: entityId } }
+      : null;
+  },
 });
