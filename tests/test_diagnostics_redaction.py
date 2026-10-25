@@ -82,6 +82,12 @@ class DiagnosticsRedactionTests(unittest.TestCase):
         self.assertGreaterEqual(len(keys), 3)
         self.assertEqual(sorted(keys - diagnostics._REDACT_ENTRY_KEYS), [])
 
+    def test_every_date_or_note_option_is_redacted(self) -> None:
+        keys = {value for name, value in _const_values().items()
+                if name.startswith("CONF_") and ("_date" in value or "notes" in value or value.endswith("_start"))}
+        self.assertGreaterEqual(len(keys), 6)
+        self.assertEqual(sorted(keys - diagnostics._REDACT_ENTRY_KEYS), [])
+
 
 if __name__ == "__main__":
     unittest.main()

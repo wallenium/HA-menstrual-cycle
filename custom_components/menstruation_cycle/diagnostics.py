@@ -46,6 +46,12 @@ _REDACT_ENTRY_KEYS = {
     "linked_person_entity_id",
     "basal_temp_sensor_entity_id",
     "ics_token",
+    "pregnancy_start_date",
+    "pregnancy_risk_notes",
+    "postpartum_start_date",
+    "menopause_start_date",
+    "estimated_menarche_date",
+    "pill_pack_start",
 }
 
 
