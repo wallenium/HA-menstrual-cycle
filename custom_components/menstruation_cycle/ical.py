@@ -16,6 +16,7 @@ from .const import (
     CONF_CALENDAR_OVULATION_EVENTS,
     CONF_CALENDAR_PREGNANCY_EVENTS,
     CONF_ICS_FEED_ENABLED,
+    CONF_PILL_PACK_START,
     CONF_PILL_PAUSE_DAYS,
     CONTRACEPTION_METHOD_PILL,
     DEFAULT_CALENDAR_CONTRACEPTION_EVENTS,
@@ -228,7 +229,12 @@ def collect_extra_events(
             renewal = date.fromisoformat(status["renewal_due_date"])
             events.append(("contraception_renewal", renewal, renewal, strings["contraception_renewal"]))
         if status["current_method"] == CONTRACEPTION_METHOD_PILL:
-            end = pill_pack_end(status, int(options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
+            end = pill_pack_end(
+                status,
+                int(options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)),
+                options.get(CONF_PILL_PACK_START) or None,
+                today,
+            )
             if end is not None:
                 events.append(("pill_pack_end", end, end, strings["pill_pack_end"]))
         for day, event in contraception_rhythm_schedule(status, today):

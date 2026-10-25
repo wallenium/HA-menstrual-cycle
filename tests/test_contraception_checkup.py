@@ -160,6 +160,39 @@ class PillPackEndTests(unittest.TestCase):
         self.assertIsNone(model.pill_pack_end(model.compute_contraception_status([], today=TODAY), 7))
 
 
+class PillPackEndStartDateTests(unittest.TestCase):
+    def _end(self, start_offset, pause_days=7, streak=3):
+        status = model.compute_contraception_status(_pills(*range(-streak + 1, 1)), today=TODAY)
+        start = (TODAY + timedelta(days=start_offset)).isoformat()
+        return model.pill_pack_end(status, pause_days, start, TODAY)
+
+    def test_start_date_beats_the_streak_guess(self) -> None:
+        # pack day 11 of 28 -> last active pill (day 21) is 10 days away, regardless of the 3-day streak
+        self.assertEqual(self._end(-10), TODAY + timedelta(days=10))
+
+    def test_works_without_logged_pills(self) -> None:
+        status = model.compute_contraception_status([], today=TODAY)
+        start = (TODAY - timedelta(days=4)).isoformat()
+        self.assertEqual(model.pill_pack_end(status, 7, start, TODAY), TODAY + timedelta(days=16))
+
+    def test_later_pack_is_derived_from_the_28_day_cycle(self) -> None:
+        # started 30 days ago -> pack day 3 of the second pack
+        self.assertEqual(self._end(-30), TODAY + timedelta(days=18))
+
+    def test_last_active_day_and_pause(self) -> None:
+        self.assertEqual(self._end(-20), TODAY)  # pack day 21
+        self.assertEqual(self._end(-21), TODAY + timedelta(days=27))  # pause day, next pack ends in 27 days
+
+    def test_invalid_or_future_start_falls_back_to_the_streak(self) -> None:
+        fallback = TODAY + timedelta(days=21 - 3)
+        self.assertEqual(self._end(5), fallback)
+        status = model.compute_contraception_status(_pills(-2, -1, 0), today=TODAY)
+        self.assertEqual(model.pill_pack_end(status, 7, "kaputt", TODAY), fallback)
+
+    def test_no_pack_break_means_no_end(self) -> None:
+        self.assertIsNone(self._end(-10, pause_days=0))
+
+
 class CheckupHelperTests(unittest.TestCase):
     def test_last_checkup_is_the_latest_gyn_or_pap_entry(self) -> None:
         history = [

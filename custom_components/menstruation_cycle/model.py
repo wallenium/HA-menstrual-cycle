@@ -3603,15 +3603,29 @@ def pill_break_active(status: dict[str, Any], today: date, pause_days: int) -> b
     return 0 < (today - date.fromisoformat(last)).days <= pause_days
 
 
-def pill_pack_end(status: dict[str, Any], pause_days: int) -> date | None:
+def pill_pack_end(
+    status: dict[str, Any], pause_days: int, pack_start: str | None = None, today: date | None = None
+) -> date | None:
     """Last active pill day of the running pack, or None when it cannot be told.
 
     The pack length is 28 - pause_days (21+7, 24+4, ...), so it is only known when a pack break is configured;
     a run longer than one pack (no break logged) has no recognisable pack boundary either.
+    With `pack_start` (first day of any pack) and `today` the end comes from the calendar instead, the same way
+    pill_pack_view places today in the pack: packs are assumed to follow each other without a gap.
     """
+    pack_days = 28 - pause_days
+    if pause_days and pack_start and today is not None:
+        try:
+            start = date.fromisoformat(pack_start)
+        except ValueError:
+            start = None
+        if start is not None and start <= today:
+            pack_first = today - timedelta(days=(today - start).days % 28)
+            end = pack_first + timedelta(days=pack_days - 1)
+            # in the break the running pack is over -> the next pack's end is the useful date
+            return end if end >= today else end + timedelta(days=28)
     last = status.get("pill_last_taken")
     streak = status.get("pill_streak_days", 0)
-    pack_days = 28 - pause_days
     if not pause_days or not last or not 0 < streak <= pack_days:
         return None
     return date.fromisoformat(last) + timedelta(days=pack_days - streak)

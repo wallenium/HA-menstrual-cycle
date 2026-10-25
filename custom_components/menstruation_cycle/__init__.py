@@ -141,6 +141,7 @@ from .const import (
     SERVICE_CONFIRM_CONTRACEPTION_RENEWAL,
     SERVICE_CREATE_PERIODS_FROM_BLEEDING,
     NOTIFY_PILL_FOLLOWUP_HOURS_MAX,
+    CONF_PILL_PACK_START,
     CONF_PILL_PAUSE_DAYS,
     DEFAULT_PILL_PAUSE_DAYS,
     NOTIFY_ACTION_PILL_SNOOZE_PREFIX,
@@ -2466,7 +2467,12 @@ async def _async_check_pill_refill_todo(hass: HomeAssistant, entry: ConfigEntry,
     status = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))
     if status["current_method"] != CONTRACEPTION_METHOD_PILL:
         return
-    end = pill_pack_end(status, int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)))
+    end = pill_pack_end(
+        status,
+        int(entry.options.get(CONF_PILL_PAUSE_DAYS, DEFAULT_PILL_PAUSE_DAYS)),
+        entry.options.get(CONF_PILL_PACK_START) or None,
+        today,
+    )
     if end is None or not 0 <= (end - today).days <= PILL_REFILL_LEAD_DAYS:
         return
     # the end date in the text makes the item unique per pack, so a ticked-off item does not block the next pack
