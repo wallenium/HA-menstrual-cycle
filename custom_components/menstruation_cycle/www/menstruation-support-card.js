@@ -91,6 +91,11 @@ const CYCLE_PHASES = [
 // ---------------------------------------------------------------------------
 
 class YoungGirlsSupportCard extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
   static getStubConfig() {
     return {
       type: 'custom:menstruation-support-card',

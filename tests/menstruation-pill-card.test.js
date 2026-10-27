@@ -94,4 +94,47 @@ for (const lang of ['en', 'de', 'fr', 'es', 'sv']) {
     assert.ok(texts[key], `${lang} is missing ${key}`);
   }
 }
-console.log('pill card tests passed');
+
+// states are not colour-only: taken and missed cells carry a symbol, and a legend explains all four
+html = make({ ...pack, taken: [1, 2, 3, 6], position: 6, today_taken: true }).html();
+assert.ok(/class="cell taken"[^>]*data-mark="\u2713"/.test(html) && /class="cell missed"[^>]*data-mark="!"/.test(html), html);
+assert.strictEqual((html.match(/class="legend-item"/g) || []).length, 4);
+const noLegend = make(pack);
+noLegend.card.setConfig({ entity: 'sensor.menstruation', show_legend: false });
+assert.ok(!noLegend.html().includes('class="legend"') && noLegend.html().includes('class="blister"'));
+
+// grid size for the sections view, and a visual editor
+assert.deepStrictEqual(new Card().getGridOptions(), { columns: 6, min_columns: 4 });
+assert.ok(typeof Card.getConfigElement === 'function' && defined['menstruation-pill-card-editor']);
+const Editor = defined['menstruation-pill-card-editor'];
+const editor = new Editor();
+let emitted = null;
+editor.dispatchEvent = (ev) => { emitted = ev.detail.config; };
+global.CustomEvent = class CustomEvent { constructor(type, init) { this.type = type; this.detail = init.detail; } };
+editor.setConfig({ entity: 'sensor.a', title: 'Pill' });
+assert.ok(editor.shadowRoot.innerHTML.includes('value="sensor.a"') && editor.shadowRoot.innerHTML.includes('value="Pill"'));
+const change = editor.shadowRoot.handlers.change;
+change({ target: { id: 'title', value: '' } });
+assert.deepStrictEqual(emitted, { entity: 'sensor.a' }, 'an empty title is removed from the config');
+change({ target: { id: 'show_legend', checked: false } });
+assert.deepStrictEqual(emitted, { entity: 'sensor.a', show_legend: false });
+change({ target: { id: 'entity', value: ' sensor.b ' } });
+assert.strictEqual(emitted.entity, 'sensor.b');
+
+// while the call is pending the pill button is disabled; a failed call shows an error that a new tap clears
+(async () => {
+  let reject;
+  const failing = make(pack);
+  failing.card._hass.callService = () => new Promise((_, rej) => { reject = rej; });
+  failing.card.shadowRoot.handlers.click({ target });
+  assert.ok(/data-action="take"[^>]*disabled/.test(failing.html()) && failing.html().includes('aria-busy="true"'), failing.html());
+  reject(new Error('boom'));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(failing.html().includes('role="alert"') && failing.html().includes('Could not log the pill'), failing.html());
+  assert.ok(!/data-action="take"[^>]*disabled/.test(failing.html()), 'the button is usable again');
+  failing.card._hass.callService = () => Promise.resolve();
+  failing.card.shadowRoot.handlers.click({ target });
+  assert.ok(!failing.html().includes('role="alert"'), 'a new tap clears the error');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  console.log('pill card tests passed');
+})().catch((err) => { console.error(err); process.exit(1); });

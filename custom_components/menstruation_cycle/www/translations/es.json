@@ -1305,5 +1305,8 @@
   "dashboard_welcome_kit": "Prepara un pequeño kit en tu bolsa (la lista está en la tarjeta de apoyo).",
   "dashboard_welcome_tell": "Si te preocupa algo o algo duele mucho, habla con una persona adulta de confianza o con un médico.",
   "dashboard_welcome_fertile": "A partir de ahora es posible quedarse embarazada. Cuando el sexo sea un tema para ti, habla antes sobre anticoncepción con un médico o un servicio de orientación.",
-  "dashboard_welcome_dismiss": "Entendido"
+  "dashboard_welcome_dismiss": "Entendido",
+  "pill_card_save_error": "No se pudo registrar la píldora. Inténtalo de nuevo.",
+  "pill_card_editor_title": "Título (opcional)",
+  "pill_card_editor_legend": "Mostrar leyenda"
 }

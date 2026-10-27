@@ -34,6 +34,11 @@ const _mcHeatmapSafeJsonParse = (value, fallback = null) => {
 
 
 class MenstruationCycleHeatmapCard extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
   _todayIso() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

@@ -12,6 +12,11 @@ if (typeof _mcCalendarCardI18n.normalizeLang !== 'function') {
 
 
 class MenstruationCalendarCard extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
   constructor() {
     super();
     this._viewDate = new Date();

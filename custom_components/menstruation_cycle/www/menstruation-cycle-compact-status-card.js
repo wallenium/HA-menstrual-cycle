@@ -12,6 +12,11 @@ if (typeof _mcCompactStatusI18n.normalizeLang !== 'function') {
 
 
 class MenstruationCycleCompactStatusCard extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 6, min_columns: 3 };
+  }
+
   static getStubConfig() {
     return {
       type: 'custom:menstruation-cycle-compact-status',

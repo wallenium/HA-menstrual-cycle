@@ -96,6 +96,11 @@ if (typeof _mcCountdownTimerI18n.normalizeLang !== "function") {
 
 
 class MenstruationCountdownTimer extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 6, min_columns: 4 };
+  }
+
   constructor() {
     super();
     this.timerState = {
@@ -120,10 +125,6 @@ class MenstruationCountdownTimer extends HTMLElement {
   connectedCallback() {
     try {
       this.setupEventListeners();
-      
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
-        Notification.requestPermission()?.catch?.(() => {});
-      }
     } catch (error) {
       console.error("MenstruationCountdownTimer Error:", error);
       // Bugfix (15.09.2026): war hartcodiert Deutsch, unabhängig von der
@@ -1189,6 +1190,10 @@ class MenstruationCountdownTimer extends HTMLElement {
 
       switch (button.dataset.action) {
         case "start-timer":
+          // Ask for the browser permission only now (a tap), never on load.
+          if (this.timerState.reminderEnabled && typeof Notification !== "undefined" && Notification.permission === "default") {
+            Notification.requestPermission()?.catch?.(() => {});
+          }
           this.startTimer();
           this._updateTimerState();
           break;

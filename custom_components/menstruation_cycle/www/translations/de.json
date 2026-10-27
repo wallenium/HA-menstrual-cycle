@@ -1305,5 +1305,8 @@
   "dashboard_welcome_kit": "Pack dir ein kleines Set in die Tasche (die Packliste findest du in der Support-Karte).",
   "dashboard_welcome_tell": "Wenn du dir Sorgen machst oder etwas sehr wehtut, sprich mit einer Vertrauensperson oder einer Ärztin bzw. einem Arzt.",
   "dashboard_welcome_fertile": "Ab jetzt kann man schwanger werden. Wenn das Thema Sex für dich ansteht, sprich vorher mit einer Ärztin, einem Arzt oder einer Beratungsstelle über Verhütung.",
-  "dashboard_welcome_dismiss": "Verstanden"
+  "dashboard_welcome_dismiss": "Verstanden",
+  "pill_card_save_error": "Die Pille konnte nicht eingetragen werden. Bitte erneut versuchen.",
+  "pill_card_editor_title": "Titel (optional)",
+  "pill_card_editor_legend": "Legende anzeigen"
 }

@@ -1305,5 +1305,8 @@
   "dashboard_welcome_kit": "Keep a small kit in your bag (the packing list is in the Support card).",
   "dashboard_welcome_tell": "If you are worried or something hurts a lot, talk to an adult you trust or a doctor.",
   "dashboard_welcome_fertile": "From now on pregnancy is possible. When sex becomes a topic for you, talk to a doctor or a counselling service about contraception first.",
-  "dashboard_welcome_dismiss": "Got it"
+  "dashboard_welcome_dismiss": "Got it",
+  "pill_card_save_error": "Could not log the pill. Please try again.",
+  "pill_card_editor_title": "Title (optional)",
+  "pill_card_editor_legend": "Show legend"
 }

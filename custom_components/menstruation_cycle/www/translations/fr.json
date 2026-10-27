@@ -1305,5 +1305,8 @@
   "dashboard_welcome_kit": "Prépare un petit kit dans ton sac (la liste se trouve dans la carte de soutien).",
   "dashboard_welcome_tell": "Si tu t'inquiètes ou si quelque chose fait très mal, parle à un adulte de confiance ou à un médecin.",
   "dashboard_welcome_fertile": "À partir de maintenant, une grossesse est possible. Quand le sujet des rapports sexuels se posera pour toi, parle d'abord de contraception avec un médecin ou un centre de conseil.",
-  "dashboard_welcome_dismiss": "Compris"
+  "dashboard_welcome_dismiss": "Compris",
+  "pill_card_save_error": "Impossible d'enregistrer la pilule. Veuillez réessayer.",
+  "pill_card_editor_title": "Titre (facultatif)",
+  "pill_card_editor_legend": "Afficher la légende"
 }

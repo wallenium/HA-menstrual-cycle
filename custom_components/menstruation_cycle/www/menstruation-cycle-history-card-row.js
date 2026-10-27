@@ -12,6 +12,11 @@ if (typeof _mcHistoryCardI18n.normalizeLang !== 'function') {
 
 
 class MenstruationCycleHistoryCardRow extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 12, min_columns: 6 };
+  }
+
   static getConfigElement() {
     return document.createElement('menstruation-cycle-history-card-row-editor');
   }

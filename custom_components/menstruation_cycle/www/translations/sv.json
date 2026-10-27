@@ -1305,5 +1305,8 @@
   "dashboard_welcome_kit": "Packa ett litet kit i väskan (packlistan finns i stödkortet).",
   "dashboard_welcome_tell": "Om du oroar dig eller något gör mycket ont, prata med en vuxen du litar på eller en läkare.",
   "dashboard_welcome_fertile": "Från nu kan man bli gravid. När sex blir aktuellt för dig, prata först om preventivmedel med en läkare eller en ungdomsmottagning.",
-  "dashboard_welcome_dismiss": "Uppfattat"
+  "dashboard_welcome_dismiss": "Uppfattat",
+  "pill_card_save_error": "Det gick inte att logga p-pillret. Försök igen.",
+  "pill_card_editor_title": "Rubrik (valfri)",
+  "pill_card_editor_legend": "Visa teckenförklaring"
 }

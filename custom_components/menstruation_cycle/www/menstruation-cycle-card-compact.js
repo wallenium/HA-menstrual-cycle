@@ -29,6 +29,11 @@ if (typeof _mcCompactCardI18n.normalizeLang !== 'function') {
 const QUICK_LOG_PAIN_OPTIONS = ["cramps", "headache", "lower_back", "tender_breasts"];
 
 class MenstruationCycleCard extends HTMLElement {
+  // Sections view: default and minimum width in the 12-column grid.
+  getGridOptions() {
+    return { columns: 6, min_columns: 3 };
+  }
+
   connectedCallback() {
     this._iconCache = {};
     this._quickLogState = { iso: null, pain: null };
