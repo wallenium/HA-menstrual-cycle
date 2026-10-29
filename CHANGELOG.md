@@ -11,12 +11,14 @@
 - **Pill pack card**: the pill button is disabled while the intake is saved and a failed save now shows an error message instead of nothing; taken and not-logged days carry a symbol (check mark, exclamation mark) next to the colour, and a legend explains the four states (switch it off with `show_legend: false`). The card also has a visual editor now.
 - **Sections view**: all cards declare a default and minimum width (`getGridOptions`), so they can be resized in the sections layout. The calendar, heatmap, history, statistics, inventory, gauge and support cards default to full width, the smaller cards to half.
 - The dashboard panel shows the pill blister as the widget "Pill pack" (only for profiles whose current contraception method is the pill; reorder or hide it in the edit mode).
+- In the dashboard panel's edit mode, the "Pill pack" widget shows a short note instead of nothing when the profile does not use the pill as its current contraception method.
 
 ### Changed
 - Removing a profile now also deletes its export files with the default name (doctor report, wall calendar, history export). Files saved under a name you chose and the full backup are left alone.
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- The quantity fields of the product inventory card have accessible names (product and action), so screen readers no longer announce unlabeled number inputs.
 - The countdown timer card no longer asks for the browser notification permission as soon as it loads; the question appears when you start a timer with reminders on.
 - The diagnostics download no longer shows the pill pack start date and shows the span of the logged cycle history in days instead of its first and last date.
 - Two user-facing texts (`strings.json` and `translations/*.json`) still described the old behavior: the description of the option "Public ICS calendar feed" now mentions the dashboard button "New feed URL" for invalidating a shared URL, and the description of the service `set_profile_visibility` now says that below visibility "Full" the services that return a profile's data answer administrators only (as in `services.yaml`).

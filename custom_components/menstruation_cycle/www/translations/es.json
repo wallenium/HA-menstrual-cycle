@@ -721,6 +721,7 @@
   "dashboard_widget_inventory_card": "Inventario de productos",
   "dashboard_widget_timer_card": "Temporizador",
   "dashboard_widget_pill_card": "Blíster de píldoras",
+  "dashboard_pill_card_hidden_hint": "Oculto fuera del modo de edición: este perfil no usa la píldora como método anticonceptivo actual.",
   "dashboard_widget_support_card": "Apoyo y educación",
   "dashboard_birth": "Nacimiento",
   "dashboard_days_remaining": "Días restantes",

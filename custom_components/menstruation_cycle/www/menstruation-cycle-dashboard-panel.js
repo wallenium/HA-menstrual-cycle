@@ -360,6 +360,7 @@
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_pill_card: 'Pill pack',
+    dashboard_pill_card_hidden_hint: 'Hidden outside of edit mode: this profile does not use the pill as its current contraception method.',
     dashboard_widget_support_card: 'Support & Education',
     dashboard_birth: 'Birth',
     days: 'days',
@@ -7029,7 +7030,12 @@
       if (widgetId === 'support_card') body = this._renderEmbeddedCardMount('support-card');
       // Only profiles whose current method is the pill have a pill_pack attribute; everyone else sees no widget.
       if (widgetId === 'pill_card') {
-        if (!stateObj?.attributes?.pill_pack) return '';
+        if (!stateObj?.attributes?.pill_pack) {
+          // While editing, say why the widget is missing instead of silently showing nothing.
+          return this._editMode
+            ? `<article class="card ${spanClass}"><h2>${this._t('dashboard_widget_pill_card')}</h2><p style="color:var(--secondary-text-color);">${escapeHtml(this._t('dashboard_pill_card_hidden_hint'))}</p></article>`
+            : '';
+        }
         body = this._renderEmbeddedCardMount('pill-card');
       }
       if (widgetId === 'long_term_trend') body = this._renderLongTermTrendChart(stateObj);

@@ -754,6 +754,7 @@
   "dashboard_widget_inventory_card": "Produkt-Inventar",
   "dashboard_widget_timer_card": "Timer",
   "dashboard_widget_pill_card": "Pillenblister",
+  "dashboard_pill_card_hidden_hint": "Außerhalb des Bearbeitungsmodus ausgeblendet: Dieses Profil nutzt die Pille nicht als aktuelle Verhütungsmethode.",
   "dashboard_widget_support_card": "Unterstützung & Aufklärung",
   "dashboard_birth": "Geburt",
   "dashboard_days_remaining": "Tage verbleibend",

@@ -721,6 +721,7 @@
   "dashboard_widget_inventory_card": "Inventaire des produits",
   "dashboard_widget_timer_card": "Minuteur",
   "dashboard_widget_pill_card": "Plaquette de pilules",
+  "dashboard_pill_card_hidden_hint": "Masqué hors du mode édition : ce profil n'utilise pas la pilule comme méthode de contraception actuelle.",
   "dashboard_widget_support_card": "Soutien et éducation",
   "dashboard_birth": "Naissance",
   "dashboard_days_remaining": "Jours restants",

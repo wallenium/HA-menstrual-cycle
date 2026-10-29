@@ -62,6 +62,7 @@ const baseTranslations = {
   dashboard_widget_calendar_card: 'Calendar',
   dashboard_widget_statistics_card: 'Statistics',
   dashboard_widget_pill_card: 'Pill pack',
+  dashboard_pill_card_hidden_hint: 'Hidden outside of edit mode: no pill.',
   dashboard_no_entity_selected: 'No profile selected.',
   dashboard_component_unavailable: 'Card component not loaded.',
   dashboard_edit_mode: 'Edit dashboard',
@@ -435,6 +436,10 @@ const makeHass = (stateObj) => ({
   // pill blister widget: only profiles with a pill_pack get it, mounted as the real card without its own heading
   const noPill = panelGeneral._renderWidget('pill_card', panelGeneral._hass.states[panelGeneral._selectedEntityId], false);
   assert.strictEqual(noPill, '', 'no pill_pack, no widget');
+  panelGeneral._editMode = true;
+  const noPillEdit = panelGeneral._renderWidget('pill_card', panelGeneral._hass.states[panelGeneral._selectedEntityId], false);
+  assert.ok(noPillEdit.includes('Hidden outside of edit mode: no pill.'), 'edit mode explains the missing pill widget');
+  panelGeneral._editMode = false;
   const pillState = { attributes: { pill_pack: { active: 21, pause: 7, taken: [], position: 1, in_pause: false, today_taken: false, new_pack: true } } };
   const pillHtml = panelGeneral._renderWidget('pill_card', pillState, false);
   assert.ok(pillHtml.includes('data-mount="pill-card"') && pillHtml.includes('Pill pack'), 'pill_pack renders the mount with the widget title');

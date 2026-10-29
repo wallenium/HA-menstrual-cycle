@@ -754,6 +754,7 @@
   "dashboard_widget_inventory_card": "Product Inventory",
   "dashboard_widget_timer_card": "Timer",
   "dashboard_widget_pill_card": "Pill pack",
+  "dashboard_pill_card_hidden_hint": "Hidden outside of edit mode: this profile does not use the pill as its current contraception method.",
   "dashboard_widget_support_card": "Support & Education",
   "dashboard_birth": "Birth",
   "dashboard_days_remaining": "Days remaining",

@@ -506,7 +506,7 @@ class MenstruationProductInventoryCard extends HTMLElement {
                   <button class="btn warn" data-action="consume" data-product="${product}" data-quantity="1">${this._t("use")}</button>
                 </div>
                 <div class="action-group">
-                  <input class="qty" type="number" min="0" data-role="refill-qty" data-product="${product}" value="${refillQtyValue}">
+                  <input class="qty" type="number" min="0" data-role="refill-qty" data-product="${product}" value="${refillQtyValue}" aria-label="${this._t(product)}: ${this._t("washed")}">
                   <button class="btn" data-action="add" data-product="${product}" data-role="refill-input">${this._t("washed")}</button>
                 </div>
                 ${showUnderwearBuyRecommendation ? `
@@ -516,11 +516,11 @@ class MenstruationProductInventoryCard extends HTMLElement {
                 ` : ""}
               ` : `
                 <div class="action-group">
-                  <input class="qty" type="number" min="1" data-role="consume-qty" data-product="${product}" value="${consumeQtyValue}">
+                  <input class="qty" type="number" min="1" data-role="consume-qty" data-product="${product}" value="${consumeQtyValue}" aria-label="${this._t(product)}: ${this._t("consume")}">
                   <button class="btn warn" data-action="consume" data-product="${product}" data-role="consume-input">${this._t("consume")}</button>
                 </div>
                 <div class="action-group">
-                  <input class="qty" type="number" min="0" data-role="refill-qty" data-product="${product}" value="${refillQtyValue}">
+                  <input class="qty" type="number" min="0" data-role="refill-qty" data-product="${product}" value="${refillQtyValue}" aria-label="${this._t(product)}: ${this._t("refill")}">
                   <button class="btn" data-action="add" data-product="${product}" data-role="refill-input">${this._t("refill")}</button>
                 </div>
               `}
