@@ -1266,6 +1266,20 @@
     "notify_target_unavailable": {
       "title": "Menstruationszyklus: Benachrichtigungen kommen nicht an",
       "description": "Profil: **{entry_title}**\n\nDas Benachrichtigungsziel `{target}` existiert nicht oder der letzte Versuch, es zu nutzen, ist fehlgeschlagen. Erinnerungen für dieses Profil kommen deshalb nicht an. Prüfe den notify-Dienst in den Optionen dieses Profils (zum Beispiel `mobile_app_meinhandy`). Dieser Hinweis verschwindet von selbst, sobald eine Benachrichtigung erfolgreich zugestellt wurde."
+    },
+    "leftover_data": {
+      "title": "Menstruation Cycle: Daten eines entfernten Profils sind noch gespeichert",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Gespeicherte Daten entfernen?",
+            "description": "Das Profil **{entry_title}** wurde entfernt, seine Daten sind aber noch gespeichert: Zyklusverlauf, Symptome, Produktverbrauch, Timer-Zustand und Dashboard-Einstellungen. Wähle, was damit passieren soll. Wenn du dieses Fenster schließt, ändert sich nichts. Legst du ein Profil mit gleichem Namen neu an, verschwindet dieser Hinweis und die Daten werden wieder verwendet. Zustände und Langzeitstatistiken im Recorder löscht dieser Schritt nicht; das übernimmt der Recorder-Purge.",
+            "data": {
+              "action": "Was soll mit den gespeicherten Daten passieren?"
+            }
+          }
+        }
+      }
     }
   },
   "selector": {
@@ -1365,6 +1379,13 @@
         "es": "Español",
         "fr": "Français",
         "sv": "Svenska"
+      }
+    },
+    "leftover_data_action": {
+      "options": {
+        "delete_all": "Alles löschen",
+        "keep_history": "Alles außer dem Zyklusverlauf löschen",
+        "keep": "Alles behalten und nicht mehr fragen"
       }
     }
   }

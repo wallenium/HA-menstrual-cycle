@@ -1592,7 +1592,7 @@ class MenstruationCalendarCard extends HTMLElement {
             </div>
           </div>
           <div class="legend">
-            <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}<</span>
+            <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}</span>
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
             ${this._config?.show_ovulation_marker !== false && !(model.learningPhase && String(model.predictionGating?.confidence || 'low').toLowerCase() === 'low') ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}

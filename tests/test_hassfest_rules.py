@@ -155,6 +155,7 @@ class FixFlowTextTests(unittest.TestCase):
             "rename_entities": "EntityRenameRepairFlow",
             "stale_ics_token": "StaleIcsTokenRepairFlow",
             "migrate_config_entry": "MigrationRepairFlow",
+            "leftover_data": "LeftoverDataRepairFlow",
         }
         tree = ast.parse((ROOT / "repairs.py").read_text(encoding="utf-8"))
         for key, class_name in flows.items():

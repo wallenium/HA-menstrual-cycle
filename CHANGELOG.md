@@ -15,9 +15,13 @@
 
 ### Changed
 - Removing a profile now also deletes its export files with the default name (doctor report, wall calendar, history export). Files saved under a name you chose and the full backup are left alone.
+- Removing a profile no longer leaves its stored data behind unnoticed: a notice in Settings > Repairs asks what to do with it (delete everything, delete everything except the cycle history, or keep it). Nothing is deleted until you answer; creating a profile with the same name again uses the data again.
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- The calendar card legend showed "Period<" with a stray character.
+- Statistics, inventory and compact cycle cards show a visible focus outline for keyboard use; those cards and the history and compact status cards respect the system setting "reduce motion".
+- The cycle history table has column header scopes and a caption for screen readers.
 - The quantity fields of the product inventory card have accessible names (product and action), so screen readers no longer announce unlabeled number inputs.
 - The countdown timer card no longer asks for the browser notification permission as soon as it loads; the question appears when you start a timer with reminders on.
 - The diagnostics download no longer shows the pill pack start date and shows the span of the logged cycle history in days instead of its first and last date.

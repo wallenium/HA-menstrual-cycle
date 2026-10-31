@@ -1653,6 +1653,35 @@ class LovelaceResourceDuplicateTests(unittest.TestCase):
         self.assertEqual(collection.deleted, ["r2", "r3"])
 
 
+def _storage_with(raw):
+    class _FakeStorage:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def async_load_raw(self):
+            return raw
+
+    return _FakeStorage
+
+
+class _DictStore:
+    """Store stand-in keeping files in a dict shared by all instances (reset per test)."""
+
+    files: dict = {}
+
+    def __init__(self, hass, version, key) -> None:
+        self.key = key
+
+    async def async_load(self):
+        return copy.deepcopy(self.files.get(self.key))
+
+    async def async_save(self, data) -> None:
+        self.files[self.key] = copy.deepcopy(data)
+
+    async def async_remove(self) -> None:
+        self.files.pop(self.key, None)
+
+
 class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
     def test_exports_are_written_owner_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1679,12 +1708,114 @@ class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
                 config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / name)), async_add_executor_job=_run_job
             )
             entry = types.SimpleNamespace(data={const.CONF_PROFILE: "anna"})
-            asyncio.run(integration.async_remove_entry(hass, entry))
+            with patch.object(integration, "MenstruationStorage", _storage_with({})):
+                asyncio.run(integration.async_remove_entry(hass, entry))
             self.assertEqual(sorted(p.name for p in folder.iterdir()), sorted(kept))
 
-            asyncio.run(integration.async_remove_entry(
-                types.SimpleNamespace(config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / "none")),
-                                      async_add_executor_job=_run_job), entry))  # no export folder: nothing to do
+            with patch.object(integration, "MenstruationStorage", _storage_with({})):
+                asyncio.run(integration.async_remove_entry(
+                    types.SimpleNamespace(config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / "none")),
+                                          async_add_executor_job=_run_job), entry))  # no export folder: nothing to do
+
+    def test_removing_a_profile_with_stored_data_asks_instead_of_deleting(self) -> None:
+        repairs_mod = integration._repairs_preload
+        created = []
+        hass = types.SimpleNamespace(
+            config=types.SimpleNamespace(path=lambda name: "/nonexistent/" + name),
+            async_add_executor_job=lambda func: asyncio.sleep(0),
+        )
+        entry = types.SimpleNamespace(data={const.CONF_PROFILE: "anna", const.CONF_FRIENDLY_NAME: "Anna"})
+        with patch.object(repairs_mod, "async_create_issue", lambda *a, **kw: created.append((a[2], kw))):
+            with patch.object(integration, "MenstruationStorage", _storage_with({"history": ["2026-01-01"]})):
+                asyncio.run(integration.async_remove_entry(hass, entry))
+            self.assertEqual(len(created), 1, created)
+            issue_id, kwargs = created[0]
+            self.assertEqual(issue_id, "leftover_data_anna")
+            self.assertTrue(kwargs["is_fixable"] and kwargs["is_persistent"])
+            self.assertEqual(kwargs["data"], {"profile": "anna", "name": "Anna"})
+
+            created.clear()
+            with patch.object(integration, "MenstruationStorage", _storage_with({})):
+                asyncio.run(integration.async_remove_entry(hass, entry))
+            self.assertEqual(created, [], "nothing stored, nothing to ask")
+
+    def test_erasing_a_removed_profile(self) -> None:
+        prefs = {"u1:anna": {"a": 1}, "u2:anna": {"a": 2}, "u1:bea": {"a": 3}}
+
+        async def _prefs(hass):
+            return prefs
+
+        def run(keep_history):
+            _DictStore.files = {
+                "menstruation_cycle.history.anna": {"history": ["2026-01-01"], "period_duration_days": 6,
+                                                    "symptom_history": [{"date": "2026-01-02"}],
+                                                    "pregnancy_data": {"is_pregnant": True}},
+                "menstruation_gauge.history.anna": {"history": ["2025-01-01"]},
+                "menstruation_cycle.history.timer_state.anna": {"is_running": False},
+                "menstruation_cycle.history.bea": {"history": ["2026-02-02"]},
+            }
+            prefs.clear()
+            prefs.update({"u1:anna": {"a": 1}, "u2:anna": {"a": 2}, "u1:bea": {"a": 3}})
+            with patch.object(integration, "Store", _DictStore), \
+                    patch.object(integration, "_async_ensure_dashboard_prefs_loaded", _prefs):
+                asyncio.run(integration._async_erase_profile_data(None, "anna", keep_history=keep_history))
+            return dict(_DictStore.files)
+
+        files = run(False)
+        self.assertEqual(set(files), {"menstruation_cycle.history.bea", integration.DASHBOARD_PREFS_STORE_KEY})
+        self.assertEqual(sorted(prefs), ["u1:bea"], "only this profile's dashboard settings go")
+
+        files = run(True)
+        self.assertEqual(files["menstruation_cycle.history.anna"], {"history": ["2026-01-01"], "period_duration_days": 6})
+        self.assertNotIn("menstruation_gauge.history.anna", files)
+        self.assertNotIn("menstruation_cycle.history.timer_state.anna", files)
+        self.assertIn("menstruation_cycle.history.bea", files, "other profiles are never touched")
+
+        # only the legacy file exists: its history is what stays
+        _DictStore.files = {"menstruation_gauge.history.anna": {"history": ["2025-01-01"], "symptom_history": [1]}}
+        with patch.object(integration, "Store", _DictStore), \
+                patch.object(integration, "_async_ensure_dashboard_prefs_loaded", _prefs):
+            asyncio.run(integration._async_erase_profile_data(None, "anna", keep_history=True))
+        self.assertEqual(_DictStore.files, {"menstruation_cycle.history.anna": {"history": ["2025-01-01"]}})
+
+    def test_leftover_data_repair_flow_only_deletes_what_was_chosen(self) -> None:
+        repairs_mod = integration._repairs_preload
+        calls, issues = [], []
+
+        async def _erase(hass, profile, *, keep_history):
+            calls.append((profile, keep_history))
+
+        def make(existing_profiles=()):
+            flow = repairs_mod.LeftoverDataRepairFlow("leftover_data_anna", {"profile": "anna", "name": "Anna"})
+            flow.hass = types.SimpleNamespace(config_entries=types.SimpleNamespace(
+                async_entries=lambda domain: [types.SimpleNamespace(data={const.CONF_PROFILE: p}) for p in existing_profiles]))
+            flow.async_create_entry = lambda **kw: {"type": "create_entry"}
+            flow.async_show_form = lambda **kw: {"type": "form", **kw}
+            return flow
+
+        def answer(flow, action):
+            return asyncio.run(flow.async_step_confirm({"action": action}))
+
+        with patch.object(integration, "_async_erase_profile_data", _erase), \
+                patch.object(repairs_mod, "async_delete_issue", lambda hass, domain, issue_id: issues.append(issue_id)):
+            for action, expected in (("keep", []), ("delete_all", [("anna", False)]), ("keep_history", [("anna", True)])):
+                calls.clear(); issues.clear()
+                self.assertEqual(answer(make(), action)["type"], "create_entry")
+                self.assertEqual(calls, expected, action)
+                self.assertEqual(issues, ["leftover_data_anna"], "answered: the question is closed")
+
+            calls.clear()
+            answer(make(existing_profiles=("anna",)), "delete_all")
+            self.assertEqual(calls, [], "a profile with this name exists again: never delete its data")
+
+            helpers_ns = types.SimpleNamespace(
+                SelectSelector=lambda cfg: cfg, SelectSelectorConfig=lambda **kw: kw,
+                SelectSelectorMode=types.SimpleNamespace(LIST="list"))
+            with patch.object(sys.modules["homeassistant.helpers"], "selector", helpers_ns, create=True):
+                form = asyncio.run(make().async_step_confirm())
+            self.assertEqual(form["type"], "form")
+            self.assertEqual(form["description_placeholders"], {"entry_title": "Anna"})
+            self.assertEqual(calls, [], "showing the form deletes nothing")
 
     def test_every_export_goes_through_the_private_writer(self) -> None:
         source = (Path(integration.__file__)).read_text(encoding="utf-8")

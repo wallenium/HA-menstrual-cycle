@@ -3030,6 +3030,8 @@ class MenstruationStatisticsCard extends HTMLElement {
           .planning-mini-calendar { margin-left: 0; max-width: 100%; }
           .planning-mini-calendar-grid { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
         }
+        :is(button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--primary-color, #c0392b); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
       </style>
       <ha-card>
         ${title ? `<div class="card-title">${this._escHtml(title)}</div>` : ''}

@@ -3532,6 +3532,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     friendly_name = _friendly_name_from_entry(entry)
     icon = _icon_from_entry(entry)
 
+    from .repairs import async_delete_leftover_data_issue
+
+    async_delete_leftover_data_issue(hass, profile)  # a profile with this name is back: its stored data is used again
+
     storage = MenstruationStorage(
         hass,
         key=f"{STORAGE_KEY}.{profile}",
@@ -4165,6 +4169,42 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                     _LOGGER.warning("Could not delete export %s: %s", path.name, err)
 
     await hass.async_add_executor_job(_delete)
+
+    # The stored data stays until the user answers the repair (see repairs.py::LeftoverDataRepairFlow).
+    from .repairs import async_create_leftover_data_issue
+
+    profile_key = _profile_from_entry(entry)
+    storage = MenstruationStorage(
+        hass, key=f"{STORAGE_KEY}.{profile_key}", legacy_key=f"{STORAGE_KEY_LEGACY}.{profile_key}"
+    )
+    if await storage.async_load_raw():
+        async_create_leftover_data_issue(hass, profile_key, _friendly_name_from_entry(entry))
+
+
+async def _async_erase_profile_data(hass: HomeAssistant, profile: str, *, keep_history: bool) -> None:
+    """Delete what a removed profile left in .storage; with keep_history only the cycle dates (and their period length) stay.
+
+    Not touched: the household inventory (shared by all profiles) and the recorder (states, statistics), which only
+    the recorder's own purge removes.
+    """
+    primary = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{profile}")
+    legacy = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY_LEGACY}.{profile}")
+    data = await primary.async_load()
+    if not isinstance(data, dict):
+        data = await legacy.async_load()
+    await legacy.async_remove()
+    if keep_history and isinstance(data, dict):
+        await primary.async_save({k: data[k] for k in ("history", "period_duration_days") if k in data})
+    else:
+        await primary.async_remove()
+    await Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.timer_state.{profile}").async_remove()
+
+    prefs = await _async_ensure_dashboard_prefs_loaded(hass)
+    stale = [key for key in prefs if key.endswith(f":{profile}")]
+    if stale:
+        for key in stale:
+            del prefs[key]
+        await Store(hass, STORAGE_VERSION, DASHBOARD_PREFS_STORE_KEY).async_save(prefs)
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

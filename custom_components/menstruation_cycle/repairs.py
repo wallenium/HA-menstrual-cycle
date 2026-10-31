@@ -38,6 +38,36 @@ DOMAIN = "menstruation_cycle"
 OLD_DOMAIN = "menstruation_gauge"
 
 
+LEFTOVER_ACTION_DELETE_ALL = "delete_all"
+LEFTOVER_ACTION_KEEP_HISTORY = "keep_history"
+LEFTOVER_ACTION_KEEP = "keep"
+
+
+def async_create_leftover_data_issue(hass: HomeAssistant, profile: str, profile_name: str) -> None:
+    """Ask what to do with the data a removed profile left in .storage.
+
+    Home Assistant's delete dialog cannot be extended, and removing a profile must not silently destroy health
+    data, so nothing is deleted until the user answers this repair. persistent: the question survives a restart.
+    """
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"leftover_data_{profile}",
+        issue_domain=DOMAIN,
+        is_fixable=True,
+        is_persistent=True,
+        severity=IssueSeverity.WARNING,
+        translation_key="leftover_data",
+        translation_placeholders={"entry_title": profile_name},
+        data={"profile": profile, "name": profile_name},
+    )
+
+
+def async_delete_leftover_data_issue(hass: HomeAssistant, profile: str) -> None:
+    """Clear the question (answered, or a profile with this name exists again and uses the data)."""
+    async_delete_issue(hass, DOMAIN, f"leftover_data_{profile}")
+
+
 def async_create_entity_naming_issue(
     hass: HomeAssistant,
     entry_id: str,
@@ -1017,6 +1047,8 @@ async def async_create_fix_flow(
         return EntityRenameRepairFlow(issue_id, data or {})
     if issue_id.startswith("stale_ics_token_"):
         return StaleIcsTokenRepairFlow(issue_id, data or {})
+    if issue_id.startswith("leftover_data_"):
+        return LeftoverDataRepairFlow(issue_id, data or {})
     return MigrationRepairFlow(issue_id)
 
 
@@ -1121,6 +1153,64 @@ class StaleIcsTokenRepairFlow(RepairsFlow):
             step_id="confirm",
             data_schema=vol.Schema({}),
             description_placeholders={"entry_title": _flow_entry_title(self.hass, self._entry_id)},
+        )
+
+
+class LeftoverDataRepairFlow(RepairsFlow):
+    """Repair flow asking what to do with the data of a removed profile.
+
+    The form defaults to "keep", so submitting it unchanged (or closing the dialog) deletes nothing.
+    """
+
+    def __init__(self, issue_id: str, data: dict[str, Any]) -> None:
+        self._issue_id = issue_id
+        self._profile: str = str(data.get("profile", ""))
+        self._name: str = str(data.get("name") or self._profile)
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return await self.async_step_confirm()
+
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        from homeassistant.helpers import selector
+
+        from . import _async_erase_profile_data, _profile_from_entry
+
+        if not self._profile:
+            return self.async_create_entry(title="", data={})
+
+        if user_input is not None:
+            action = user_input.get("action", LEFTOVER_ACTION_KEEP)
+            in_use = any(
+                _profile_from_entry(entry) == self._profile
+                for entry in self.hass.config_entries.async_entries(DOMAIN)
+            )
+            # A profile with this name exists again: its data is in use now, never delete it from under it.
+            if action in (LEFTOVER_ACTION_DELETE_ALL, LEFTOVER_ACTION_KEEP_HISTORY) and not in_use:
+                await _async_erase_profile_data(
+                    self.hass, self._profile, keep_history=action == LEFTOVER_ACTION_KEEP_HISTORY
+                )
+            async_delete_leftover_data_issue(self.hass, self._profile)
+            return self.async_create_entry(title="", data={})
+
+        schema = vol.Schema(
+            {
+                vol.Required("action", default=LEFTOVER_ACTION_KEEP): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[LEFTOVER_ACTION_DELETE_ALL, LEFTOVER_ACTION_KEEP_HISTORY, LEFTOVER_ACTION_KEEP],
+                        translation_key="leftover_data_action",
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=schema,
+            description_placeholders={"entry_title": self._name},
         )
 
 

@@ -660,6 +660,8 @@ class MenstruationCycleCardEditor extends HTMLElement {
           background: var(--card-background-color);
           color: var(--primary-text-color);
         }
+        :is(button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--primary-color, #c0392b); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
       </style>
       <div class="wrap">
         <div class="row">

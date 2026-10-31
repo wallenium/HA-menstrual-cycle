@@ -1266,6 +1266,20 @@
     "notify_target_unavailable": {
       "title": "Ciclo menstrual: las notificaciones no se entregan",
       "description": "Perfil: **{entry_title}**\n\nEl destino de notificación `{target}` no existe o el último intento de usarlo falló, por lo que los recordatorios de este perfil no llegan. Revisa el servicio notify en las opciones de este perfil (por ejemplo `mobile_app_mimovil`). Este aviso desaparece solo cuando se haya entregado una notificación con éxito."
+    },
+    "leftover_data": {
+      "title": "Menstruation Cycle: los datos de un perfil eliminado siguen almacenados",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "¿Eliminar los datos almacenados?",
+            "description": "El perfil **{entry_title}** se eliminó, pero sus datos siguen almacenados: historial de ciclos, síntomas, uso de productos, estado del temporizador y ajustes del panel. Elige qué hacer con ellos. Si cierras este cuadro, no cambia nada. Si vuelves a crear un perfil con el mismo nombre, este aviso desaparece y los datos se usan de nuevo. Este paso no borra los estados ni las estadísticas a largo plazo del recorder; eso lo hace la purga del recorder.",
+            "data": {
+              "action": "¿Qué hacer con los datos almacenados?"
+            }
+          }
+        }
+      }
     }
   },
   "selector": {
@@ -1365,6 +1379,13 @@
         "es": "Español",
         "fr": "Français",
         "sv": "Svenska"
+      }
+    },
+    "leftover_data_action": {
+      "options": {
+        "delete_all": "Borrar todo",
+        "keep_history": "Borrar todo excepto el historial de ciclos",
+        "keep": "Conservar todo y no volver a preguntar"
       }
     }
   }

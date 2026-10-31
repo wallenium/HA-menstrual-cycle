@@ -581,6 +581,8 @@ class MenstruationProductInventoryCard extends HTMLElement {
           .product-icon { width: 32px; height: 32px; }
           .stock { font-size: 0.9rem; }
         }
+        :is(button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--primary-color, #c0392b); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
       </style>
       <ha-card>
         <h2 class="title">${title}</h2>
@@ -844,6 +846,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
           background: var(--ha-card-background, var(--card-background-color, #fff));
           color: var(--primary-text-color, #1f2937);
         }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
       </style>
 
       <div class="section">

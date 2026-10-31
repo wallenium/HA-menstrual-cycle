@@ -1266,6 +1266,20 @@
     "notify_target_unavailable": {
       "title": "Menstruation Cycle: Notifications cannot be delivered",
       "description": "Profile: **{entry_title}**\n\nThe notify target `{target}` does not exist or the last attempt to use it failed, so reminders for this profile are not arriving. Check the notify service in this profile's options (for example `mobile_app_myphone`). This issue disappears by itself once a notification has been delivered successfully."
+    },
+    "leftover_data": {
+      "title": "Menstruation Cycle: Data of a removed profile is still stored",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove stored data?",
+            "description": "The profile **{entry_title}** was removed, but its data is still stored: cycle history, symptoms, product usage, timer state and dashboard settings. Choose what should happen to it. If you close this dialog, nothing changes. If you create a profile with the same name again, this notice disappears and the data is used again. This step does not delete states or long-term statistics in the recorder; the recorder purge removes those.",
+            "data": {
+              "action": "What to do with the stored data"
+            }
+          }
+        }
+      }
     }
   },
   "selector": {
@@ -1365,6 +1379,13 @@
         "es": "Español",
         "fr": "Français",
         "sv": "Svenska"
+      }
+    },
+    "leftover_data_action": {
+      "options": {
+        "delete_all": "Delete everything",
+        "keep_history": "Delete everything except the cycle history",
+        "keep": "Keep everything and do not ask again"
       }
     }
   }

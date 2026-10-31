@@ -781,6 +781,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
           .big-icon { width: 32px; height: 32px; }
           .icon-tooltip { max-width: 180px; font-size: 0.74rem; }
         }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
       </style>
       <ha-card>
         ${this._config.show_title ? `<div class="title">${this._config.title || this._t('title')}</div>` : ''}

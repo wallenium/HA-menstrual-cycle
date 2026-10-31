@@ -1266,6 +1266,20 @@
     "notify_target_unavailable": {
       "title": "Menscykel: aviseringar levereras inte",
       "description": "Profil: **{entry_title}**\n\nAviseringsmålet `{target}` finns inte eller det senaste försöket att använda det misslyckades, så påminnelser för den här profilen kommer inte fram. Kontrollera notify-tjänsten i den här profilens alternativ (till exempel `mobile_app_minmobil`). Det här meddelandet försvinner av sig självt när en avisering har levererats."
+    },
+    "leftover_data": {
+      "title": "Menstruation Cycle: Data från en borttagen profil finns kvar",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Ta bort lagrad data?",
+            "description": "Profilen **{entry_title}** har tagits bort, men dess data finns kvar: cykelhistorik, symtom, produktanvändning, timerstatus och inställningar för instrumentpanelen. Välj vad som ska hända med den. Om du stänger den här dialogrutan ändras ingenting. Om du skapar en profil med samma namn igen försvinner den här notisen och datan används på nytt. Det här steget raderar inte tillstånd eller långtidsstatistik i recordern; det gör recorderns rensning.",
+            "data": {
+              "action": "Vad ska hända med den lagrade datan?"
+            }
+          }
+        }
+      }
     }
   },
   "selector": {
@@ -1365,6 +1379,13 @@
         "es": "Español",
         "fr": "Français",
         "sv": "Svenska"
+      }
+    },
+    "leftover_data_action": {
+      "options": {
+        "delete_all": "Radera allt",
+        "keep_history": "Radera allt utom cykelhistoriken",
+        "keep": "Behåll allt och fråga inte igen"
       }
     }
   }

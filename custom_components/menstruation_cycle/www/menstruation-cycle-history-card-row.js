@@ -297,18 +297,21 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
       /* HA-15 (M-Cycle_HA-Component-Roadmap.md): shared empty/error-state look. */
       ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ''}
       .mc-state--empty { justify-content: center; padding: 8px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     </style>
     <ha-card>
       <div class="title">${this._config.title || this._t('title')}</div>
       <div class="table-wrap">
         <table>
+          <caption class="sr-only">${this._config.title || this._t('title')}</caption>
           <thead>
             <tr>
-              <th>${this._t('cycle')}</th>
-              <th>${this._t('start_date')}</th>
-              <th>${this._t('end_date')}</th>
-              <th>${this._t('length')}</th>
-              <th>${this._t('status')}</th>
+              <th scope="col">${this._t('cycle')}</th>
+              <th scope="col">${this._t('start_date')}</th>
+              <th scope="col">${this._t('end_date')}</th>
+              <th scope="col">${this._t('length')}</th>
+              <th scope="col">${this._t('status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -442,7 +445,7 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
       ? `<td style="font-size:10px;color:#16a34a;">8-19</td>`
       : '';
     const fertileHeader = showFertile
-      ? `<th style="padding:4px 6px;border-bottom:1px solid var(--divider-color);">${this._t('show_fertile_window')}</th>`
+      ? `<th scope="col" style="padding:4px 6px;border-bottom:1px solid var(--divider-color);">${this._t('show_fertile_window')}</th>`
       : '';
 
     const tableRows = rows.map((r) => `
@@ -461,11 +464,11 @@ class MenstruationCycleHistoryCardRowEditor extends HTMLElement {
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead>
             <tr style="border-bottom:2px solid var(--divider-color);">
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle_start')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('end')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('length')}</th>
-              <th style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('status')}</th>
+              <th scope="col" style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle')}</th>
+              <th scope="col" style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('cycle_start')}</th>
+              <th scope="col" style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('end')}</th>
+              <th scope="col" style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('length')}</th>
+              <th scope="col" style="padding:4px 6px;text-align:left;font-size:11px;">${this._t('status')}</th>
               ${fertileHeader}
             </tr>
           </thead>

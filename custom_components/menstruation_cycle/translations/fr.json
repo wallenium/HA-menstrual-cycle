@@ -1266,6 +1266,20 @@
     "notify_target_unavailable": {
       "title": "Cycle menstruel : les notifications ne sont pas livrées",
       "description": "Profil : **{entry_title}**\n\nLa cible de notification `{target}` n'existe pas ou la dernière tentative de l'utiliser a échoué ; les rappels de ce profil n'arrivent donc pas. Vérifiez le service notify dans les options de ce profil (par exemple `mobile_app_monphone`). Ce problème disparaît de lui-même dès qu'une notification a été livrée avec succès."
+    },
+    "leftover_data": {
+      "title": "Menstruation Cycle : les données d'un profil supprimé sont encore stockées",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Supprimer les données stockées ?",
+            "description": "Le profil **{entry_title}** a été supprimé, mais ses données sont encore stockées : historique des cycles, symptômes, utilisation des produits, état du minuteur et réglages du tableau de bord. Choisissez ce qu'il faut en faire. Si vous fermez cette fenêtre, rien ne change. Si vous recréez un profil du même nom, cet avis disparaît et les données sont de nouveau utilisées. Cette étape ne supprime ni les états ni les statistiques à long terme du recorder ; c'est la purge du recorder qui s'en charge.",
+            "data": {
+              "action": "Que faire des données stockées ?"
+            }
+          }
+        }
+      }
     }
   },
   "selector": {
@@ -1365,6 +1379,13 @@
         "es": "Español",
         "fr": "Français",
         "sv": "Svenska"
+      }
+    },
+    "leftover_data_action": {
+      "options": {
+        "delete_all": "Tout supprimer",
+        "keep_history": "Tout supprimer sauf l'historique des cycles",
+        "keep": "Tout conserver et ne plus demander"
       }
     }
   }
