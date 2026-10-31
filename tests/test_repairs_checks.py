@@ -344,5 +344,53 @@ class ProfileInactiveTests(RepairCheckCase):
             self.assertCleared("profile_inactive_")
 
 
+class RecentBackupReminderTests(RepairCheckCase):
+    def _check(self, tmp: Path, history, *files: tuple[str, float]) -> None:
+        import asyncio
+        import os
+        import time
+
+        for name, age_days in files:
+            path = tmp / name
+            path.write_text("{}", encoding="utf-8")
+            stamp = time.time() - age_days * 86400
+            os.utime(path, (stamp, stamp))
+
+        async def _executor(func, *args):
+            return func(*args)
+
+        runtimes = {"e1": types.SimpleNamespace(history=history)}
+        hass = types.SimpleNamespace(data={const.DOMAIN: runtimes}, async_add_executor_job=_executor)
+        asyncio.run(repairs.async_check_recent_backup(hass, tmp))
+
+    def test_reminder_only_without_a_young_backup_and_with_data(self) -> None:
+        import tempfile
+
+        cases = (
+            # (history, files, expect_created)
+            (["2026-01-01"], [], True),
+            (["2026-01-01"], [("menstruation_full_backup_x.json", 120)], True),
+            (["2026-01-01"], [("menstruation_full_backup_x.json", 10)], False),
+            (["2026-01-01"], [("home_assistant_backup_snapshot.json", 1)], False),
+            (["2026-01-01"], [("menstruation_removed_profile_anna_x.json", 5)], False),
+            (["2026-01-01"], [("something_else.json", 1)], True),
+            ([], [], False),
+        )
+        for history, files, expect_created in cases:
+            CALLS.clear()
+            with tempfile.TemporaryDirectory() as tmp:
+                self._check(Path(tmp), history, *files)
+            self.assertEqual(len(CALLS), 1, (history, files, CALLS))
+            self.assertEqual(CALLS[0][0], "create" if expect_created else "delete", (history, files))
+            self.assertEqual(CALLS[0][1], "no_recent_backup")
+
+    def test_missing_export_folder_counts_as_no_backup(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self._check(Path(tmp) / "does_not_exist", ["2026-01-01"])
+        self.assertEqual(CALLS[0][0], "create")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3615,6 +3615,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Midnight pill refill check failed for %s", entry.entry_id)
         try:
+            from .repairs import async_check_recent_backup
+
+            await async_check_recent_backup(hass, Path(hass.config.path(EXPORT_DIR_NAME)))
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Midnight backup reminder check failed for %s", entry.entry_id)
+        try:
             # HA-Idee 6 (weitere Ideen, 15.09.2026): re-check daily rather
             # than only on integration load/restart, so the repair issue
             # appears promptly once the token crosses the staleness
@@ -4179,6 +4185,37 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     )
     if await storage.async_load_raw():
         async_create_leftover_data_issue(hass, profile_key, _friendly_name_from_entry(entry))
+
+
+async def _async_write_removed_profile_backup(hass: HomeAssistant, profile: str, name: str) -> str | None:
+    """Write what a removed profile left in .storage as a full-backup JSON (import_full_backup reads it once a profile
+    with the same name exists again). Returns the file path, or None when nothing is stored. Raises OSError."""
+    data = await Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{profile}").async_load()
+    if not isinstance(data, dict):
+        data = await Store(hass, STORAGE_VERSION, f"{STORAGE_KEY_LEGACY}.{profile}").async_load()
+    if not isinstance(data, dict):
+        return None
+    data = {k: v for k, v in data.items() if k not in (ICS_TOKEN_KEY, ICS_TOKEN_CREATED_AT_KEY)}
+    prefs = await _async_ensure_dashboard_prefs_loaded(hass)
+    backup = {
+        "backup_version": BACKUP_FORMAT_VERSION,
+        "exported_at": dt_util.utcnow().isoformat(),
+        "integration": DOMAIN,
+        "profiles": {profile: {"friendly_name": name, **data}},
+        "dashboard_prefs": {k: v for k, v in prefs.items() if k.endswith(f":{profile}")},
+    }
+    stamp = dt_util.now().strftime("%Y%m%d_%H%M%S")
+    target_dir = Path(hass.config.path(EXPORT_DIR_NAME))
+    target_path = target_dir / f"menstruation_removed_profile_{_sanitize_export_filename(profile)}_{stamp}.json"
+    content = json.dumps(backup, indent=2, ensure_ascii=False)
+
+    def _write_file() -> None:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        _write_private_text(target_path, content)
+
+    await hass.async_add_executor_job(_write_file)
+    _LOGGER.info("Saved a backup of the removed profile '%s' to %s", profile, target_path)
+    return str(target_path)
 
 
 async def _async_erase_profile_data(hass: HomeAssistant, profile: str, *, keep_history: bool) -> None:

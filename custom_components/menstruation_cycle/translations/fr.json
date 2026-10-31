@@ -1278,8 +1278,15 @@
               "action": "Que faire des données stockées ?"
             }
           }
+        },
+        "error": {
+          "backup_failed": "Le fichier de sauvegarde n'a pas pu être écrit, rien n'a donc été supprimé. Vérifiez l'espace disponible et les droits du dossier d'export."
         }
       }
+    },
+    "no_recent_backup": {
+      "title": "Menstruation Cycle : aucune sauvegarde récente",
+      "description": "Vos profils contiennent des données, mais il n'existe aucune sauvegarde de moins de {days} jours : ni export, ni sauvegarde Home Assistant incluant cette intégration. Des sauvegardes Home Assistant régulières suffisent, elles actualisent automatiquement une copie lisible. Vous pouvez aussi appeler l'action `menstruation_cycle.export_full_backup` (Outils de développement > Actions) ; le fichier arrive dans le dossier d'export. Ignorez cet avis si vos données sont sauvegardées ailleurs."
     }
   },
   "selector": {
@@ -1383,6 +1390,7 @@
     },
     "leftover_data_action": {
       "options": {
+        "backup_delete_all": "Enregistrer une sauvegarde, puis tout supprimer",
         "delete_all": "Tout supprimer",
         "keep_history": "Tout supprimer sauf l'historique des cycles",
         "keep": "Tout conserver et ne plus demander"

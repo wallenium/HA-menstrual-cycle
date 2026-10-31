@@ -1278,8 +1278,15 @@
               "action": "Was soll mit den gespeicherten Daten passieren?"
             }
           }
+        },
+        "error": {
+          "backup_failed": "Die Sicherungsdatei konnte nicht geschrieben werden, deshalb wurde nichts gelöscht. Prüfe den freien Speicherplatz und die Rechte des Export-Ordners."
         }
       }
+    },
+    "no_recent_backup": {
+      "title": "Menstruation Cycle: Keine aktuelle Sicherung",
+      "description": "Deine Profile enthalten Daten, aber es gibt keine Sicherung, die jünger als {days} Tage ist: weder einen Export noch ein Home-Assistant-Backup, das diese Integration eingeschlossen hat. Regelmäßige Home-Assistant-Backups genügen, sie erneuern automatisch eine lesbare Kopie. Du kannst auch die Aktion `menstruation_cycle.export_full_backup` aufrufen (Entwicklerwerkzeuge > Aktionen); die Datei landet im Export-Ordner. Ignoriere diesen Hinweis, wenn deine Daten anderswo gesichert sind."
     }
   },
   "selector": {
@@ -1383,6 +1390,7 @@
     },
     "leftover_data_action": {
       "options": {
+        "backup_delete_all": "Sicherung speichern, dann alles löschen",
         "delete_all": "Alles löschen",
         "keep_history": "Alles außer dem Zyklusverlauf löschen",
         "keep": "Alles behalten und nicht mehr fragen"

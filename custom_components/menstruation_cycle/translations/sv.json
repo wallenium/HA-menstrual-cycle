@@ -1278,8 +1278,15 @@
               "action": "Vad ska hända med den lagrade datan?"
             }
           }
+        },
+        "error": {
+          "backup_failed": "Säkerhetskopian kunde inte skrivas, så inget raderades. Kontrollera ledigt utrymme och behörigheter för exportmappen."
         }
       }
+    },
+    "no_recent_backup": {
+      "title": "Menstruation Cycle: ingen aktuell säkerhetskopia",
+      "description": "Dina profiler innehåller data, men det finns ingen säkerhetskopia som är yngre än {days} dagar: varken en export eller en Home Assistant-säkerhetskopia som innehöll den här integrationen. Regelbundna Home Assistant-säkerhetskopior räcker, de uppdaterar en läsbar kopia automatiskt. Du kan också anropa åtgärden `menstruation_cycle.export_full_backup` (Utvecklarverktyg > Åtgärder); filen hamnar i exportmappen. Ignorera det här meddelandet om dina data säkerhetskopieras på annat håll."
     }
   },
   "selector": {
@@ -1383,6 +1390,7 @@
     },
     "leftover_data_action": {
       "options": {
+        "backup_delete_all": "Spara en säkerhetskopia och radera sedan allt",
         "delete_all": "Radera allt",
         "keep_history": "Radera allt utom cykelhistoriken",
         "keep": "Behåll allt och fråga inte igen"

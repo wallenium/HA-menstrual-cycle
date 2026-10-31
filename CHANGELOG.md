@@ -12,6 +12,8 @@
 - **Sections view**: all cards declare a default and minimum width (`getGridOptions`), so they can be resized in the sections layout. The calendar, heatmap, history, statistics, inventory, gauge and support cards default to full width, the smaller cards to half.
 - The dashboard panel shows the pill blister as the widget "Pill pack" (only for profiles whose current contraception method is the pill; reorder or hide it in the edit mode).
 - In the dashboard panel's edit mode, the "Pill pack" widget shows a short note instead of nothing when the profile does not use the pill as its current contraception method.
+- **Backup before deleting a removed profile's data:** the question in Settings > Repairs has a new answer, "Save a backup file, then delete everything". It writes `menstruation_removed_profile_<profile>_<date>.json` to the export folder (same format as the full backup, without the calendar-feed token), and only then deletes. If the file cannot be written, nothing is deleted and the dialog says so. After creating a profile with the same name again, `import_full_backup` restores it.
+- **Repair "No recent backup":** once for the whole installation, when profiles hold data but no backup is newer than 90 days. A manual export, the copy of a removed profile and the snapshot the integration refreshes before every Home Assistant backup all count, so regular Home Assistant backups never trigger it. Checked daily; "Ignore" turns it off.
 
 ### Changed
 - Removing a profile now also deletes its export files with the default name (doctor report, wall calendar, history export). Files saved under a name you chose and the full backup are left alone.
@@ -19,6 +21,7 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- The description of `add_symptom` did not list the fields `discharge` and `smell`, although they were accepted.
 - The calendar card legend showed "Period<" with a stray character.
 - Statistics, inventory and compact cycle cards show a visible focus outline for keyboard use; those cards and the history and compact status cards respect the system setting "reduce motion".
 - The cycle history table has column header scopes and a caption for screen readers.

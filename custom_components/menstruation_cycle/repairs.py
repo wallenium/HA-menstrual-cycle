@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -39,8 +41,48 @@ OLD_DOMAIN = "menstruation_gauge"
 
 
 LEFTOVER_ACTION_DELETE_ALL = "delete_all"
+LEFTOVER_ACTION_BACKUP_DELETE = "backup_delete_all"
 LEFTOVER_ACTION_KEEP_HISTORY = "keep_history"
 LEFTOVER_ACTION_KEEP = "keep"
+
+
+BACKUP_REMINDER_DAYS = 90
+# What counts as a backup: a manual export, the copy of a removed profile, and the snapshot that backup.py refreshes
+# before every native Home Assistant backup (so anyone with regular HA backups never sees the reminder).
+_BACKUP_FILE_PATTERNS = (
+    "menstruation_full_backup_*.json",
+    "menstruation_removed_profile_*.json",
+    "home_assistant_backup_snapshot.json",
+)
+
+
+def _newest_backup_age_days(export_dir: Path) -> float | None:
+    if not export_dir.is_dir():
+        return None
+    mtimes = [p.stat().st_mtime for pattern in _BACKUP_FILE_PATTERNS for p in export_dir.glob(pattern) if p.is_file()]
+    return (time.time() - max(mtimes)) / 86400 if mtimes else None
+
+
+async def async_check_recent_backup(hass: HomeAssistant, export_dir: Path) -> None:
+    """Remind (once for the whole installation) when profiles hold history but no backup is younger than 90 days.
+
+    Safe to call repeatedly: create/delete are idempotent. The notice can be ignored in Settings > Repairs.
+    """
+    has_data = any(getattr(runtime, "history", None) for runtime in hass.data.get(DOMAIN, {}).values())
+    age = await hass.async_add_executor_job(_newest_backup_age_days, export_dir) if has_data else None
+    if has_data and (age is None or age > BACKUP_REMINDER_DAYS):
+        async_create_issue(
+            hass,
+            DOMAIN,
+            "no_recent_backup",
+            issue_domain=DOMAIN,
+            is_fixable=False,
+            severity=IssueSeverity.WARNING,
+            translation_key="no_recent_backup",
+            translation_placeholders={"days": str(BACKUP_REMINDER_DAYS)},
+        )
+    else:
+        async_delete_issue(hass, DOMAIN, "no_recent_backup")
 
 
 def async_create_leftover_data_issue(hass: HomeAssistant, profile: str, profile_name: str) -> None:
@@ -1177,7 +1219,7 @@ class LeftoverDataRepairFlow(RepairsFlow):
     ) -> dict[str, Any]:
         from homeassistant.helpers import selector
 
-        from . import _async_erase_profile_data, _profile_from_entry
+        from . import _async_erase_profile_data, _async_write_removed_profile_backup, _profile_from_entry
 
         if not self._profile:
             return self.async_create_entry(title="", data={})
@@ -1189,6 +1231,13 @@ class LeftoverDataRepairFlow(RepairsFlow):
                 for entry in self.hass.config_entries.async_entries(DOMAIN)
             )
             # A profile with this name exists again: its data is in use now, never delete it from under it.
+            if action == LEFTOVER_ACTION_BACKUP_DELETE and not in_use:
+                try:
+                    await _async_write_removed_profile_backup(self.hass, self._profile, self._name)
+                except OSError:
+                    # no backup, no deletion: show the form again
+                    return self._show_form(selector, errors={"base": "backup_failed"})
+                action = LEFTOVER_ACTION_DELETE_ALL
             if action in (LEFTOVER_ACTION_DELETE_ALL, LEFTOVER_ACTION_KEEP_HISTORY) and not in_use:
                 await _async_erase_profile_data(
                     self.hass, self._profile, keep_history=action == LEFTOVER_ACTION_KEEP_HISTORY
@@ -1196,11 +1245,19 @@ class LeftoverDataRepairFlow(RepairsFlow):
             async_delete_leftover_data_issue(self.hass, self._profile)
             return self.async_create_entry(title="", data={})
 
+        return self._show_form(selector)
+
+    def _show_form(self, selector: Any, errors: dict[str, str] | None = None) -> dict[str, Any]:
         schema = vol.Schema(
             {
                 vol.Required("action", default=LEFTOVER_ACTION_KEEP): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[LEFTOVER_ACTION_DELETE_ALL, LEFTOVER_ACTION_KEEP_HISTORY, LEFTOVER_ACTION_KEEP],
+                        options=[
+                            LEFTOVER_ACTION_BACKUP_DELETE,
+                            LEFTOVER_ACTION_DELETE_ALL,
+                            LEFTOVER_ACTION_KEEP_HISTORY,
+                            LEFTOVER_ACTION_KEEP,
+                        ],
                         translation_key="leftover_data_action",
                         mode=selector.SelectSelectorMode.LIST,
                     )
@@ -1210,6 +1267,7 @@ class LeftoverDataRepairFlow(RepairsFlow):
         return self.async_show_form(
             step_id="confirm",
             data_schema=schema,
+            errors=errors,
             description_placeholders={"entry_title": self._name},
         )
 

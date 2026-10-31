@@ -1796,8 +1796,36 @@ class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
         def answer(flow, action):
             return asyncio.run(flow.async_step_confirm({"action": action}))
 
+        order, backup_fails = [], []
+
+        async def _backup(hass, profile, name):
+            order.append(("backup", profile, name))
+            if backup_fails:
+                raise OSError("disk full")
+
         with patch.object(integration, "_async_erase_profile_data", _erase), \
+                patch.object(integration, "_async_write_removed_profile_backup", _backup), \
                 patch.object(repairs_mod, "async_delete_issue", lambda hass, domain, issue_id: issues.append(issue_id)):
+            calls.clear(); issues.clear()
+            self.assertEqual(answer(make(), "backup_delete_all")["type"], "create_entry")
+            self.assertEqual((order, calls), ([("backup", "anna", "Anna")], [("anna", False)]))
+            self.assertEqual(issues, ["leftover_data_anna"])
+
+            order.clear(); calls.clear(); issues.clear()
+            answer(make(existing_profiles=("anna",)), "backup_delete_all")
+            self.assertEqual((order, calls, issues), ([], [], ["leftover_data_anna"]), "profile exists again: no backup, no delete")
+
+            # backup cannot be written: nothing is deleted, the question stays open and the form shows the error
+            backup_fails.append(1)
+            order.clear(); calls.clear(); issues.clear()
+            helpers_ns = types.SimpleNamespace(
+                SelectSelector=lambda cfg: cfg, SelectSelectorConfig=lambda **kw: kw,
+                SelectSelectorMode=types.SimpleNamespace(LIST="list"))
+            with patch.object(sys.modules["homeassistant.helpers"], "selector", helpers_ns, create=True):
+                form = answer(make(), "backup_delete_all")
+            self.assertEqual((form["type"], form["errors"]), ("form", {"base": "backup_failed"}))
+            self.assertEqual((calls, issues), ([], []), "no backup, no deletion, question still open")
+            backup_fails.clear()
             for action, expected in (("keep", []), ("delete_all", [("anna", False)]), ("keep_history", [("anna", True)])):
                 calls.clear(); issues.clear()
                 self.assertEqual(answer(make(), action)["type"], "create_entry")
@@ -1816,6 +1844,34 @@ class HealthDataStaysOutOfLogsAndWorldReadableFilesTests(unittest.TestCase):
             self.assertEqual(form["type"], "form")
             self.assertEqual(form["description_placeholders"], {"entry_title": "Anna"})
             self.assertEqual(calls, [], "showing the form deletes nothing")
+
+    def test_backup_of_a_removed_profile_is_importable_and_has_no_token(self) -> None:
+        async def _prefs(hass):
+            return {"u1:anna": {"a": 1}, "u1:bea": {"a": 3}}
+
+        async def _run(func):
+            func()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            hass = types.SimpleNamespace(config=types.SimpleNamespace(path=lambda name: str(Path(tmp) / name)),
+                                         async_add_executor_job=_run)
+            _DictStore.files = {"menstruation_cycle.history.anna": {
+                "history": ["2026-01-01"], "symptom_history": [{"date": "2026-01-02"}],
+                integration.ICS_TOKEN_KEY: "secret", integration.ICS_TOKEN_CREATED_AT_KEY: "2026-01-01"}}
+            with patch.object(integration, "Store", _DictStore), \
+                    patch.object(integration, "_async_ensure_dashboard_prefs_loaded", _prefs):
+                path = asyncio.run(integration._async_write_removed_profile_backup(hass, "anna", "Anna"))
+                nothing = asyncio.run(integration._async_write_removed_profile_backup(hass, "zoe", "Zoe"))
+            self.assertIsNone(nothing)
+            text = Path(path).read_text(encoding="utf-8")
+            self.assertNotIn("secret", text)
+            backup = json.loads(text)
+            self.assertEqual(backup["backup_version"], integration.BACKUP_FORMAT_VERSION)
+            self.assertEqual(backup["profiles"]["anna"]["friendly_name"], "Anna")
+            self.assertEqual(backup["profiles"]["anna"]["history"], ["2026-01-01"])
+            self.assertEqual(backup["dashboard_prefs"], {"u1:anna": {"a": 1}}, "only this profile's settings")
+            self.assertTrue(Path(path).name.startswith("menstruation_removed_profile_anna_"))
+            self.assertEqual(_DictStore.files["menstruation_cycle.history.anna"]["history"], ["2026-01-01"], "writing a backup deletes nothing")
 
     def test_every_export_goes_through_the_private_writer(self) -> None:
         source = (Path(integration.__file__)).read_text(encoding="utf-8")

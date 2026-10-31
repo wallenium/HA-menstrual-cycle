@@ -1278,8 +1278,15 @@
               "action": "¿Qué hacer con los datos almacenados?"
             }
           }
+        },
+        "error": {
+          "backup_failed": "No se pudo escribir el archivo de copia de seguridad, por eso no se borró nada. Comprueba el espacio libre y los permisos de la carpeta de exportación."
         }
       }
+    },
+    "no_recent_backup": {
+      "title": "Menstruation Cycle: sin copia de seguridad reciente",
+      "description": "Tus perfiles contienen datos, pero no hay ninguna copia de seguridad de menos de {days} días: ni una exportación ni una copia de Home Assistant que incluyera esta integración. Las copias regulares de Home Assistant bastan, actualizan automáticamente una copia legible. También puedes llamar a la acción `menstruation_cycle.export_full_backup` (Herramientas para desarrolladores > Acciones); el archivo aparece en la carpeta de exportación. Ignora este aviso si tus datos están respaldados en otro sitio."
     }
   },
   "selector": {
@@ -1383,6 +1390,7 @@
     },
     "leftover_data_action": {
       "options": {
+        "backup_delete_all": "Guardar una copia de seguridad y luego borrar todo",
         "delete_all": "Borrar todo",
         "keep_history": "Borrar todo excepto el historial de ciclos",
         "keep": "Conservar todo y no volver a preguntar"

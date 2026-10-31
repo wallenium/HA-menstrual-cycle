@@ -1278,8 +1278,15 @@
               "action": "What to do with the stored data"
             }
           }
+        },
+        "error": {
+          "backup_failed": "The backup file could not be written, so nothing was deleted. Check the free space and the permissions of the export folder."
         }
       }
+    },
+    "no_recent_backup": {
+      "title": "Menstruation Cycle: No recent backup",
+      "description": "Your profiles hold logged data, but there is no backup newer than {days} days: no export, and no Home Assistant backup that included this integration. Regular Home Assistant backups are enough, they refresh a readable copy automatically. You can also call the action `menstruation_cycle.export_full_backup` (Developer tools > Actions); the file appears in the export folder. Ignore this notice if your data is backed up elsewhere."
     }
   },
   "selector": {
@@ -1383,6 +1390,7 @@
     },
     "leftover_data_action": {
       "options": {
+        "backup_delete_all": "Save a backup file, then delete everything",
         "delete_all": "Delete everything",
         "keep_history": "Delete everything except the cycle history",
         "keep": "Keep everything and do not ask again"
