@@ -1171,6 +1171,8 @@ class MenstruationGaugeSensor(SensorEntity):
         # browsing a flat entity list across many integrations — "sensor.anna"
         # alone gives no hint this is cycle-tracking data.
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_menstruation"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"sensor.{self._attr_suggested_object_id}"
         self._state: str = "neutral"
         self._attrs: dict[str, StateType] = {}
         # HA-Idee 1 ("weitere Ideen fuer Features?" 28.09.2026): guards
@@ -1787,6 +1789,8 @@ class ProductUsageStatsConsolidatedSensor(SensorEntity):
         # "Anna Anna: Period products today".
         self._attr_name = "Period products today"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_period_products_today"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"sensor.{self._attr_suggested_object_id}"
         self._icon = "mdi:chart-box"
         self._attr_native_unit_of_measurement = "items"
         self._attr_native_value = 0
@@ -1935,6 +1939,8 @@ class MenstruationBasalTempSensor(SensorEntity):
         # for why (device grouping now provides it automatically).
         self._attr_name = "Basal temperature"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_basal_temp"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"sensor.{self._attr_suggested_object_id}"
         self._attr_native_value: float | None = None
         self._attrs: dict[str, StateType] = {}
         self._visible = runtime.visibility_level == VISIBILITY_LEVEL_FULL
@@ -2051,6 +2057,8 @@ class MenstruationNextOvulationSensor(SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_next_ovulation"
         self._attr_name = "Next ovulation"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(self._friendly_name)["_next_ovulation"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"sensor.{self._attr_suggested_object_id}"
         self._attr_native_value: date | None = None
         self._visible = False
 
@@ -2125,6 +2133,8 @@ class MenstruationCycleLengthSensor(SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_cycle_length"
         self._attr_name = "Cycle length"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_cycle_length"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"sensor.{self._attr_suggested_object_id}"
         self._attr_native_value: int | None = None
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._visible = False

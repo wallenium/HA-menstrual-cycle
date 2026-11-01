@@ -1338,6 +1338,16 @@ set_profile_visibility:
             - "full"
             - "status_only"
             - "private"
+    revert_after_minutes:
+      required: false
+      example: 60
+      description: Optional. Puts the previous level back after this many minutes (1 to 1440), also after a restart of Home Assistant. Setting a level without this field cancels a pending revert.
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+          mode: box
 
 repair_storage:
   name: Repair/diagnose storage

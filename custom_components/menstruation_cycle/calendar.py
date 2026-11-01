@@ -98,6 +98,8 @@ class MenstruationCycleCalendar(CalendarEntity):
         self._attr_name = "Cycle calendar"
         self._attr_unique_id = f"{entry.entry_id}_cycle_calendar"
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)["_cycle_calendar"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"calendar.{self._attr_suggested_object_id}"
         self._events: list[CalendarEvent] = []
         # HA-Idee (weitere Ideen, 22.09.2026, "Kalender pro Person
         # einschalten/ausschalten koennen. Aktuell sind sie immer aktiv"):

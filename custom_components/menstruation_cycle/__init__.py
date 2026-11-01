@@ -242,6 +242,8 @@ from .const import (
     SERVICE_SET_PERIOD_DURATION,
     SERVICE_SET_PREGNANCY_MODE,
     SERVICE_SET_PROFILE_VISIBILITY,
+    NONCYCLE_VISIBILITY_REVERT,
+    SERVICE_FIELD_REVERT_AFTER_MINUTES,
     SERVICE_FIELD_VISIBILITY_LEVEL,
     SERVICE_GET_DASHBOARD_PREFS,
     SERVICE_SAVE_DASHBOARD_PREFS,
@@ -331,7 +333,7 @@ from .wall_calendar import (
 )
 from . import repairs as _repairs_preload  # noqa: F401 - import at load time (executor), not lazily on the event loop
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR, Platform.TODO, Platform.IMAGE, Platform.EVENT]
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
 WWW_DIR = Path(__file__).parent / "www"
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -3352,6 +3354,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({
             **common_profile_field,
             vol.Required(SERVICE_FIELD_VISIBILITY_LEVEL): vol.In(VISIBILITY_LEVELS),
+            vol.Optional(SERVICE_FIELD_REVERT_AFTER_MINUTES): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
         }),
     )
 
@@ -3804,6 +3807,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(hass.bus.async_listen(EVENT_MOBILE_APP_NOTIFICATION_ACTION, _async_on_mobile_action))
 
     _rearm_snoozes(hass, entry, runtime)
+    _rearm_visibility_revert(hass, entry, runtime)
 
     hass.data[DOMAIN][entry.entry_id] = runtime
 
@@ -4777,8 +4781,59 @@ async def _async_handle_set_profile_visibility(hass: HomeAssistant, call: Servic
         raise HomeAssistantError(
             f"Unknown visibility level '{level}'. Expected one of: {', '.join(VISIBILITY_LEVELS)}"
         )
+    minutes = call.data.get(SERVICE_FIELD_REVERT_AFTER_MINUTES)
+    pending = runtime.noncycle_data.get(NONCYCLE_VISIBILITY_REVERT)
+    # A second temporary change restores the level from before the first one, not the temporary one.
+    restore = pending["level"] if isinstance(pending, dict) and pending.get("level") in VISIBILITY_LEVELS else runtime.visibility_level
+    entry = hass.config_entries.async_get_entry(_entry_id_for_runtime(hass, runtime))
+    _cancel_visibility_revert(hass, entry.entry_id if entry else None)
     runtime.visibility_level = level
+    if minutes and entry is not None:
+        runtime.noncycle_data[NONCYCLE_VISIBILITY_REVERT] = {
+            "at": (dt_util.utcnow() + timedelta(minutes=int(minutes))).isoformat(),
+            "level": restore,
+        }
+    else:
+        runtime.noncycle_data.pop(NONCYCLE_VISIBILITY_REVERT, None)  # an explicit change cancels a pending revert
     await _async_save_and_notify(hass, runtime)
+    if minutes and entry is not None:
+        _arm_visibility_revert(hass, entry, runtime, int(minutes) * 60)
+
+
+_VISIBILITY_REVERT_TIMERS = f"{DOMAIN}_visibility_revert_timers"
+
+
+def _cancel_visibility_revert(hass: HomeAssistant, entry_id: str | None) -> None:
+    cancel = hass.data.get(_VISIBILITY_REVERT_TIMERS, {}).pop(entry_id, None)
+    if cancel is not None:
+        cancel()
+
+
+def _arm_visibility_revert(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime", delay: float) -> None:
+    """Put the stored visibility level back after delay seconds (timer cancelled when the entry unloads)."""
+
+    async def _async_revert(_now: datetime) -> None:
+        hass.data.get(_VISIBILITY_REVERT_TIMERS, {}).pop(entry.entry_id, None)
+        pending = runtime.noncycle_data.pop(NONCYCLE_VISIBILITY_REVERT, None)
+        if isinstance(pending, dict) and pending.get("level") in VISIBILITY_LEVELS:
+            runtime.visibility_level = pending["level"]
+        try:
+            await _async_save_and_notify(hass, runtime)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Reverting the visibility level failed for %s", entry.entry_id)
+
+    hass.data.setdefault(_VISIBILITY_REVERT_TIMERS, {})[entry.entry_id] = async_call_later(hass, delay, _async_revert)
+    entry.async_on_unload(lambda: _cancel_visibility_revert(hass, entry.entry_id))
+
+
+def _rearm_visibility_revert(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> None:
+    """After a restart: arm the pending revert (due or overdue ones fire after a second); drop an unreadable marker."""
+    pending = runtime.noncycle_data.get(NONCYCLE_VISIBILITY_REVERT)
+    due = dt_util.parse_datetime(str(pending.get("at"))) if isinstance(pending, dict) else None
+    if due is None or pending.get("level") not in VISIBILITY_LEVELS:
+        runtime.noncycle_data.pop(NONCYCLE_VISIBILITY_REVERT, None)
+        return
+    _arm_visibility_revert(hass, entry, runtime, max((due - dt_util.utcnow()).total_seconds(), 1))
 
 
 async def _async_handle_erase_all_history(hass: HomeAssistant, call: ServiceCall) -> None:

@@ -1145,6 +1145,10 @@
         "level": {
           "name": "Nivel de visibilidad",
           "description": "full, status_only o private."
+        },
+        "revert_after_minutes": {
+          "name": "Restablecer tras (minutos)",
+          "description": "Opcional. Vuelve a poner el nivel anterior tras esta cantidad de minutos (1 a 1440), también después de reiniciar Home Assistant. Definir un nivel sin este campo cancela un restablecimiento pendiente."
         }
       }
     },

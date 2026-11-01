@@ -1145,6 +1145,10 @@
         "level": {
           "name": "Sichtbarkeitsstufe",
           "description": "full, status_only oder private."
+        },
+        "revert_after_minutes": {
+          "name": "Zurückstellen nach (Minuten)",
+          "description": "Optional. Stellt nach so vielen Minuten (1 bis 1440) die vorherige Stufe wieder her, auch nach einem Neustart von Home Assistant. Eine Stufe ohne dieses Feld zu setzen bricht eine ausstehende Rückstellung ab."
         }
       }
     },

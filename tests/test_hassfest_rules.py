@@ -63,7 +63,7 @@ class ManifestTests(unittest.TestCase):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertIn(f"badge/version-{MANIFEST['version']}-", readme)
         const = (ROOT / "const.py").read_text(encoding="utf-8")
-        listed = set(re.findall(r"`(?:sensor|calendar|image|todo)\.menstruation_<name>(\w*)`", readme))
+        listed = set(re.findall(r"`(?:sensor|calendar|image|todo|event)\.menstruation_<name>(\w*)`", readme))
         defined = set(re.findall(r'f"menstruation_\{slug\}(\w*)"', const))
         self.assertEqual(listed, defined)
 

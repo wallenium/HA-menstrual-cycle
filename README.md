@@ -32,6 +32,7 @@ Each profile creates these entities (`<name>` is the slugified profile name):
 | `calendar.menstruation_<name>_cycle` | Predicted period, fertile window and ovulation (plus the routine check-up) as a native calendar. Can be switched off per profile in the options. Five more options (off by default) add the pregnancy due date, contraception dates (renewal due, end of the pill pack, next patch/ring steps), your logged periods of the last 12 months, the period date from your own luteal phase (as long as it lies ahead) and the ovulation day your own logs show for each cycle of the last 12 months (temperature rise, otherwise the day after the first positive LH test); these also go into the calendar feed (ICS, opt-in, see below) and show only at visibility "Full" in the calendar. |
 | `image.menstruation_<name>_cycle_phase` | Illustration of the current phase, for picture cards and wall tablets. |
 | `todo.menstruation_<name>_hospital_bag` | Editable hospital-bag checklist, only available during a pregnancy. Pre-filled in the Home Assistant language (German, English, Spanish, French, Swedish; English otherwise). |
+| `event.menstruation_<name>_cycle_events` | Fires `pill_taken`, `lh_positive` and `ovulation_confirmed` with the `date` (the same moments as the events of the same names on the event bus). Pick it as a trigger in the automation editor instead of typing event names. Only available at visibility "Full". |
 
 Entities follow the profile's visibility level (the read services that return a profile's data - symptoms, full history, predictions, cycle comparison, last-cycle summary, menarche info, doctor report - answer only administrators below "Full"): at "Private" nothing is shown, at "Status only" only period events remain in the calendar. At "Status only" and "Private" the sensors for basal temperature and product use, the pregnancy to-do list and the detailed data-quality attributes are hidden as well. Cycle events (state change, period start, pill intake, product usage) also appear as readable entries in the Home Assistant logbook (pill intake and product use only for profiles with visibility "Full"), and repair issues point out things like an old calendar feed (ICS) token an unreachable notify target, or pregnancy mode still being on 14 days after the due date.
 
@@ -315,5 +316,7 @@ Swedish, French and Spanish are fully translated but not yet reviewed by native 
 ## Contributing and feedback
 
 Feedback, ideas, bug reports, edge cases, and pull requests are welcome. If you want to improve documentation, add cards, refine services, or help with testing, please open an issue or PR.
+
+Tests: `python3 -m unittest discover -s tests` runs the unit tests with Home Assistant replaced by stubs. `bash tools/real_ha/run.sh [HA_VERSION]` (needs [uv](https://docs.astral.sh/uv/)) runs the integration in a real Home Assistant core instead, for example `bash tools/real_ha/run.sh 2026.3.4` for the minimum supported version.
 
 AI was used to help draft parts of the code and English wording, while the project idea and implementation direction remain human-authored.

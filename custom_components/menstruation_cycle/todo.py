@@ -158,6 +158,8 @@ class MenstruationHospitalBagTodo(TodoListEntity):
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(
             runtime.friendly_name
         )["_hospital_bag"]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"todo.{self._attr_suggested_object_id}"
         self._attr_todo_items: list[TodoItem] = []
         self._attr_available = False
 

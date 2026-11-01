@@ -1474,6 +1474,92 @@ class PillReminderTests(unittest.TestCase):
         self.assertIn("protection may be reduced", _run_pill_reminder(entry, long).calls[0][1])
 
 
+class VisibilityRevertTests(unittest.TestCase):
+    """set_profile_visibility with revert_after_minutes: the previous level comes back, also after a restart."""
+
+    def _setup(self):
+        self.entry, self.runtime = _entry(), _runtime()
+        self.hass = SimpleNamespace(data={}, config_entries=SimpleNamespace(async_get_entry=lambda entry_id: self.entry))
+        self.later: list = []
+        self.cancelled: list = []
+        self.save = AsyncMock()
+
+    def _set(self, level, minutes=None):
+        data = {const.SERVICE_FIELD_VISIBILITY_LEVEL: level}
+        if minutes is not None:
+            data[const.SERVICE_FIELD_REVERT_AFTER_MINUTES] = minutes
+        with patch.object(integration, "_runtime_for_call", lambda hass, call: self.runtime), patch.object(
+            integration, "_async_require_admin", AsyncMock()
+        ), patch.object(integration, "_entry_id_for_runtime", lambda hass, runtime: "e1"), patch.object(
+            integration, "_async_save_and_notify", self.save
+        ), patch.object(
+            integration,
+            "async_call_later",
+            lambda hass, delay, cb: self.later.append((delay, cb)) or (lambda: self.cancelled.append(delay)),
+        ):
+            _run(integration._async_handle_set_profile_visibility(self.hass, SimpleNamespace(data=data)))
+
+    def _fire_last(self):
+        with patch.object(integration, "_async_save_and_notify", self.save):
+            _run(self.later[-1][1](NOW[0]))
+
+    def test_temporary_change_comes_back_after_the_time(self) -> None:
+        self._setup()
+        self._set("private", 60)
+        self.assertEqual(self.runtime.visibility_level, "private")
+        self.assertEqual([d for d, _ in self.later], [3600])
+        self.assertEqual(
+            self.runtime.noncycle_data[const.NONCYCLE_VISIBILITY_REVERT],
+            {"at": (NOW[0] + timedelta(minutes=60)).isoformat(), "level": "full"},
+        )
+        self._fire_last()
+        self.assertEqual(self.runtime.visibility_level, "full")
+        self.assertNotIn(const.NONCYCLE_VISIBILITY_REVERT, self.runtime.noncycle_data)
+        self.assertEqual(self.save.await_count, 2, "saved when set and when reverted")
+
+    def test_explicit_change_without_minutes_cancels_the_pending_revert(self) -> None:
+        self._setup()
+        self._set("private", 60)
+        self._set("status_only")
+        self.assertEqual(self.cancelled, [3600])
+        self.assertEqual(self.runtime.visibility_level, "status_only")
+        self.assertNotIn(const.NONCYCLE_VISIBILITY_REVERT, self.runtime.noncycle_data)
+        self.assertEqual(len(self.later), 1, "no new timer")
+
+    def test_second_temporary_change_restores_the_level_from_before_the_first(self) -> None:
+        self._setup()
+        self._set("private", 60)
+        self._set("status_only", 30)
+        self.assertEqual(self.cancelled, [3600])
+        self.assertEqual(self.runtime.noncycle_data[const.NONCYCLE_VISIBILITY_REVERT]["level"], "full")
+        self._fire_last()
+        self.assertEqual(self.runtime.visibility_level, "full")
+
+    def test_restart_rearms_pending_and_overdue_reverts_and_drops_broken_ones(self) -> None:
+        def rearm(marker):
+            self._setup()
+            self.runtime.visibility_level = "private"
+            if marker is not None:
+                self.runtime.noncycle_data[const.NONCYCLE_VISIBILITY_REVERT] = marker
+            with patch.object(
+                integration, "async_call_later", lambda hass, delay, cb: self.later.append((delay, cb)) or (lambda: None)
+            ):
+                integration._rearm_visibility_revert(self.hass, self.entry, self.runtime)
+
+        rearm({"at": (NOW[0] + timedelta(seconds=120)).isoformat(), "level": "full"})
+        self.assertEqual([round(d) for d, _ in self.later], [120])
+        rearm({"at": (NOW[0] - timedelta(hours=5)).isoformat(), "level": "full"})
+        self.assertEqual([d for d, _ in self.later], [1], "overdue: reverts right after start")
+        self._fire_last()
+        self.assertEqual(self.runtime.visibility_level, "full")
+        for broken in ("garbage", {"at": "nope", "level": "full"}, {"at": NOW[0].isoformat(), "level": "bogus"}):
+            rearm(broken)
+            self.assertEqual(self.later, [], broken)
+            self.assertNotIn(const.NONCYCLE_VISIBILITY_REVERT, self.runtime.noncycle_data, broken)
+        rearm(None)
+        self.assertEqual(self.later, [])
+
+
 class MobileActionTests(unittest.TestCase):
     def _handle(self, entry, runtime, action: str, **patches):
         event = SimpleNamespace(data={"action": action})

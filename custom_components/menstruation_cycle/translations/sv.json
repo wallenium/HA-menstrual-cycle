@@ -1145,6 +1145,10 @@
         "level": {
           "name": "Synlighetsnivå",
           "description": "full, status_only eller private."
+        },
+        "revert_after_minutes": {
+          "name": "Återställ efter (minuter)",
+          "description": "Valfritt. Återställer föregående nivå efter så många minuter (1 till 1440), även efter en omstart av Home Assistant. Att ange en nivå utan det här fältet avbryter en väntande återställning."
         }
       }
     },

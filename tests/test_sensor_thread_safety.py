@@ -432,6 +432,7 @@ class TestCycleLengthSensor(unittest.TestCase):
         sensor = self._sensor(self.HISTORY)
         self.assertEqual(sensor._attr_unique_id, "entry-1_cycle_length")
         self.assertEqual(sensor._attr_suggested_object_id, "menstruation_test_cycle_length")
+        self.assertEqual(sensor.entity_id, "sensor.menstruation_test_cycle_length")
         self.assertEqual(sensor._attr_state_class, "measurement")
         self.assertEqual(sensor._attr_device_class, "duration")
 

@@ -520,6 +520,9 @@ SERVICE_FIELD_LANGUAGE = "language"
 # Languages the doctor report is available in.
 DOCTOR_REPORT_LANGUAGES = ("de", "en", "es", "fr", "sv")
 SERVICE_FIELD_VISIBILITY_LEVEL = "level"
+SERVICE_FIELD_REVERT_AFTER_MINUTES = "revert_after_minutes"
+# noncycle_data key: {"at": ISO time, "level": level to restore} while a temporary visibility change is pending.
+NONCYCLE_VISIBILITY_REVERT = "visibility_revert"
 # HA-Idee ("weitere neue Ideen", 29.09.2026): optionale HA-Area-Zuordnung
 # fuer Haushaltsbestand-Verbrauchsereignisse.
 SERVICE_FIELD_AREA_ID = "area_id"
@@ -914,4 +917,6 @@ def menstruation_object_ids_for_profile(friendly_name: str) -> dict[str, str]:
         "_next_ovulation": f"menstruation_{slug}_next_ovulation",
         # Length of the last completed cycle as a measurement sensor (long-term statistics).
         "_cycle_length": f"menstruation_{slug}_cycle_length",
+        # event.py: mirrors the pill_taken / lh_positive / ovulation_confirmed bus events.
+        "_cycle_events": f"menstruation_{slug}_cycle_events",
     }

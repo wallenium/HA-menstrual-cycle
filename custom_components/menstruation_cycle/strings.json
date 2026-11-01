@@ -1145,6 +1145,10 @@
         "level": {
           "name": "Visibility level",
           "description": "full, status_only or private."
+        },
+        "revert_after_minutes": {
+          "name": "Revert after (minutes)",
+          "description": "Optional. Sets the previous level back after this many minutes (1 to 1440), also after a restart of Home Assistant. Setting a level without this field cancels a pending revert."
         }
       }
     },

@@ -89,6 +89,8 @@ class MenstruationCyclePhaseImage(ImageEntity):
         self._attr_suggested_object_id = menstruation_object_ids_for_profile(runtime.friendly_name)[
             "_cycle_phase_image"
         ]
+        # HA 2026.10 no longer reads _attr_suggested_object_id; the entity_id is the supported way to propose the id.
+        self.entity_id = f"image.{self._attr_suggested_object_id}"
         self._asset_path: Path | None = None
 
     @property

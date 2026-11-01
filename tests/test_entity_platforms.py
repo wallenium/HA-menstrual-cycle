@@ -23,7 +23,7 @@ _PKG = "tstest_platforms"
 LANGS = ("de", "en", "es", "fr", "sv")
 
 _PATCHER = None
-const = todo = logbook = calendar = image = None
+const = todo = logbook = calendar = image = event = None
 
 
 class _Entity:
@@ -37,6 +37,11 @@ class _Entity:
 
     def async_schedule_update_ha_state(self, force=False) -> None:
         self.__dict__["scheduled"] = self.__dict__.get("scheduled", 0) + 1
+
+
+class _EventEntity(_Entity):
+    def _trigger_event(self, event_type, event_attributes=None) -> None:
+        self.__dict__.setdefault("triggered", []).append((event_type, event_attributes))
 
 
 class _ImageEntity(_Entity):
@@ -106,6 +111,7 @@ def _stubs() -> dict[str, types.ModuleType]:
             "homeassistant.components.calendar", CalendarEntity=_Entity, CalendarEvent=CalendarEvent
         ),
         "homeassistant.components.image": _module("homeassistant.components.image", ImageEntity=_ImageEntity),
+        "homeassistant.components.event": _module("homeassistant.components.event", EventEntity=_EventEntity),
         "homeassistant.components.todo": _module(
             "homeassistant.components.todo",
             TodoItem=TodoItem,
@@ -142,7 +148,7 @@ def _load(name: str, file_name: str) -> types.ModuleType:
 
 
 def setUpModule() -> None:
-    global _PATCHER, const, todo, logbook, calendar, image
+    global _PATCHER, const, todo, logbook, calendar, image, event
     _PATCHER = patch.dict(sys.modules, _stubs())
     _PATCHER.start()
     package = types.ModuleType(_PKG)
@@ -156,6 +162,7 @@ def setUpModule() -> None:
     logbook = _load("logbook", "logbook.py")
     calendar = _load("calendar", "calendar.py")
     image = _load("image", "image.py")
+    event = _load("event", "event.py")
 
 
 def tearDownModule() -> None:
@@ -213,6 +220,75 @@ def _hass(runtime, language="en", entry_id="e1"):
 
 def _entry(**options):
     return SimpleNamespace(entry_id="e1", options=options)
+
+
+# --------------------------------------------------------------------------------------- event
+
+
+class _Bus:
+    def __init__(self) -> None:
+        self.listeners: dict[str, object] = {}
+
+    def async_listen(self, event_type, callback):
+        self.listeners[event_type] = callback
+        return lambda: None
+
+
+class EntityIdProposalTests(unittest.TestCase):
+    def test_every_suggested_object_id_is_also_set_as_entity_id(self) -> None:
+        # Home Assistant 2026.10 ignores _attr_suggested_object_id; only entity_id proposes the id (found by tools/real_ha).
+        for path in sorted(COMPONENT_ROOT.glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            suggested = source.count("self._attr_suggested_object_id = ")
+            self.assertEqual(source.count('self.entity_id = f"'), suggested, path.name)
+
+
+class CycleEventsEntityTests(unittest.TestCase):
+    def _entity(self, **runtime_overrides):
+        runtime = _runtime(**runtime_overrides)
+        hass = _hass(runtime)
+        hass.bus = _Bus()
+        return event.MenstruationCycleEvents(hass, _entry()), hass
+
+    def test_identity(self) -> None:
+        entity, _ = self._entity()
+        self.assertEqual(entity._attr_unique_id, "e1_cycle_events")
+        self.assertEqual(entity._attr_suggested_object_id, "menstruation_sarah_cycle_events")
+        self.assertEqual(entity.entity_id, "event.menstruation_sarah_cycle_events")
+        self.assertEqual(entity._attr_event_types, ["pill_taken", "lh_positive", "ovulation_confirmed"])
+        self.assertEqual(entity.device_info, {"id": "e1"})
+
+    def test_listens_to_exactly_the_three_bus_events_and_the_history_signal(self) -> None:
+        CONNECTS.clear()
+        entity, hass = self._entity()
+        run(entity.async_added_to_hass())
+        self.assertEqual(
+            sorted(hass.bus.listeners),
+            sorted([const.EVENT_PILL_TAKEN, const.EVENT_LH_POSITIVE, const.EVENT_OVULATION_CONFIRMED]),
+        )
+        self.assertEqual([signal for signal, _ in CONNECTS], [const.SIGNAL_HISTORY_UPDATED])
+
+    def test_own_profile_event_is_triggered_and_foreign_one_is_ignored(self) -> None:
+        entity, hass = self._entity()
+        run(entity.async_added_to_hass())
+        handler = hass.bus.listeners[const.EVENT_LH_POSITIVE]
+        handler(SimpleNamespace(event_type=const.EVENT_LH_POSITIVE, data={"entry_id": "other", "date": "2026-01-01"}))
+        self.assertNotIn("triggered", entity.__dict__)
+        handler(SimpleNamespace(event_type=const.EVENT_LH_POSITIVE, data={"entry_id": "e1", "date": "2026-01-02"}))
+        self.assertEqual(entity.__dict__["triggered"], [("lh_positive", {"date": "2026-01-02"})])
+        self.assertEqual(entity.__dict__["writes"], 1)
+        hass.bus.listeners[const.EVENT_PILL_TAKEN](
+            SimpleNamespace(event_type=const.EVENT_PILL_TAKEN, data={"entry_id": "e1", "date": "2026-01-03"})
+        )
+        self.assertEqual(entity.__dict__["triggered"][-1][0], "pill_taken")
+
+    def test_only_available_at_full_visibility(self) -> None:
+        for level, expected in (("full", True), ("status_only", False), ("private", False)):
+            entity, _ = self._entity(visibility_level=level)
+            self.assertIs(entity.available, expected, level)
+        entity, hass = self._entity()
+        hass.data[const.DOMAIN].clear()
+        self.assertFalse(entity.available, "profile unloaded")
 
 
 # --------------------------------------------------------------------------------------- todo
