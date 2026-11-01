@@ -24,6 +24,8 @@
 
 ### Fixed
 - New profiles got entity IDs like `sensor.anna` instead of `sensor.menstruation_anna` on Home Assistant 2026.10 (which no longer reads the attribute the integration used to propose the ID), and a "rename entities" repair appeared right after setup. All entities now propose their ID through `entity_id`; profiles that already exist keep theirs. Found by running the integration in a real Home Assistant (`tools/real_ha/run.sh`).
+- Without the recorder loaded, every save of the history logged a warning with a traceback from the cycle statistics sync; the sync now skips quietly when the recorder is not set up. Found by calling every service in a real Home Assistant.
+- The calendar could re-arm its start/end timer on an already removed entity when a profile was unloaded or reloaded while the events were being refreshed (about one test run in five on Home Assistant 2026.10 showed it as a lingering timer). The refresh now checks that the entity is still there before writing its state.
 - The description of `add_symptom` did not list the fields `discharge` and `smell`, although they were accepted.
 - The calendar card legend showed "Period<" with a stray character.
 - Statistics, inventory and compact cycle cards show a visible focus outline for keyboard use; those cards and the history and compact status cards respect the system setting "reduce motion".

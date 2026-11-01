@@ -2684,6 +2684,10 @@ async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: Menstruatio
         _LOGGER.debug("Recorder component unavailable — skipping cycle statistics sync.")
         return
 
+    components = getattr(getattr(hass, "config", None), "components", None)
+    if components is not None and "recorder" not in components:
+        return  # recorder is only an after_dependency; without it there is nothing to write to (found by the real-HA test)
+
     starts = grouped_cycle_starts(runtime.history)
     if len(starts) < 2:
         return  # need at least one *completed* cycle (a start plus the next one)

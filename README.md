@@ -317,6 +317,6 @@ Swedish, French and Spanish are fully translated but not yet reviewed by native 
 
 Feedback, ideas, bug reports, edge cases, and pull requests are welcome. If you want to improve documentation, add cards, refine services, or help with testing, please open an issue or PR.
 
-Tests: `python3 -m unittest discover -s tests` runs the unit tests with Home Assistant replaced by stubs. `bash tools/real_ha/run.sh [HA_VERSION]` (needs [uv](https://docs.astral.sh/uv/)) runs the integration in a real Home Assistant core instead, for example `bash tools/real_ha/run.sh 2026.3.4` for the minimum supported version.
+Tests: `python3 -m unittest discover -s tests` runs the unit tests with Home Assistant replaced by stubs. `bash tools/real_ha/run.sh [HA_VERSION]` (needs [uv](https://docs.astral.sh/uv/)) runs the integration in a real Home Assistant core instead, for example `bash tools/real_ha/run.sh 2026.3.4` for the minimum supported version. It calls every service once, loads data from older installs and checks who may read what; `bash tools/real_ha/browser.sh` additionally opens the dashboard panel and all cards in Chromium (needs Playwright) against data from that real core, including a check that private values do not show below visibility "Full".
 
 AI was used to help draft parts of the code and English wording, while the project idea and implementation direction remain human-authored.

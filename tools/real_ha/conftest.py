@@ -27,3 +27,13 @@ def _clean_exports():
     shutil.rmtree(target, ignore_errors=True)
     yield
     shutil.rmtree(target, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+async def _unload_entries(hass):
+    # a profile must unload cleanly; otherwise its timers outlive the test (seen as "Lingering timer" now and then)
+    yield
+    for entry in hass.config_entries.async_entries():
+        if entry.state.recoverable:
+            assert await hass.config_entries.async_unload(entry.entry_id), f"{entry.title} did not unload"
+    await hass.async_block_till_done()

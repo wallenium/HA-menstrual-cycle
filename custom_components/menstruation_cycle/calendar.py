@@ -126,10 +126,16 @@ class MenstruationCycleCalendar(CalendarEntity):
         )
         await self._async_refresh_events()
 
+    async def async_will_remove_from_hass(self) -> None:
+        self._removed = True
+        await super().async_will_remove_from_hass()  # the calendar cancels its own start/end timer here
+
     async def _handle_history_updated(self, entry_ids=None, sensors_follow=False) -> None:
         if not history_signal_applies(self._entry.entry_id, entry_ids):
             return
         await self._async_refresh_events()
+        if getattr(self, "_removed", False):
+            return  # unloaded while the refresh ran: writing now would re-arm the calendar's start/end timer on a dead entity
         self.async_write_ha_state()
 
     async def _async_refresh_events(self) -> None:
