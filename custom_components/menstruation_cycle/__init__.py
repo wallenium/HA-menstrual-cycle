@@ -1802,7 +1802,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         if partner_target is None or (full_only and runtime.visibility_level != VISIBILITY_LEVEL_FULL):
             return
         try:
-            await hass.services.async_call(partner_target[0], partner_target[1], {"title": title, "message": message})
+            await hass.services.async_call(partner_target[0], partner_target[1], {"title": title, "message": message}, blocking=True)
         except Exception as ex:  # noqa: BLE001 - a bad partner target must never block the user's own notification
             _LOGGER.warning("Could not send partner notification via %s.%s: %s", partner_target[0], partner_target[1], ex)
 
@@ -2155,7 +2155,7 @@ async def _async_send_notification(
             payload: dict[str, Any] = {"title": title, "message": message}
             if actions and notify_service.startswith("mobile_app_"):
                 payload["data"] = {"actions": actions}
-            await hass.services.async_call(notify_domain, notify_service, payload)
+            await hass.services.async_call(notify_domain, notify_service, payload, blocking=True)  # blocking: a failing service must reach the except below
         async_delete_notify_target_issue(hass, entry.entry_id)
     except Exception as ex:  # noqa: BLE001 - a bad/misconfigured notify target must never crash the scheduled run
         _LOGGER.warning("Could not send notification via %s: %s", target, ex)
