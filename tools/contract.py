@@ -8,14 +8,17 @@ import json
 import re
 from pathlib import Path
 
-import yaml
-
 REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO / "custom_components" / "menstruation_cycle"
 
 
+def service_names() -> list[str]:
+    # no PyYAML: the CI runs the plain unittest runner without extra packages; services sit at column 0
+    return re.findall(r"^([a-z_]+):\s*$", (ROOT / "services.yaml").read_text(encoding="utf-8"), re.M)
+
+
 def build() -> dict:
-    services = yaml.safe_load((ROOT / "services.yaml").read_text(encoding="utf-8"))
+    services = service_names()
     const = (ROOT / "const.py").read_text(encoding="utf-8")
     symptoms = re.findall(r'^SYMPTOM_[A-Z_]+ = "([a-z_]+)"', const, re.M)
     return {
