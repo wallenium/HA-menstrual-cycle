@@ -35,7 +35,7 @@ def _form_fields_and_sections() -> tuple[list[str], dict[str, str]]:
     consts = _const_values()
     source = (COMPONENT_ROOT / "config_flow.py").read_text(encoding="utf-8")
     body = source[source.index("async def async_step_init") : source.index("async def async_step_pregnancy")]
-    fields = [consts[name] for name in re.findall(r"(?:vol\.(?:Optional|Required)|_optional_date_key)\(\s*(CONF_\w+)", body)]
+    fields = [consts[name] for name in re.findall(r"(?:vol\.(?:Optional|Required)|_optional_date_key|_optional_entity)\(\s*(CONF_\w+)", body)]
     sections: dict[str, str] = {}
     for node in ast.parse(source).body:
         target = getattr(node, "target", None) or (node.targets[0] if isinstance(node, ast.Assign) else None)

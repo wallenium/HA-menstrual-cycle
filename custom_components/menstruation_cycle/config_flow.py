@@ -465,6 +465,15 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
 }
 
 
+def _optional_entity(key: str, current: str) -> vol.Optional:
+    """Entity picker field of the options page, prefilled with the stored value.
+
+    A plain default of "" fails the picker's own validation (nothing could be saved without a target), and a stored value
+    could never be cleared: an emptied picker sends nothing and the default came back. suggested_value fixes both.
+    """
+    return vol.Optional(key, description={"suggested_value": current}) if current else vol.Optional(key)
+
+
 def _flatten_sections(user_input: dict) -> dict:
     """Flatten the options form's section dicts into one flat dict (the parsing below expects flat keys)."""
     flat: dict = {}
@@ -1144,23 +1153,15 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
                 # "notify.xxx"-Entity-ID, die das bestehende Splitting in
                 # __init__.py::_async_check_and_send_notifications (Split auf
                 # den ersten ".") unveraendert weiterverarbeitet.
-                vol.Optional(
-                    CONF_NOTIFY_SERVICE, default=notify_service_default
-                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
-                vol.Optional(
-                    CONF_NOTIFY_PARTNER_SERVICE, default=notify_partner_default
-                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
-                vol.Optional(
-                    CONF_LINKED_PERSON_ENTITY_ID, default=c["linked_person_entity_id"]
-                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
+                _optional_entity(CONF_NOTIFY_SERVICE, notify_service_default): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
+                _optional_entity(CONF_NOTIFY_PARTNER_SERVICE, notify_partner_default): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify")),
+                _optional_entity(CONF_LINKED_PERSON_ENTITY_ID, c["linked_person_entity_id"]): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
                 # Wettbewerbs-Recherche ("weitere ideen?", 02.10.2026): siehe
                 # const.py::CONF_BASAL_TEMP_SENSOR_ENTITY_ID. device_class
                 # Filter ist nur eine UI-Hilfe fuer die Auswahlliste, die
                 # eigentliche Plausibilitaetspruefung des Werts passiert in
                 # _async_import_basal_temp_from_linked_sensor.
-                vol.Optional(
-                    CONF_BASAL_TEMP_SENSOR_ENTITY_ID, default=c["basal_temp_sensor_entity_id"]
-                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="temperature")),
+                _optional_entity(CONF_BASAL_TEMP_SENSOR_ENTITY_ID, c["basal_temp_sensor_entity_id"]): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="temperature")),
                 # HA-9 (M-Cycle_HA-Component-Roadmap.md): per-event granularity
                 # instead of one global on/off switch. CONF_NOTIFICATIONS_ENABLED
                 # above remains the master switch for both.

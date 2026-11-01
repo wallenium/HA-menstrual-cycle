@@ -57,7 +57,7 @@ class OptionsFlowConsistencyTests(unittest.TestCase):
             for name in names:
                 if name in SPECIAL:
                     continue
-                field = re.search(rf"vol\.(?:Optional|Required)\(\s*{name}\s*,\s*default=c\[\"(\w+)\"\]", INIT_STEP)
+                field = re.search(rf"(?:vol\.(?:Optional|Required)\(\s*{name}\s*,\s*default=|_optional_entity\(\s*{name}\s*,\s*)c\[\"(\w+)\"\]", INIT_STEP)
                 if field is None:
                     problems.append(f"{section}/{name}: not in the schema with default=c[...]")
                 elif f'"{field.group(1)}"' not in RESOLVE:
