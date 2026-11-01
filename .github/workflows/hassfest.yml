@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest

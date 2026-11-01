@@ -1498,15 +1498,24 @@ class FullBackupRoundTripTests(unittest.TestCase):
             def __init__(self, *args, **kwargs) -> None:
                 pass
 
+            async def async_load(self):
+                return None  # no timer state saved
+
             async def async_save(self, data) -> None:
                 _PrefsStore.saved = data
 
+        async def _inventory_loaded(_hass):
+            _hass.data.setdefault(integration.HOUSEHOLD_INVENTORY_DATA_KEY, integration._default_household_inventory_data())
+
         originals = {name: getattr(integration, name) for name in (
-            "_async_refresh_cycle_model", "_async_sync_cycle_statistics", "_async_ensure_dashboard_prefs_loaded", "Store"
+            "_async_refresh_cycle_model", "_async_sync_cycle_statistics", "_async_ensure_dashboard_prefs_loaded", "Store",
+            "_async_ensure_household_inventory_loaded", "_async_save_household_inventory",
         )}
         integration._async_refresh_cycle_model = _noop
         integration._async_sync_cycle_statistics = _noop
         integration._async_ensure_dashboard_prefs_loaded = _prefs
+        integration._async_ensure_household_inventory_loaded = _inventory_loaded
+        integration._async_save_household_inventory = _noop
         integration.Store = _PrefsStore
         try:
             with tempfile.TemporaryDirectory() as folder:

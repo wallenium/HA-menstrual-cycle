@@ -12,6 +12,10 @@ on:
     # weekly: a new Home Assistant release can break the integration without any commit here
     - cron: "17 5 * * 1"
 
+# Least privilege: these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   core:
     runs-on: ubuntu-latest

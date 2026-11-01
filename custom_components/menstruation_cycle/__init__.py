@@ -5184,6 +5184,27 @@ async def _async_handle_get_household_summary(hass: HomeAssistant, call: Service
     }
 
 
+def _timer_state_store(hass: HomeAssistant, profile: str) -> Store:
+    return Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.timer_state.{profile}")
+
+
+def _normalize_timer_state(raw: Any) -> dict[str, Any] | None:
+    """The timer state as save_timer_state stores it, or None when raw is not a usable dict (backup files are untrusted)."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        selected = str(raw.get("selected_product") or "").strip() or None
+        return {
+            "remaining_seconds": max(0, int(raw.get("remaining_seconds", 0))),
+            "total_seconds": max(0, int(raw.get("total_seconds", 0))),
+            "selected_product": selected,
+            "is_running": bool(raw.get("is_running", False)),
+            "saved_at": max(0, int(raw.get("saved_at", 0))),
+        }
+    except (TypeError, ValueError):
+        return None
+
+
 async def _async_handle_export_full_backup(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """Export the complete stored data for EVERY configured profile into one
     JSON file (HA-Idee 4, "weitere Ideen" 15.09.2026).
@@ -5232,6 +5253,9 @@ async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | Non
             "friendly_name": runtime.friendly_name,
             **stored,
         }
+        timer_state = _normalize_timer_state(await _timer_state_store(hass, runtime.profile).async_load())
+        if timer_state is not None:
+            profiles[runtime.profile]["timer_state"] = timer_state
 
     # Wunsch 01.10.2026 (Idee 2, "weitere Verbesserungen?"): dashboard
     # widget/category prefs live in their own store (see
@@ -5246,12 +5270,17 @@ async def _async_write_full_backup_snapshot(hass: HomeAssistant, stem: str | Non
         if key.partition(":")[2] in profiles
     }
 
+    # The shared stock and consumption log live in their own store and belong to no single profile.
+    await _async_ensure_household_inventory_loaded(hass)
+    household_inventory = copy.deepcopy(hass.data[HOUSEHOLD_INVENTORY_DATA_KEY])
+
     backup = {
         "backup_version": BACKUP_FORMAT_VERSION,
         "exported_at": dt_util.utcnow().isoformat(),
         "integration": DOMAIN,
         "profiles": profiles,
         "dashboard_prefs": dashboard_prefs,
+        "household_inventory": household_inventory,
     }
 
     if stem:
@@ -5451,6 +5480,17 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
         ):
             await runtime.storage.async_save_hospital_bag_items(bag_items)
         restored.append(profile_slug)
+        # Timer: overwrite replaces it, merge only fills in when this profile has none saved.
+        backup_timer = _normalize_timer_state(backup_profile.get("timer_state"))
+        if backup_timer is not None:
+            store = _timer_state_store(hass, profile_slug)
+            if mode == "overwrite" or not isinstance(await store.async_load(), dict):
+                await store.async_save(backup_timer)
+                hass.states.async_set(
+                    f"menstruation_cycle_timer.{profile_slug}",
+                    "active" if backup_timer["is_running"] else "idle",
+                    backup_timer,
+                )
         if implausible_gaps:
             warnings[profile_slug] = [
                 f"{gap['from']} and {gap['to']} are only {gap['gap_days']} day(s) apart "
@@ -5478,6 +5518,18 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
             store = Store(hass, STORAGE_VERSION, DASHBOARD_PREFS_STORE_KEY)
             await store.async_save(dashboard_prefs_data)
 
+    # The shared household inventory belongs to no profile; it comes back when at least one profile was restored.
+    # Merge only fills it in while it is still untouched (all defaults), overwrite replaces it.
+    household_inventory_restored = False
+    backup_inventory = backup.get("household_inventory")
+    if isinstance(backup_inventory, dict) and restored:
+        await _async_ensure_household_inventory_loaded(hass)
+        untouched = hass.data[HOUSEHOLD_INVENTORY_DATA_KEY] == _default_household_inventory_data()
+        if mode == "overwrite" or untouched:
+            hass.data[HOUSEHOLD_INVENTORY_DATA_KEY] = _normalize_household_inventory_data(backup_inventory)
+            await _async_save_household_inventory(hass)
+            household_inventory_restored = True
+
     _LOGGER.info(
         "Imported full backup '%s' (mode=%s): restored %d profile(s), skipped %d not-configured, "
         "%d dashboard prefs entry(ies) restored.",
@@ -5494,6 +5546,7 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
         "restored": restored,
         "skipped_not_configured": skipped_not_configured,
         "dashboard_prefs_restored": dashboard_prefs_restored,
+        "household_inventory_restored": household_inventory_restored,
     }
     if mode == "merge":
         result["warnings"] = warnings

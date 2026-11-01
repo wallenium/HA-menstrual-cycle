@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   hacstest:
     runs-on: ubuntu-latest
