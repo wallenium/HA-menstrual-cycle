@@ -50,7 +50,6 @@ from .const import (
     ATTR_PERIOD_DURATION_DAYS,
     ATTR_PRODUCT_USAGE,
     ATTR_SYMPTOM_HISTORY,
-    ATTR_VISIBILITY_LEVEL,
     CONF_LINKED_PERSON_ENTITY_ID,
     CONF_BASAL_TEMP_SENSOR_ENTITY_ID,
     STATE_PERIOD,
@@ -274,11 +273,6 @@ from .const import (
     SYMPTOM_NOTE,
     SYMPTOM_NOTE_MAX_LENGTH,
     SYMPTOM_OPTIONS,
-    TANNER_STAGE_1,
-    TANNER_STAGE_2,
-    TANNER_STAGE_3,
-    TANNER_STAGE_4,
-    TANNER_STAGE_5,
     ICS_HORIZON_MONTHS_DEFAULT,
     ICS_TOKEN_KEY,
     ICS_TOKEN_CREATED_AT_KEY,
@@ -310,7 +304,6 @@ from .model import (
     project_range_windows,
     cycle_pattern_signals,
     cycle_wellness_score,
-    current_cycle_phase,
     find_implausible_cycle_gaps,
     first_positive_lh_day,
     grouped_cycle_starts,
@@ -1763,7 +1756,6 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
     )
 
     from .model import (
-        build_cycle_model,
         compute_contraception_status,
         cycle_length_hint,
         next_checkup_due,
@@ -5828,8 +5820,8 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         if key == SYMPTOM_BASAL_TEMP:
             try:
                 temp_value = float(value)
-            except (TypeError, ValueError):
-                raise HomeAssistantError(f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be a number, got '{value}'.")
+            except (TypeError, ValueError) as err:
+                raise HomeAssistantError(f"Symptom field '{SYMPTOM_BASAL_TEMP}' must be a number, got '{value}'.") from err
             if temperature_unit == TEMPERATURE_UNIT_FAHRENHEIT:
                 # Plausibility check in °F first (86–113°F ≈ 30–45°C), so a
                 # typo (e.g. 986 instead of 98.6) or an accidental Celsius

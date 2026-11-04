@@ -8,5 +8,5 @@ version="${1:-}"
 bash "$here/run.sh" ${version:+"$version"}
 venv="${TMPDIR:-/tmp}/mcycle-real-ha-${version:-latest}"
 out="$(mktemp -d)"
-(cd "$here" && MCYCLE_FIXTURE_DIR="$out" "$venv/bin/python" -m pytest -q -p no:cacheprovider --show-capture=no --tb=short test_browser_fixtures.py)
+(cd "$here" && MCYCLE_FIXTURE_DIR="$out" "$venv/bin/python" "$here/pytest_launcher.py" -q -p no:cacheprovider --show-capture=no --tb=short test_browser_fixtures.py)
 "${PLAYWRIGHT_PYTHON:-python3}" "$here/browser_check.py" "$out" ${2:+"$2"}

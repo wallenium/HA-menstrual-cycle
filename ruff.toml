@@ -1,0 +1,4 @@
+# Dead code only: unused imports/variables (pyflakes "F") and `raise` inside `except` without `from` (B904).
+# CI runs `ruff check` on this file's rules; add rules here deliberately, one at a time.
+[lint]
+select = ["F", "B904"]

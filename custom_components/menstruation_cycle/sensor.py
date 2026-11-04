@@ -27,7 +27,6 @@ from homeassistant.util import dt as dt_util
 from .const import (
     ATTR_AGE_AT_TRACKING,
     ATTR_AVG_CYCLE_LENGTH,
-    ATTR_AWAITING_MENARCHE,
     menstruation_object_ids_for_profile,
     ATTR_BIRTH_DATE,
     ATTR_BLEEDING_BLOCKS,
@@ -39,7 +38,6 @@ from .const import (
     ATTR_DAYS_UNTIL_NEXT_START,
     ATTR_DUE_DATE,
     ATTR_ESTIMATED_MENARCHE_DATE,
-    ATTR_FAMILY_MENARCHE_AGE,
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_OVULATION_DAY,
@@ -110,7 +108,6 @@ from .const import (
 from .badges import evaluate_badges, new_badges_this_week
 from .model import (
     bleeding_blocks,
-    build_cycle_model,
     cached_cycle_model,
     compute_contraception_status,
     pill_pack_view,

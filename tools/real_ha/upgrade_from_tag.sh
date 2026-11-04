@@ -17,6 +17,6 @@ venv="${TMPDIR:-/tmp}/mcycle-real-ha-${version:-latest}"
 work="$(mktemp -d)"
 git -C "$repo" archive "$tag" custom_components | tar -x -C "$work"
 echo "Upgrade test: $tag -> current code"
-run() { (cd "$here" && MCYCLE_DUMP="$work/dump.json" "$@" "$venv/bin/python" -m pytest -q -p no:cacheprovider --show-capture=no --tb=short test_upgrade_from_tag.py); }
+run() { (cd "$here" && MCYCLE_DUMP="$work/dump.json" "$@" "$venv/bin/python" "$here/pytest_launcher.py" -q -p no:cacheprovider --show-capture=no --tb=short test_upgrade_from_tag.py); }
 run env MCYCLE_PHASE=old MCYCLE_COMPONENT_DIR="$work/custom_components"
 run env MCYCLE_PHASE=new

@@ -95,3 +95,73 @@ class OptionsFlowConsistencyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _literal_tuple(node: ast.AST, named: dict[str, list[str]]) -> list[str]:
+    if isinstance(node, ast.Name):
+        return named[node.id]
+    return [elt.id for elt in node.elts]
+
+
+def _visible_when() -> dict[str, list[str]]:
+    """_VISIBLE_WHEN from the source: field -> switches that must be on (a plain literal, so no Home Assistant is needed)."""
+    tree = ast.parse(SOURCE)
+    named: dict[str, list[str]] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and isinstance(node.value, ast.Tuple):
+            named[node.targets[0].id] = [elt.id for elt in node.value.elts]
+    for node in tree.body:
+        target = getattr(node, "target", None) or (node.targets[0] if isinstance(node, ast.Assign) else None)
+        if isinstance(target, ast.Name) and target.id == "_VISIBLE_WHEN":
+            return {key.id: _literal_tuple(value, named) for key, value in zip(node.value.keys, node.value.values)}
+    raise AssertionError("_VISIBLE_WHEN not found")
+
+
+def _const_values() -> dict[str, str]:
+    const = (Path(__file__).resolve().parents[1] / "custom_components" / "menstruation_cycle" / "const.py").read_text(encoding="utf-8")
+    return {
+        node.targets[0].id: node.value.value
+        for node in ast.parse(const).body
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and isinstance(node.value, ast.Constant)
+    }
+
+
+class HiddenFieldsTests(unittest.TestCase):
+    """The fields Home Assistant 2026.11 hides (_VISIBLE_WHEN). Checked on the source, because CI only runs the real-core
+    test for this (tools/real_ha/test_options_flow.py) on versions that already know how to hide fields."""
+
+    def test_the_table_is_found_and_not_trivial(self) -> None:
+        table = _visible_when()
+        self.assertGreater(len(table), 20)
+        self.assertTrue(all(switches for switches in table.values()))
+
+    def test_a_field_and_its_switches_are_in_the_same_section(self) -> None:
+        # Home Assistant evaluates a condition against the fields of the same form level only; a switch in another
+        # section never matches and would hide the field for good.
+        level = {name: section for section, names in _sections().items() for name in names}
+        problems = [
+            f"{field} ({level.get(field, 'top')}) depends on {switch} ({level.get(switch, 'top')})"
+            for field, switches in _visible_when().items()
+            for switch in switches
+            if level.get(field) != level.get(switch)
+        ]
+        self.assertEqual(problems, [])
+
+    def test_switches_are_on_off_fields_that_are_not_hidden_by_themselves(self) -> None:
+        table = _visible_when()
+        for field, switches in table.items():
+            self.assertNotIn(field, switches, field)
+            for switch in switches:
+                self.assertIsNotNone(re.search(rf"vol\.Optional\(\s*{switch}\s*,[^)]*?\)?:\s*bool", INIT_STEP, re.S), f"{switch} is not a bool field")
+                self.assertNotIn(field, table.get(switch, []), f"{field} and {switch} depend on each other")
+
+    def test_the_stored_value_of_every_hidden_field_and_switch_can_be_restored(self) -> None:
+        # _keep_hidden_values reads self._current[<option name>]
+        values = _const_values()
+        missing = [
+            name
+            for field, switches in _visible_when().items()
+            for name in (field, *switches)
+            if f'"{values[name]}"' not in RESOLVE
+        ]
+        self.assertEqual(sorted(set(missing)), [])

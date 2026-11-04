@@ -1512,7 +1512,7 @@ def compute_cycle_conception_likelihood(
     }
 
     try:
-        cycle_start = date.fromisoformat(str(cycle_start_iso))
+        date.fromisoformat(str(cycle_start_iso))  # only validates; the value itself is not needed below
     except (TypeError, ValueError):
         return result
 

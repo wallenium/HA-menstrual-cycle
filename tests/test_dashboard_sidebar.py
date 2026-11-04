@@ -17,7 +17,7 @@ import types
 import unittest
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Minimal HA stubs so const.py and the helpers can be imported stand-alone
