@@ -1,5 +1,5 @@
 {
-  "component_version": "1.9.2",
+  "component_version": "1.10.0",
   "services": [
     "add_cycle_start",
     "add_pre_menarche_sign",

@@ -2678,7 +2678,7 @@ async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: Menstruatio
     household history.
     """
     try:
-        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData, StatisticMeanType
         from homeassistant.components.recorder.statistics import async_add_external_statistics
     except ImportError:
         _LOGGER.debug("Recorder component unavailable — skipping cycle statistics sync.")
@@ -2718,16 +2718,18 @@ async def _async_sync_cycle_statistics(hass: HomeAssistant, runtime: Menstruatio
         return
 
     length_metadata = StatisticMetaData(
-        has_mean=True,
+        mean_type=StatisticMeanType.ARITHMETIC,  # has_mean is gone; HA 2026.11 requires mean_type and unit_class
         has_sum=False,
+        unit_class=None,  # days per cycle: no unit conversion
         name=f"{runtime.friendly_name}: Average cycle length",
         source=DOMAIN,
         statistic_id=f"{DOMAIN}:{runtime.profile}_cycle_length",
         unit_of_measurement=UnitOfTime.DAYS,
     )
     pain_metadata = StatisticMetaData(
-        has_mean=True,
+        mean_type=StatisticMeanType.ARITHMETIC,  # has_mean is gone; HA 2026.11 requires mean_type and unit_class
         has_sum=False,
+        unit_class=None,  # days per cycle: no unit conversion
         name=f"{runtime.friendly_name}: Pain days per cycle",
         source=DOMAIN,
         statistic_id=f"{DOMAIN}:{runtime.profile}_pain_days",

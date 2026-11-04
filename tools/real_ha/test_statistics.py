@@ -4,11 +4,22 @@ The other tests run without a recorder (the integration then skips quietly); her
 import logging
 
 from homeassistant.components.recorder import get_instance
-from homeassistant.components.recorder.statistics import get_last_statistics, list_statistic_ids
+from homeassistant.components.recorder.models import StatisticMeanType
+from homeassistant.components.recorder.statistics import get_last_statistics, get_metadata, list_statistic_ids
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.components.recorder.common import async_wait_recording_done
 
 from test_real_ha import DOMAIN, _add_profile
+
+
+def _deprecations(caplog):
+    """Home Assistant's own notes about how the integration calls the recorder (e.g. a missing mean_type, which stops working in 2026.11)."""
+    return [m for m in caplog.messages if DOMAIN in m and ("specify" in m or "deprecated" in m.lower() or "stop working" in m)]
+
+
+async def _meta(hass, statistic_id):
+    found = await get_instance(hass).async_add_executor_job(lambda: get_metadata(hass, statistic_ids={statistic_id}))
+    return found[statistic_id][1]
 
 
 async def _ids(hass):
@@ -30,9 +41,13 @@ async def test_cycle_statistics_are_written(hass, recorder_mock, caplog):
         get_last_statistics, hass, 3, f"{DOMAIN}:anna_cycle_length", True, {"mean"})
     assert [round(p["mean"]) for p in last[f"{DOMAIN}:anna_cycle_length"]] == [28, 28, 28]
     assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING and r.name.startswith(f"custom_components.{DOMAIN}")] == []
+    assert _deprecations(caplog) == []
+    meta = await _meta(hass, f"{DOMAIN}:anna_cycle_length")
+    assert meta["mean_type"] is StatisticMeanType.ARITHMETIC and meta["has_sum"] is False
 
 
-async def test_basal_temperature_backfill_can_be_repeated(hass, recorder_mock):
+async def test_basal_temperature_backfill_can_be_repeated(hass, recorder_mock, caplog):
+    caplog.set_level(logging.WARNING)
     assert await async_setup_component(hass, "recorder", {})
     entry = await _add_profile(hass)
     for day, temp in (("2026-10-01", 36.3), ("2026-10-02", 36.4), ("2026-10-03", 36.5)):
@@ -41,3 +56,6 @@ async def test_basal_temperature_backfill_can_be_repeated(hass, recorder_mock):
     await hass.async_block_till_done()
     await async_wait_recording_done(hass)
     assert "sensor.menstruation_anna_basal_temp" in await _ids(hass)
+    assert _deprecations(caplog) == []
+    meta = await _meta(hass, "sensor.menstruation_anna_basal_temp")
+    assert meta["mean_type"] is StatisticMeanType.ARITHMETIC and meta["unit_class"] == "temperature"

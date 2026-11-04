@@ -2191,7 +2191,7 @@ async def _async_backfill_basal_temp_statistics(
 
     try:
         from homeassistant.components.recorder import get_instance
-        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+        from homeassistant.components.recorder.models import StatisticData, StatisticMetaData, StatisticMeanType
         from homeassistant.components.recorder.statistics import async_import_statistics
         from homeassistant.components.recorder.db_schema import Statistics
     except ImportError:
@@ -2229,8 +2229,9 @@ async def _async_backfill_basal_temp_statistics(
 
     points.sort(key=lambda p: p["start"])
     metadata = StatisticMetaData(
-        has_mean=True,
+        mean_type=StatisticMeanType.ARITHMETIC,  # has_mean is gone; HA 2026.11 requires mean_type and unit_class
         has_sum=False,
+        unit_class="temperature",
         name=f"{runtime.friendly_name}: Basal temperature",
         source="recorder",
         statistic_id=entity_id,

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.2
+## 1.10.0
 
 ### Added
 - **Support card: packing list and school situations** (new switches `show_kit_list` and `show_school_scenarios`, both on by default): a tick-off list of what belongs in the bag (kept in the browser only) and five short tips for situations at school. Texts in five languages.
@@ -27,6 +27,7 @@
 - New profiles got entity IDs like `sensor.anna` instead of `sensor.menstruation_anna` on Home Assistant 2026.10 (which no longer reads the attribute the integration used to propose the ID), and a "rename entities" repair appeared right after setup. All entities now propose their ID through `entity_id`; profiles that already exist keep theirs. Found by running the integration in a real Home Assistant (`tools/real_ha/run.sh`).
 - Without the recorder loaded, every save of the history logged a warning with a traceback from the cycle statistics sync; the sync now skips quietly when the recorder is not set up. Found by calling every service in a real Home Assistant.
 - The calendar could re-arm its start/end timer on an already removed entity when a profile was unloaded or reloaded while the events were being refreshed (about one test run in five on Home Assistant 2026.10 showed it as a lingering timer). The refresh now checks that the entity is still there before writing its state.
+- Long-term statistics (cycle length, pain days per cycle, basal temperature backfill) now declare `mean_type` and `unit_class` instead of the removed `has_mean`. Home Assistant 2026.11 requires both and logged "will stop working in 2026.11" for the integration on 2026.10; older versions accept the new fields as well (checked on 2026.3, 2026.10 and 2026.11 against a real recorder).
 - Options page: the four entity pickers (notification target, partner target, linked person, basal temperature sensor) were saved with an empty default that Home Assistant's validation rejects, so the options could not be saved without a notification target and a set target could not be cleared again. The set value is now shown as a suggestion and an empty picker stays empty.
 - Notifications: a notify service that exists but fails (phone unreachable, error in the service) was never noticed, because the call did not wait for the result. The repair issue "Notifications cannot be delivered" only appeared when the service was missing altogether, and a failing partner target produced no warning. The calls now wait for the result, so both cases are reported as described.
 - The full backup (`export_full_backup` / `import_full_backup`) left out the countdown timer state of each profile and the shared household inventory (stock, thresholds, consumption log), although the service is described as a backup of the complete stored data. Both are now part of the file and come back on import: "overwrite" replaces them, "merge" only fills them in while the profile has no saved timer and the inventory is still untouched. Backup files written by earlier versions import as before. Found by a round trip test (export, wipe, import).
