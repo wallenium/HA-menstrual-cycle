@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 import voluptuous as vol
 
-from homeassistant import config_entries
+from homeassistant import config_entries, data_entry_flow
 from homeassistant.data_entry_flow import FlowResult, section
 from homeassistant.helpers import selector
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -465,6 +465,63 @@ _OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Home Assistant 2026.11 can hide a field of a form unless another field of the same form (same section) has a value.
+# Older versions have no such marker; there every field is simply shown, as before.
+_Optional = getattr(data_entry_flow, "Optional", None)
+_VISIBLE_SUPPORTED = isinstance(_Optional, type) and issubclass(_Optional, vol.Optional) and _Optional is not vol.Optional
+
+# field -> switches that must all be on for the field to be shown (a condition cannot point into another section).
+_NOTIFY_SWITCH = (CONF_NOTIFICATIONS_ENABLED,)
+_VISIBLE_WHEN: dict[str, tuple[str, ...]] = {
+    **{
+        name: _NOTIFY_SWITCH
+        for name in (
+            CONF_NOTIFY_SERVICE,
+            CONF_NOTIFY_PARTNER_SERVICE,
+            CONF_NOTIFY_TIME,
+            CONF_NOTIFY_PERIOD_ENABLED,
+            CONF_NOTIFY_FERTILE_ENABLED,
+            CONF_NOTIFY_OVULATION_ENABLED,
+            CONF_NOTIFY_LOG_REMINDER_ENABLED,
+            CONF_NOTIFY_RECAP_ENABLED,
+            CONF_NOTIFY_OVERDUE_ENABLED,
+            CONF_NOTIFY_CHECKUP_ENABLED,
+            CONF_NOTIFY_FERTILE_MUTE_HORMONAL,
+            CONF_NOTIFY_UNPROTECTED_HINT,
+            CONF_NOTIFY_PREGNANCY_UPDATES,
+            CONF_NOTIFY_CYCLE_HINT,
+            CONF_NOTIFY_TEST_HINT,
+            CONF_NOTIFY_LH_HINT,
+            CONF_NOTIFY_PATTERN_HINT,
+            CONF_NOTIFY_TEMP_REMINDER,
+            CONF_NOTIFY_PERIOD_LUTEAL,
+        )
+    },
+    CONF_NOTIFY_PERIOD_LEAD_DAYS: (CONF_NOTIFICATIONS_ENABLED, CONF_NOTIFY_PERIOD_ENABLED),
+    CONF_NOTIFY_FERTILE_LEAD_DAYS: (CONF_NOTIFICATIONS_ENABLED, CONF_NOTIFY_FERTILE_ENABLED),
+    CONF_NOTIFY_OVULATION_LEAD_DAYS: (CONF_NOTIFICATIONS_ENABLED, CONF_NOTIFY_OVULATION_ENABLED),
+    CONF_NOTIFY_LOG_REMINDER_TIME: (CONF_NOTIFICATIONS_ENABLED, CONF_NOTIFY_LOG_REMINDER_ENABLED),
+    CONF_NOTIFY_PILL_TIME: (CONF_NOTIFY_PILL_ENABLED,),
+    CONF_NOTIFY_PILL_FOLLOWUP_HOURS: (CONF_NOTIFY_PILL_ENABLED,),
+    CONF_NOTIFY_PILL_GAP_ENABLED: (CONF_NOTIFY_PILL_ENABLED,),
+    CONF_ICS_PARTNER_CONTENT: (CONF_ICS_FEED_ENABLED,),
+}
+
+
+def _conditional(key: vol.Optional) -> vol.Optional:
+    """The same marker, hidden while its switches are off (Home Assistant 2026.11 and newer); unchanged elsewhere."""
+    switches = _VISIBLE_WHEN.get(key.schema)
+    if not switches or not _VISIBLE_SUPPORTED:
+        return key
+    extra = {} if isinstance(key.default, vol.Undefined) else {"default": key.default}
+    return _Optional(
+        key.schema,
+        description=key.description,
+        visible=[{"field": switch, "value": True} for switch in switches],
+        **extra,
+    )
+
+
 def _optional_entity(key: str, current: str) -> vol.Optional:
     """Entity picker field of the options page, prefilled with the stored value.
 
@@ -863,6 +920,20 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
     # ------------------------------------------------------------------
     # Step 1: general settings + enable-toggles
     # ------------------------------------------------------------------
+    def _keep_hidden_values(self, user_input: dict) -> None:
+        """Put the stored value back for a field the form hid.
+
+        A hidden field is not sent at all, and the parsing below would read that as "use the default" and overwrite
+        the stored value. A field that is shown but left empty (a cleared picker) is also missing, but its switches
+        are on, so it stays missing and means "cleared".
+        """
+        for name, switches in _VISIBLE_WHEN.items():
+            if name in user_input:
+                continue
+            if all(user_input.get(switch, self._current[switch]) for switch in switches):
+                continue
+            user_input[name] = self._current[name]
+
     async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
         """General settings and the four life-stage enable-toggles."""
         await self._async_resolve_current()
@@ -870,6 +941,7 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             user_input = _flatten_sections(user_input)
+            self._keep_hidden_values(user_input)
             birth_date_raw = str(user_input.get(CONF_BIRTH_DATE) or "").strip()
             birth_date_parsed = _parse_date_opt(birth_date_raw)
             if birth_date_parsed is _INVALID_DATE_SENTINEL:
@@ -1241,13 +1313,13 @@ class MenstruationGaugeOptionsFlow(config_entries.OptionsFlow):
         )
         # Group the flat schema into collapsed sections (the options form has ~40 fields).
         grouped: dict = {
-            key: field
+            _conditional(key): field
             for key, field in schema.schema.items()
             if not any(key.schema in names for names in _OPTION_SECTIONS.values())
         }
         for section_key, names in _OPTION_SECTIONS.items():
             grouped[vol.Required(section_key)] = section(
-                vol.Schema({key: field for key, field in schema.schema.items() if key.schema in names}),
+                vol.Schema({_conditional(key): field for key, field in schema.schema.items() if key.schema in names}),
                 {"collapsed": True},
             )
         return self.async_show_form(step_id="init", data_schema=vol.Schema(grouped), errors=errors)

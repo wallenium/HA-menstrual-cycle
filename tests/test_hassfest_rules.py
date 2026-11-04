@@ -50,6 +50,11 @@ class ManifestTests(unittest.TestCase):
         self.assertTrue(MANIFEST["issue_tracker"].startswith("https://"))
         self.assertIn(MANIFEST["iot_class"], IO_CLASSES)
 
+    def test_categories_are_at_most_three_known_slugs(self) -> None:
+        categories = MANIFEST.get("categories", [])
+        self.assertLessEqual(len(categories), 3)
+        self.assertTrue(set(categories) <= {"health_wellbeing"}, "add a new slug here only after checking the official list")
+
     def test_keys_are_sorted_like_hassfest_wants(self) -> None:
         keys = list(MANIFEST)
         self.assertEqual(keys[:2], ["domain", "name"])
