@@ -3,6 +3,10 @@
 ## 1.10.0
 
 ### Added
+- **Dashboard panel, card "Today":** one card replaces the loose rows and the strip of open items (period start/end, LH test, temperature, pill, supplies). What is still open today is listed first, the rest sits behind "More". The doctor report moved into a menu; all texts in five languages.
+- **Dashboard panel, jump bar:** a bar under the header jumps to Overview, History, Calendar, Supplies and Insights (only groups that are visible are shown). On the phone it sits at the bottom edge, with room for the iPhone safe area.
+- **Dashboard panel, compact empty cards:** cards without data shrink to a single line instead of an empty box.
+- **Dashboard panel, views:** create up to 8 named views (button next to the header), each with its own set of visible widgets, order, widths and folded state; switch with one tap, rename and delete in the edit mode. Without a view added, the layout behaves as before ("Standard").
 - **Support card: packing list and school situations** (new switches `show_kit_list` and `show_school_scenarios`, both on by default): a tick-off list of what belongs in the bag (kept in the browser only) and five short tips for situations at school. Texts in five languages.
 - **Pill pack start date** (new option "Start of the current pill pack" in the pill group of the options): the blister card places today in the pack from that date instead of guessing from the logged intakes, so starting to log in the middle of a pack no longer shifts the blister, and days without a logged pill show as empty cells. Later packs are assumed to follow without a gap; leave the field empty for the old estimate. The date also sets the "pill pack ends" calendar event and the shopping-list reminder (no logged intakes needed; during the break the next pack's end is used). Texts in five languages.
 - **Welcome card for the first period** in the dashboard panel: shown once after the first period is logged (one start, at most 60 days ago) with what comes next; "Got it" hides it for that profile in this browser.
@@ -32,6 +36,7 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- **Dashboard panel on the phone:** the page no longer scrolls sideways (cards in the grid and product rows could be wider than the screen).
 - Dashboard panel: the full symptom history was loaded once per session and never refreshed, so a just logged temperature or LH test only showed up in the quick rows after a reload. It is now reloaded when the sensor state changes.
 - New profiles got entity IDs like `sensor.anna` instead of `sensor.menstruation_anna` on Home Assistant 2026.10 (which no longer reads the attribute the integration used to propose the ID), and a "rename entities" repair appeared right after setup. All entities now propose their ID through `entity_id`; profiles that already exist keep theirs. Found by running the integration in a real Home Assistant (`tools/real_ha/run.sh`).
 - Without the recorder loaded, every save of the history logged a warning with a traceback from the cycle statistics sync; the sync now skips quietly when the recorder is not set up. Found by calling every service in a real Home Assistant.

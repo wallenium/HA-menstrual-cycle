@@ -132,6 +132,99 @@ def view_features_check(page):
     return problems
 
 
+def ui_check(page):
+    """Real browser: card "Today", jump bar, views (create, switch, back) and the phone layout."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    page.evaluate("window.scrollTo(0, 0)")
+    today = page.locator(root + "css=.today-card")
+    if today.count() != 1 or not today.is_visible():
+        problems.append("ui: card Today is missing")
+    else:
+        button = today.locator("button").first
+        radius = float(button.evaluate("(e) => parseFloat(getComputedStyle(e).borderTopLeftRadius)"))
+        if radius < 10:
+            problems.append(f"ui: buttons in the card Today look like default buttons (radius {radius})")
+
+    # jump bar: a tap brings the group's first card below the sticky header
+    chips = page.locator(root + 'css=.jump-nav button[data-group]')
+    if chips.count() < 3:
+        problems.append(f"ui: jump bar has {chips.count()} chips")
+    else:
+        group = chips.nth(chips.count() - 1).get_attribute("data-group")
+        chips.nth(chips.count() - 1).click()
+        page.wait_for_timeout(900)
+        header = page.locator(root + "css=header.toolbar").bounding_box()
+        first = page.eval_on_selector_all(root + "css=[data-card]", "(els) => els.map((e) => e.dataset.card)")
+        if not first:
+            problems.append("ui: no cards with an id")
+        else:
+            tops = page.eval_on_selector_all(root + "css=[data-card]", "(els) => els.map((e) => [e.dataset.card, e.getBoundingClientRect().top])")
+            near = [name for name, top in tops if header["y"] + header["height"] - 4 <= top < header["y"] + header["height"] + 400]
+            if not near:
+                problems.append(f"ui: jump to group {group} did not bring a card below the header ({tops[:3]})")
+    page.evaluate("window.scrollTo(0, 0)")
+
+    # views: add one in the edit mode, hide a card there, save; the switcher appears and swaps the layouts
+    page.locator(root + 'css=[data-action="toggle-edit"]').first.click()
+    page.wait_for_timeout(300)
+    cards = root + "css=.edit-card"
+    before = page.eval_on_selector_all(cards, "(els) => els.map((e) => e.dataset.widgetId)")
+    page.locator(root + 'css=[data-action="view-add"]').click()
+    page.wait_for_timeout(200)
+    victim = before[-1]
+    page.locator(f'{cards}[data-widget-id="{victim}"]').scroll_into_view_if_needed()
+    page.locator(f'{cards}[data-widget-id="{victim}"] >> css=.edit-x').click()
+    page.wait_for_timeout(200)
+    page.locator(root + 'css=[data-action="save-edit"]').click()
+    page.wait_for_timeout(400)
+    switch = page.locator(root + 'css=.view-switch button')
+    if switch.count() != 2:
+        problems.append(f"ui: view switcher has {switch.count()} buttons, expected 2")
+    else:
+        shown = lambda: page.eval_on_selector_all(root + "css=[data-card]", "(els) => els.map((e) => e.dataset.card)")
+        if victim in shown():
+            problems.append(f"ui: {victim} should be hidden in the new view")
+        switch.nth(0).click()
+        page.wait_for_timeout(500)
+        if victim not in shown():
+            problems.append(f"ui: {victim} should be back in the first view")
+        pressed = page.locator(root + 'css=.view-switch button[aria-pressed="true"]').count()
+        if pressed != 1:
+            problems.append(f"ui: {pressed} pressed view buttons")
+
+    # phone: bottom bar, compact header, no sideways scrolling
+    page.set_viewport_size({"width": 390, "height": 800})
+    page.wait_for_timeout(300)
+    bar = page.locator(root + "css=.mobile-bar")
+    if not bar.is_visible():
+        problems.append("ui: phone bar is not visible on a narrow screen")
+    else:
+        box = bar.bounding_box()
+        if abs(box["y"] + box["height"] - 800) > 2:
+            problems.append(f"ui: phone bar is not at the bottom ({box})")
+    if page.locator(root + "css=.toolbar .today-pill").is_visible():
+        problems.append("ui: date pill should be hidden on the phone")
+    overflow = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+    if overflow > 1:
+        wide = page.evaluate("""() => {
+          const host = document.querySelector('menstruation-cycle-dashboard-panel');
+          const out = [];
+          host.shadowRoot.querySelectorAll('*').forEach((e) => { const r = e.getBoundingClientRect(); if (r.right > window.innerWidth + 1 && r.width > 0) out.push([r.right | 0, e.tagName.toLowerCase() + '.' + (e.className && e.className.baseVal === undefined ? e.className : '')]); });
+          const wideCards = [...host.shadowRoot.querySelectorAll('section.grid > article')].map((c) => [c.dataset.card, c.getBoundingClientRect().width | 0, c.scrollWidth]);
+          const kids = [...host.shadowRoot.querySelector('main.page').children].map((c) => [c.tagName.toLowerCase() + '.' + c.className, c.getBoundingClientRect().width | 0, c.scrollWidth]);
+          const rowKids = [...host.shadowRoot.querySelectorAll('.today-card > *, .today-row > *')].map((c) => [c.tagName.toLowerCase() + '.' + c.className, c.getBoundingClientRect().width | 0]);
+          return [kids, rowKids.slice(0, 14)];
+        }""")
+        problems.append(f"ui: page scrolls sideways on the phone ({overflow}px): {wide}")
+    page.screenshot(path="/tmp/shots/panel_phone.png")
+    page.set_viewport_size({"width": 1100, "height": 1400})
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.mobile-bar").is_visible():
+        problems.append("ui: phone bar must not show on a wide screen")
+    return problems
+
+
 def edit_mode_check(page, shots=None):
     """Real mouse: hide a card with the X, bring it back from the list, resize by dragging the corner, move a card by dragging."""
     problems = []
@@ -250,6 +343,7 @@ def run(fixture_dir, shots=None):
                 if level == "full" and lang == "en":
                     problems += view_features_check(page)
                     problems += edit_mode_check(page, shots)
+                    problems += ui_check(page)
                 if lang == "en":
                     for tag in CARDS:
                         if tag == "menstruation-support-card":  # only shown while the profile is in an early stage

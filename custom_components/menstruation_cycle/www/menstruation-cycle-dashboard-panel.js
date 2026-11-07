@@ -372,13 +372,28 @@
     dashboard_chart_range: 'Chart period',
     dashboard_range_auto: 'Default',
     dashboard_range_all: 'All',
-    dashboard_today_open: 'Open today',
     dashboard_todo_temp: 'Take temperature',
     dashboard_todo_lh: 'LH test',
     dashboard_todo_pill: 'Pill taken',
     dashboard_todo_stock: 'Low stock: {products}',
     dashboard_pill_done: 'Pill logged.',
     dashboard_print: 'Print',
+    dashboard_today_open_count: '{count} open',
+    dashboard_views: 'Views',
+    dashboard_view_standard: 'Standard',
+    dashboard_view_default_name: 'View {n}',
+    dashboard_view_new: 'New view',
+    dashboard_view_name: 'Name',
+    dashboard_view_delete: 'Delete view',
+    dashboard_view_hint: 'Each view remembers which cards are shown, their order, width and folding. A new view starts as a copy of the current one.',
+    dashboard_nav_aria: 'Jump to a section',
+    dashboard_nav_overview: 'Overview',
+    dashboard_nav_history: 'History',
+    dashboard_nav_calendar: 'Calendar',
+    dashboard_nav_supplies: 'Supplies',
+    dashboard_nav_insights: 'Insights',
+    dashboard_today_more: 'More',
+    dashboard_todo_stock_show: 'Show',
     dashboard_widget_status_card: 'Status',
     dashboard_widget_cycle_card: 'Cycle & quick log',
     dashboard_pill_card_hidden_hint: 'Hidden outside of edit mode: this profile does not use the pill as its current contraception method.',
@@ -563,6 +578,15 @@
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
   ];
 
+  // Groups of the jump bar under the header: a tap scrolls to the first visible card of the group.
+  const NAV_GROUPS = [
+    ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
+    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'statistics_card', 'year_overview']],
+    ['calendar', 'dashboard_nav_calendar', ['calendar_card']],
+    ['supplies', 'dashboard_nav_supplies', ['product_usage', 'inventory_card', 'timer_card', 'pill_card']],
+    ['insights', 'dashboard_nav_insights', ['symptom_heatmap', 'anomaly_insights', 'cycle_insights', 'symptom_insights', 'progress_badges', 'support_card']],
+  ];
+
   // Default widget order matches the approved mockup layout exactly
   const WIDGET_IDS_GRAPH_FIRST = [
     'kpi_strip',
@@ -596,6 +620,10 @@
   const MAX_WIDGET_SPAN = 12;
   // Period of the charts: 'auto' keeps each chart's own window, the rest is months back from today.
   const CHART_RANGES = ['auto', '3', '6', '12', 'all'];
+  // Views: named layouts (which cards are shown, their order, width and folding). The layout of the active view lives in the
+  // prefs themselves, the others are stored under `views`; switching swaps them.
+  const LAYOUT_KEYS = ['widgetVisibility', 'widgetOrder', 'widgetSpan', 'widgetCollapsed'];
+  const MAX_VIEWS = 8;
   const GRID_GAP_PX = 16;
 
   // Width after dragging the resize handle dx pixels (colWidth = one column plus one gap).
@@ -1373,18 +1401,11 @@
       return JSON.parse(JSON.stringify(PRESETS[mode] || PRESETS.general));
     }
 
-    _normalizePrefs(raw, profile, mode) {
-      const preset = this._preset(mode);
+    // The part of the prefs that a view stores.
+    _normalizeLayout(raw, preset) {
       const widgetVisibility = { ...preset.widgetVisibility, ...(raw?.widgetVisibility || {}) };
       const rawOrder = Array.isArray(raw?.widgetOrder) ? raw.widgetOrder.filter((id) => WIDGET_IDS.includes(id)) : [];
       const widgetOrder = [...rawOrder, ...WIDGET_IDS.filter((id) => !rawOrder.includes(id))];
-      // Wunsch 01.10.2026: same show/hide + reorder pattern as widgets above,
-      // for the quick-log modal's symptom categories.
-      const categoryVisibility = { ...(raw?.categoryVisibility || {}) };
-      const rawCategoryOrder = Array.isArray(raw?.categoryOrder) ? raw.categoryOrder.filter((key) => CATEGORY_KEYS.includes(key)) : [];
-      const categoryOrder = [...rawCategoryOrder, ...CATEGORY_KEYS.filter((key) => !rawCategoryOrder.includes(key))];
-      const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
-      const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
       const widgetSpan = {};
       Object.entries(raw?.widgetSpan || {}).forEach(([id, span]) => {
         if (WIDGET_IDS.includes(id) && Number.isInteger(span) && span >= MIN_WIDGET_SPAN && span <= MAX_WIDGET_SPAN) widgetSpan[id] = span;
@@ -1393,17 +1414,35 @@
       Object.entries(raw?.widgetCollapsed || {}).forEach(([id, on]) => {
         if (WIDGET_IDS.includes(id) && on === true) widgetCollapsed[id] = true;
       });
+      return { widgetVisibility, widgetOrder, widgetSpan, widgetCollapsed };
+    }
+
+    _normalizePrefs(raw, profile, mode) {
+      const preset = this._preset(mode);
+      // Wunsch 01.10.2026: same show/hide + reorder pattern as widgets above,
+      // for the quick-log modal's symptom categories.
+      const categoryVisibility = { ...(raw?.categoryVisibility || {}) };
+      const rawCategoryOrder = Array.isArray(raw?.categoryOrder) ? raw.categoryOrder.filter((key) => CATEGORY_KEYS.includes(key)) : [];
+      const categoryOrder = [...rawCategoryOrder, ...CATEGORY_KEYS.filter((key) => !rawCategoryOrder.includes(key))];
+      const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
+      const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
       const chartRange = CHART_RANGES.includes(raw?.chartRange) ? raw.chartRange : 'auto';
+      const views = [];
+      (Array.isArray(raw?.views) ? raw.views : []).slice(0, MAX_VIEWS).forEach((view) => {
+        const id = typeof view?.id === 'string' && /^[\w-]{1,24}$/.test(view.id) ? view.id : null;
+        const name = String(view?.name || '').trim().slice(0, 30);
+        if (!id || !name || views.some((other) => other.id === id)) return;
+        views.push({ id, name, layout: this._normalizeLayout(view.layout, preset) });
+      });
       return {
         __profile: profile,
         __mode: mode,
         discreetMode,
         animations,
-        widgetSpan,
-        widgetCollapsed,
         chartRange,
-        widgetVisibility,
-        widgetOrder,
+        ...this._normalizeLayout(raw, preset),
+        views,
+        activeView: views.some((view) => view.id === raw?.activeView) ? raw.activeView : (views[0]?.id || null),
         categoryVisibility,
         categoryOrder,
         myInfo: {
@@ -1411,6 +1450,94 @@
           pronouns: String(raw?.myInfo?.pronouns || '').trim(),
         },
       };
+    }
+
+    // ---- Views. All of these work on a prefs object (the saved prefs, or the draft while editing). ----
+    _viewsOf(prefs) {
+      return prefs?.views?.length ? prefs.views : [{ id: 'default', name: this._t('dashboard_view_standard') }];
+    }
+
+    _activeViewId(prefs) {
+      const views = this._viewsOf(prefs);
+      return views.some((view) => view.id === prefs?.activeView) ? prefs.activeView : views[0].id;
+    }
+
+    _layoutOf(prefs) {
+      return JSON.parse(JSON.stringify(Object.fromEntries(LAYOUT_KEYS.map((key) => [key, prefs[key]]))));
+    }
+
+    // The first change to the views turns the implicit "Standard" view into a real one.
+    _ensureViews(prefs) {
+      if (prefs.views?.length) return;
+      prefs.views = [{ id: 'default', name: this._t('dashboard_view_standard'), layout: this._layoutOf(prefs) }];
+      prefs.activeView = 'default';
+    }
+
+    _switchViewIn(prefs, id) {
+      this._ensureViews(prefs);
+      const target = prefs.views.find((view) => view.id === id);
+      if (!target) return false;
+      const current = prefs.views.find((view) => view.id === this._activeViewId(prefs));
+      if (current) current.layout = this._layoutOf(prefs);
+      Object.assign(prefs, JSON.parse(JSON.stringify(target.layout)));
+      prefs.activeView = id;
+      return true;
+    }
+
+    // A new view starts as a copy of the current one, so it only has to be changed where it should differ.
+    _addViewIn(prefs) {
+      this._ensureViews(prefs);
+      if (prefs.views.length >= MAX_VIEWS) return null;
+      const current = prefs.views.find((view) => view.id === this._activeViewId(prefs));
+      if (current) current.layout = this._layoutOf(prefs);
+      const id = `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      prefs.views.push({ id, name: this._t('dashboard_view_default_name').replace('{n}', String(prefs.views.length + 1)), layout: this._layoutOf(prefs) });
+      prefs.activeView = id;
+      return id;
+    }
+
+    _renameViewIn(prefs, id, name) {
+      const clean = String(name || '').trim().slice(0, 30);
+      this._ensureViews(prefs);
+      const view = prefs.views.find((item) => item.id === id);
+      if (view && clean) view.name = clean;
+    }
+
+    _deleteViewIn(prefs, id) {
+      this._ensureViews(prefs);
+      if (prefs.views.length <= 1) return;
+      const wasActive = this._activeViewId(prefs) === id;
+      prefs.views = prefs.views.filter((view) => view.id !== id);
+      if (wasActive) this._switchViewIn(prefs, prefs.views[0].id);
+    }
+
+    _renderViewSwitch() {
+      const views = this._viewsOf(this._prefs);
+      if (views.length < 2) return '';
+      const active = this._activeViewId(this._prefs);
+      return `<div class="view-switch" role="group" aria-label="${escapeHtml(this._t('dashboard_views'))}">${views.map((view) => `<button type="button" data-action="view-switch" data-view="${escapeHtml(view.id)}" aria-pressed="${view.id === active}">${escapeHtml(view.name)}</button>`).join('')}</div>`;
+    }
+
+    _renderSubnav(shownIds) {
+      const switcher = this._renderViewSwitch();
+      const nav = this._renderJumpNav(shownIds);
+      return switcher || nav ? `<div class="subnav">${switcher}${nav}</div>` : '';
+    }
+
+    // Edit mode: pick, add, rename and delete views; the cards on the grid below always belong to the picked view.
+    _renderViewEditor() {
+      const draft = this._editDraft;
+      const views = this._viewsOf(draft);
+      const active = this._activeViewId(draft);
+      const current = views.find((view) => view.id === active) || views[0];
+      const pills = views.map((view) => `<button type="button" class="edit-chip${view.id === active ? ' active' : ''}" data-action="view-switch" data-view="${escapeHtml(view.id)}" aria-pressed="${view.id === active}">${escapeHtml(view.name)}</button>`).join('');
+      const add = views.length < MAX_VIEWS ? `<button type="button" class="edit-chip" data-action="view-add"><span aria-hidden="true">＋</span> ${escapeHtml(this._t('dashboard_view_new'))}</button>` : '';
+      const rename = `<label class="edit-view-name">${escapeHtml(this._t('dashboard_view_name'))} <input type="text" maxlength="30" data-pref="viewName" data-view="${escapeHtml(current.id)}" value="${escapeHtml(current.name)}"/></label>`;
+      const remove = views.length > 1 ? `<button type="button" data-action="view-delete" data-view="${escapeHtml(current.id)}">${escapeHtml(this._t('dashboard_view_delete'))}</button>` : '';
+      return `<p class="helper">${escapeHtml(this._t('dashboard_views'))}</p>
+          <div class="edit-tray">${pills}${add}</div>
+          <div class="edit-actions">${rename}${remove}</div>
+          <p class="helper">${escapeHtml(this._t('dashboard_view_hint'))}</p>`;
     }
 
     _loadPrefs(profile, mode) {
@@ -1919,7 +2046,8 @@
       const options = [[90, 'months_3'], [180, 'months_6'], [365, 'months_12']]
         .map(([value, key]) => `<option value="${value}"${value === days ? ' selected' : ''}>${escapeHtml(this._t(key))}</option>`)
         .join('');
-      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      return `<div class="today-row today-more-body">
+        <span class="today-label">${escapeHtml(this._t('doctor_report_title'))}</span>
         <select data-action="doctor-report-days" aria-label="${escapeHtml(this._t('doctor_report_title'))}"${busy ? ' disabled' : ''}>${options}</select>
         <input type="text" data-action="doctor-report-name" value="${escapeHtml(this._doctorReportName || '')}" placeholder="${escapeHtml(this._t('patient_name'))}" autocomplete="off"${busy ? ' disabled' : ''} />
         <button type="button" data-action="create-doctor-report"${busy ? ' disabled' : ''}>${escapeHtml(this._t(busy ? 'dashboard_doctor_report_busy' : 'dashboard_doctor_report_create'))}</button>${links}</div>`;
@@ -4026,6 +4154,7 @@
       }
 
       if (action === 'create-doctor-report') {
+        this._todayMore = true; // keep the result links in view
         this._createDoctorReport();
         return;
       }
@@ -4123,6 +4252,26 @@
         this._toggleCollapsed(widget);
       } else if (action === 'todo' && target.dataset.todo) {
         this._openTodo(target.dataset.todo);
+      } else if (action === 'view-switch' && target.dataset.view) {
+        const prefs = this._editMode ? this._editDraft : this._prefs;
+        if (prefs && this._switchViewIn(prefs, target.dataset.view)) {
+          if (!this._editMode) {
+            this._savePrefs();
+            this._enterPlayed = false; // play the opening animation again
+          }
+          this.render();
+        }
+      } else if (action === 'view-add' && this._editMode && this._editDraft) {
+        this._addViewIn(this._editDraft);
+        this.render();
+      } else if (action === 'view-delete' && this._editMode && this._editDraft && target.dataset.view) {
+        this._deleteViewIn(this._editDraft, target.dataset.view);
+        this.render();
+      } else if (action === 'jump' && target.dataset.group) {
+        this._jumpTo(target.dataset.group);
+      } else if (action === 'toggle-today-more') {
+        this._todayMore = !this._todayMore;
+        this.render();
       } else if (action === 'print') {
         window.print();
       } else if (action === 'widget-hide' && widget) {
@@ -4144,6 +4293,9 @@
         }
       } else if (action === 'reset-preset') {
         const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
+        const current = this._editMode ? this._editDraft : this._prefs;
+        reset.views = current?.views || []; // only the layout of the current view goes back to the preset
+        reset.activeView = current?.activeView || null;
         if (this._editMode) {
           this._editDraft = reset;
         } else {
@@ -4225,6 +4377,10 @@
       if (target instanceof HTMLInputElement && target.dataset.pref === 'animations') {
         draft.animations = target.checked;
         if (!this._editMode) this._savePrefs();
+        this.render();
+      }
+      if (target instanceof HTMLInputElement && target.dataset.pref === 'viewName' && this._editMode) {
+        this._renameViewIn(this._editDraft, target.dataset.view, target.value);
         this.render();
       }
       if (target instanceof HTMLInputElement && target.dataset.pref === 'displayName') {
@@ -4483,9 +4639,9 @@
         }
 
         return `
-          <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding:12px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);">
             <div style="color:var(--mc-rose-deep);flex:none;">${this._productIconSvg(key)}</div>
-            <div style="flex:1;min-width:0;">
+            <div style="flex:1 1 130px;min-width:0;">
               <div style="font-size:13px;font-weight:600;">${escapeHtml(label)}</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;font-family:var(--mc-font-mono);font-size:10.5px;color:var(--secondary-text-color,#6b7280);">
                 <span>${this._t('dashboard_today_short') || 'Heute'}: ${t}</span>
@@ -7186,6 +7342,7 @@
           <label class="toggle"><input type="checkbox" data-pref="animations" ${draft.animations !== false ? 'checked' : ''}/> ${this._t('dashboard_animations')}</label>
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
+          ${this._renderViewEditor()}
           <p class="helper">${this._t('dashboard_hidden_widgets')}</p>
           ${tray}
           <p class="helper">${this._t('dashboard_category_order_label') || 'Reihenfolge und Sichtbarkeit der Symptom-Kategorien'}</p>
@@ -7408,9 +7565,11 @@
       if (widgetId === 'fetal_development') body = this._renderFetalDevelopment(stateObj);
 
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
-      const cardClasses = ['card', spanClass, sensitiveClass].filter(Boolean).join(' ');
+      // A card whose whole content is a note like "No data yet" shrinks to one line (nothing to fold, nothing to look at).
+      const empty = !this._editMode && /^\s*<div class="helper">[^<]*<\/div>\s*$/.test(body);
+      const cardClasses = ['card', spanClass, sensitiveClass, empty ? 'is-empty' : ''].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="${cardClasses}">${this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
+      return `<article class="${cardClasses}">${empty ? `<h2>${title}</h2>` : this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
     }
 
     // Title of a card; outside edit mode a click (or Enter / Space) folds the card up to its title. The state is saved per profile.
@@ -7454,14 +7613,36 @@
       return items;
     }
 
-    _renderTodayOpen(stateObj, discreetMode) {
-      if (discreetMode || this._editMode) return '';
-      const items = this._todayOpenItems(stateObj);
-      if (!items.length) return '';
-      const chips = items.map((item) => (item.plain
-        ? `<span class="todo-chip">${escapeHtml(item.label)}</span>`
-        : `<button type="button" class="todo-chip" data-action="todo" data-todo="${item.key}">${escapeHtml(item.label)}</button>`)).join('');
-      return `<section class="today-open" aria-label="${escapeHtml(this._t('dashboard_today_open'))}"><strong>${escapeHtml(this._t('dashboard_today_open'))}</strong>${chips}</section>`;
+    // One card for everything that is done day by day: period buttons, LH test, temperature, pill, stock note. Rows that apply
+    // are shown, done ones get a check mark; the doctor report sits behind "More". Nothing applies (discreet mode): no card.
+    _renderTodayCard(stateObj, discreetMode) {
+      if (!stateObj) return '';
+      const items = discreetMode ? [] : this._todayOpenItems(stateObj);
+      const stock = items.find((item) => item.key === 'stock');
+      const pill = stateObj.attributes?.pill_pack;
+      const pillRow = !discreetMode && pill && !pill.in_pause && !NON_CYCLE_STATES.includes(String(stateObj.state || ''))
+        ? `<div class="today-row${pill.today_taken ? ' done' : ''}"><span class="today-label">${escapeHtml(this._t('opt_pill'))}</span>${pill.today_taken ? '' : `<button type="button" class="primary" data-action="todo" data-todo="pill">${escapeHtml(this._t('dashboard_todo_pill'))}</button>`}</div>`
+        : '';
+      const stockRow = stock
+        ? `<div class="today-row"><span class="today-label">${escapeHtml(stock.label)}</span>${stock.plain ? '' : `<button type="button" data-action="todo" data-todo="stock">${escapeHtml(this._t('dashboard_todo_stock_show'))}</button>`}</div>`
+        : '';
+      const rows = `${this._renderPeriodActions(stateObj, discreetMode)}
+        ${this._renderLhTestActions(stateObj, discreetMode)}
+        ${this._renderTemperatureAction(stateObj, discreetMode)}
+        ${pillRow}${stockRow}`.trim();
+      const report = this._renderDoctorReportAction(discreetMode);
+      if (!rows && !report) return '';
+      const more = this._todayMore || this._doctorReportBusy;
+      const badge = items.length
+        ? `<span class="today-count">${escapeHtml(this._t('dashboard_today_open_count').replace('{count}', String(items.length)))}</span>`
+        : '';
+      const moreButton = report
+        ? `<button type="button" class="today-more" data-action="toggle-today-more" aria-expanded="${!!more}">${escapeHtml(this._t('dashboard_today_more'))} ${more ? '▴' : '▾'}</button>`
+        : '';
+      return `<section class="card today-card" aria-label="${escapeHtml(this._t('dashboard_today'))}">
+        <div class="today-head"><h2>${escapeHtml(this._t('dashboard_today'))}</h2>${badge}${moreButton}</div>
+        ${rows}${more ? report : ''}
+      </section>`;
     }
 
     _openTodo(key) {
@@ -7469,10 +7650,8 @@
         this._logPillTaken();
         return;
       }
-      const selector = { temp: 'input[data-action="temp-input"]', lh: '[data-action="lh-test"]', stock: '[data-mount="inventory-card"]' }[key];
-      const el = selector ? this.shadowRoot?.querySelector(selector) : null;
+      const el = key === 'stock' ? this.shadowRoot?.querySelector('[data-mount="inventory-card"]') : null;
       el?.scrollIntoView?.({ block: 'center', behavior: this._prefs?.animations === false ? 'auto' : 'smooth' });
-      if (key !== 'stock') el?.focus?.();
     }
 
     // Same call as the pill card: today's contraception method "pill" is the intake.
@@ -7504,6 +7683,19 @@
       const options = CHART_RANGES.map((value) => `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(`${this._t('dashboard_chart_range')}: ${this._t(label[value])}`)}</option>`).join('');
       const aria = escapeHtml(this._t('dashboard_chart_range'));
       return `<select class="range-picker" data-pref="chartRange" aria-label="${aria}" title="${aria}">${options}</select>`;
+    }
+
+    // Jump bar: one chip per group that has a visible card (shown from three groups on, below that there is little to jump over).
+    _renderJumpNav(shownIds) {
+      const groups = NAV_GROUPS.filter(([, , ids]) => ids.some((id) => shownIds.includes(id)));
+      if (groups.length < 3) return '';
+      return `<nav class="jump-nav" aria-label="${escapeHtml(this._t('dashboard_nav_aria'))}">${groups.map(([key, label]) => `<button type="button" data-action="jump" data-group="${key}">${escapeHtml(this._t(label))}</button>`).join('')}</nav>`;
+    }
+
+    _jumpTo(group) {
+      const ids = (NAV_GROUPS.find(([key]) => key === group) || [0, 0, []])[2];
+      const card = Array.from(this.shadowRoot?.querySelectorAll?.('[data-card]') || []).find((el) => ids.includes(el.dataset.card));
+      card?.scrollIntoView?.({ block: 'start', behavior: this._prefs?.animations === false ? 'auto' : 'smooth' });
     }
 
     _renderTodayPill() {
@@ -7547,7 +7739,7 @@
       const pending = this._periodStartConfirm;
       if (!running && pending && pending.entityId === this._selectedEntityId) {
         const question = this._t('dashboard_period_start_confirm').replace('{days}', String(pending.gap));
-        return `<div class="helper" style="margin:6px 0 0;" role="group">
+        return `<div class="today-row today-confirm" role="group">
           <p style="margin:0 0 6px;">${escapeHtml(question)}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${button('period-start-spotting', pending.daysAgo, 'dashboard_period_start_as_spotting')}
@@ -7559,7 +7751,7 @@
       const buttons = running
         ? button('period-end', 0, 'dashboard_period_end_today')
         : `${button('period-start', 0, 'dashboard_period_start_today')} ${button('period-start', 1, 'dashboard_period_start_yesterday')}`;
-      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;">${buttons}</div>`;
+      return `<div class="today-row">${buttons}</div>`;
     }
 
     // One-tap LH (ovulation) test for today, offered inside the fertile window. A positive test moves the ovulation estimate.
@@ -7578,8 +7770,9 @@
       const current = this._todaysLhTests(stateObj);
       const button = (value, key) =>
         `<button type="button" class="${current.includes(value) ? 'mode-btn active' : ''}" data-action="lh-test" data-value="${value}" aria-pressed="${current.includes(value)}">${escapeHtml(this._t(key))}</button>`;
-      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" role="group" aria-label="${escapeHtml(this._t('dashboard_lh_label'))}">
-        <span>${escapeHtml(this._t('dashboard_lh_label'))}</span>
+      const done = current.some((value) => value === 'positive_ovulation' || value === 'negative_ovulation');
+      return `<div class="today-row${done ? ' done' : ''}" role="group" aria-label="${escapeHtml(this._t('dashboard_lh_label'))}">
+        <span class="today-label">${escapeHtml(this._t('dashboard_lh_label'))}</span>
         ${button('positive_ovulation', 'dashboard_lh_positive')} ${button('negative_ovulation', 'dashboard_lh_negative')}
       </div>`;
     }
@@ -7639,8 +7832,8 @@
       const current = logged.find((item) => item.date === today);
       const unit = this._temperatureUnit(stateObj.attributes);
       const label = this._t('dashboard_temp_label');
-      return `<div class="helper" style="margin:6px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" role="group" aria-label="${escapeHtml(label)}">
-        <span>${escapeHtml(label)}</span>
+      return `<div class="today-row${current ? ' done' : ''}" role="group" aria-label="${escapeHtml(label)}">
+        <span class="today-label">${escapeHtml(label)}</span>
         <input type="text" inputmode="decimal" size="6" data-action="temp-input" value="${escapeHtml(current ? this._displayTemperature(current.basal_temp, unit, 2) : '')}" aria-label="${escapeHtml(label)} ${escapeHtml(unit)}" />
         <span>${escapeHtml(unit)}</span>
         <button type="button" data-action="temp-save">${escapeHtml(this._t('dashboard_temp_save'))}</button>
@@ -7865,10 +8058,14 @@
       const discreetMode = !!this._prefs?.discreetMode;
       const mode = this._resolveContentMode(stateObj);
       const order = this._widgetIdsForMode(mode, this._layoutPrefs()?.widgetOrder || WIDGET_IDS);
+      const shown = [];
       const cards = order
         .map((widgetId) => {
           const html = this._renderWidget(widgetId, stateObj, discreetMode);
-          return html && this._editMode ? this._decorateEditCard(widgetId, html) : html;
+          if (!html) return html;
+          if (this._editMode) return this._decorateEditCard(widgetId, html);
+          shown.push(widgetId);
+          return html.replace(/^<article class=/, `<article data-card="${widgetId}" class=`);
         })
         .filter(Boolean);
 
@@ -7926,7 +8123,7 @@
             --mc-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
             --mc-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
           }
-          .page { padding: 16px; display: grid; gap: 16px; }
+          .page { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
           /* The header stays in view while scrolling (not in edit mode, where the edit bar is the sticky one). */
           .toolbar {
             display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -7935,6 +8132,18 @@
             -webkit-backdrop-filter: saturate(180%) blur(12px); backdrop-filter: saturate(180%) blur(12px);
           }
           .page.editing .toolbar { position: static; }
+          .subnav { flex: 1 1 100%; display: flex; align-items: center; gap: 12px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+          .subnav::-webkit-scrollbar { display: none; }
+          .jump-nav, .view-switch { display: flex; gap: 6px; flex: none; }
+          .view-switch { padding: 3px; border-radius: 999px; background: var(--mc-sand); border: 1px solid var(--divider-color, #e5e7eb); }
+          .toolbar .view-switch button { height: 28px; padding: 0 14px; font-size: .78rem; white-space: nowrap; border: none; background: transparent; }
+          .toolbar .view-switch button[aria-pressed="true"] { background: var(--card-background-color, #fff); color: var(--mc-rose-deep); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+          .view-switch + .jump-nav { padding-left: 12px; border-left: 1px solid var(--divider-color, #e5e7eb); }
+          .edit-chip.active { background: var(--mc-rose-tint); border-color: var(--mc-rose); color: var(--mc-rose-deep); font-weight: 600; }
+          .edit-view-name { display: inline-flex; align-items: center; gap: 8px; }
+          .edit-view-name input { width: 12rem; }
+          .toolbar .jump-nav button { height: 30px; padding: 0 12px; font-size: .78rem; white-space: nowrap; flex: none; }
+          [data-card] { scroll-margin-top: 112px; }
           .toolbar h1 { margin: 0; font-family: var(--mc-font-display); font-weight: 500; font-size: 1.4rem; letter-spacing: -0.01em; }
           .toolbar button {
             border: 1px solid var(--divider-color, #d1d5db);
@@ -8199,7 +8408,7 @@
             grid-template-columns: repeat(12, 1fr);
           }
           @media (max-width: 900px) {
-            .grid { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: minmax(0, 1fr); }
           }
           .card {
             background: var(--card-background-color, #fff);
@@ -8207,6 +8416,8 @@
             border-radius: 20px;
             padding: 26px 26px 22px;
             display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            min-width: 0;
             gap: 10px;
             box-shadow: 0 1px 2px rgba(43,27,36,.04), 0 8px 24px -14px rgba(43,27,36,.22);
             transition: box-shadow 0.15s;
@@ -8217,21 +8428,37 @@
           .card h2.collapsible::after { content: '▾'; font-size: .8em; color: var(--secondary-text-color, #9ca3af); transition: transform .15s; }
           .card.collapsed h2.collapsible::after { transform: rotate(-90deg); }
           .card h2.collapsible:focus-visible { outline: 2px solid var(--primary-color, #2563eb); outline-offset: 2px; }
-          .card.collapsed { align-self: start; }
+          .card.collapsed, .card.is-empty { align-self: start; }
+          .card.is-empty { padding: 14px 22px; grid-template-columns: auto 1fr; align-items: center; column-gap: 16px; }
+          .card.is-empty .helper { margin: 0; }
           @media screen { .card.collapsed > :not(h2) { display: none; } }
-          .today-open { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .875rem; }
-          .todo-chip {
-            font: inherit; font-size: .8125rem; padding: 4px 12px; border-radius: 999px; cursor: pointer;
-            border: 1px solid color-mix(in srgb, var(--mc-amber) 60%, transparent); background: var(--mc-amber-tint); color: var(--mc-amber-deep);
+          /* Card "Today": every daily action in one place, with the look of the other cards. */
+          .today-card { grid-column: auto; gap: 4px; padding: 16px 22px 12px; }
+          .today-head { display: flex; align-items: center; gap: 10px; }
+          .today-head h2 { margin-right: auto; }
+          .today-count { font-size: .75rem; padding: 2px 10px; border-radius: 999px; background: var(--mc-amber-tint); color: var(--mc-amber-deep); }
+          .today-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 40px; padding: 6px 0; border-top: 1px solid var(--divider-color, #ececec); font-size: .875rem; }
+          .today-row p { margin: 0; flex: 1 1 100%; }
+          .today-label { flex: 0 1 12rem; min-width: 7rem; color: var(--secondary-text-color, #6b7280); }
+          .today-row.done .today-label { color: var(--mc-sage-deep); }
+          .today-row.done .today-label::before { content: '✓ '; font-weight: 700; }
+          .today-card button {
+            font: inherit; font-size: .8125rem; padding: 5px 14px; min-height: 32px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: var(--primary-text-color, #1f2937);
           }
-          span.todo-chip { cursor: default; }
-          button.todo-chip:hover { background: color-mix(in srgb, var(--mc-amber) 22%, var(--card-background-color, #fff)); }
+          .today-card button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
+          .today-card button.primary, .today-card button.mode-btn.active { background: var(--mc-rose-tint); border-color: var(--mc-rose); color: var(--mc-rose-deep); font-weight: 600; }
+          .today-card button:disabled { opacity: .55; cursor: default; }
+          .today-card .today-more { border: none; background: none; color: var(--secondary-text-color, #6b7280); padding: 4px 8px; }
+          .today-card input[type="text"] { width: 6.5rem; }
+          .today-card input[data-action="doctor-report-name"] { width: min(14rem, 100%); }
+          .today-card select { width: auto; }
           @media print {
             :host, .page { background: #fff; }
             .page { padding: 0; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
             .toolbar { position: static; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; margin: 0; }
-            .toolbar button, .toolbar select, .today-open, .edit-bar, .page > div.helper, .mc-modal-backdrop, .mc-chat-fab-button, .mc-chat-fab-panel, .message { display: none !important; }
+            .toolbar button, .toolbar select, .subnav, .mobile-bar, .today-card, .edit-bar, .page > div.helper, .mc-modal-backdrop, .mc-chat-fab-button, .mc-chat-fab-panel, .message { display: none !important; }
             .card { break-inside: avoid; box-shadow: none; }
             .card h2.collapsible::after { content: none; }
           }
@@ -8821,9 +9048,27 @@
           }
           .household-timeline-cell--period { background: var(--mc-rose, #E8637D); }
           .household-timeline-cell--fertile { background: var(--mc-sage, #7C9885); }
+          .mobile-bar { display: none; }
+          /* Phone: "Log today" sits in a bar at the bottom (thumb reach), the header gets shorter. */
+          @media (max-width: 700px) {
+            .page { padding-bottom: 88px; }
+            .mobile-bar {
+              display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 940; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+              background: color-mix(in srgb, var(--card-background-color, #fff) 88%, transparent);
+              -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
+              border-top: 1px solid var(--divider-color, #e5e7eb);
+            }
+            .mobile-bar button {
+              flex: 1; height: 46px; border: none; border-radius: 999px; font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
+              background: var(--mc-rose-deep, #C43F5E); color: #fff;
+            }
+            .toolbar .today-pill, .toolbar button[data-action="open-quick-log"], .toolbar button[data-action="print"], .toolbar button.discreet-toggle span:first-child { display: none; }
+            .mc-chat-fab-button { bottom: 80px; right: 14px; width: 48px; height: 48px; }
+            .mc-chat-fab-panel { bottom: 140px; right: 14px; }
+          }
           @media (max-width: 480px) {
-            .page { padding: 10px; gap: 10px; }
-            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .page { padding: 10px; gap: 10px; padding-bottom: 88px; }
+            .grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
             .kpi-strip { gap: 8px; }
             .kpi-item { min-width: 60px; padding: 8px 10px; }
             .household-stat { flex: 1 1 calc(50% - 5px); box-sizing: border-box; }
@@ -8871,21 +9116,19 @@
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="print" aria-label="${this._t('dashboard_print')}" title="${this._t('dashboard_print')}"><ha-icon icon="mdi:printer-outline"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
+            ${this._editMode || isFreshProfile ? '' : this._renderSubnav(shown)}
           </header>
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderOpenIssues(discreetMode)}
-          ${this._renderTodayOpen(stateObj, discreetMode)}
-          ${this._renderDoctorReportAction(discreetMode)}
-          ${this._renderPeriodActions(stateObj, discreetMode)}
-          ${this._renderLhTestActions(stateObj, discreetMode)}
-          ${this._renderTemperatureAction(stateObj, discreetMode)}
+          ${this._editMode ? '' : this._renderTodayCard(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
           ${this._message ? `<div class="message${messagePop ? ' mc-pop' : ''}" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}
           ${this._renderQuickLogModal(stateObj)}
           ${this._renderChatFab(stateObj)}
           <section class="grid${enter ? ' mc-enter' : ''}" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
+          ${this._editMode ? '' : `<div class="mobile-bar"><button type="button" data-action="open-quick-log">${this._t('dashboard_log_today') || 'Heute loggen'}</button></div>`}
         </main>
       `;
       this._mountEmbeddedCards();

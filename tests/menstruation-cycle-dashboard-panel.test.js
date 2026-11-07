@@ -57,13 +57,31 @@ const baseTranslations = {
   months_3: '3 months',
   months_6: '6 months',
   months_12: '12 months',
-  dashboard_today_open: 'Open today',
   dashboard_todo_temp: 'Take temperature',
   dashboard_todo_lh: 'LH test',
   dashboard_todo_pill: 'Pill taken',
   dashboard_todo_stock: 'Low stock: {products}',
   dashboard_pill_done: 'Pill logged.',
   dashboard_print: 'Print',
+  dashboard_views: 'Views',
+  dashboard_view_standard: 'Standard',
+  dashboard_view_default_name: 'View {n}',
+  dashboard_view_new: 'New view',
+  dashboard_view_name: 'Name',
+  dashboard_view_delete: 'Delete view',
+  dashboard_view_hint: 'Hint',
+  dashboard_nav_aria: 'Jump to a section',
+  dashboard_nav_overview: 'Overview',
+  dashboard_nav_history: 'History',
+  dashboard_nav_calendar: 'Calendar',
+  dashboard_nav_supplies: 'Supplies',
+  dashboard_nav_insights: 'Insights',
+  dashboard_today: 'Today',
+  dashboard_today_open_count: '{count} open',
+  dashboard_today_more: 'More',
+  dashboard_todo_stock_show: 'Show',
+  doctor_report_title: 'Doctor report',
+  opt_pill: 'Pill',
   tampon: 'Tampon',
   pad: 'Pad',
   liner: 'Liner',
@@ -730,7 +748,8 @@ const makeHass = (stateObj) => ({
     return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
   };
   const isoToday = isoMonthsBack(0);
-  const featPanel = await assignHass(new Panel(), makeHass(makeState({ symptom_history: [] })));
+  const fiveStarts = Array.from({ length: 6 }, (_, i) => isoMonthsBack(0, -28 * (5 - i)));
+  const featPanel = await assignHass(new Panel(), makeHass(makeState({ symptom_history: [], grouped_starts: fiveStarts })));
   featPanel._prefs.widgetVisibility.cycle_history = true;
 
   // folding: click on the title toggles, is stored per profile, shows in the markup; edit mode never folds
@@ -845,7 +864,7 @@ const makeHass = (stateObj) => ({
   const openState = (attrs = {}, state = 'follicular') => ({ ...makeState({ symptom_history: [], ...attrs }), state });
   const keys = (stateObj) => openPanel._todayOpenItems(stateObj).map((item) => item.key);
   assert.deepStrictEqual(keys(openState()), [], 'nothing to do, nothing shown');
-  assert.strictEqual(openPanel._renderTodayOpen(openState(), false), '', 'and no empty strip');
+  assert.ok(!openPanel._renderTodayCard(openState(), false).includes('today-count'), 'no count badge when nothing is open');
   const yesterday = isoMonthsBack(0, -1);
   assert.deepStrictEqual(keys(openState({ symptom_history: [{ date: yesterday, basal_temp: 36.4 }] })), ['temp'], 'temperature logged recently but not today');
   assert.deepStrictEqual(keys(openState({ symptom_history: [{ date: yesterday, basal_temp: 36.4 }, { date: isoToday, basal_temp: 36.5 }] })), [], 'temperature of today is there');
@@ -869,17 +888,46 @@ const makeHass = (stateObj) => ({
   openPanel._hass.states['sensor.household_product_stock'].attributes.inventory.pad = 6;
   assert.deepStrictEqual(keys(openState()), [], 'above the threshold');
   openPanel._hass.states['sensor.household_product_stock'].attributes.inventory.pad = 3;
-  const strip = openPanel._renderTodayOpen(openState({ pill_pack: { in_pause: false, today_taken: false } }), false);
-  assert.ok(strip.includes('class="today-open"') && strip.includes('data-todo="pill"') && strip.includes('data-todo="stock"'), 'strip with a chip per open item');
-  assert.strictEqual(openPanel._renderTodayOpen(openState({ pill_pack: { in_pause: false, today_taken: false } }), true), '', 'not in discreet mode');
-  openPanel._editMode = true;
-  assert.strictEqual(openPanel._renderTodayOpen(openState({ pill_pack: { in_pause: false, today_taken: false } }), false), '', 'not while editing');
-  openPanel._editMode = false;
+  const pillAttrs = { pill_pack: { in_pause: false, today_taken: false } };
+  const card = openPanel._renderTodayCard(openState(pillAttrs), false);
+  assert.ok(card.includes('class="card today-card"') && card.includes('data-todo="pill"') && card.includes('data-todo="stock"'), 'one card with a row per open item');
+  assert.ok(card.includes('2 open'), 'counts what is open');
+  assert.ok(/data-action="period-start"/.test(card), 'the period buttons are part of the card');
+  assert.ok(!card.includes('data-action="create-doctor-report"'), 'doctor report only behind "More"');
+  assert.ok(card.includes('data-action="toggle-today-more" aria-expanded="false"'), 'More button is closed');
+  openPanel._handleClick({ target: new ClickTarget({ action: 'toggle-today-more' }) });
+  assert.ok(openPanel._renderTodayCard(openState(pillAttrs), false).includes('data-action="create-doctor-report"'), 'More opens the doctor report');
+  assert.ok(openPanel._renderTodayCard(openState(pillAttrs), false).includes('aria-expanded="true"'));
+  openPanel._handleClick({ target: new ClickTarget({ action: 'toggle-today-more' }) });
+  assert.ok(!openPanel._renderTodayCard(openState(pillAttrs), false).includes('create-doctor-report'), 'and closes it again');
+  const takenCard = openPanel._renderTodayCard(openState({ pill_pack: { in_pause: false, today_taken: true } }), false);
+  assert.ok(takenCard.includes('today-row done') && !takenCard.includes('data-todo="pill"'), 'taken pill: check mark, no button');
+  assert.ok(!openPanel._renderTodayCard(openState({ pill_pack: { in_pause: true, today_taken: false } }), false).includes('opt_pill') && !openPanel._renderTodayCard(openState({ pill_pack: { in_pause: true, today_taken: false } }), false).includes('>Pill<'), 'no pill row on a pause day');
+  assert.strictEqual(openPanel._renderTodayCard(openState(pillAttrs), true), '', 'nothing in discreet mode');
+  assert.strictEqual(openPanel._renderTodayCard(null, false), '');
+  const lhDone = openPanel._renderTodayCard(openState({ ...fertile, symptom_history: [{ date: isoToday, test: ['negative_ovulation'] }] }), false);
+  assert.ok(/today-row done" role="group" aria-label="LH/.test(lhDone) || lhDone.includes('today-row done'), 'LH test of today gets a check mark');
+  assert.ok(!card.includes('data-action="lh-test"'), 'no LH row outside the fertile window');
   openPanel._prefs.widgetVisibility.inventory_card = false;
-  assert.ok(openPanel._renderTodayOpen(openState(), false).includes('<span class="todo-chip">') && !openPanel._renderTodayOpen(openState(), false).includes('data-todo="stock"'), 'stock chip is only text when the inventory widget is hidden');
+  assert.ok(!openPanel._renderTodayCard(openState(), false).includes('data-todo="stock"') && openPanel._renderTodayCard(openState(), false).includes('Low stock'), 'stock row is only text when the inventory widget is hidden');
   openPanel._prefs.widgetVisibility.inventory_card = true;
+  openPanel._prefs.discreetMode = false;
+  openPanel.render();
+  assert.ok(openPanel.shadowRoot.innerHTML.includes('class="card today-card"'), 'card on the page');
+  openPanel._editMode = true;
+  openPanel.render();
+  assert.ok(!openPanel.shadowRoot.innerHTML.includes('class="card today-card"'), 'no card while editing');
+  openPanel._editMode = false;
+  openPanel._todayMore = false;
+  openPanel._handleClick({ target: new ClickTarget({ action: 'create-doctor-report' }) });
+  assert.strictEqual(openPanel._todayMore, true, 'making a report opens "More", so the links are in view');
+  openPanel._todayMore = false;
+  const tempDone = openPanel._renderTodayCard(openState({ symptom_history: [{ date: isoToday, basal_temp: 36.5 }] }), false);
+  assert.ok(/today-row done" role="group" aria-label="[^"]*">\s*<span class="today-label">[^<]*<\/span>\s*<input type="text" inputmode="decimal"/.test(tempDone), 'temperature of today gets a check mark');
+  const tempOpen = openPanel._renderTodayCard(openState({ symptom_history: [{ date: yesterday, basal_temp: 36.5 }] }), false);
+  assert.ok(!/today-row done" role="group" aria-label="[^"]*">\s*<span class="today-label">[^<]*<\/span>\s*<input type="text" inputmode="decimal"/.test(tempOpen), 'not before it is logged');
 
-  // the pill chip logs the intake right away
+  // the pill button logs the intake right away
   const calls = [];
   openPanel._hass.callService = async (domain, service, data) => { calls.push([domain, service, data]); };
   openPanel._hass.states[openPanel._selectedEntityId] = openState({ pill_pack: { in_pause: false, today_taken: false } });
@@ -889,18 +937,18 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(calls[0][2].symptom_data.contraception_method, 'pill');
   assert.strictEqual(calls[0][2].date, isoToday);
   assert.strictEqual(openPanel._message, 'Pill logged.');
-  // the other chips jump to the row / card (focus + scroll), without logging anything
+  // the stock button scrolls to the inventory card, without logging anything
   const jumped = [];
-  const fake = { scrollIntoView: (o) => jumped.push(['scroll', o.behavior]), focus: () => jumped.push(['focus']) };
+  const fake = { scrollIntoView: (o) => jumped.push(o.behavior) };
   const realQuery1 = openPanel.shadowRoot.querySelector;
-  openPanel.shadowRoot.querySelector = () => fake;
-  openPanel._openTodo('temp');
+  openPanel.shadowRoot.querySelector = (selector) => (selector.includes('inventory-card') ? fake : null);
   openPanel._openTodo('stock');
-  assert.deepStrictEqual(jumped, [['scroll', 'smooth'], ['focus'], ['scroll', 'smooth']], 'temperature jumps and focuses, stock only scrolls');
+  assert.deepStrictEqual(jumped, ['smooth']);
   openPanel._prefs.animations = false;
-  jumped.length = 0;
-  openPanel._openTodo('lh');
-  assert.strictEqual(jumped[0][1], 'auto', 'no smooth scrolling with animations off');
+  openPanel._openTodo('stock');
+  assert.strictEqual(jumped[1], 'auto', 'no smooth scrolling with animations off');
+  openPanel._openTodo('temp');
+  assert.strictEqual(jumped.length, 2, 'other keys scroll nowhere');
   openPanel.shadowRoot.querySelector = realQuery1;
   assert.strictEqual(calls.filter((call) => call[1] === 'add_symptom').length, 1, 'only the pill chip logs');
 
@@ -909,13 +957,228 @@ const makeHass = (stateObj) => ({
   assert.ok(source.includes('.page.editing .toolbar { position: static; }'), 'edit mode: the edit bar is the sticky one');
   assert.ok(source.includes('data-action="print"') && source.includes('window.print()'), 'print button');
   const printCss = source.slice(source.indexOf('@media print {'), source.indexOf('.card h2 {\n            margin: 0;'));
-  assert.ok(printCss.includes('.toolbar button') && printCss.includes('.today-open') && printCss.includes('.edit-bar') && printCss.includes('break-inside: avoid') && printCss.includes('.mc-modal-backdrop'), 'print hides the controls and keeps cards whole');
+  assert.ok(printCss.includes('.toolbar button') && printCss.includes('.today-card') && printCss.includes('.edit-bar') && printCss.includes('break-inside: avoid') && printCss.includes('.mc-modal-backdrop'), 'print hides the controls and keeps cards whole');
   const printButton = new ClickTarget({ action: 'print' });
   let printed = 0;
   global.window.print = () => { printed += 1; };
   featPanel._handleClick({ target: printButton });
   assert.strictEqual(printed, 1, 'print button opens the print dialog');
   delete global.window.print;
+
+  // ---- Compact empty cards, jump bar, phone bar ----
+  const emptyPanel = await assignHass(new Panel(), makeHass(makeState({ symptom_history: [], grouped_starts: [] })));
+  emptyPanel._prefs.widgetVisibility.cycle_history = true;
+  const emptyState = emptyPanel._hass.states[emptyPanel._selectedEntityId];
+  let emptyHtml = emptyPanel._renderWidget('cycle_history', emptyState, false);
+  assert.ok(/class="card [^"]*is-empty/.test(emptyHtml) && !emptyHtml.includes('widget-collapse'), 'a card with only a note shrinks and has nothing to fold');
+  emptyPanel._editMode = true;
+  assert.ok(!emptyPanel._renderWidget('cycle_history', emptyState, false).includes('is-empty'), 'edit mode shows every card at its real size');
+  emptyPanel._editMode = false;
+  const fullHtml = emptyPanel._renderWidget('cycle_history', makeState({ grouped_starts: fiveStarts }), false);
+  assert.ok(!fullHtml.includes('is-empty') && fullHtml.includes('widget-collapse'), 'a card with data is a normal card');
+
+  // jump bar: group chips for what is shown; a tap scrolls to the first visible card of the group
+  const navPanel = await assignHass(new Panel(), makeHass(makeState({ symptom_history: [], grouped_starts: fiveStarts })));
+  assert.strictEqual(navPanel._renderJumpNav(['kpi_strip', 'calendar_card']), '', 'fewer than three groups: no bar');
+  const navHtml = navPanel._renderJumpNav(['kpi_strip', 'cycle_history', 'calendar_card', 'inventory_card']);
+  assert.ok(navHtml.includes('data-group="overview"') && navHtml.includes('data-group="history"') && navHtml.includes('data-group="calendar"') && navHtml.includes('data-group="supplies"') && !navHtml.includes('data-group="insights"'), 'only groups with a shown card');
+  const scrolls = [];
+  const realQA = navPanel.shadowRoot.querySelectorAll;
+  const mkCard = (id) => ({ dataset: { card: id }, scrollIntoView: (o) => scrolls.push([id, o.block, o.behavior]) });
+  navPanel.shadowRoot.querySelectorAll = () => [mkCard('kpi_strip'), mkCard('timer_card'), mkCard('inventory_card'), mkCard('calendar_card')];
+  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'supplies' }) });
+  assert.deepStrictEqual(scrolls, [['timer_card', 'start', 'smooth']], 'first card of the group in page order');
+  navPanel._prefs.animations = false;
+  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'calendar' }) });
+  assert.deepStrictEqual(scrolls[1], ['calendar_card', 'start', 'auto'], 'no smooth scrolling with animations off');
+  scrolls.pop();
+  navPanel._prefs.animations = true;
+  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'nonsense' }) });
+  assert.strictEqual(scrolls.length, 1, 'unknown group does nothing');
+  navPanel.shadowRoot.querySelectorAll = realQA;
+  navPanel._prefs.widgetVisibility.cycle_history = true;
+  navPanel.render();
+  const navPage = navPanel.shadowRoot.innerHTML;
+  assert.ok(navPage.includes('class="jump-nav"') && navPage.indexOf('class="jump-nav"') < navPage.indexOf('</header>'), 'bar sits inside the sticky header');
+  assert.ok(/<article data-card="cycle_history" class="card/.test(navPage), 'cards carry their id for the jump');
+  navPanel._editMode = true;
+  navPanel.render();
+  assert.ok(!navPanel.shadowRoot.innerHTML.includes('class="jump-nav"') && !navPanel.shadowRoot.innerHTML.includes('data-card='), 'no bar while editing');
+  navPanel._editMode = false;
+  navPanel.render();
+  assert.ok(navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"') && navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"><button type="button" data-action="open-quick-log"'), 'phone bar with Log today');
+  assert.ok(/@media \(max-width: 700px\) \{[^@]*\.mobile-bar \{\s*display: flex; position: fixed;/.test(source), 'the bar is only shown on narrow screens');
+  navPanel._editMode = true;
+  navPanel.render();
+  assert.ok(!navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"'), 'no phone bar while editing');
+  navPanel._editMode = false;
+
+  // ---- Views ----
+  const viewPanel = await assignHass(new Panel(), makeHass(makeState({ symptom_history: [], grouped_starts: fiveStarts })));
+  viewPanel._prefs.discreetMode = false;
+  const click = (action, data = {}) => viewPanel._handleClick({ target: new ClickTarget({ action, ...data }) });
+  const storedPrefs = () => JSON.parse(storage.get(viewPanel._storageKey(viewPanel._activeProfile)));
+  const names = (prefs) => viewPanel._viewsOf(prefs).map((view) => view.name);
+  assert.deepStrictEqual(names(viewPanel._prefs), ['Standard'], 'one implicit view to begin with');
+  assert.strictEqual(viewPanel._renderViewSwitch(), '', 'a single view shows no switcher');
+
+  // normalising stored views
+  const preset = viewPanel._preset('general');
+  const norm = viewPanel._normalizePrefs({
+    activeView: 'ghost',
+    views: [
+      { id: 'a', name: '  Daily  ', layout: { widgetVisibility: { cycle_history: false }, widgetOrder: ['calendar_card', 'nonsense'], widgetSpan: { calendar_card: 8, kpi_strip: 99 }, widgetCollapsed: { calendar_card: true, nonsense: true } } },
+      { id: 'a', name: 'Duplicate id' },
+      { id: 'bad id!', name: 'Bad id' },
+      { id: 'noname', name: '   ' },
+      { id: 'b', name: 'x'.repeat(50) },
+      { name: 'No id' },
+    ],
+  }, 'alice', 'general');
+  assert.deepStrictEqual(norm.views.map((view) => view.id), ['a', 'b'], 'invalid, nameless and duplicate views are dropped');
+  assert.strictEqual(norm.views[0].name, 'Daily', 'names are trimmed');
+  assert.strictEqual(norm.views[1].name.length, 30, 'and cut to 30 characters');
+  assert.strictEqual(norm.activeView, 'a', 'unknown active view: the first one');
+  assert.strictEqual(norm.views[0].layout.widgetVisibility.cycle_history, false);
+  assert.strictEqual(norm.views[0].layout.widgetOrder[0], 'calendar_card');
+  assert.ok(!norm.views[0].layout.widgetOrder.includes('nonsense') && norm.views[0].layout.widgetOrder.length === viewPanel._normalizePrefs({}, 'alice', 'general').widgetOrder.length, 'order of a view is completed with the missing cards');
+  assert.deepStrictEqual(norm.views[0].layout.widgetSpan, { calendar_card: 8 });
+  assert.deepStrictEqual(norm.views[0].layout.widgetCollapsed, { calendar_card: true });
+  assert.deepStrictEqual(norm.views[1].layout.widgetVisibility, preset.widgetVisibility, 'a view without a layout shows the preset');
+  assert.strictEqual(viewPanel._normalizePrefs({ views: Array.from({ length: 20 }, (_, i) => ({ id: `v${i}`, name: `V${i}` })) }, 'alice', 'general').views.length, 8, 'at most eight views');
+  assert.deepStrictEqual([viewPanel._normalizePrefs({}, 'alice', 'general').views, viewPanel._normalizePrefs({}, 'alice', 'general').activeView], [[], null], 'no views: none, nothing active');
+  assert.strictEqual(viewPanel._normalizePrefs({ views: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], activeView: 'b' }, 'alice', 'general').activeView, 'b');
+
+  // creating views happens in the edit mode and works on the draft
+  click('view-add');
+  assert.strictEqual(viewPanel._prefs.views.length, 0, 'outside the edit mode nothing is added');
+  click('toggle-edit');
+  click('view-add');
+  assert.deepStrictEqual(names(viewPanel._editDraft), ['Standard', 'View 2'], 'the first new view turns the implicit one into a real one');
+  const newId = viewPanel._editDraft.activeView;
+  assert.notStrictEqual(newId, 'default');
+  assert.deepStrictEqual(viewPanel._editDraft.widgetVisibility, viewPanel._prefs.widgetVisibility, 'a new view starts as a copy of the current one');
+  assert.ok(viewPanel.shadowRoot.innerHTML.includes('data-action="view-switch"') && viewPanel.shadowRoot.innerHTML.includes('data-action="view-add"') && viewPanel.shadowRoot.innerHTML.includes('data-pref="viewName"'), 'edit panel offers switching, adding and renaming');
+  // change the new view: hide a card, fold another, widen a third
+  const hadDonut = viewPanel._editDraft.widgetVisibility.phase_donut;
+  click('widget-hide', { widget: 'phase_donut' });
+  viewPanel._editDraft.widgetCollapsed.cycle_history = true;
+  viewPanel._setWidgetSpan('cycle_history', 9);
+  click('view-switch', { view: 'default' });
+  assert.strictEqual(viewPanel._editDraft.activeView, 'default');
+  assert.strictEqual(viewPanel._editDraft.widgetVisibility.phase_donut, hadDonut, 'the first view did not change');
+  assert.ok(!viewPanel._editDraft.widgetCollapsed.cycle_history && viewPanel._widgetSpan('cycle_history') !== 9, 'neither did its folding and widths');
+  click('view-switch', { view: newId });
+  assert.strictEqual(viewPanel._editDraft.widgetVisibility.phase_donut, false, 'switching back brings the changes of the new view');
+  assert.ok(viewPanel._editDraft.widgetCollapsed.cycle_history && viewPanel._widgetSpan('cycle_history') === 9);
+  click('view-switch', { view: 'ghost' });
+  assert.strictEqual(viewPanel._editDraft.activeView, newId, 'unknown view: nothing happens');
+
+  // rename
+  const nameInput = new ClickTarget({ pref: 'viewName', view: newId });
+  nameInput.value = '  Doctor visit  ';
+  viewPanel._handleChange({ target: nameInput });
+  assert.strictEqual(viewPanel._editDraft.views.find((view) => view.id === newId).name, 'Doctor visit', 'rename is trimmed');
+  nameInput.value = '   ';
+  viewPanel._handleChange({ target: nameInput });
+  assert.strictEqual(viewPanel._editDraft.views.find((view) => view.id === newId).name, 'Doctor visit', 'an empty name is ignored');
+  nameInput.value = 'y'.repeat(60);
+  viewPanel._handleChange({ target: nameInput });
+  assert.strictEqual(viewPanel._editDraft.views.find((view) => view.id === newId).name.length, 30);
+  nameInput.value = 'Doctor visit';
+  viewPanel._handleChange({ target: nameInput });
+
+  // cancel throws everything away, save keeps it
+  click('cancel-edit');
+  assert.strictEqual(viewPanel._prefs.views.length, 0, 'cancel: no views');
+  click('toggle-edit');
+  click('view-add');
+  const keptId = viewPanel._editDraft.activeView;
+  click('widget-hide', { widget: 'phase_donut' });
+  click('save-edit');
+  assert.strictEqual(viewPanel._prefs.activeView, keptId);
+  assert.strictEqual(storedPrefs().views.length, 2, 'views are saved with the prefs');
+  assert.strictEqual(storedPrefs().activeView, keptId);
+  assert.strictEqual(viewPanel._prefs.widgetVisibility.phase_donut, false, 'the saved layout is the one of the active view');
+
+  // switching outside the edit mode: switcher in the header, layout swaps, choice is saved, opening animation plays again
+  viewPanel.render();
+  const switchHtml = viewPanel._renderViewSwitch();
+  assert.ok(switchHtml.includes('class="view-switch"') && switchHtml.includes(`data-view="${keptId}" aria-pressed="true"`) && switchHtml.includes('data-view="default" aria-pressed="false"'), 'switcher marks the active view');
+  assert.ok(/<div class="subnav"><div class="view-switch"/.test(viewPanel.shadowRoot.innerHTML) && viewPanel.shadowRoot.innerHTML.indexOf('class="view-switch"') < viewPanel.shadowRoot.innerHTML.indexOf('</header>'), 'switcher sits in the sticky header');
+  assert.ok(!viewPanel.shadowRoot.innerHTML.includes('data-card="phase_donut"'), 'donut hidden in this view');
+  viewPanel._enterPlayed = true;
+  click('view-switch', { view: 'default' });
+  assert.strictEqual(viewPanel._prefs.activeView, 'default');
+  assert.strictEqual(storedPrefs().activeView, 'default', 'saved');
+  assert.ok(viewPanel.shadowRoot.innerHTML.includes('class="grid mc-enter"'), 'plays the opening animation again');
+  assert.ok(viewPanel.shadowRoot.innerHTML.includes('data-card="phase_donut"'), 'donut shown in the first view');
+  assert.strictEqual(viewPanel._prefs.widgetVisibility.phase_donut, hadDonut);
+  // folding belongs to the view too
+  click('widget-collapse', { widget: 'cycle_history' });
+  assert.ok(viewPanel._prefs.widgetCollapsed.cycle_history);
+  click('view-switch', { view: keptId });
+  assert.ok(!viewPanel._prefs.widgetCollapsed.cycle_history, 'folded in one view, open in the other');
+  click('view-switch', { view: 'default' });
+  assert.ok(viewPanel._prefs.widgetCollapsed.cycle_history, 'and still folded when coming back');
+
+  // reload: what is stored gives the same views
+  const reloaded = viewPanel._loadPrefs(viewPanel._activeProfile, 'general');
+  assert.deepStrictEqual(reloaded.views.map((view) => view.id), ['default', keptId]);
+  assert.strictEqual(reloaded.activeView, 'default');
+  assert.ok(reloaded.widgetCollapsed.cycle_history);
+
+  // reset to preset only resets the layout of the current view
+  click('toggle-edit');
+  click('reset-preset');
+  assert.deepStrictEqual(viewPanel._editDraft.views.map((view) => view.id), ['default', keptId], 'views survive the reset (edit mode)');
+  assert.strictEqual(viewPanel._editDraft.activeView, 'default');
+  assert.ok(!viewPanel._editDraft.widgetCollapsed.cycle_history, 'layout is back to the preset');
+  click('cancel-edit');
+  click('reset-preset');
+  assert.deepStrictEqual(viewPanel._prefs.views.map((view) => view.id), ['default', keptId], 'views survive the reset');
+  assert.strictEqual(viewPanel._prefs.activeView, 'default');
+
+  // delete: the active one goes, the next one is loaded; the last view cannot be deleted; a ninth cannot be added
+  click('toggle-edit');
+  click('view-switch', { view: keptId });
+  click('view-delete', { view: keptId });
+  assert.deepStrictEqual(viewPanel._editDraft.views.map((view) => view.id), ['default']);
+  assert.strictEqual(viewPanel._editDraft.activeView, 'default');
+  assert.ok(viewPanel._editDraft.widgetVisibility.phase_donut !== undefined && !viewPanel.shadowRoot.innerHTML.includes('data-action="view-delete"'), 'no delete button for the last view');
+  click('view-delete', { view: 'default' });
+  assert.strictEqual(viewPanel._editDraft.views.length, 1, 'the last view stays');
+  for (let i = 0; i < 12; i += 1) click('view-add');
+  assert.strictEqual(viewPanel._editDraft.views.length, 8, 'at most eight views');
+  assert.ok(!viewPanel.shadowRoot.innerHTML.includes('data-action="view-add"'), 'no add button at eight');
+  assert.strictEqual(viewPanel._addViewIn(viewPanel._editDraft), null);
+  // deleting a view that is not active keeps the active layout
+  const spare = viewPanel._editDraft.views[3].id;
+  const keepActive = viewPanel._editDraft.activeView;
+  click('view-delete', { view: spare });
+  assert.strictEqual(viewPanel._editDraft.activeView, keepActive);
+  assert.strictEqual(viewPanel._editDraft.views.length, 7);
+  click('cancel-edit');
+  // a view that was changed and then left behind keeps its changes when another view is added
+  click('toggle-edit');
+  assert.ok(!viewPanel.shadowRoot.innerHTML.includes('class="view-switch"'), 'the switcher in the header is for the normal view, the edit panel has its own');
+  click('view-switch', { view: 'default' });
+  click('widget-show', { widget: 'phase_donut' });
+  click('widget-hide', { widget: 'phase_donut' });
+  assert.strictEqual(viewPanel._editDraft.widgetVisibility.phase_donut, false);
+  click('view-add');
+  click('view-switch', { view: 'default' });
+  assert.strictEqual(viewPanel._editDraft.widgetVisibility.phase_donut, false, 'the earlier change of the first view is still there after adding another view');
+  const outsideName = new ClickTarget({ pref: 'viewName', view: 'default' });
+  outsideName.value = 'Nope';
+  click('cancel-edit');
+  viewPanel._handleChange({ target: outsideName });
+  assert.ok(!viewPanel._prefs.views.some((view) => view.name === 'Nope'), 'renaming only works while editing');
+
+  // the views also work in discreet mode
+  viewPanel._prefs.discreetMode = true;
+  viewPanel.render();
+  assert.ok(viewPanel.shadowRoot.innerHTML.includes('class="view-switch"'));
 
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {
