@@ -617,6 +617,9 @@ SYMPTOM_SPOTTING = "spotting"
 SYMPTOM_DISCHARGE = "discharge"
 SYMPTOM_INTERCOURSE = "intercourse"
 SYMPTOM_PAIN = "pain"
+# Pain strength of the day, whole number 0-10 (one value per day, optional next to the pain types).
+SYMPTOM_PAIN_INTENSITY = "pain_intensity"
+SYMPTOM_PAIN_INTENSITY_MAX = 10
 SYMPTOM_BASAL_TEMP = "basal_temp"
 SYMPTOM_HYGIENE = "hygiene"
 SYMPTOM_TEST = "test"

@@ -1339,16 +1339,49 @@ test('cycle comparison: empty without the full history or with fewer than two us
   assert.strictEqual(c.card._renderCycleComparison(c.attrs, c.stateObj), '', 'helper unavailable');
 });
 
-test('cycle comparison: only the last three cycles, Fahrenheit axis, test given as plain string', () => {
-  const starts = [daysAgo(120), daysAgo(90), daysAgo(60), daysAgo(30)];
+test('cycle comparison: only the last six cycles, Fahrenheit axis, test given as plain string', () => {
+  const starts = [daysAgo(240), daysAgo(210), daysAgo(180), daysAgo(150), daysAgo(120), daysAgo(90), daysAgo(60), daysAgo(30)];
   const history = starts.flatMap((start) => cycleEntries(start, { lh: 12 }));
   history.forEach((e) => { if (e.test) e.test = 'positive_ovulation'; });
   const { card, attrs, stateObj } = comparisonSetup({ history, starts });
   attrs.temperature_unit = 'fahrenheit';
   const html = card._renderCycleComparison(attrs, stateObj);
-  assert.strictEqual((html.match(/<polyline/g) || []).length, 3, 'three curves, the oldest cycle is left out');
-  assert.strictEqual((html.match(/<polygon/g) || []).length, 3);
+  assert.strictEqual((html.match(/<polyline/g) || []).length, 6, 'six curves, the two oldest cycles are left out');
+  assert.strictEqual((html.match(/<polygon/g) || []).length, 6);
   assert.ok(/>9[6-8]\.\d</.test(html), 'Fahrenheit axis labels');
+});
+
+test('cycle comparison: pain days as bars, from pain types or strength 1+, darker when stronger', () => {
+  const starts = [daysAgo(60), daysAgo(32), daysAgo(4)];
+  const history = starts.flatMap((start) => cycleEntries(start));
+  const at = (start, offset) => { const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10); };
+  history.push({ date: at(starts[0], 1), pain: ['cramps'] });            // day 2, unrated
+  history.push({ date: at(starts[0], 2), pain_intensity: 8 });           // day 3, strength only
+  history.push({ date: at(starts[1], 1), pain_intensity: 0 });           // 0 = no pain: no bar
+  history.push({ date: at(starts[1], 2), pain: [] });                    // empty list: no bar
+  const { card, attrs, stateObj } = comparisonSetup({ history, starts });
+  const html = card._renderCycleComparison(attrs, stateObj);
+  assert.strictEqual((html.match(/<rect /g) || []).length, 2, 'exactly the two real pain days');
+  assert.ok(html.includes('Pain days 3 (8/10)'), 'tooltip carries the strength');
+  assert.ok(html.includes('opacity="0.86"'), 'strength 8 -> 0.3 + 0.07 * 8');
+  assert.ok(html.includes('opacity="0.7"'), 'unrated pain day');
+  assert.ok(!html.includes('cycle_comparison_pain'), 'no raw translation key');
+});
+
+test('statistics: pain trend counts strength-only days and averages the rated ones', () => {
+  const start = daysAgo(10);
+  const at = (offset) => { const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10); };
+  const symptoms = [
+    { date: at(1), pain: ['cramps'], pain_intensity: 6 },
+    { date: at(2), pain_intensity: 2 },
+    { date: at(3), pain_intensity: 0 },
+    { date: at(4), pain: ['headache'] },
+  ];
+  const { card, attrs } = comparisonSetup({ history: [], starts: [daysAgo(40), start] });
+  const stats = card._computeStats({ ...attrs, symptom_history: symptoms });
+  const row = stats.painTrend[stats.painTrend.length - 1];
+  assert.strictEqual(row.painDays, 3);
+  assert.strictEqual(row.avgIntensity, 4);
 });
 
 if (failed > 0) {

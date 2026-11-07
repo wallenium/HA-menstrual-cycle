@@ -68,6 +68,7 @@
     "mood",
     "note",
     "pain",
+    "pain_intensity",
     "pregnancy_symptoms",
     "skin",
     "sleep_quality",

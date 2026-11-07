@@ -837,6 +837,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         cycle_start: 'Cycle start',
         pain_days: 'Pain days',
         avg_pain_days: 'Avg pain days/cycle',
+        pain_intensity_short: 'Ø strength',
         of: 'of',
         last_n_days: 'Last {n} days',
         no_symptom_data: 'No symptom data',
@@ -863,6 +864,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         cycle_comparison_title: 'Cycle comparison',
         cycle_comparison_lh: 'Ovulation test +',
         cycle_comparison_mucus: 'Stretchy mucus',
+        cycle_comparison_pain: 'Pain days',
         nfp_baseline: 'Baseline',
         nfp_threshold: 'Threshold (+{delta})',
         nfp_period_marker: 'Period',
@@ -1143,8 +1145,12 @@ class MenstruationStatisticsCard extends HTMLElement {
       const endIso = cycleStarts[idx + 1]
         ? (() => { const d = new Date(cycleStarts[idx + 1]); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })()
         : todayDateKey();
-      const painDays = recentSymptoms.filter(s => s.date >= startIso && s.date <= endIso && (s.pain && (Array.isArray(s.pain) ? s.pain.length > 0 : true))).length;
-      return { cycleStart: startIso, painDays };
+      // A pain day: pain types logged, or a pain strength (0-10) of at least 1 — same rule as the backend.
+      const painEntries = recentSymptoms.filter(s => s.date >= startIso && s.date <= endIso
+        && ((s.pain && (Array.isArray(s.pain) ? s.pain.length > 0 : true)) || Number(s.pain_intensity) >= 1));
+      const rated = painEntries.filter(s => Number.isInteger(s.pain_intensity));
+      const avgIntensity = rated.length ? Math.round(rated.reduce((a, s) => a + s.pain_intensity, 0) / rated.length * 10) / 10 : null;
+      return { cycleStart: startIso, painDays: painEntries.length, avgIntensity };
     });
 
     const correlations = this._computeSymptomCorrelations(attrs, {
@@ -1468,7 +1474,7 @@ class MenstruationStatisticsCard extends HTMLElement {
         ${painTrend.map((p, i) => {
           const x = pad + (i / Math.max(painTrend.length - 1, 1)) * (w - 2 * pad);
           const y = h - pad - (p.painDays / maxPain) * (h - 2 * pad);
-          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--mg-accent,#c0392b)"><title>${p.cycleStart}: ${p.painDays} ${this._t('pain_days')}</title></circle>`;
+          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--mg-accent,#c0392b)"><title>${p.cycleStart}: ${p.painDays} ${this._t('pain_days')}${p.avgIntensity != null ? ` · ${this._t('pain_intensity_short')} ${p.avgIntensity}/10` : ''}</title></circle>`;
         }).join('')}
       </svg>
       <div class="sparkline-legend">${this._t('avg_pain_days')}: <strong>${avgPain}</strong></div>`;
@@ -2467,12 +2473,12 @@ class MenstruationStatisticsCard extends HTMLElement {
     const MAX_DAY = 45;
     const dayMs = 86400000;
     const starts = (Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : [])
-      .filter((s) => typeof s === 'string').sort().slice(-3);
+      .filter((s) => typeof s === 'string').sort().slice(-6);
     const valuesOf = (v) => (Array.isArray(v) ? v : [v]);
     const cycles = starts.map((start, i) => {
       const end = starts[i + 1] || null;
       const t0 = new Date(start + 'T12:00:00Z');
-      const cycle = { start, temps: [], period: new Set(), lh: new Set(), mucus: new Set() };
+      const cycle = { start, temps: [], period: new Set(), lh: new Set(), mucus: new Set(), pain: new Map() };
       for (const e of full.symptom_history) {
         if (!e || !e.date || e.date < start || (end && e.date >= end)) continue;
         const day = Math.round((new Date(e.date + 'T12:00:00Z') - t0) / dayMs) + 1;
@@ -2482,13 +2488,16 @@ class MenstruationStatisticsCard extends HTMLElement {
         if (e.bleeding_strength && e.bleeding_strength !== 'none') cycle.period.add(day);
         if (valuesOf(e.test).includes('positive_ovulation')) cycle.lh.add(day);
         if (e.cervical_mucus === 'fadenziehend') cycle.mucus.add(day);
+        // Pain day: pain types logged or a strength of at least 1 (same rule as the backend); value = strength or null.
+        const intensity = Number.isInteger(e.pain_intensity) ? e.pain_intensity : null;
+        if (valuesOf(e.pain).filter(Boolean).length > 0 || (intensity !== null && intensity >= 1)) cycle.pain.set(day, intensity);
       }
       cycle.temps.sort((a, b) => a.day - b.day);
       return cycle;
     });
     if (cycles.filter((c) => c.temps.length >= 3).length < 2) return '';
 
-    const colors = ['#94a3b8', '#7c3aed', 'var(--primary-color, #c0392b)'].slice(-cycles.length);
+    const colors = ['#cbd5e1', '#94a3b8', '#2dd4bf', '#f59e0b', '#7c3aed', 'var(--primary-color, #c0392b)'].slice(-cycles.length);
     const fahrenheit = attrs && attrs.temperature_unit === 'fahrenheit';
     const all = cycles.flatMap((c) => c.temps.map((p) => p.temp));
     const minTemp = Math.min(...all) - 0.1;
@@ -2499,8 +2508,8 @@ class MenstruationStatisticsCard extends HTMLElement {
     const padR = 12;
     const padT = 12;
     const chartH = 120;
-    const rowH = 12;
-    const H = padT + chartH + 18 + cycles.length * rowH + 22;
+    const rowH = 14;
+    const H = padT + chartH + 18 + cycles.length * rowH + 32;
     const x = (day) => padL + ((day - 1) / Math.max(maxDay - 1, 1)) * (W - padL - padR);
     const y = (temp) => padT + chartH - ((temp - minTemp) / (maxTemp - minTemp)) * chartH;
 
@@ -2529,13 +2538,16 @@ class MenstruationStatisticsCard extends HTMLElement {
       const period = [...c.period].map((d) => `<circle cx="${x(d).toFixed(1)}" cy="${cy}" r="2.6" fill="#dc2626"><title>${esc(c.start)}: ${esc(t('nfp_period_marker'))} ${d}</title></circle>`).join('');
       const mucus = [...c.mucus].map((d) => `<circle cx="${x(d).toFixed(1)}" cy="${cy}" r="2.6" fill="none" stroke="#0ea5e9" stroke-width="1.2"><title>${esc(c.start)}: ${esc(t('cycle_comparison_mucus'))} ${d}</title></circle>`).join('');
       const lh = [...c.lh].map((d) => `<polygon points="${x(d).toFixed(1)},${cy - 3.5} ${(x(d) - 3.2).toFixed(1)},${cy + 2.5} ${(x(d) + 3.2).toFixed(1)},${cy + 2.5}" fill="#9333ea"><title>${esc(c.start)}: ${esc(t('cycle_comparison_lh'))} ${d}</title></polygon>`).join('');
-      return label + period + mucus + lh;
+      // Pain days as a small bar under the circles; the darker, the stronger the logged strength.
+      const pain = [...c.pain].map(([d, v]) => `<rect x="${(x(d) - 2).toFixed(1)}" y="${cy + 4}" width="4" height="2.5" fill="#f59e0b" opacity="${v === null ? 0.7 : (0.3 + 0.07 * v).toFixed(2)}"><title>${esc(c.start)}: ${esc(t('cycle_comparison_pain'))} ${d}${v === null ? '' : ` (${v}/10)`}</title></rect>`).join('');
+      return label + period + mucus + lh + pain;
     }).join('');
 
     const legendY = H - 6;
-    const legend = `<text x="${padL}" y="${legendY}" font-size="8" fill="#dc2626">● ${esc(t('nfp_period_marker'))}</text>
-      <text x="${padL + 52}" y="${legendY}" font-size="8" fill="#9333ea">▲ ${esc(t('cycle_comparison_lh'))}</text>
-      <text x="${padL + 130}" y="${legendY}" font-size="8" fill="#0ea5e9">○ ${esc(t('cycle_comparison_mucus'))}</text>`;
+    const legend = `<text x="${padL}" y="${legendY - 10}" font-size="8" fill="#dc2626">● ${esc(t('nfp_period_marker'))}</text>
+      <text x="${padL + 52}" y="${legendY - 10}" font-size="8" fill="#9333ea">▲ ${esc(t('cycle_comparison_lh'))}</text>
+      <text x="${padL + 130}" y="${legendY - 10}" font-size="8" fill="#0ea5e9">○ ${esc(t('cycle_comparison_mucus'))}</text>
+      <text x="${padL}" y="${legendY}" font-size="8" fill="#f59e0b">▬ ${esc(t('cycle_comparison_pain'))}</text>`;
 
     const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" class="nfp-temp-chart" aria-label="${esc(t('cycle_comparison_title'))}">
       ${lines}${yLabels.join('')}${xLabels.join('')}${rows}${legend}

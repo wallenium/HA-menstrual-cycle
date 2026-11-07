@@ -140,6 +140,7 @@ class MenstruationCalendarCard extends HTMLElement {
         log_today: 'Log Today',
         cancel: 'Cancel',
         basal_temp_label: 'Basal Temperature ({unit})',
+        pain_intensity_label: 'Pain strength (0–10)',
         bleeding_strength: 'Bleeding Strength',
         spotting: 'Spotting',
         discharge: 'Discharge',
@@ -930,6 +931,10 @@ class MenstruationCalendarCard extends HTMLElement {
               <div class="sym-cat-head"><ha-icon icon="mdi:thermometer"></ha-icon><span>${this._t('basal_temp_label').replace('{unit}', fahrenheit ? '°F' : '°C')}</span></div>
               <input id="sym-basal-temp" type="number" step="0.1" min="${fahrenheit ? 95 : 35}" max="${fahrenheit ? 107.6 : 42}" value="${basalTemp}" class="sym-temp-input" placeholder="${fahrenheit ? 97.7 : 36.5}">
             </div>
+            <div class="sym-row">
+              <div class="sym-cat-head"><ha-icon icon="mdi:emoticon-sad-outline"></ha-icon><span>${this._t('pain_intensity_label')}</span></div>
+              <input id="sym-pain-intensity" type="number" step="1" min="0" max="10" value="${Number.isInteger(existing.pain_intensity) ? existing.pain_intensity : ''}" class="sym-temp-input">
+            </div>
           </div>
           <div class="sym-footer">
             <button type="button" class="btn sym-save">${saveLabel}</button>
@@ -973,6 +978,9 @@ class MenstruationCalendarCard extends HTMLElement {
     const rawTemp = root.getElementById('sym-basal-temp')?.value;
     const basalTemp = parseFloat(rawTemp);
     if (!Number.isNaN(basalTemp) && rawTemp !== '') symptomData.basal_temp = basalTemp;
+    const rawPain = root.getElementById('sym-pain-intensity')?.value;
+    const painIntensity = parseInt(rawPain, 10);
+    if (rawPain !== '' && painIntensity >= 0 && painIntensity <= 10) symptomData.pain_intensity = painIntensity;
     const autoConfirmDays = symptomData.bleeding_strength && symptomData.bleeding_strength !== 'none'
       ? this._daysToAutoConfirm(iso, model, periodModalContext.continuationBlock)
       : [];

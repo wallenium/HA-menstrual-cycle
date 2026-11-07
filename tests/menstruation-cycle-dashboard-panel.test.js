@@ -447,6 +447,132 @@ const makeHass = (stateObj) => ({
   assert.ok(pillMount.includes("tag: 'menstruation-pill-card'") && pillMount.includes("title: ''"), 'pill card is mounted without a duplicate title');
   assert.ok(source.includes("'menstruation-pill-card': 'menstruation-pill-card.js'"), 'panel loads the pill card script itself');
 
+  // compact status card and small cycle card: two own widgets, off by default, mounted as the real cards, not in discreet mode
+  const cycleState = panelGeneral._hass.states[panelGeneral._selectedEntityId];
+  assert.strictEqual(panelGeneral._renderWidget('status_card', cycleState, false), '', 'hidden by default');
+  panelGeneral._prefs.widgetVisibility.status_card = true;
+  panelGeneral._prefs.widgetVisibility.cycle_card = true;
+  const statusHtml = panelGeneral._renderWidget('status_card', cycleState, false);
+  assert.ok(statusHtml.includes('data-mount="status-card"') && statusHtml.includes('>Status<'), 'status widget mounts the compact status card');
+  const cycleCardHtml = panelGeneral._renderWidget('cycle_card', cycleState, false);
+  assert.ok(cycleCardHtml.includes('data-mount="cycle-card"') && cycleCardHtml.includes('Cycle &amp; quick log') || cycleCardHtml.includes('Cycle & quick log'), 'cycle widget mounts the small cycle card');
+  assert.strictEqual(panelGeneral._renderWidget('status_card', cycleState, true), '', 'not shown in discreet mode');
+  assert.strictEqual(panelGeneral._renderWidget('cycle_card', cycleState, true), '', 'not shown in discreet mode');
+  assert.ok(source.includes('selector: \'[data-mount="status-card"]\', tag: \'menstruation-cycle-compact-status\''), 'status card tag');
+  assert.ok(source.includes('selector: \'[data-mount="cycle-card"]\', tag: \'menstruation-cycle-card\''), 'cycle card tag');
+  assert.ok(source.includes("'menstruation-cycle-compact-status': 'menstruation-cycle-compact-status-card.js'") && source.includes("'menstruation-cycle-card': 'menstruation-cycle-card-compact.js'"), 'panel loads both card scripts itself');
+  const widgetIds = Array.from(panelGeneral._prefs.widgetOrder);
+  assert.ok(widgetIds.includes('status_card') && widgetIds.includes('cycle_card'), 'both are part of the widget order (reorderable)');
+  panelGeneral._prefs.widgetVisibility.status_card = false;
+  panelGeneral._prefs.widgetVisibility.cycle_card = false;
+
+  // quick log: pain strength 0-10 as a number field, stored as a number, shown again, empty/out of range removes it
+  const realFunctions = global.window.MenstruationFunctions;
+  global.window.MenstruationFunctions = { getSymptomConfig: () => [], normalizeOptionKey: (v) => v, renderOptionIcon: () => '', renderCategoryIcon: () => '' };
+  panelGeneral._quickLogOpen = true;
+  panelGeneral._quickLogSelections = {};
+  assert.ok(panelGeneral._renderQuickLogModal(cycleState).includes('data-action="quick-log-pain-intensity"'), 'number field in the quick log');
+  const strengthInput = new ClickTarget({ action: 'quick-log-pain-intensity' });
+  strengthInput.value = '7';
+  panelGeneral._handleChange({ target: strengthInput });
+  assert.strictEqual(panelGeneral._quickLogSelections.pain_intensity, 7);
+  assert.ok(panelGeneral._renderQuickLogModal(cycleState).includes('value="7"'), 'the typed value stays in the field');
+  strengthInput.value = '11';
+  panelGeneral._handleChange({ target: strengthInput });
+  assert.strictEqual(panelGeneral._quickLogSelections.pain_intensity, undefined, 'out of range is dropped');
+  strengthInput.value = '0';
+  panelGeneral._handleChange({ target: strengthInput });
+  assert.strictEqual(panelGeneral._quickLogSelections.pain_intensity, 0, '0 is a real value');
+  const hiddenPain = { ...panelGeneral._prefs, categoryVisibility: { pain: false } };
+  const before = panelGeneral._prefs;
+  panelGeneral._prefs = hiddenPain;
+  assert.ok(!panelGeneral._renderQuickLogModal(cycleState).includes('quick-log-pain-intensity'), 'hidden together with the pain category');
+  panelGeneral._prefs = before;
+  panelGeneral._quickLogOpen = false;
+  panelGeneral._quickLogSelections = {};
+  global.window.MenstruationFunctions = realFunctions;
+
+  // animation: the opening animation plays once per open / profile switch, never on later re-renders
+  const animPanel = await assignHass(new Panel(), makeHass(makeState()));
+  assert.ok(animPanel.shadowRoot.innerHTML.includes('class="grid mc-enter"'), 'first render with cards animates');
+  animPanel.render();
+  assert.ok(!animPanel.shadowRoot.innerHTML.includes('mc-enter"'), 'a later re-render must not replay the animation');
+  animPanel._enterPlayed = false; // what a profile switch does
+  animPanel.render();
+  assert.ok(animPanel.shadowRoot.innerHTML.includes('class="grid mc-enter"'), 'plays again after the flag is reset');
+  assert.ok(source.includes('this._enterPlayed = false; // play the opening animation again'), 'profile switch resets the flag');
+  assert.ok(/prefers-reduced-motion: reduce\) \{\s*\* \{ transition: none !important; animation: none !important;/.test(source), 'reduce motion switches every animation off');
+
+  // dashboard setting "Animations": on by default (also for prefs saved before the setting existed), off removes every animation
+  assert.strictEqual(animPanel._prefs.animations, true, 'on by default');
+  assert.strictEqual(animPanel._normalizePrefs({ discreetMode: false }, 'alice', 'general').animations, true, 'old saved prefs without the key stay animated');
+  assert.strictEqual(animPanel._normalizePrefs({ animations: false }, 'alice', 'general').animations, false, 'the saved choice is kept');
+  assert.ok(animPanel.shadowRoot.innerHTML.includes('<main class="page">'));
+  const toggle = new ClickTarget();
+  toggle.dataset = { pref: 'animations' };
+  toggle.checked = false;
+  animPanel._handleChange({ target: toggle });
+  assert.strictEqual(animPanel._prefs.animations, false, 'switching it off is stored in the prefs');
+  animPanel._enterPlayed = false;
+  animPanel._message = 'Saved.';
+  animPanel._messageShown = null;
+  animPanel.render();
+  assert.ok(animPanel.shadowRoot.innerHTML.includes('<main class="page no-motion">'), 'page gets the no-motion class');
+  assert.ok(!animPanel.shadowRoot.innerHTML.includes('mc-enter"') && !animPanel.shadowRoot.innerHTML.includes('class="message mc-pop"'), 'no opening animation, no message animation');
+  global.window.MenstruationFunctions = { getSymptomConfig: () => [], normalizeOptionKey: (v) => v, renderOptionIcon: () => '', renderCategoryIcon: () => '' };
+  animPanel._quickLogOpen = true;
+  animPanel._quickLogPopped = false;
+  assert.ok(!animPanel._renderQuickLogModal(cycleState).includes('mc-pop'), 'no dialog animation');
+  animPanel._quickLogOpen = false;
+  global.window.MenstruationFunctions = undefined;
+  animPanel._message = null;
+  toggle.checked = true;
+  animPanel._handleChange({ target: toggle });
+  assert.strictEqual(animPanel._prefs.animations, true);
+
+  // quick log dialog and message pop in once, not on every tap/re-render
+  global.window.MenstruationFunctions = { getSymptomConfig: () => [], normalizeOptionKey: (v) => v, renderOptionIcon: () => '', renderCategoryIcon: () => '' };
+  animPanel._quickLogOpen = true;
+  assert.ok(animPanel._renderQuickLogModal(cycleState).includes('mc-modal-backdrop mc-pop'), 'dialog animates when it opens');
+  assert.ok(!animPanel._renderQuickLogModal(cycleState).includes('mc-pop'), 'but not on the re-render after a tap');
+  animPanel._quickLogOpen = false;
+  animPanel._renderQuickLogModal(cycleState);
+  animPanel._quickLogOpen = true;
+  assert.ok(animPanel._renderQuickLogModal(cycleState).includes('mc-pop'), 'opening it again animates again');
+  animPanel._quickLogOpen = false;
+  global.window.MenstruationFunctions = undefined;
+  animPanel._message = 'Saved.';
+  animPanel.render();
+  assert.ok(animPanel.shadowRoot.innerHTML.includes('class="message mc-pop"'), 'a new message slides in');
+  animPanel.render();
+  assert.ok(!animPanel.shadowRoot.innerHTML.includes('class="message mc-pop"'), 'the same message does not repeat');
+  animPanel._message = null;
+
+  // count-up: whole numbers (and percentages) end on their real value, other texts stay untouched
+  const makeCounter = (text) => ({ textContent: text, isConnected: true });
+  const counters = [makeCounter('12'), makeCounter('85%'), makeCounter('5d'), makeCounter('0'), makeCounter('—'), { textContent: '9', isConnected: false }];
+  const realQuery = animPanel.shadowRoot.querySelectorAll;
+  animPanel.shadowRoot.querySelectorAll = () => counters;
+  let clock = 0;
+  const frames = [];
+  global.requestAnimationFrame = (fn) => frames.push(fn);
+  global.window.matchMedia = () => ({ matches: false });
+  animPanel._countUp();
+  assert.strictEqual(frames.length, 1, 'one frame requested');
+  const first = frames.shift();
+  first(performance.now() + 1);
+  assert.ok(Number(counters[0].textContent) < 12, 'starts below the target');
+  assert.strictEqual(counters[5].textContent, '9', 'an element replaced by a re-render is left alone');
+  while (frames.length) frames.shift()(performance.now() + 1000 + (clock += 1));
+  assert.deepStrictEqual(counters.map((c) => c.textContent), ['12', '85%', '5d', '0', '—', '9'], 'ends on the real values; texts like 5d/0/dash and re-rendered (detached) elements untouched');
+  global.window.matchMedia = () => ({ matches: true });
+  counters[0].textContent = '12';
+  animPanel._countUp();
+  assert.strictEqual(frames.length, 0, 'reduce motion: no counting');
+  animPanel.shadowRoot.querySelectorAll = realQuery;
+  delete global.requestAnimationFrame;
+  delete global.window.matchMedia;
+
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {
   console.error(error);

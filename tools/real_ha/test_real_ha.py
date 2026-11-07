@@ -61,6 +61,29 @@ async def test_log_and_read_back(hass):
     assert "cramps" not in json.dumps(await _call(hass, "get_full_history", {"entry_id": entry.entry_id}, response=True))
 
 
+async def test_pain_intensity_is_validated_stored_and_clearable(hass):
+    from homeassistant.exceptions import HomeAssistantError
+
+    entry = await _add_profile(hass)
+    day = {"entry_id": entry.entry_id, "date": "2026-08-30"}
+    for bad in (11, -1, 3.5, "4", True):
+        with pytest.raises(HomeAssistantError):
+            await _call(hass, "add_symptom", {**day, "symptom_data": {"pain_intensity": bad}})
+
+    async def stored():
+        history = await _call(hass, "get_full_history", {"entry_id": entry.entry_id}, response=True)
+        return [e for e in history["symptom_history"] if e["date"] == "2026-08-30"]
+
+    assert await stored() == []  # nothing was written by the rejected calls
+    await _call(hass, "add_symptom", {**day, "symptom_data": {"pain_intensity": 7, "pain": ["cramps"]}})
+    assert (await stored())[0]["pain_intensity"] == 7
+    await _call(hass, "add_symptom", {**day, "symptom_data": {"pain_intensity": 0}})
+    assert (await stored())[0]["pain_intensity"] == 0
+    await _call(hass, "add_symptom", {**day, "symptom_data": {"pain_intensity": None}})  # what the panel's undo sends
+    entry_after = (await stored())[0]
+    assert "pain_intensity" not in entry_after and entry_after["pain"] == ["cramps"]
+
+
 async def test_pill_fires_the_event_entity(hass):
     entry = await _add_profile(hass)
     event_state = next(s for s in hass.states.async_all() if s.entity_id.startswith("event."))

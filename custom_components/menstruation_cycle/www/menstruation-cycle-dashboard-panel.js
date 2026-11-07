@@ -114,6 +114,7 @@
     dashboard_quick_log_saved: 'Saved.',
     dashboard_quick_log_failed: 'Could not save.',
     dashboard_quick_log_loading: 'Loading, please try again in a moment…',
+    pain_intensity_label: 'Pain strength (0–10)',
     dashboard_widget_chat_assistant: 'Cycle Q&A',
     dashboard_chat_fab_label: 'Cycle Q&A',
     dashboard_chat_medical_disclaimer: 'Not medical advice. For health concerns, please consult a doctor.',
@@ -361,6 +362,9 @@
     dashboard_widget_inventory_card: 'Product Inventory',
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_pill_card: 'Pill pack',
+    dashboard_animations: 'Animations',
+    dashboard_widget_status_card: 'Status',
+    dashboard_widget_cycle_card: 'Cycle & quick log',
     dashboard_pill_card_hidden_hint: 'Hidden outside of edit mode: this profile does not use the pill as its current contraception method.',
     dashboard_widget_support_card: 'Support & Education',
     dashboard_birth: 'Birth',
@@ -528,6 +532,8 @@
     { id: 'inventory_card', title: 'dashboard_widget_inventory_card', sensitive: false, span: 6 },
     { id: 'timer_card', title: 'dashboard_widget_timer_card', sensitive: false, span: 6 },
     { id: 'pill_card', title: 'dashboard_widget_pill_card', sensitive: false, span: 6 },
+    { id: 'status_card', title: 'dashboard_widget_status_card', sensitive: false, span: 6 },
+    { id: 'cycle_card', title: 'dashboard_widget_cycle_card', sensitive: false, span: 6 },
     { id: 'statistics_card', title: 'dashboard_widget_statistics_card', sensitive: false, span: 12 },
     { id: 'support_card', title: 'dashboard_widget_support_card', sensitive: false, span: 12 },
     { id: 'long_term_trend', title: 'dashboard_widget_long_term_trend', sensitive: false, span: 12 },
@@ -554,6 +560,8 @@
     'inventory_card',
     'timer_card',
     'pill_card',
+    'status_card',
+    'cycle_card',
     'statistics_card',
     'support_card',
     'long_term_trend',
@@ -601,6 +609,8 @@
         inventory_card: true,
         timer_card: true,
         pill_card: true,
+        status_card: false,
+        cycle_card: false,
         statistics_card: false,
         // Shown by default in pre-menarche/early-menarche modes, matching the
         // card's own documented default visibility.
@@ -633,6 +643,8 @@
         inventory_card: true,
         timer_card: true,
         pill_card: true,
+        status_card: false,
+        cycle_card: false,
         statistics_card: true,
         // Hidden by default in established_cycle mode, matching the card's own
         // documented default visibility — still available via edit mode.
@@ -930,6 +942,8 @@
         'menstruation-countdown-timer': 'menstruation-countdown-timer.js',
         'menstruation-statistics-card': 'menstruation-statistics-card.js',
         'menstruation-pill-card': 'menstruation-pill-card.js',
+        'menstruation-cycle-compact-status': 'menstruation-cycle-compact-status-card.js',
+        'menstruation-cycle-card': 'menstruation-cycle-card-compact.js',
       };
       if (typeof customElements !== 'undefined') {
         Object.entries(embeddedCardScripts).forEach(([tag, fileName]) => {
@@ -1333,10 +1347,12 @@
       const rawCategoryOrder = Array.isArray(raw?.categoryOrder) ? raw.categoryOrder.filter((key) => CATEGORY_KEYS.includes(key)) : [];
       const categoryOrder = [...rawCategoryOrder, ...CATEGORY_KEYS.filter((key) => !rawCategoryOrder.includes(key))];
       const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
+      const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
       return {
         __profile: profile,
         __mode: mode,
         discreetMode,
+        animations,
         widgetVisibility,
         widgetOrder,
         categoryVisibility,
@@ -1673,6 +1689,7 @@
       this._syncPrefsFromBackend(this._activeProfile, this._activeMode);
       // Force render regardless of sig — entity was explicitly changed by user
       this._lastRenderSig = null;
+      this._enterPlayed = false; // play the opening animation again for the other profile
       this.render();
     }
 
@@ -3427,7 +3444,13 @@
 
 
     _renderQuickLogModal(stateObj) {
-      if (!this._quickLogOpen) return '';
+      if (!this._quickLogOpen) {
+        this._quickLogPopped = false;
+        return '';
+      }
+      // The panel re-renders on every tap in the dialog: only the first render after opening animates.
+      const popClass = this._quickLogPopped || this._prefs?.animations === false ? '' : ' mc-pop';
+      this._quickLogPopped = true;
       const attrs = stateObj?.attributes || {};
       const mode = this._resolveContentMode(stateObj);
       const isPregnant = mode === 'pregnancy';
@@ -3499,12 +3522,21 @@
             </div>`;
         }).join('');
 
+      // Pain strength 0-10: one number per day next to the pain types; hidden together with the pain category.
+      const painLabel = this._t('pain_intensity_label');
+      const showPainStrength = categoryVisibility.pain !== false && (!searchTerm || painLabel.toLowerCase().includes(searchTerm) || 'pain'.includes(searchTerm));
+      const painStrengthRow = showPainStrength ? `
+            <div class="sym-row">
+              <div class="sym-cat-head"><span>${escapeHtml(painLabel)}</span></div>
+              <input type="number" min="0" max="10" step="1" data-action="quick-log-pain-intensity" value="${Number.isInteger(this._quickLogSelections.pain_intensity) ? this._quickLogSelections.pain_intensity : ''}" aria-label="${escapeHtml(painLabel)}" style="width:80px;padding:5px 8px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;" />
+            </div>` : '';
+
       const rowsOrFallback = !window.MenstruationFunctions
         ? `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`
-        : (rows || `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_no_match') || 'Keine passende Kategorie gefunden.')}</p>`);
+        : ((rows + painStrengthRow) || `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_no_match') || 'Keine passende Kategorie gefunden.')}</p>`);
 
       return `
-        <div class="mc-modal-backdrop" role="presentation">
+        <div class="mc-modal-backdrop${popClass}" role="presentation">
           <div class="mc-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h2 style="margin:0;font-family:var(--mc-font-display);font-size:1.15rem;font-weight:500;">${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}</h2>
@@ -3580,7 +3612,7 @@
           const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(
             this._hass, entityId, date, '[menstruation-cycle-dashboard-panel]');
           Object.keys(symptomData).forEach((key) => {
-            previous[key] = data && key in data ? data[key] : (Array.isArray(symptomData[key]) ? [] : '');
+            previous[key] = data && key in data ? data[key] : (Array.isArray(symptomData[key]) ? [] : (key === 'pain_intensity' ? null : ''));
           });
         }
 
@@ -3989,6 +4021,12 @@
         return;
       }
 
+      if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-pain-intensity') {
+        const strength = parseInt(target.value, 10);
+        this._quickLogSelections.pain_intensity = target.value !== '' && strength >= 0 && strength <= 10 ? strength : undefined;
+        return;
+      }
+
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-end-date-change') {
         this._quickLogEndDate = target.value || null;
         return;
@@ -4015,6 +4053,11 @@
       }
       if (target instanceof HTMLInputElement && target.dataset.pref === 'discreetMode') {
         draft.discreetMode = target.checked;
+        if (!this._editMode) this._savePrefs();
+        this.render();
+      }
+      if (target instanceof HTMLInputElement && target.dataset.pref === 'animations') {
+        draft.animations = target.checked;
         if (!this._editMode) this._savePrefs();
         this.render();
       }
@@ -4310,6 +4353,8 @@
         'timer-card': 'menstruation-countdown-timer',
         'statistics-card': 'menstruation-statistics-card',
         'pill-card': 'menstruation-pill-card',
+        'status-card': 'menstruation-cycle-compact-status',
+        'cycle-card': 'menstruation-cycle-card',
       };
       return map[mountKey] || null;
     }
@@ -6974,6 +7019,7 @@
         <section class="edit-mode" aria-label="${this._t('dashboard_edit_mode')}">
           <h2>${this._t('dashboard_edit_mode')}</h2>
           <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${draft.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
+          <label class="toggle"><input type="checkbox" data-pref="animations" ${draft.animations !== false ? 'checked' : ''}/> ${this._t('dashboard_animations')}</label>
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
           <p class="helper">${this._t('dashboard_widget_order_label')}</p>
@@ -7058,6 +7104,11 @@
             : '';
         }
         body = this._renderEmbeddedCardMount('pill-card');
+      }
+      // The two compact Lovelace cards show the state in words, so discreet mode leaves them out.
+      if (widgetId === 'status_card' || widgetId === 'cycle_card') {
+        if (discreetMode || !stateObj) return '';
+        body = this._renderEmbeddedCardMount(widgetId === 'status_card' ? 'status-card' : 'cycle-card');
       }
       if (widgetId === 'long_term_trend') body = this._renderLongTermTrendChart(stateObj);
       if (widgetId === 'pregnancy_prediction') body = this._renderPregnancyPredictionGraph(stateObj);
@@ -7428,7 +7479,7 @@
       const mode = this._resolveContentMode(stateObj);
       let order = this._prefs?.widgetOrder || WIDGET_IDS;
       if (mode === 'pregnancy') {
-        order = order.filter((id) => !['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card'].includes(id));
+        order = order.filter((id) => !['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card'].includes(id));
         if (!order.includes('fetal_development')) {
           const idx = order.indexOf('phase_timeline');
           order = idx >= 0
@@ -7441,7 +7492,7 @@
         const menarcheHidden = [
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development',
+          'fetal_development', 'cycle_card',
         ];
         order = order.filter((id) => !menarcheHidden.includes(id));
       } else if (mode === 'menopause') {
@@ -7451,7 +7502,7 @@
         // bleeding and symptoms are still worth logging during perimenopause.
         const menopauseHidden = [
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development',
+          'anomaly_insights', 'fetal_development', 'cycle_card',
         ];
         order = order.filter((id) => !menopauseHidden.includes(id));
       } else if (mode === 'postpartum') {
@@ -7460,7 +7511,7 @@
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         const postpartumHidden = [
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card',
         ];
         order = order.filter((id) => !postpartumHidden.includes(id));
       } else {
@@ -7474,6 +7525,11 @@
       const hasAnyHistory = (Array.isArray(attrsForEmptyCheck.history) && attrsForEmptyCheck.history.length > 0)
         || (Array.isArray(attrsForEmptyCheck.grouped_starts) && attrsForEmptyCheck.grouped_starts.length > 0);
       const isFreshProfile = mode === 'cycle' && stateObj && !hasAnyHistory && !attrsForEmptyCheck.cycle_day;
+
+      // Opening animation: once per open / profile switch, never on later updates (every update re-renders everything).
+      const animations = this._prefs?.animations !== false; // dashboard setting "Animations"
+      const enter = animations && !this._enterPlayed && cards.length > 0 && !isFreshProfile;
+      const messagePop = animations && this._message && this._messageShown !== this._message;
 
       let cardHtml;
       if (isFreshProfile) {
@@ -8343,11 +8399,31 @@
             .kpi-item { min-width: 60px; padding: 8px 10px; }
             .household-stat { flex: 1 1 calc(50% - 5px); box-sizing: border-box; }
           }
+@keyframes mc-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+          @keyframes mc-wheel-in { from { opacity: 0; transform: rotate(-25deg) scale(.94); } to { opacity: 1; transform: none; } }
+          @keyframes mc-bar-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+          @keyframes mc-pop-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+          @keyframes mc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+          .mc-enter > .card { animation: mc-card-in .32s ease-out backwards; }
+          .mc-enter > .card:nth-child(n+9) { animation-delay: 320ms; }
+          .mc-enter > .card:nth-child(2) { animation-delay: 40ms; }
+          .mc-enter > .card:nth-child(3) { animation-delay: 80ms; }
+          .mc-enter > .card:nth-child(4) { animation-delay: 120ms; }
+          .mc-enter > .card:nth-child(5) { animation-delay: 160ms; }
+          .mc-enter > .card:nth-child(6) { animation-delay: 200ms; }
+          .mc-enter > .card:nth-child(7) { animation-delay: 240ms; }
+          .mc-enter > .card:nth-child(8) { animation-delay: 280ms; }
+          .mc-enter .card--hero svg { animation: mc-wheel-in .4s ease-out backwards; }
+          .mc-enter .confidence-bar span { transform-origin: left center; animation: mc-bar-in .4s ease-out backwards; }
+          .mc-modal-backdrop.mc-pop { animation: mc-fade-in .18s ease-out backwards; }
+          .mc-modal-backdrop.mc-pop .mc-modal { animation: mc-pop-in .22s ease-out backwards; }
+          .message.mc-pop { animation: mc-pop-in .2s ease-out backwards; }
+          .no-motion, .no-motion * { transition: none !important; animation: none !important; }
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
           }
         </style>
-        <main class="page">
+        <main class="page${animations ? '' : ' no-motion'}">
           <header class="toolbar">
             <div class="brand">
               <img src="/menstruation_cycle/assets/brands/calendar.svg" class="brand-mark" alt="" width="38" height="38" loading="lazy" onerror="this.style.display='none';"/>
@@ -8373,14 +8449,39 @@
           ${this._renderLhTestActions(stateObj, discreetMode)}
           ${this._renderTemperatureAction(stateObj, discreetMode)}
           ${this._renderContraceptionWarning(stateObj, discreetMode)}
-          ${this._message ? `<div class="message" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
+          ${this._message ? `<div class="message${messagePop ? ' mc-pop' : ''}" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}
           ${this._renderQuickLogModal(stateObj)}
           ${this._renderChatFab(stateObj)}
-          <section class="grid" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
+          <section class="grid${enter ? ' mc-enter' : ''}" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
         </main>
       `;
       this._mountEmbeddedCards();
+      this._messageShown = this._message || null;
+      if (enter) {
+        this._enterPlayed = true;
+        this._countUp();
+      }
+    }
+
+    // Numbers in the top area count up once while the cards fade in (about 0.4 s); skipped for "reduce motion".
+    _countUp() {
+      if (this._prefs?.animations === false) return;
+      if (typeof requestAnimationFrame !== 'function' || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+      const items = [];
+      this.shadowRoot?.querySelectorAll('.hw-num, .kpi-value, .confidence-pct').forEach((el) => {
+        const m = /^(\d+)(%?)$/.exec(el.textContent.trim());
+        if (m && Number(m[1]) > 0) items.push({ el, to: Number(m[1]), suffix: m[2] });
+      });
+      if (!items.length) return;
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - start) / 400);
+        const eased = 1 - (1 - p) ** 3;
+        items.forEach(({ el, to, suffix }) => { if (el.isConnected) el.textContent = `${Math.round(to * eased)}${suffix}`; });
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
     }
 
     /**
@@ -8430,6 +8531,14 @@
           // The widget title is the panel's own <h2>, so the card's title is left empty.
           selector: '[data-mount="pill-card"]', tag: 'menstruation-pill-card',
           config: () => (this._selectedEntityId ? { entity: this._selectedEntityId, title: '' } : null),
+        },
+        {
+          selector: '[data-mount="status-card"]', tag: 'menstruation-cycle-compact-status',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
+        },
+        {
+          selector: '[data-mount="cycle-card"]', tag: 'menstruation-cycle-card',
+          config: () => (this._selectedEntityId ? { entity: this._selectedEntityId } : null),
         },
       ];
 

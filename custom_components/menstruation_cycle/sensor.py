@@ -116,7 +116,9 @@ from .model import (
     cycle_wellness_score,
     estimate_menarche_from_signs,
     grouped_cycle_starts,
+    has_pain_entry,
     normalize_history,
+    pain_intensity_of,
     predict_future_starts,
 )
 from .statistics import compute_last_cycle_summary
@@ -354,6 +356,7 @@ def _compact_symptom_history_entries(entries: Any) -> Any:
         "intercourse",
         "basal_temp",
         "pain",
+        "pain_intensity",
         "cervical_mucus",
         "discharge",
         "mood",
@@ -828,8 +831,15 @@ def _summarize_symptoms_for_period(
         summary[f"{key}_days"] = days_with_value
         summary[f"{key}_types"] = types
         if key == "pain":
-            summary["pain_days"] = days_with_value
             summary["pain_types"] = types
+
+    pain_day_count = sum(1 for entry in period_entries if has_pain_entry(entry))
+    if pain_day_count:
+        summary["pain_days"] = pain_day_count
+    intensities = [i for i in (pain_intensity_of(entry) for entry in period_entries) if i is not None]
+    if intensities:
+        summary["pain_intensity_average"] = round(mean(intensities), 1)
+        summary["pain_intensity_max"] = max(intensities)
 
     basal_temps: list[float] = []
     for entry in period_entries:
@@ -880,6 +890,7 @@ def _build_symptom_statistics(
     cycles_with_pain = 0
     pain_days_per_cycle: list[int] = []
     pain_types: Counter[str] = Counter()
+    pain_intensities: list[int] = []
     bleeding_strengths: Counter[str] = Counter()
     discharge: Counter[str] = Counter()
     cervical_mucus: Counter[str] = Counter()
@@ -890,9 +901,12 @@ def _build_symptom_statistics(
         cycle_pain_days = 0
         for entry in entries:
             pain_values = _coerce_multi_values(entry.get("pain"))
-            if pain_values:
+            pain_types.update(pain_values)
+            if has_pain_entry(entry):
                 cycle_pain_days += 1
-                pain_types.update(pain_values)
+            intensity = pain_intensity_of(entry)
+            if intensity is not None:
+                pain_intensities.append(intensity)
 
             bleeding = entry.get("bleeding_strength")
             if isinstance(bleeding, str) and bleeding:
@@ -933,6 +947,7 @@ def _build_symptom_statistics(
             key: round((count / pain_total) * 100)
             for key, count in pain_types.items()
         } if pain_total else {},
+        "average_pain_intensity": round(mean(pain_intensities), 1) if pain_intensities else None,
         "typical_bleeding_strength": typical_bleeding,
         "bleeding_strength_distribution": {
             key: round((count / bleeding_total) * 100)

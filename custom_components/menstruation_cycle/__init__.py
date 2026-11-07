@@ -266,6 +266,8 @@ from .const import (
     STORAGE_KEY_LEGACY,
     STORAGE_VERSION,
     SYMPTOM_BASAL_TEMP,
+    SYMPTOM_PAIN_INTENSITY,
+    SYMPTOM_PAIN_INTENSITY_MAX,
     SYMPTOM_CLOTS,
     SYMPTOM_CLOT_SIZE,
     SYMPTOM_MOOD,
@@ -5797,7 +5799,7 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
     # number). See const.py for why these two were missing entirely before.
     free_text_fields = {SYMPTOM_MOOD, SYMPTOM_NOTE}
     free_text_max_lengths = {SYMPTOM_MOOD: SYMPTOM_MOOD_MAX_LENGTH, SYMPTOM_NOTE: SYMPTOM_NOTE_MAX_LENGTH}
-    valid_fields = set(SYMPTOM_OPTIONS.keys()) | {SYMPTOM_BASAL_TEMP} | free_text_fields
+    valid_fields = set(SYMPTOM_OPTIONS.keys()) | {SYMPTOM_BASAL_TEMP, SYMPTOM_PAIN_INTENSITY} | free_text_fields
 
     # HA-Idee 1 (weitere Ideen, 15.09.2026): basal_temp used to be hard-coded
     # Celsius-only, rejecting any Fahrenheit reading outright (see the old
@@ -5847,6 +5849,13 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
                         "to Fahrenheit in the integration options instead."
                     )
                 basal_temp_celsius = temp_value
+        elif key == SYMPTOM_PAIN_INTENSITY:
+            # None clears the rating again (the panel's undo has no other way to remove a key).
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= SYMPTOM_PAIN_INTENSITY_MAX):
+                raise HomeAssistantError(
+                    f"Symptom field '{SYMPTOM_PAIN_INTENSITY}' must be a whole number from 0 to "
+                    f"{SYMPTOM_PAIN_INTENSITY_MAX} (or null to clear it), got '{value}'."
+                )
         elif key in free_text_fields:
             if not isinstance(value, str):
                 raise HomeAssistantError(f"Symptom field '{key}' must be text, got '{value}'.")
@@ -5890,10 +5899,14 @@ async def _async_handle_add_symptom(hass: HomeAssistant, call: ServiceCall, *, s
         if merged.get(SYMPTOM_CLOTS) != "yes":
             merged.pop(SYMPTOM_CLOT_SIZE, None)
         merged["date"] = date_iso
+        if merged.get(SYMPTOM_PAIN_INTENSITY, 0) is None:
+            merged.pop(SYMPTOM_PAIN_INTENSITY)
         existing.clear()
         existing.update(merged)
     else:
         new_entry = dict(next_symptom_data)
+        if new_entry.get(SYMPTOM_PAIN_INTENSITY, 0) is None:
+            new_entry.pop(SYMPTOM_PAIN_INTENSITY)
         if new_entry.get(SYMPTOM_CLOTS) != "yes":
             new_entry.pop(SYMPTOM_CLOT_SIZE, None)
         new_entry["date"] = date_iso

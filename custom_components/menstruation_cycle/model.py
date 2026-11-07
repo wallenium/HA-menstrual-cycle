@@ -483,16 +483,29 @@ def normalize_symptoms(symptom_history: list[dict[str, Any]]) -> list[dict[str, 
     return sorted(normalized, key=lambda x: x.get("date", ""))
 
 
-def _count_pain_days(symptom_history: list[dict[str, Any]] | None, range_start: date, range_end_exclusive: date) -> int:
-    """Count days with a logged pain entry in [range_start, range_end_exclusive).
+def pain_intensity_of(entry: dict[str, Any]) -> int | None:
+    """Pain strength 0-10 of a symptom entry, None if not logged (or not a whole number in range)."""
+    value = entry.get("pain_intensity")
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 10:
+        return None
+    return value
 
-    Moved here from __init__.py (27.09.2026, HA-Idee 6 "weitere Ideen?", round
-    36) so cycle_wellness_score() below can reuse it too, alongside its
-    original callers in __init__.py (_async_sync_cycle_statistics,
-    _async_handle_compare_current_cycle) - one "what counts as a pain day"
-    definition instead of a second copy living in model.py.
-    """
-    count = 0
+
+def has_pain_entry(entry: dict[str, Any]) -> bool:
+    """A pain day: pain types logged, or a pain strength of at least 1."""
+    pain_value = entry.get("pain")
+    if isinstance(pain_value, list):
+        has_types = bool(pain_value)
+    else:
+        has_types = pain_value not in (None, "")
+    return has_types or (pain_intensity_of(entry) or 0) >= 1
+
+
+def _pain_entries_in_range(
+    symptom_history: list[dict[str, Any]] | None, range_start: date, range_end_exclusive: date
+) -> list[dict[str, Any]]:
+    """Pain-day entries in [range_start, range_end_exclusive)."""
+    found = []
     for entry in symptom_history or []:
         if not isinstance(entry, dict):
             continue
@@ -500,13 +513,26 @@ def _count_pain_days(symptom_history: list[dict[str, Any]] | None, range_start: 
             entry_date = date.fromisoformat(str(entry.get("date")))
         except (TypeError, ValueError):
             continue
-        if not (range_start <= entry_date < range_end_exclusive):
-            continue
-        pain_value = entry.get("pain")
-        has_pain = bool(pain_value) if isinstance(pain_value, list) else pain_value not in (None, "")
-        if has_pain:
-            count += 1
-    return count
+        if range_start <= entry_date < range_end_exclusive and has_pain_entry(entry):
+            found.append(entry)
+    return found
+
+
+def _count_pain_days(symptom_history: list[dict[str, Any]] | None, range_start: date, range_end_exclusive: date) -> int:
+    """Count pain days (see has_pain_entry) in [range_start, range_end_exclusive).
+
+    Moved here from __init__.py (27.09.2026, HA-Idee 6 "weitere Ideen?", round
+    36) so cycle_wellness_score() below can reuse it too, alongside its
+    original callers in __init__.py (_async_sync_cycle_statistics,
+    _async_handle_compare_current_cycle) - one "what counts as a pain day"
+    definition instead of a second copy living in model.py.
+    """
+    return len(_pain_entries_in_range(symptom_history, range_start, range_end_exclusive))
+
+
+def _pain_burden(symptom_history: list[dict[str, Any]] | None, range_start: date, range_end_exclusive: date) -> float:
+    """Pain days weighted by strength: a day rated n/10 counts n/10, a day without a rating (or 0) counts fully."""
+    return sum((pain_intensity_of(e) or 10) / 10 for e in _pain_entries_in_range(symptom_history, range_start, range_end_exclusive))
 
 
 PHASE_PERIOD = "period"
@@ -842,7 +868,7 @@ def cycle_wellness_score(model: "CycleModel", today: date) -> dict[str, Any] | N
     Deliberately reuses the exact building blocks the confidence/regularity
     computations above already use (_cycle_regularity_std,
     _regularity_score, _recent_cycle_lengths, _history_depth_score) plus
-    _count_pain_days, instead of a fourth, independent scoring system that
+    _pain_burden, instead of a fourth, independent scoring system that
     could tell a different story than the confidence/regularity numbers
     shown elsewhere. Returns None when there isn't at least one recent
     cycle to score, or outside normal cycling (the caller is expected to
@@ -865,7 +891,7 @@ def cycle_wellness_score(model: "CycleModel", today: date) -> dict[str, Any] | N
         window_start = date.fromisoformat(window_start_iso)
     except ValueError:
         window_start = today
-    pain_days = _count_pain_days(model.symptom_history, window_start, today + timedelta(days=1))
+    pain_days = _pain_burden(model.symptom_history, window_start, today + timedelta(days=1))
     avg_pain_days_per_cycle = pain_days / valid_cycles
     period_days = max(1, int(model.period_duration_days or DEFAULT_PERIOD_DURATION_DAYS))
     pain_score = max(0.0, min(1.0, 1.0 - avg_pain_days_per_cycle / (period_days * 1.5)))

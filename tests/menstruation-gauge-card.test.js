@@ -796,6 +796,38 @@ function testNewSymptomCategoriesAcrossModes() {
 }
 
 // ---------------------------------------------------------------------------
+// Pain strength (0-10) in the day modal: saved as a whole number, empty/out of range is omitted
+// ---------------------------------------------------------------------------
+
+async function testPainIntensityOnSave() {
+  const run = async (raw) => {
+    const card = makeCard();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const savedCalls = [];
+    card._hass = { ...makeHass({ state: 'period' }), callService: async (domain, service, payload) => { savedCalls.push({ service, payload }); } };
+    card._modalIso = new Date().toISOString().slice(0, 10);
+    Object.defineProperty(card, 'shadowRoot', {
+      configurable: true,
+      get: () => ({
+        querySelector: () => null,
+        querySelectorAll: () => [],
+        getElementById: (id) => (id === 'sym-pain-intensity' ? { value: raw } : null),
+        addEventListener: () => {},
+        get innerHTML() { return ''; },
+        set innerHTML(_v) {},
+      }),
+    });
+    await card._handleModalSave();
+    return savedCalls.find((c) => c.service === 'add_symptom')?.payload.symptom_data || {};
+  };
+  assert.strictEqual((await run('7')).pain_intensity, 7, 'a typed 7 is saved as the number 7');
+  assert.strictEqual((await run('0')).pain_intensity, 0, '0 (no pain) is a real value');
+  assert.ok(!('pain_intensity' in await run('')), 'empty means not logged');
+  assert.ok(!('pain_intensity' in await run('11')), 'above 10 is not sent');
+  console.log('  ✓ pain strength collected from the day modal');
+}
+
+// ---------------------------------------------------------------------------
 // E6) Clot size remains dependent on clots=yes in saved payload
 // ---------------------------------------------------------------------------
 
@@ -1676,6 +1708,7 @@ const tests = [
   ['discharge-symptom-config-ordering', testDischargeSymptomConfigAndOrdering],
   ['new-symptom-categories-across-modes', testNewSymptomCategoriesAcrossModes],
   ['clot-size-dependency-save', testClotSizeDependencyOnSave],
+  ['pain-intensity-save', testPainIntensityOnSave],
   ['modal-save-captures-timeline-state-before-service-calls', testModalSaveCapturesTimelineStateBeforeServiceCalls],
   ['period-lifecycle-save-labels', testTodaySaveButtonUsesPeriodLifecycleLabels],
   ['basal-temp-field-profile-unit', testBasalTempFieldFollowsProfileUnit],
