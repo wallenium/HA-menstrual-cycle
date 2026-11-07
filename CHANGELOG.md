@@ -3,6 +3,10 @@
 ## 1.10.0
 
 ### Added
+- **Dashboard panel, pain strength in the card "Today":** a row 0 to 10 saves the strength of the day with one tap (shown while a period is running or pain was logged recently; a second tap on the same number clears it; undo is offered). Not shown in discreet mode.
+- **Dashboard panel, "Pain & Mood Trend" shows the strength** (0 to 10) per day instead of only counting pain types; days with pain types but no strength are marked as unrated.
+- **Dashboard panel, widget "Next 7 days":** period, fertile window, ovulation, pill pack, supplies and reminders of the coming week in one list. Not shown in discreet mode, in pregnancy, menarche, menopause and postpartum; off in the "young" preset.
+- **Dashboard panel, widget "Search history":** search the logged days by text and category (symptoms, mood, pain strength ...) over 30, 90 or 180 days or everything loaded; a hit opens that day in the quick log. Not shown in discreet mode.
 - **Day dialog of the calendar card animates:** the dialog for editing a day grows out of the tapped day and shrinks back into it when it is closed. When the card is scrolled out of view, it shrinks away too and grows back on return (what was typed stays). Nothing moves with "reduce motion" on.
 - **Dashboard panel, swipe on the phone:** swiping sideways switches to the previous/next view (over the calendar card: the month); pulling down at the top reloads the history, the household bar and the saved settings.
 - **Dashboard panel, views as text:** in the edit mode a view can be copied as a short code and imported again (other device or profile). Invalid codes change nothing.

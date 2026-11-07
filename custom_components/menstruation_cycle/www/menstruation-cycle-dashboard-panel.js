@@ -554,6 +554,7 @@
   const WIDGET_DEFS = [
     { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
     { id: 'phase_timeline', title: 'dashboard_widget_cycle_phase_overview', sensitive: false, span: 12 },
+    { id: 'week_ahead', title: 'dashboard_widget_week_ahead', sensitive: true, span: 6 },
     { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, span: 5 },
     { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, span: 7 },
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
@@ -574,14 +575,15 @@
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
     { id: 'progress_badges', title: 'dashboard_widget_progress_badges', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
+    { id: 'history_search', title: 'dashboard_widget_history_search', sensitive: true, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
   ];
 
   // Groups of the jump bar under the header: a tap scrolls to the first visible card of the group.
   const NAV_GROUPS = [
-    ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
-    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'statistics_card', 'year_overview']],
+    ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'week_ahead', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
+    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'history_search', 'statistics_card', 'year_overview']],
     ['calendar', 'dashboard_nav_calendar', ['calendar_card']],
     ['supplies', 'dashboard_nav_supplies', ['product_usage', 'inventory_card', 'timer_card', 'pill_card']],
     ['insights', 'dashboard_nav_insights', ['symptom_heatmap', 'anomaly_insights', 'cycle_insights', 'symptom_insights', 'progress_badges', 'support_card']],
@@ -591,6 +593,7 @@
   const WIDGET_IDS_GRAPH_FIRST = [
     'kpi_strip',
     'phase_timeline',
+    'week_ahead',
     'pregnancy_prediction',
     'basal_temp',
     'phase_donut',
@@ -610,6 +613,7 @@
     'symptom_insights',
     'progress_badges',
     'pain_mood_trend',
+    'history_search',
     'year_overview',
   ];
 
@@ -695,6 +699,8 @@
         symptom_insights: false,
         progress_badges: true,
         pain_mood_trend: false,
+        week_ahead: false,
+        history_search: false,
         year_overview: false,
       },
       myInfo: {
@@ -729,6 +735,8 @@
         symptom_insights: true,
         progress_badges: true,
         pain_mood_trend: true,
+        week_ahead: true,
+        history_search: true,
         year_overview: true,
       },
       myInfo: {
@@ -945,6 +953,7 @@
       this._wizard = null; // setup assistant: { step, cards, viewName } while open
       this._viewCodeText = '';
       this._swipe = null;
+      this._historySearch = { q: '', category: '', range: '90', limit: 30 };
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
       // get_household_summary service and shown as a compact bar above the
@@ -4230,6 +4239,14 @@
     // same pattern as the existing chat-input/quick-log-open focus calls.
     _handleQuickLogSearchInput(event) {
       const target = event.target;
+      if (target instanceof HTMLInputElement && target.dataset.action === 'hs-query') {
+        // Only the list changes while typing, so the field keeps its focus (and the cards are not rebuilt).
+        this._historySearch.q = target.value;
+        this._historySearch.limit = 30;
+        const box = this.shadowRoot?.querySelector('[data-hs-results]');
+        if (box) box.innerHTML = this._renderHistoryResults(this._hass?.states?.[this._selectedEntityId]);
+        return;
+      }
       if (!(target instanceof HTMLInputElement) || target.dataset.action !== 'quick-log-category-search') return;
       this._quickLogCategorySearch = target.value;
       this.render();
@@ -4513,6 +4530,13 @@
           this._message = this._t('dashboard_view_imported').replace('{name}', result);
         }
         this.render();
+      } else if (action === 'pain-set') {
+        this._savePainIntensity(Number(target.dataset.value));
+      } else if (action === 'hs-open' && target.dataset.date) {
+        this._openQuickLogForDate(target.dataset.date);
+      } else if (action === 'hs-more') {
+        this._historySearch.limit += 30;
+        this.render();
       } else if (action === 'theme-cycle' && this._prefs) {
         this._prefs.theme = THEMES[(THEMES.indexOf(this._prefs.theme) + 1) % THEMES.length];
         this._savePrefs();
@@ -4621,6 +4645,14 @@
 
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-end-date-change') {
         this._quickLogEndDate = target.value || null;
+        return;
+      }
+
+      if (target.tagName === 'SELECT' && ['hs-category', 'hs-range'].includes(target.dataset.action)) {
+        if (target.dataset.action === 'hs-category') this._historySearch.category = target.value;
+        else this._historySearch.range = ['30', '90', '180', 'all'].includes(target.value) ? target.value : '90';
+        this._historySearch.limit = 30;
+        this.render();
         return;
       }
 
@@ -7165,6 +7197,220 @@
       return `<div>${items}</div>`;
     }
 
+    // ---- Pain strength in the card "Today": one tap on 0 to 10, a second tap on the same number clears it. ----
+    _recentPain(stateObj) {
+      if (!stateObj || NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return [];
+      const since = new Date();
+      since.setDate(since.getDate() - 14);
+      const sinceIso = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+      const today = this._todayIso();
+      const hasPain = (entry) => Number.isInteger(entry?.pain_intensity)
+        || (Array.isArray(entry?.pain) ? entry.pain.some((v) => v && v !== 'none') : (typeof entry?.pain === 'string' && entry.pain !== '' && entry.pain !== 'none'));
+      return this._getFullSymptomHistory(stateObj).filter((entry) => entry && entry.date >= sinceIso && entry.date <= today && hasPain(entry));
+    }
+
+    // Offered while the period runs and for two weeks after the last day with pain; not when the category "Pain" is hidden.
+    _renderPainAction(stateObj, discreetMode) {
+      if (discreetMode || !stateObj || NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return '';
+      if (this._prefs?.categoryVisibility?.pain === false) return '';
+      const running = String(stateObj.state || '') === 'period' || stateObj.attributes?.current_bleeding_block?.is_active === true;
+      const recent = this._recentPain(stateObj);
+      if (!running && !recent.length) return '';
+      const current = recent.find((entry) => entry.date === this._todayIso())?.pain_intensity;
+      const label = this._t('dashboard_pain_today');
+      const buttons = Array.from({ length: 11 }, (_, n) => `<button type="button" data-action="pain-set" data-value="${n}" aria-pressed="${current === n}" aria-label="${escapeHtml(label)} ${n}">${n}</button>`).join('');
+      return `<div class="today-row${Number.isInteger(current) ? ' done' : ''}" role="group" aria-label="${escapeHtml(this._t('pain_intensity_label'))}">
+        <span class="today-label">${escapeHtml(label)}</span>
+        <div class="pain-scale">${buttons}</div>
+      </div>`;
+    }
+
+    async _savePainIntensity(value) {
+      if (!this._hass || !this._selectedEntityId || !Number.isInteger(value) || value < 0 || value > 10) return;
+      const stateObj = this._hass.states?.[this._selectedEntityId];
+      const attrs = stateObj?.attributes || {};
+      const today = this._todayIso();
+      const current = this._recentPain(stateObj).find((entry) => entry.date === today)?.pain_intensity;
+      const next = current === value ? null : value;
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: today,
+          symptom_data: { pain_intensity: next },
+        });
+        this._message = this._t('dashboard_quick_log_saved') || 'Gespeichert.';
+        clearTimeout(this._quickLogUndoTimer);
+        this._quickLogUndo = { entityId: this._selectedEntityId, date: today, previous: { pain_intensity: Number.isInteger(current) ? current : null } };
+        this._quickLogUndoTimer = setTimeout(() => {
+          this._quickLogUndo = null;
+          this.render();
+        }, 8000);
+      } catch (error) {
+        this._message = (error && error.message) || this._t('dashboard_period_action_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
+    // ---- Widget "Next 7 days": what the sensor already knows about the coming week, in one list. ----
+    _weekAheadItems(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const today = this._todayIso();
+      const addDays = (iso, n) => {
+        const date = new Date(`${iso}T12:00:00`);
+        date.setDate(date.getDate() + n);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      };
+      const last = addDays(today, 6);
+      const items = [];
+      const iso = (value) => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null);
+      const range = (key, from, to) => {
+        from = iso(from);
+        to = iso(to) || from;
+        if (from && to >= today && from <= last) items.push({ key, from, to });
+      };
+      const forecast = attrs.period_forecast || {};
+      const running = String(stateObj?.state || '') === 'period';
+      if (!running) range('period', forecast.window_start || attrs.next_predicted_start, forecast.window_end);
+      const fertility = attrs.fertility_forecast && typeof attrs.fertility_forecast === 'object' ? attrs.fertility_forecast : {};
+      range('fertile', fertility.fertile_window_start ?? attrs.fertile_window_start, fertility.fertile_window_end ?? attrs.fertile_window_end);
+      range('ovulation', fertility.ovulation_estimate ?? attrs.ovulation_day, null);
+      const pill = attrs.pill_pack;
+      if (pill && !pill.new_pack && Number.isInteger(pill.position) && Number.isInteger(pill.active)) {
+        if (!pill.in_pause && pill.pause > 0) range('pill_pause', addDays(today, pill.active + 1 - pill.position), null);
+        range('pill_new', addDays(today, 29 - pill.position), null);
+      }
+      const contraception = attrs.contraception_status;
+      const due = iso(contraception?.renewal_due_date);
+      if (due && due <= last && (contraception.renewal_reminder_due === true || due >= today)) items.push({ key: 'renewal', from: due, to: due });
+      const day = (item) => (item.from < today ? today : item.from); // what has begun counts as today
+      return items.sort((a, b) => (day(a) < day(b) ? -1 : (day(a) > day(b) ? 1 : 0)));
+    }
+
+    _renderWeekAhead(stateObj) {
+      if (NON_CYCLE_STATES.includes(String(stateObj?.state || ''))) return '';
+      const items = this._weekAheadItems(stateObj);
+      if (!items.length) return `<div class="helper">${escapeHtml(this._t('dashboard_week_nothing'))}</div>`;
+      const lang = this._lang || 'en';
+      const at = (iso) => new Date(`${iso}T12:00:00`);
+      const dayFormat = new Intl.DateTimeFormat(lang, { weekday: 'short', day: 'numeric', month: 'short' });
+      const relative = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+      const today = this._todayIso();
+      const rows = items.map((item) => {
+        const when = item.to > item.from && typeof dayFormat.formatRange === 'function' ? dayFormat.formatRange(at(item.from), at(item.to)) : dayFormat.format(at(item.from));
+        const start = item.from < today ? today : item.from;
+        const days = Math.round((at(start) - at(today)) / 86400000);
+        return `<li class="week-item week-${item.key}"><span class="week-dot" aria-hidden="true"></span><span class="week-label">${escapeHtml(this._t(`dashboard_week_${item.key}`))}</span><span class="week-when"><strong>${escapeHtml(when)}</strong> <span class="week-rel">${escapeHtml(relative.format(days, 'day'))}</span></span></li>`;
+      }).join('');
+      return `<ul class="week-list">${rows}</ul>`;
+    }
+
+    // ---- Widget "Search history": days with entries, filtered by text, category and period. ----
+    _optionLabel(value) {
+      const key = window.MenstruationFunctions ? window.MenstruationFunctions.normalizeOptionKey(value) : String(value);
+      const prefixed = this._t(`opt_${key}`);
+      return prefixed !== `opt_${key}` ? prefixed : (this._t(key) !== key ? this._t(key) : String(value));
+    }
+
+    _searchCategories(stateObj) {
+      if (!window.MenstruationFunctions) return [];
+      const mode = this._resolveContentMode(stateObj);
+      const hidden = this._prefs?.categoryVisibility || {};
+      return window.MenstruationFunctions.getSymptomConfig(mode, mode === 'pregnancy')
+        .filter((cat) => !cat.hiddenInModal && hidden[cat.key] !== false)
+        .map((cat) => {
+          const prefixed = this._t(`cat_${cat.key}`);
+          return { key: cat.key, label: prefixed !== `cat_${cat.key}` ? prefixed : this._t(cat.key) };
+        });
+    }
+
+    _historySearchRows(stateObj) {
+      const search = this._historySearch;
+      const attrs = stateObj?.attributes || {};
+      const categories = this._searchCategories(stateObj);
+      const unit = this._temperatureUnit(attrs);
+      const today = this._todayIso();
+      let cutoff = '';
+      if (search.range !== 'all') {
+        const since = new Date();
+        since.setDate(since.getDate() - Number(search.range));
+        cutoff = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+      }
+      const query = String(search.q || '').trim().toLowerCase();
+      const rows = [];
+      (Array.isArray(this._getFullSymptomHistory(stateObj)) ? this._getFullSymptomHistory(stateObj) : []).forEach((entry) => {
+        if (!entry?.date || entry.date > today || entry.date < cutoff) return;
+        const chips = [];
+        categories.forEach((cat) => {
+          const raw = entry[cat.key] ?? entry.symptom_data?.[cat.key];
+          const values = (Array.isArray(raw) ? raw : [raw]).filter((v) => v !== undefined && v !== null && v !== '' && v !== 'none');
+          if (values.length) chips.push({ category: cat.key, text: `${cat.label}: ${values.map((v) => this._optionLabel(v)).join(', ')}` });
+        });
+        const strength = entry.pain_intensity ?? entry.symptom_data?.pain_intensity;
+        if (Number.isInteger(strength) && this._prefs?.categoryVisibility?.pain !== false) chips.push({ category: 'pain', text: this._t('dashboard_hs_pain').replace('{n}', String(strength)) });
+        const temp = entry.basal_temp ?? entry.symptom_data?.basal_temp;
+        if (temp != null && temp !== '') chips.push({ category: 'basal_temp', text: `${this._displayTemperature(temp, unit, 2)} ${unit}` });
+        if (!chips.length) return;
+        if (search.category && !chips.some((chip) => chip.category === search.category)) return;
+        if (query && !chips.some((chip) => chip.text.toLowerCase().includes(query))) return;
+        rows.push({ date: entry.date, chips });
+      });
+      return rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+    }
+
+    _renderHistoryResults(stateObj) {
+      const rows = this._historySearchRows(stateObj);
+      const shown = rows.slice(0, this._historySearch.limit);
+      const lang = this._lang || 'en';
+      const dayFormat = new Intl.DateTimeFormat(lang, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      const list = shown.map((row) => {
+        const label = dayFormat.format(new Date(`${row.date}T12:00:00`));
+        return `<li><button type="button" class="hs-row" data-action="hs-open" data-date="${escapeHtml(row.date)}" aria-label="${escapeHtml(this._t('dashboard_hs_edit_aria').replace('{date}', label))}"><span class="hs-date">${escapeHtml(label)}</span><span class="hs-chips">${row.chips.map((chip) => `<span class="hs-chip">${escapeHtml(chip.text)}</span>`).join('')}</span></button></li>`;
+      }).join('');
+      const more = rows.length > shown.length ? `<button type="button" class="hs-more" data-action="hs-more">${escapeHtml(this._t('dashboard_hs_more'))}</button>` : '';
+      return `<p class="helper" aria-live="polite">${escapeHtml(rows.length ? this._t('dashboard_hs_count').replace('{count}', String(rows.length)) : this._t('dashboard_hs_none'))}</p>
+        <ul class="hs-list">${list}</ul>${more}`;
+    }
+
+    _renderHistorySearch(stateObj) {
+      const search = this._historySearch;
+      const categories = this._searchCategories(stateObj);
+      const categoryOptions = [`<option value="">${escapeHtml(this._t('dashboard_hs_all_categories'))}</option>`]
+        .concat(categories.map((cat) => `<option value="${escapeHtml(cat.key)}"${search.category === cat.key ? ' selected' : ''}>${escapeHtml(cat.label)}</option>`)).join('');
+      const rangeOptions = ['30', '90', '180'].map((n) => `<option value="${n}"${search.range === n ? ' selected' : ''}>${escapeHtml(this._t('dashboard_hs_days').replace('{n}', n))}</option>`)
+        .concat(`<option value="all"${search.range === 'all' ? ' selected' : ''}>${escapeHtml(this._t('dashboard_hs_all_time'))}</option>`).join('');
+      return `<div class="hs-controls">
+          <input type="search" data-action="hs-query" value="${escapeHtml(search.q)}" placeholder="${escapeHtml(this._t('dashboard_hs_placeholder'))}" aria-label="${escapeHtml(this._t('dashboard_hs_placeholder'))}" />
+          <select data-action="hs-category" aria-label="${escapeHtml(this._t('dashboard_hs_all_categories'))}">${categoryOptions}</select>
+          <select data-action="hs-range" aria-label="${escapeHtml(this._t('dashboard_hs_days').replace('{n}', ''))}">${rangeOptions}</select>
+        </div>
+        <div data-hs-results>${this._renderHistoryResults(stateObj)}</div>`;
+    }
+
+    // Opens the quick log for an earlier day, filled with what is already logged there.
+    async _openQuickLogForDate(date) {
+      this._quickLogSelections = {};
+      this._quickLogDate = date;
+      this._quickLogEndDate = null;
+      this._quickLogOpen = true;
+      this.render();
+      if (!this._selectedEntityId || !window.MenstruationFunctions) return;
+      const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, this._selectedEntityId, date, '[menstruation-cycle-dashboard-panel]');
+      if (!data || this._quickLogDate !== date || !this._quickLogOpen) return;
+      const selections = {};
+      Object.entries(data).forEach(([key, val]) => {
+        if (key === 'date' || key === 'found' || val === undefined || val === null || val === '' || (Array.isArray(val) && !val.length)) return;
+        selections[key] = val;
+      });
+      this._quickLogSelections = selections;
+      this.render();
+    }
+
     _renderPainMoodTrend(stateObj) {
       const symptomHistory = this._getFullSymptomHistory(stateObj);
       const entries = Array.isArray(symptomHistory) ? this._inChartRange(symptomHistory, (entry) => entry?.date, 14) : [];
@@ -7200,8 +7446,15 @@
         return 0;
       };
 
-      const painCounts = entries.map(painCount);
-      const maxPain = Math.max(1, ...painCounts);
+      // With pain strength (0-10) logged in the period the bars show it; days with pain types but no strength get a small marker.
+      const strengthOf = (entry) => {
+        const raw = entry?.pain_intensity ?? entry?.symptom_data?.pain_intensity;
+        return Number.isInteger(raw) && raw >= 0 && raw <= 10 ? raw : null;
+      };
+      const useStrength = entries.some((entry) => strengthOf(entry) !== null);
+      const painCounts = entries.map((entry) => (useStrength ? (strengthOf(entry) ?? 0) : painCount(entry)));
+      const unrated = entries.map((entry) => useStrength && strengthOf(entry) === null && painCount(entry) > 0);
+      const maxPain = useStrength ? 10 : Math.max(1, ...painCounts);
       const moodValues = entries.map(moodValue);
       const numericMoods = moodValues.filter((v) => typeof v === 'number' && v > 0);
       const maxMood = Math.max(1, ...(numericMoods.length ? numericMoods : [1]));
@@ -7223,7 +7476,10 @@
         const painFrac = pain > 0 ? pain / maxPain : 0;
         const painH = pain > 0 ? Math.max(2, painFrac * chartH) : 0;
         const painY = padT + chartH - painH;
-        const painBar = painH > 0 ? `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"><title>${pain} ${pain === 1 ? this._t('dashboard_pain_type_singular') || 'Schmerzart' : this._t('dashboard_pain_type_plural') || 'Schmerzarten'}</title></rect>` : '';
+        const painTitle = useStrength ? `${pain}/10` : `${pain} ${pain === 1 ? this._t('dashboard_pain_type_singular') || 'Schmerzart' : this._t('dashboard_pain_type_plural') || 'Schmerzarten'}`;
+        const painBar = painH > 0
+          ? `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"><title>${escapeHtml(painTitle)}</title></rect>`
+          : (unrated[idx] ? `<rect x="${x}" y="${padT + chartH - 3}" width="${halfW}" height="3" fill="#E8637D" opacity="0.4" rx="1"><title>${escapeHtml(this._t('dashboard_pain_unrated'))}</title></rect>` : '');
 
         let moodBar = '';
         if (typeof mood === 'number' && mood > 0) {
@@ -7247,7 +7503,8 @@
                        <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
       const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_pain_types_count') || 'Anzahl Schmerzarten')}</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(useStrength ? this._t('pain_intensity_label') : (this._t('dashboard_pain_types_count') || 'Anzahl Schmerzarten'))}</span>
+        ${unrated.some(Boolean) ? `<span><span style="display:inline-block;width:8px;height:3px;background:#E8637D;opacity:.4;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_pain_unrated'))}</span>` : ''}
         ${hasMoodData ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#6B3654;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>` : ''}
       </div>`;
 
@@ -7755,7 +8012,7 @@
     _widgetIdsForMode(mode, order) {
       const without = (ids) => order.filter((id) => !ids.includes(id));
       if (mode === 'pregnancy') {
-        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card']);
+        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead']);
         if (kept.includes('fetal_development')) return kept;
         const idx = kept.indexOf('phase_timeline');
         return idx >= 0 ? [...kept.slice(0, idx), 'fetal_development', ...kept.slice(idx)] : [...kept, 'fetal_development'];
@@ -7766,7 +8023,7 @@
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development', 'cycle_card',
+          'fetal_development', 'cycle_card', 'week_ahead',
         ]);
       }
       if (mode === 'menopause') {
@@ -7774,7 +8031,7 @@
         // widgets and cycle-length anomaly detection, but keep general symptom
         // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
         // bleeding and symptoms are still worth logging during perimenopause.
-        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card']);
+        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead']);
       }
       if (mode === 'postpartum') {
         // No cycle to predict during the postpartum window — hide the same
@@ -7782,7 +8039,7 @@
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead',
         ]);
       }
       return without(['fetal_development']);
@@ -7836,6 +8093,12 @@
       if (widgetId === 'symptom_insights') body = this._renderSymptomInsights(stateObj);
       if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
+      // These two show what is planned or logged, so discreet mode leaves them out.
+      if (widgetId === 'week_ahead' || widgetId === 'history_search') {
+        if (discreetMode || !stateObj) return '';
+        body = widgetId === 'week_ahead' ? this._renderWeekAhead(stateObj) : this._renderHistorySearch(stateObj);
+        if (!body) return '';
+      }
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
       if (widgetId === 'fetal_development') body = this._renderFetalDevelopment(stateObj);
 
@@ -7904,6 +8167,7 @@
       const rows = `${this._renderPeriodActions(stateObj, discreetMode)}
         ${this._renderLhTestActions(stateObj, discreetMode)}
         ${this._renderTemperatureAction(stateObj, discreetMode)}
+        ${this._renderPainAction(stateObj, discreetMode)}
         ${pillRow}${stockRow}`.trim();
       const report = this._renderDoctorReportAction(discreetMode);
       if (!rows && !report) return '';
@@ -8415,6 +8679,29 @@
           .view-code-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
           .view-code-row button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 6px 12px; cursor: pointer; font-size: .85rem; }
           textarea[data-pref="viewCode"] { width: 100%; box-sizing: border-box; margin-top: 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: .75rem var(--mc-font-mono); padding: 6px 8px; resize: vertical; }
+          .pain-scale { display: flex; gap: 4px; flex-wrap: wrap; }
+          .pain-scale button { min-width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .8rem; }
+          .pain-scale button[aria-pressed="true"] { background: var(--mc-rose-deep); border-color: transparent; color: #fff; font-weight: 600; }
+          .week-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+          .week-item { display: grid; grid-template-columns: 10px 1fr auto; align-items: baseline; gap: 10px; }
+          .week-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mc-rose); align-self: center; }
+          .week-fertile .week-dot { background: var(--mc-sage); }
+          .week-ovulation .week-dot { background: var(--mc-amber); }
+          .week-pill_pause .week-dot, .week-pill_new .week-dot { background: var(--mc-plum); }
+          .week-renewal .week-dot { background: var(--secondary-text-color, #6b7280); }
+          .week-when { text-align: right; font-size: .85rem; }
+          .week-rel { color: var(--secondary-text-color); font-size: .78rem; }
+          .hs-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+          .hs-controls input, .hs-controls select { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .85rem; }
+          .hs-controls input { flex: 1 1 14rem; min-width: 0; }
+          .hs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+          .hs-row { width: 100%; display: grid; grid-template-columns: 9.5rem 1fr; gap: 10px; align-items: baseline; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+          .hs-row:hover, .hs-row:focus-visible { background: var(--mc-sand); border-color: var(--divider-color, #e5e7eb); }
+          .hs-date { font-size: .82rem; color: var(--secondary-text-color); }
+          .hs-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+          .hs-chip { padding: 2px 8px; border-radius: 999px; background: var(--mc-rose-tint); font-size: .78rem; }
+          .hs-more { margin-top: 8px; padding: 6px 16px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .85rem; }
+          @media (max-width: 700px) { .hs-row { grid-template-columns: 1fr; gap: 4px; } }
           .wizard { max-width: 460px; }
           .wizard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
           .wizard-head h2 { margin: 0; font-family: var(--mc-font-display); font-size: 1.15rem; font-weight: 500; }

@@ -982,6 +982,8 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(navPanel._renderJumpNav(['kpi_strip', 'calendar_card']), '', 'fewer than three groups: no bar');
   const navHtml = navPanel._renderJumpNav(['kpi_strip', 'cycle_history', 'calendar_card', 'inventory_card']);
   assert.ok(navHtml.includes('data-group="overview"') && navHtml.includes('data-group="history"') && navHtml.includes('data-group="calendar"') && navHtml.includes('data-group="supplies"') && !navHtml.includes('data-group="insights"'), 'only groups with a shown card');
+  assert.ok(navPanel._renderJumpNav(['week_ahead', 'cycle_history', 'calendar_card', 'inventory_card']).includes('data-group="overview"'), 'the 7-day card alone keeps the overview chip');
+  assert.ok(navPanel._renderJumpNav(['history_search', 'week_ahead', 'calendar_card', 'inventory_card']).includes('data-group="history"'), 'history search belongs to the history chip');
   const scrolls = [];
   const realQA = navPanel.shadowRoot.querySelectorAll;
   const mkCard = (id) => ({ dataset: { card: id }, scrollIntoView: (o) => scrolls.push([id, o.block, o.behavior]) });
@@ -1389,6 +1391,200 @@ const makeHass = (stateObj) => ({
   assert.ok(skip.shadowRoot.innerHTML.includes('class="mc-modal wizard"'), 'also from the edit mode');
   skip._handleClick({ target: new ClickTarget({ action: 'wizard-skip' }) });
   assert.ok(skip._editMode, 'edit mode is still on');
+
+
+  // ---- Pain strength in the card "Today" ----
+  const dayAt = (n) => isoMonthsBack(0, n);
+  const painState = (attrs = {}, state = 'follicular') => ({ ...makeState({ symptom_history: [], ...attrs }), state });
+  const painPanel = await freshPanel();
+  const painCalls = [];
+  painPanel._hass.callService = async (domain, service, data) => { painCalls.push([domain, service, data]); };
+  const painRow = (stateObj, discreet = false) => painPanel._renderPainAction(stateObj, discreet);
+  const pressed = (html) => [...html.matchAll(/data-value="(\d+)" aria-pressed="true"/g)].map((m) => Number(m[1]));
+  assert.strictEqual(painRow(painState({}, 'follicular')), '', 'nothing logged lately and no period: no row');
+  assert.strictEqual((painRow(painState({}, 'period')).match(/data-action="pain-set"/g) || []).length, 11, 'during the period: 0 to 10');
+  assert.deepStrictEqual(pressed(painRow(painState({}, 'period'))), [], 'none picked yet');
+  assert.ok(painRow(painState({ symptom_history: [{ date: dayAt(-5), pain: ['cramps'] }] })), 'pain logged in the last two weeks: offered');
+  assert.ok(painRow(painState({ symptom_history: [{ date: dayAt(-5), pain_intensity: 0 }] })), 'a logged strength counts, also 0');
+  assert.strictEqual(painRow(painState({ symptom_history: [{ date: dayAt(-30), pain: ['cramps'] }] })), '', 'pain a month ago: no');
+  assert.strictEqual(painRow(painState({ symptom_history: [{ date: dayAt(-3), pain: ['none'] }] })), '', '"none" is no pain');
+  const withToday = painRow(painState({ symptom_history: [{ date: dayAt(0), pain_intensity: 6 }] }));
+  assert.deepStrictEqual(pressed(withToday), [6], "today's strength is marked");
+  assert.ok(withToday.includes('today-row done'), 'and the row shows it is done');
+  assert.strictEqual(painRow(painState({}, 'period'), true), '', 'not in discreet mode');
+  assert.strictEqual(painRow(painState({}, 'pregnant')), '', 'not while pregnant');
+  painPanel._prefs.categoryVisibility.pain = false;
+  assert.strictEqual(painRow(painState({}, 'period')), '', 'not when the category Pain is hidden');
+  painPanel._prefs.categoryVisibility.pain = true;
+  painPanel._hass.states[painPanel._selectedEntityId] = painState({ symptom_history: [{ date: dayAt(-1), pain: ['cramps'] }] });
+  await painPanel._savePainIntensity(4);
+  const painSave = painCalls.find(([, service]) => service === 'add_symptom');
+  assert.deepStrictEqual([painSave[2].date, painSave[2].symptom_data], [isoToday, { pain_intensity: 4 }], 'one tap saves the strength for today');
+  assert.strictEqual(painSave[2].profile, 'alice');
+  assert.deepStrictEqual(painPanel._quickLogUndo.previous, { pain_intensity: null }, 'undo goes back to nothing');
+  painCalls.length = 0;
+  painPanel._hass.states[painPanel._selectedEntityId] = painState({ symptom_history: [{ date: dayAt(0), pain_intensity: 4 }] });
+  await painPanel._savePainIntensity(4);
+  assert.deepStrictEqual(painCalls.find(([, service]) => service === 'add_symptom')[2].symptom_data, { pain_intensity: null }, 'the same number again clears it');
+  assert.deepStrictEqual(painPanel._quickLogUndo.previous, { pain_intensity: 4 }, 'and undo brings 4 back');
+  painCalls.length = 0;
+  await painPanel._savePainIntensity(7);
+  assert.deepStrictEqual(painCalls.find(([, service]) => service === 'add_symptom')[2].symptom_data, { pain_intensity: 7 }, 'another number replaces it');
+  painCalls.length = 0;
+  for (const bad of [11, -1, 2.5, NaN]) await painPanel._savePainIntensity(bad);
+  assert.strictEqual(painCalls.length, 0, 'nothing outside 0 to 10 or not whole is sent');
+  painPanel._handleClick({ target: new ClickTarget({ action: 'pain-set', value: '3' }) });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.strictEqual(painCalls.find(([, service]) => service === 'add_symptom')[2].symptom_data.pain_intensity, 3, 'the button is wired up');
+  const todayHtml = painPanel._renderTodayCard(painState({ symptom_history: [{ date: dayAt(-1), basal_temp: 36.4 }, { date: dayAt(0), pain_intensity: 2 }] }), false);
+  assert.ok(todayHtml.indexOf('temp-input') < todayHtml.indexOf('pain-set'), 'the pain row sits under the temperature');
+
+  // ---- Pain & Mood trend with strength ----
+  const trendPanel = await freshPanel();
+  const trendHtml = (history) => trendPanel._renderPainMoodTrend(painState({ symptom_history: history }));
+  const withStrength = trendHtml([{ date: dayAt(-3), pain_intensity: 6 }, { date: dayAt(-2), pain: ['cramps'] }, { date: dayAt(-1), pain_intensity: 2 }]);
+  assert.ok(withStrength.includes('<title>6/10</title>') && withStrength.includes('<title>2/10</title>'), 'bars carry the strength');
+  assert.ok(withStrength.includes('Pain strength'), 'legend names the strength');
+  assert.ok(withStrength.includes('dashboard_pain_unrated'), 'a day with pain types but no strength gets a small marker');
+  const heightOf = (html, title) => parseFloat(new RegExp(`height="([\\d.]+)"[^>]*><title>${title}</title>`).exec(html)[1]);
+  assert.ok(heightOf(withStrength, '6/10') > heightOf(withStrength, '2/10'), 'stronger pain, taller bar');
+  const typesOnly = trendHtml([{ date: dayAt(-3), pain: ['cramps', 'headache'] }, { date: dayAt(-2), pain: ['cramps'] }]);
+  assert.ok(!typesOnly.includes('/10') && !typesOnly.includes('dashboard_pain_unrated') && typesOnly.includes('Number of pain types'), 'without any strength: the number of pain types as before');
+
+  // ---- Next 7 days ----
+  const weekPanel = await freshPanel();
+  const weekItems = (attrs = {}, state = 'follicular') => weekPanel._weekAheadItems(painState(attrs, state)).map((item) => `${item.key}:${item.from}`);
+  assert.deepStrictEqual(weekItems(), [], 'nothing known, nothing listed');
+  assert.deepStrictEqual(weekItems({ period_forecast: { window_start: dayAt(3), window_end: dayAt(5) } }), [`period:${dayAt(3)}`]);
+  assert.deepStrictEqual(weekItems({ period_forecast: { window_start: dayAt(8), window_end: dayAt(10) } }), [], 'beyond the week');
+  assert.deepStrictEqual(weekItems({ period_forecast: { window_start: dayAt(-1), window_end: dayAt(1) } }), [`period:${dayAt(-1)}`], 'a window that has begun still counts');
+  assert.deepStrictEqual(weekItems({ period_forecast: { window_start: dayAt(-4), window_end: dayAt(-2) } }), [], 'a window that is over does not');
+  assert.deepStrictEqual(weekItems({ period_forecast: null, next_predicted_start: dayAt(2) }), [`period:${dayAt(2)}`], 'only the predicted date');
+  assert.deepStrictEqual(weekItems({ period_forecast: { window_start: dayAt(3), window_end: dayAt(5) } }, 'period'), [], 'not while the period runs');
+  assert.deepStrictEqual(weekItems({ fertility_forecast: { fertile_window_start: dayAt(1), fertile_window_end: dayAt(5), ovulation_estimate: dayAt(4) } }), [`fertile:${dayAt(1)}`, `ovulation:${dayAt(4)}`]);
+  assert.deepStrictEqual(weekItems({ pill_pack: { active: 21, pause: 7, position: 19, in_pause: false, new_pack: false } }), [`pill_pause:${dayAt(3)}`], 'pill break in three days, the next pack is too far away');
+  assert.deepStrictEqual(weekItems({ pill_pack: { active: 21, pause: 7, position: 26, in_pause: true, new_pack: false } }), [`pill_new:${dayAt(3)}`], 'in the break: the new pack');
+  assert.deepStrictEqual(weekItems({ pill_pack: { active: 28, pause: 0, position: 27, in_pause: false, new_pack: false } }), [`pill_new:${dayAt(2)}`], 'no break: only the new pack');
+  assert.deepStrictEqual(weekItems({ pill_pack: { active: 21, pause: 7, position: 19, in_pause: false, new_pack: true } }), [], 'no pack started: nothing to say');
+  assert.deepStrictEqual(weekItems({ contraception_status: { renewal_due_date: dayAt(5) } }), [`renewal:${dayAt(5)}`]);
+  assert.deepStrictEqual(weekItems({ contraception_status: { renewal_due_date: dayAt(-2), renewal_reminder_due: true } }), [`renewal:${dayAt(-2)}`], 'overdue and reminded: listed');
+  assert.deepStrictEqual(weekItems({ contraception_status: { renewal_due_date: dayAt(-2) } }), [], 'overdue, not reminded: not');
+  assert.deepStrictEqual(weekItems({ contraception_status: { renewal_due_date: dayAt(20), renewal_reminder_due: true } }), [], 'too far');
+  assert.deepStrictEqual(weekItems({
+    contraception_status: { renewal_due_date: dayAt(6) },
+    fertility_forecast: { ovulation_estimate: dayAt(1) },
+    period_forecast: { window_start: dayAt(3), window_end: dayAt(4) },
+  }), [`ovulation:${dayAt(1)}`, `period:${dayAt(3)}`, `renewal:${dayAt(6)}`], 'sorted by day');
+  const weekHtml = weekPanel._renderWeekAhead(painState({ fertility_forecast: { ovulation_estimate: dayAt(0) }, period_forecast: { window_start: dayAt(3), window_end: dayAt(5) } }));
+  assert.ok(weekHtml.includes('dashboard_week_ovulation') && weekHtml.includes('dashboard_week_period'), 'each with its label');
+  assert.ok(weekHtml.includes('today') && weekHtml.includes('in 3 days'), 'and when, in words');
+  assert.ok(weekHtml.includes('–'), 'a window as a range');
+  assert.ok(weekPanel._renderWeekAhead(painState({})).includes('dashboard_week_nothing'), 'an empty week says so');
+  assert.ok(weekPanel._renderWidget('week_ahead', painState({}), false).includes('is-empty'), 'and shrinks to one line');
+  assert.strictEqual(weekPanel._renderWidget('week_ahead', painState({ period_forecast: null, next_predicted_start: dayAt(2) }), true), '', 'nothing in discreet mode');
+  assert.strictEqual(weekPanel._renderWidget('week_ahead', painState({ period_forecast: null, next_predicted_start: dayAt(2) }, 'pregnant'), false), '', 'nothing while pregnant');
+  assert.ok(weekPanel._renderWidget('week_ahead', painState({ period_forecast: null, next_predicted_start: dayAt(2) }), false).includes('week-period'));
+  ['pregnancy', 'menarche', 'menopause', 'postpartum'].forEach((mode) => {
+    assert.ok(!weekPanel._widgetIdsForMode(mode, ['week_ahead', 'kpi_strip']).includes('week_ahead'), `no forecast list in ${mode}`);
+  });
+  assert.ok(weekPanel._widgetIdsForMode('established', ['week_ahead']).includes('week_ahead'), 'shown in the normal mode');
+  assert.strictEqual(weekPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.week_ahead, true);
+  assert.strictEqual(weekPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.week_ahead, false, 'off for the young profile preset');
+
+  // ---- Search history ----
+  const realFunctionsHs = global.window.MenstruationFunctions;
+  global.window.MenstruationFunctions = {
+    getSymptomConfig: () => [{ key: 'pain' }, { key: 'discharge' }, { key: 'cervix_texture', hiddenInModal: true }],
+    normalizeOptionKey: (v) => v,
+    renderOptionIcon: () => '',
+    renderCategoryIcon: () => '',
+    fetchFreshSymptomData: async (hass, entity, date) => ({ data: { date, found: true, pain: ['cramps'], pain_intensity: 5, discharge: '' } }),
+  };
+  const hsPanel = await freshPanel();
+  const hsHistory = [
+    { date: dayAt(-1), pain: ['headache', 'cramps'], pain_intensity: 6, basal_temp: 36.5 },
+    { date: dayAt(-3), discharge: 'creamy' },
+    { date: dayAt(-4), cervix_texture: 'soft' },
+    { date: dayAt(-120), pain: ['cramps'] },
+    { date: dayAt(-200), pain: ['migraine'] },
+    { date: dayAt(2), pain: ['future'] },
+    { date: dayAt(-5) },
+  ];
+  hsPanel._hass.states[hsPanel._selectedEntityId] = painState({ symptom_history: hsHistory });
+  const hsState = () => hsPanel._hass.states[hsPanel._selectedEntityId];
+  const hsDates = () => hsPanel._historySearchRows(hsState()).map((row) => row.date);
+  assert.deepStrictEqual(hsDates(), [dayAt(-1), dayAt(-3)], 'last 90 days, newest first; empty, hidden-in-dialog and future days are left out');
+  hsPanel._historySearch.q = 'head';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1)], 'text finds an option');
+  hsPanel._historySearch.q = 'CREAM';
+  assert.deepStrictEqual(hsDates(), [dayAt(-3)], 'case does not matter');
+  hsPanel._historySearch.q = 'pain';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1)], 'and a category name (here also the strength chip)');
+  hsPanel._historySearch.q = '36.5';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1)], 'and the temperature');
+  hsPanel._historySearch.q = 'zzz';
+  assert.deepStrictEqual(hsDates(), []);
+  assert.ok(hsPanel._renderHistoryResults(hsState()).includes('dashboard_hs_none'), 'no match says so');
+  hsPanel._historySearch.q = '';
+  hsPanel._historySearch.category = 'discharge';
+  assert.deepStrictEqual(hsDates(), [dayAt(-3)], 'category filter');
+  hsPanel._historySearch.category = '';
+  hsPanel._historySearch.range = '30';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1), dayAt(-3)]);
+  hsPanel._historySearch.range = '180';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1), dayAt(-3), dayAt(-120)]);
+  hsPanel._historySearch.range = 'all';
+  assert.deepStrictEqual(hsDates(), [dayAt(-1), dayAt(-3), dayAt(-120), dayAt(-200)]);
+  hsPanel._historySearch.range = '90';
+  hsPanel._prefs.categoryVisibility.pain = false;
+  assert.deepStrictEqual(hsDates(), [dayAt(-1), dayAt(-3)], 'a hidden category adds no chips ...');
+  assert.ok(hsPanel._historySearchRows(hsState()).every((row) => row.chips.every((chip) => chip.category !== 'pain')), '... nor the strength');
+  hsPanel._prefs.categoryVisibility.pain = true;
+  const html1 = hsPanel._renderHistoryResults(hsState());
+  assert.ok(html1.includes('data-action="hs-open"') && html1.includes(`data-date="${dayAt(-1)}"`) && html1.includes('dashboard_hs_count'), 'each day is a button');
+  assert.ok(html1.toLowerCase().includes('headache, cramps') && html1.includes('dashboard_hs_pain'), 'with its entries');
+  // many days: 30 at first, then more
+  hsPanel._hass.states[hsPanel._selectedEntityId] = painState({ symptom_history: Array.from({ length: 70 }, (_, i) => ({ date: dayAt(-1 - i), pain: ['cramps'] })) });
+  hsPanel._historySearch.range = 'all';
+  assert.strictEqual((hsPanel._renderHistoryResults(hsState()).match(/data-action="hs-open"/g) || []).length, 30);
+  assert.ok(hsPanel._renderHistoryResults(hsState()).includes('data-action="hs-more"'));
+  hsPanel._handleClick({ target: new ClickTarget({ action: 'hs-more' }) });
+  assert.strictEqual((hsPanel._renderHistoryResults(hsState()).match(/data-action="hs-open"/g) || []).length, 60, 'show more adds thirty');
+  hsPanel._handleClick({ target: new ClickTarget({ action: 'hs-more' }) });
+  assert.ok(!hsPanel._renderHistoryResults(hsState()).includes('hs-more'), 'no button when everything is shown');
+  // typing only replaces the list
+  hsPanel._hass.states[hsPanel._selectedEntityId] = painState({ symptom_history: hsHistory });
+  hsPanel._historySearch.range = '90';
+  const box = { innerHTML: '' };
+  hsPanel.shadowRoot.querySelector = (sel) => (sel.includes('data-hs-results') ? box : null);
+  const typed = Object.assign(new HTMLInputElement(), { dataset: { action: 'hs-query' }, value: 'creamy' });
+  hsPanel._handleQuickLogSearchInput({ target: typed });
+  assert.ok(box.innerHTML.includes(`data-date="${dayAt(-3)}"`) && !box.innerHTML.includes(`data-date="${dayAt(-1)}"`), 'typing filters the list without redrawing the page');
+  assert.strictEqual(hsPanel._historySearch.q, 'creamy');
+  // selects
+  const pick = (action, value) => hsPanel._handleChange({ target: Object.assign(new ClickTarget({ action }), { tagName: 'SELECT', value }) });
+  pick('hs-category', 'pain');
+  assert.strictEqual(hsPanel._historySearch.category, 'pain');
+  pick('hs-range', '30');
+  assert.strictEqual(hsPanel._historySearch.range, '30');
+  pick('hs-range', 'junk');
+  assert.strictEqual(hsPanel._historySearch.range, '90', 'unknown period: back to 90');
+  // widget and opening a day
+  hsPanel._historySearch.q = '';
+  hsPanel._historySearch.category = '';
+  const hsWidget = hsPanel._renderWidget('history_search', hsState(), false);
+  assert.ok(hsWidget.includes('data-action="hs-query"') && hsWidget.includes('data-hs-results') && hsWidget.includes('data-action="hs-category"') && hsWidget.includes('data-action="hs-range"'), 'widget has field, selects and the list');
+  assert.ok(hsWidget.includes('<option value="discharge"'), 'categories to choose from');
+  assert.ok(!hsWidget.includes('cervix_texture'), 'not the ones that are not in the dialog');
+  assert.strictEqual(hsPanel._renderWidget('history_search', hsState(), true), '', 'nothing in discreet mode');
+  hsPanel._handleClick({ target: new ClickTarget({ action: 'hs-open', date: dayAt(-3) }) });
+  assert.strictEqual(hsPanel._quickLogOpen, true);
+  assert.strictEqual(hsPanel._quickLogDate, dayAt(-3), 'the quick log opens for that day');
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.deepStrictEqual(hsPanel._quickLogSelections, { pain: ['cramps'], pain_intensity: 5 }, 'filled with what is there (no date, no empty values)');
+  global.window.MenstruationFunctions = realFunctionsHs;
+  assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.history_search, true);
+  assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.history_search, false);
 
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {

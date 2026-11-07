@@ -451,6 +451,76 @@ def calendar_dialog_check(page):
     return problems
 
 
+def pain_week_search_check(page):
+    """Real browser: pain strength in the card Today, the week ahead, and searching the history."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    panel_js = "document.querySelector('menstruation-cycle-dashboard-panel')"
+    page.evaluate(f"""() => {{ const p = {panel_js}; const e = p._selectedEntityId; window.__saved = p._hass.states[e];
+        p._hass.states[e] = {{...p._hass.states[e], state: 'period'}}; p.render(); }}""")
+    page.wait_for_timeout(300)
+    buttons = page.locator(root + 'css=button[data-action="pain-set"]')
+    if buttons.count() != 11:
+        problems.append(f"pain: expected 0 to 10 in the card Today during a period, found {buttons.count()}")
+    else:
+        page.evaluate("window.__calls.length = 0")
+        buttons.nth(5).click()
+        page.wait_for_timeout(300)
+        saved = page.evaluate("window.__calls.filter((c) => c[1] === 'add_symptom').map((c) => c[2].symptom_data)")
+        if saved != [{"pain_intensity": 5}]:
+            problems.append(f"pain: tapping 5 sent {saved}")
+        if page.locator(root + 'css=[data-action="quick-log-undo"]').count() != 1:
+            problems.append("pain: no undo offered after tapping")
+        else:  # undo now: its 8 s timer would redraw the panel in the middle of the next check
+            page.evaluate("window.__calls.length = 0")
+            page.locator(root + 'css=[data-action="quick-log-undo"]').click()
+            page.wait_for_timeout(300)
+            undone = page.evaluate("window.__calls.filter((c) => c[1] === 'add_symptom').map((c) => c[2].symptom_data)")
+            if undone != [{"pain_intensity": None}]:
+                problems.append(f"pain: undo sent {undone}")
+
+    # week ahead: a forecast window two days from now
+    page.evaluate(f"""() => {{ const p = {panel_js}; const e = p._selectedEntityId;
+        const d = (n) => {{ const x = new Date(); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }};
+        p._hass.states[e] = {{...window.__saved, attributes: {{...window.__saved.attributes, period_forecast: {{window_start: d(2), window_end: d(3)}}}}}}; p.render(); }}""")
+    page.wait_for_timeout(300)
+    item = page.locator(root + "css=.week-list .week-period")
+    if item.count() != 1:
+        problems.append(f"week ahead: no entry for a period expected in two days ({item.count()})")
+    elif "in 2 days" not in item.inner_text():
+        problems.append(f"week ahead: wrong wording '{item.inner_text()}'")
+    page.evaluate(f"() => {{ const p = {panel_js}; p._hass.states[p._selectedEntityId] = window.__saved; p.render(); }}")
+    page.wait_for_timeout(200)
+
+    # search: all loaded days, then a day opens the quick log
+    search = page.locator(root + 'css=select[data-action="hs-range"]')
+    if search.count() != 1:
+        return problems + ["search: no search widget"]
+    search.select_option("all")
+    page.wait_for_timeout(300)
+    rows = page.locator(root + "css=button[data-action=hs-open]")
+    if rows.count() < 1:
+        problems.append("search: no days listed for the whole history")
+    else:
+        first = rows.first
+        date = first.get_attribute("data-date")
+        page.locator(root + 'css=input[data-action="hs-query"]').fill("zzzzqqq")
+        page.wait_for_timeout(200)
+        if page.locator(root + "css=button[data-action=hs-open]").count() != 0:
+            problems.append("search: nonsense still finds days")
+        page.locator(root + 'css=input[data-action="hs-query"]').fill("")
+        page.wait_for_timeout(200)
+        page.locator(root + "css=button[data-action=hs-open]").first.scroll_into_view_if_needed()
+        page.locator(root + "css=button[data-action=hs-open]").first.click()
+        page.wait_for_timeout(500)
+        shown = page.locator(root + 'css=input[data-action="quick-log-date-change"]')
+        if shown.count() != 1 or shown.input_value() != date:
+            problems.append(f"search: clicking {date} did not open the quick log for that day")
+        page.locator(root + 'css=button[data-action="quick-log-close"]').first.click()
+        page.wait_for_timeout(200)
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -489,6 +559,7 @@ def run(fixture_dir, shots=None):
                     page.screenshot(path=str(Path(shots) / f"panel_{level}_{lang}.png"), full_page=True)
                 if level == "full" and lang == "en":
                     problems += wizard_check(page, shots)
+                    problems += pain_week_search_check(page)
                     problems += view_features_check(page)
                     problems += view_code_check(page)
                     problems += calendar_dialog_check(page)
