@@ -170,6 +170,7 @@ def ui_check(page):
     page.wait_for_timeout(300)
     cards = root + "css=.edit-card"
     before = page.eval_on_selector_all(cards, "(els) => els.map((e) => e.dataset.widgetId)")
+    views_before = page.locator(root + 'css=.edit-chip[data-action=view-switch]').count() or 1
     page.locator(root + 'css=[data-action="view-add"]').click()
     page.wait_for_timeout(200)
     victim = before[-1]
@@ -179,8 +180,8 @@ def ui_check(page):
     page.locator(root + 'css=[data-action="save-edit"]').click()
     page.wait_for_timeout(400)
     switch = page.locator(root + 'css=.view-switch button')
-    if switch.count() != 2:
-        problems.append(f"ui: view switcher has {switch.count()} buttons, expected 2")
+    if switch.count() != views_before + 1:
+        problems.append(f"ui: view switcher has {switch.count()} buttons, expected {views_before + 1}")
     else:
         shown = lambda: page.eval_on_selector_all(root + "css=[data-card]", "(els) => els.map((e) => e.dataset.card)")
         if victim in shown():
@@ -304,6 +305,152 @@ def edit_mode_check(page, shots=None):
     return problems
 
 
+def wizard_check(page, shots=None):
+    """Real browser: the setup assistant (three steps), the dark look with an accent colour, the view code and the header button."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    host = page.locator("menstruation-cycle-dashboard-panel")
+    wizard = page.locator(root + "css=.mc-modal.wizard")
+    if wizard.count() != 1:
+        return [f"wizard: not shown for a profile without saved settings ({wizard.count()})"]
+    style = lambda prop: host.evaluate("(e, p) => getComputedStyle(e).getPropertyValue(p).trim()", prop)
+    page.set_viewport_size({"width": 390, "height": 800})
+    page.wait_for_timeout(200)
+    box = wizard.bounding_box()
+    if box["x"] < 0 or box["x"] + box["width"] > 390.5:
+        problems.append(f"wizard: does not fit a phone screen ({box['x']:.0f}..{box['x'] + box['width']:.0f})")
+    if page.evaluate("document.documentElement.scrollWidth > innerWidth + 1"):
+        problems.append("wizard: the page scrolls sideways on a phone")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "panel_wizard_phone.png"))
+    page.set_viewport_size({"width": 1100, "height": 1400})
+    page.wait_for_timeout(200)
+    host.evaluate("(e) => e.shadowRoot.querySelector('select[data-pref=theme]').scrollIntoView()")
+    page.locator(root + "css=select[data-pref=theme]").select_option("dark")
+    page.wait_for_timeout(150)
+    if host.get_attribute("data-theme") != "dark" or style("--primary-text-color") != "#e7e7ea":
+        problems.append("wizard: choosing dark did not change the panel")
+    background = host.evaluate("(e) => getComputedStyle(e).backgroundColor")
+    if background not in ("rgb(22, 23, 26)",):
+        problems.append(f"wizard: dark panel has background {background}")
+    page.locator(root + 'css=button[data-accent="plum"]').click()
+    page.wait_for_timeout(100)
+    if style("--mc-accent") != "#8E4B73":
+        problems.append("wizard: the accent colour did not reach the panel")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "panel_wizard_dark.png"))
+    page.locator(root + 'css=[data-action="wizard-next"]').click()
+    page.locator(root + 'css=[data-cards="compact"]').click()
+    page.wait_for_timeout(150)
+    shown = page.locator(root + "css=section.grid > article").count()
+    if not 1 <= shown <= 6:
+        problems.append(f"wizard: compact should show a handful of cards, shows {shown}")
+    page.locator(root + 'css=[data-cards="standard"]').click()
+    page.wait_for_timeout(150)
+    if page.locator(root + "css=section.grid > article").count() <= shown:
+        problems.append("wizard: standard did not show more cards than compact")
+    page.locator(root + 'css=[data-action="wizard-next"]').click()
+    page.locator(root + 'css=input[data-wizard="view-name"]').fill("Unterwegs")
+    page.locator(root + 'css=[data-action="wizard-done"]').click()
+    page.wait_for_timeout(300)
+    if wizard.count() != 0:
+        problems.append("wizard: still open after Done")
+    if page.locator(root + 'css=.view-switch button').count() != 2:
+        problems.append("wizard: the named view is missing in the header")
+    # the header button cycles the look: dark -> auto (dark is the third in the cycle auto, light, dark)
+    page.locator(root + 'css=[data-action="theme-cycle"]').click()
+    page.wait_for_timeout(100)
+    if host.get_attribute("data-theme") is not None:
+        problems.append(f"wizard: header button should go back to auto, theme is {host.get_attribute('data-theme')}")
+    return problems
+
+
+def view_code_check(page):
+    """Real browser: copy a view as text in the edit mode and import it again."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    page.locator(root + 'css=[data-action="toggle-edit"]').click()
+    page.wait_for_timeout(200)
+    before = page.locator(root + "css=.edit-chip[data-action=view-switch]").count()
+    page.locator(root + 'css=[data-action="view-export"]').click()
+    page.wait_for_timeout(200)
+    code = page.locator(root + "css=textarea[data-pref=viewCode]").input_value()
+    if not code.startswith("MCV1:"):
+        problems.append(f"view code: export gave '{code[:20]}'")
+    page.locator(root + 'css=[data-action="view-import"]').click()
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.edit-chip[data-action=view-switch]").count() != before + 1:
+        problems.append("view code: importing the code did not add a view")
+    page.locator(root + "css=textarea[data-pref=viewCode]").fill("nonsense")
+    page.locator(root + 'css=[data-action="view-import"]').click()
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.edit-chip[data-action=view-switch]").count() != before + 1:
+        problems.append("view code: nonsense must not add a view")
+    page.locator(root + 'css=[data-action="cancel-edit"]').click()
+    page.wait_for_timeout(200)
+    return problems
+
+
+def calendar_dialog_check(page):
+    """Real browser: the day dialog grows out of the tapped day, shrinks away while scrolled out of view, and grows back."""
+    problems = []
+    card = page.locator("menstruation-cycle-dashboard-panel >> menstruation-calendar-card")
+    if card.count() != 1:
+        return [f"calendar dialog: no calendar card in the panel ({card.count()})"]
+    page.set_viewport_size({"width": 1100, "height": 600})
+    card.evaluate("(c) => c.scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(300)
+    opened = card.evaluate("""async (c) => {
+        const cell = c.shadowRoot.querySelector('button[data-iso]');
+        cell.click();
+        const t0 = performance.now();
+        while (!c.shadowRoot.querySelector('.sym-dialog')) {
+          if (performance.now() - t0 > 4000) return null;
+          await new Promise((r) => requestAnimationFrame(r));
+        }
+        const d = c.shadowRoot.querySelector('.sym-dialog');
+        return {animations: d.getAnimations().length, start: getComputedStyle(d).transform};
+    }""")
+    if not opened:
+        page.set_viewport_size({"width": 1100, "height": 1400})
+        return ["calendar dialog: tapping a day opened no dialog"]
+    if opened["animations"] < 1 or opened["start"] == "none":
+        problems.append(f"calendar dialog: no grow animation when opening ({opened})")
+    page.wait_for_timeout(500)
+    if card.evaluate("(c) => getComputedStyle(c.shadowRoot.querySelector('.sym-dialog')).transform") != "none":
+        problems.append("calendar dialog: not at full size after the animation")
+    # scroll the card out of view: the dialog shrinks away, what was typed stays
+    card.evaluate("(c) => { c.shadowRoot.querySelector('#sym-basal-temp').value = '36.6'; }")
+    page.evaluate("window.scrollBy(0, 5000)")
+    page.wait_for_timeout(200)
+    out_of_view = card.evaluate("(c) => { const r = c.getBoundingClientRect(); return r.bottom < 0 || r.top > innerHeight; }")
+    if not out_of_view:
+        page.evaluate("window.scrollTo(0, 0)")
+        page.wait_for_timeout(200)
+        out_of_view = card.evaluate("(c) => { const r = c.getBoundingClientRect(); return r.bottom < 0 || r.top > innerHeight; }")
+    page.wait_for_timeout(500)
+    collapsed = card.evaluate("(c) => c.shadowRoot.querySelector('#sym-modal').classList.contains('sym-collapsed')")
+    if out_of_view and not collapsed:
+        problems.append("calendar dialog: did not shrink away while the card is out of view")
+    if not out_of_view:
+        problems.append("calendar dialog: control failed, the card could not be scrolled out of view")
+    card.evaluate("(c) => c.scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(800)
+    if card.evaluate("(c) => c.shadowRoot.querySelector('#sym-modal').classList.contains('sym-collapsed')"):
+        problems.append("calendar dialog: did not grow back when the card came into view")
+    if card.evaluate("(c) => c.shadowRoot.querySelector('#sym-basal-temp').value") != "36.6":
+        problems.append("calendar dialog: what was typed got lost")
+    card.evaluate("(c) => c.shadowRoot.querySelector('.sym-close').click()")
+    page.wait_for_timeout(100)
+    if card.evaluate("(c) => !c.shadowRoot.querySelector('.sym-dialog')"):
+        problems.append("calendar dialog: closed at once, without shrinking back")
+    page.wait_for_timeout(500)
+    if card.evaluate("(c) => !!c.shadowRoot.querySelector('.sym-dialog')"):
+        problems.append("calendar dialog: still open after closing")
+    page.set_viewport_size({"width": 1100, "height": 1400})
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -341,9 +488,16 @@ def run(fixture_dir, shots=None):
                     Path(shots).mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(Path(shots) / f"panel_{level}_{lang}.png"), full_page=True)
                 if level == "full" and lang == "en":
+                    problems += wizard_check(page, shots)
                     problems += view_features_check(page)
+                    problems += view_code_check(page)
+                    problems += calendar_dialog_check(page)
                     problems += edit_mode_check(page, shots)
                     problems += ui_check(page)
+                else:
+                    skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
+                    if skip.count():
+                        skip.click()
                 if lang == "en":
                     for tag in CARDS:
                         if tag == "menstruation-support-card":  # only shown while the profile is in an early stage

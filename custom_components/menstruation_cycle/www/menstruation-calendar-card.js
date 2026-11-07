@@ -65,6 +65,10 @@ class MenstruationCalendarCard extends HTMLElement {
     this._render();
   }
 
+  disconnectedCallback() {
+    this._modalObserver?.disconnect();
+  }
+
   set hass(hass) {
     this._hass = hass;
     this._loadTranslations();
@@ -827,6 +831,64 @@ class MenstruationCalendarCard extends HTMLElement {
     }));
   }
 
+  // The day dialog grows out of the tapped day and shrinks back into it. It also shrinks away
+  // while the card is scrolled out of view (and grows back on return), keeping what was typed.
+  _growDialog(reverse) {
+    const dialog = this.shadowRoot?.querySelector?.('.sym-dialog');
+    const cell = this.shadowRoot?.querySelector?.(`[data-iso="${this._modalIso}"]`);
+    if (!dialog || !cell || typeof dialog.animate !== 'function') return null;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+    dialog.getAnimations?.().forEach((a) => a.cancel());
+    const d = dialog.getBoundingClientRect();
+    const c = cell.getBoundingClientRect();
+    if (!d.width || !d.height) return null;
+    const from = `translate(${c.left + c.width / 2 - (d.left + d.width / 2)}px, ${c.top + c.height / 2 - (d.top + d.height / 2)}px) scale(${c.width / d.width}, ${c.height / d.height})`;
+    const play = (el, frames) => el.animate(reverse ? frames.slice().reverse() : frames, { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    const backdrop = this.shadowRoot.querySelector('.sym-backdrop');
+    if (backdrop) play(backdrop, [{ opacity: 0 }, { opacity: 1 }]);
+    return play(dialog, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }]);
+  }
+
+  _closeModal() {
+    if (!this._modalIso || this._modalClosing) return;
+    const finish = () => { this._modalClosing = false; this._modalIso = null; this._render(); };
+    this._modalClosing = true;
+    const anim = this._modalCollapsed ? null : this._growDialog(true);
+    if (anim) anim.finished.then(finish, finish); else finish();
+  }
+
+  _setModalCollapsed(on) {
+    if (on === this._modalCollapsed) return;
+    this._modalCollapsed = on;
+    const overlay = this.shadowRoot?.getElementById?.('sym-modal');
+    if (!on) overlay?.classList.remove('sym-collapsed');
+    this._growDialog(on);
+    if (on) overlay?.classList.add('sym-collapsed');
+  }
+
+  // Called after every render: plays the grow animation once per opening and (re)attaches the scroll watcher.
+  _afterModalRender() {
+    this._modalObserver?.disconnect();
+    if (!this._modalIso) {
+      this._modalGrowFor = null;
+      this._modalCollapsed = false;
+      return;
+    }
+    if (this._modalGrowFor !== this._modalIso) {
+      this._modalGrowFor = this._modalIso;
+      this._modalCollapsed = false;
+      this._growDialog(false);
+    }
+    const overlay = this.shadowRoot?.getElementById?.('sym-modal');
+    if (!overlay || typeof IntersectionObserver !== 'function') return;
+    // Hysteresis: shrinks when under 20% of the card is in view, grows again from 40%.
+    this._modalObserver = new IntersectionObserver(([entry]) => {
+      if (entry.intersectionRatio < 0.2) this._setModalCollapsed(true);
+      else if (entry.intersectionRatio >= 0.4) this._setModalCollapsed(false);
+    }, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5] });
+    this._modalObserver.observe(overlay);
+  }
+
   async _refreshSymptomOverrideForDay(iso) {
     this._symptomOverrides = this._symptomOverrides || {};
     const entityId = this._resolveEntityId();
@@ -1511,6 +1573,8 @@ class MenstruationCalendarCard extends HTMLElement {
         /* Symptom modal */
         .sym-overlay { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; }
         .sym-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+        .sym-overlay.sym-collapsed { pointer-events: none; }
+        .sym-collapsed .sym-dialog, .sym-collapsed .sym-backdrop { opacity: 0; }
         .sym-dialog { position: relative; z-index: 1; border-radius: 12px; border: 1px solid var(--divider-color); padding: 0; width: 92%; max-width: 360px; max-height: 85%; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.32); background: var(--ha-card-background, var(--card-background-color, #fff)); color: var(--primary-text-color); }
         .sym-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 10px; font-weight: 700; font-size: .92rem; border-bottom: 1px solid rgba(128,128,128,.2); }
         .sym-close { background: transparent; border: none; cursor: pointer; font-size: 1rem; color: inherit; opacity: .7; padding: 2px 6px; }
@@ -1615,6 +1679,7 @@ class MenstruationCalendarCard extends HTMLElement {
       ${this._modalIso ? this._renderSymptomModal(this._modalIso, model) : ''}
     `;
 
+    this._afterModalRender();
     const root = this.shadowRoot.getElementById('root');
     root?.addEventListener('click', (ev) => {
       const actionEl = ev.target?.closest?.('[data-action]');
@@ -1665,8 +1730,7 @@ class MenstruationCalendarCard extends HTMLElement {
       if (!this._modalIso) return;
       // Close on backdrop or close/cancel buttons
       if (ev.target?.closest('.sym-backdrop') || ev.target?.closest('.sym-close') || ev.target?.closest('.sym-cancel')) {
-        this._modalIso = null;
-        this._render();
+        this._closeModal();
         return;
       }
       // Save

@@ -776,6 +776,46 @@ function testPreMenarcheSuppressesPredictedCycleMarkers() {
   console.log('  ✓ pre-menarche suppresses deterministic predicted markers');
 }
 
+function testDayDialogGrowsFromTheDayAndShrinksBack() {
+  const card = new CardClass();
+  card.attachShadow({ mode: 'open' });
+  const calls = [];
+  const mk = (rect) => ({
+    getBoundingClientRect: () => rect,
+    getAnimations: () => [],
+    animate(frames) {
+      calls.push(frames);
+      return { finished: { then: (done) => done() } }; // finishes at once
+    },
+    classList: { add(c) { this.last = c; }, remove() {} },
+  });
+  const dialog = mk({ left: 100, top: 100, width: 200, height: 400 });
+  const cell = mk({ left: 20, top: 40, width: 40, height: 40 });
+  const backdrop = mk({ left: 0, top: 0, width: 400, height: 600 });
+  const overlay = mk({});
+  card.shadowRoot.querySelector = (sel) => (sel === '.sym-dialog' ? dialog : sel === '.sym-backdrop' ? backdrop : sel.startsWith('[data-iso') ? cell : null);
+  card.shadowRoot.getElementById = () => overlay;
+  card._render = () => {};
+  card._modalIso = '2026-07-05';
+
+  card._growDialog(false);
+  const open = calls.find((frames) => frames[0].transform);
+  assert.ok(open[0].transform.includes('scale(0.2, 0.1)'), 'starts at the size of the tapped day');
+  assert.strictEqual(open[1].transform, 'none', 'ends at full size');
+
+  calls.length = 0;
+  card._closeModal();
+  const shrink = calls.find((frames) => frames[0].transform);
+  assert.strictEqual(shrink[0].transform, 'none', 'close plays the movement backwards');
+  assert.ok(shrink[1].transform.includes('scale'), 'and ends small, at the day');
+  assert.strictEqual(card._modalIso, null, 'closed once the animation is done');
+
+  card._modalIso = '2026-07-05';
+  card._setModalCollapsed(true);
+  assert.strictEqual(overlay.classList.last, 'sym-collapsed', 'scrolled away: shrunk, not closed');
+  assert.strictEqual(card._modalIso, '2026-07-05', 'what was typed is kept');
+}
+
 let failed = 0;
 
 function testBasalTempFieldFollowsProfileUnit() {
@@ -829,6 +869,7 @@ function testBasalTempFieldFollowsProfileUnit() {
   testBleedingOutsideThePeriod,
   testLutealForecastMarker,
   testBasalTempFieldFollowsProfileUnit,
+  testDayDialogGrowsFromTheDayAndShrinksBack,
 ].forEach((fn) => {
   try {
     fn();

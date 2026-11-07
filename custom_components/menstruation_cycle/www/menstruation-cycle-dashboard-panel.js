@@ -624,6 +624,15 @@
   // prefs themselves, the others are stored under `views`; switching swaps them.
   const LAYOUT_KEYS = ['widgetVisibility', 'widgetOrder', 'widgetSpan', 'widgetCollapsed'];
   const MAX_VIEWS = 8;
+  // Look of the panel per profile: light/dark independent of Home Assistant, and the accent colour of the app.
+  const THEMES = ['auto', 'light', 'dark'];
+  const ACCENTS = { rose: '#E8637D', plum: '#8E4B73', sage: '#5E8C6A', amber: '#D98E1F', blue: '#3B82C4', slate: '#64748B' };
+  const VIEW_CODE_PREFIX = 'MCV1:';
+  // Setup assistant: three steps, and the card choice of step 2.
+  const WIZARD_STEPS = 3;
+  const COMPACT_WIDGETS = ['kpi_strip', 'phase_timeline', 'calendar_card', 'product_usage', 'pill_card'];
+  const SWIPE_MIN_PX = 70;
+  const PULL_MIN_PX = 80;
   const GRID_GAP_PX = 16;
 
   // Width after dragging the resize handle dx pixels (colWidth = one column plus one gap).
@@ -933,6 +942,9 @@
       // to one browser's localStorage - this just dedupes in-flight fetches,
       // same pattern as _fullHistoryFetching above.
       this._prefsSyncFetching = new Set();
+      this._wizard = null; // setup assistant: { step, cards, viewName } while open
+      this._viewCodeText = '';
+      this._swipe = null;
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
       // get_household_summary service and shown as a compact bar above the
@@ -957,6 +969,9 @@
       this._boundHandleSubmit = (event) => this._handleSubmit(event);
       this._boundHandleKeydown = (event) => this._handleKeydown(event);
       this._boundHandleChatEnter = () => this._handleChatSend();
+      this._boundTouchStart = (event) => this._swipeStart(event);
+      this._boundTouchMove = (event) => this._swipeMove(event);
+      this._boundTouchEnd = (event) => this._swipeEnd(event);
       this._boundDragPointerDown = (event) => this._handleDragPointerDown(event);
       this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
       this._boundDragPointerUp = (event) => this._handleDragPointerUp(event);
@@ -985,6 +1000,9 @@
       // once here via delegation (not re-attached per render) since drag state needs
       // to persist across pointermove events without the whole panel re-rendering
       // mid-drag, which would destroy the dragged DOM node.
+      this.shadowRoot?.addEventListener('touchstart', this._boundTouchStart, { passive: true });
+      this.shadowRoot?.addEventListener('touchmove', this._boundTouchMove, { passive: true });
+      this.shadowRoot?.addEventListener('touchend', this._boundTouchEnd, { passive: true });
       this.shadowRoot?.addEventListener('pointerdown', this._boundDragPointerDown);
       this.shadowRoot?.addEventListener('pointermove', this._boundDragPointerMove);
       this.shadowRoot?.addEventListener('pointerup', this._boundDragPointerUp);
@@ -1403,7 +1421,10 @@
 
     // The part of the prefs that a view stores.
     _normalizeLayout(raw, preset) {
-      const widgetVisibility = { ...preset.widgetVisibility, ...(raw?.widgetVisibility || {}) };
+      const widgetVisibility = { ...preset.widgetVisibility };
+      Object.entries(raw?.widgetVisibility || {}).forEach(([id, on]) => {
+        if (WIDGET_IDS.includes(id) && typeof on === 'boolean') widgetVisibility[id] = on;
+      });
       const rawOrder = Array.isArray(raw?.widgetOrder) ? raw.widgetOrder.filter((id) => WIDGET_IDS.includes(id)) : [];
       const widgetOrder = [...rawOrder, ...WIDGET_IDS.filter((id) => !rawOrder.includes(id))];
       const widgetSpan = {};
@@ -1427,6 +1448,10 @@
       const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
       const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
       const chartRange = CHART_RANGES.includes(raw?.chartRange) ? raw.chartRange : 'auto';
+      const theme = THEMES.includes(raw?.theme) ? raw.theme : 'auto';
+      const accent = ACCENTS[raw?.accent] ? raw.accent : 'rose';
+      // Prefs that exist already (an existing user, or a reset) never start the setup assistant.
+      const onboarded = raw ? raw.onboarded !== false : false;
       const views = [];
       (Array.isArray(raw?.views) ? raw.views : []).slice(0, MAX_VIEWS).forEach((view) => {
         const id = typeof view?.id === 'string' && /^[\w-]{1,24}$/.test(view.id) ? view.id : null;
@@ -1440,6 +1465,9 @@
         discreetMode,
         animations,
         chartRange,
+        theme,
+        accent,
+        onboarded,
         ...this._normalizeLayout(raw, preset),
         views,
         activeView: views.some((view) => view.id === raw?.activeView) ? raw.activeView : (views[0]?.id || null),
@@ -1485,13 +1513,15 @@
     }
 
     // A new view starts as a copy of the current one, so it only has to be changed where it should differ.
-    _addViewIn(prefs) {
+    _addViewIn(prefs, name = '', layout = null) {
       this._ensureViews(prefs);
       if (prefs.views.length >= MAX_VIEWS) return null;
       const current = prefs.views.find((view) => view.id === this._activeViewId(prefs));
       if (current) current.layout = this._layoutOf(prefs);
       const id = `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-      prefs.views.push({ id, name: this._t('dashboard_view_default_name').replace('{n}', String(prefs.views.length + 1)), layout: this._layoutOf(prefs) });
+      if (layout) Object.assign(prefs, JSON.parse(JSON.stringify(layout)));
+      const label = String(name || '').trim().slice(0, 30) || this._t('dashboard_view_default_name').replace('{n}', String(prefs.views.length + 1));
+      prefs.views.push({ id, name: label, layout: this._layoutOf(prefs) });
       prefs.activeView = id;
       return id;
     }
@@ -1509,6 +1539,215 @@
       const wasActive = this._activeViewId(prefs) === id;
       prefs.views = prefs.views.filter((view) => view.id !== id);
       if (wasActive) this._switchViewIn(prefs, prefs.views[0].id);
+    }
+
+    // The prefs the controls act on: the draft while editing, else the saved ones.
+    // ---- Touch: swipe sideways switches the view (month in the calendar), pulling down at the top refreshes. ----
+    _scrollsSideways(node) {
+      if (!(node.scrollWidth > node.clientWidth + 2) || typeof getComputedStyle !== 'function') return false;
+      return ['auto', 'scroll'].includes(getComputedStyle(node).overflowX);
+    }
+
+    _atTop() {
+      const top = this.getBoundingClientRect?.().top ?? 0;
+      this._topY = Math.max(this._topY ?? top, top);
+      return top >= this._topY - 1;
+    }
+
+    _swipeStart(event) {
+      this._swipe = null;
+      if (this._editMode || this._wizard || event.touches?.length !== 1) return;
+      const nodes = (event.composedPath?.() || []).filter((node) => node?.nodeType === 1);
+      if (nodes.some((node) => /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName) || node.classList?.contains('mc-modal') || this._scrollsSideways(node))) return;
+      const calendar = nodes.find((node) => node.localName === 'menstruation-calendar-card') || null;
+      if (calendar?._modalIso) return;
+      const touch = event.touches[0];
+      this._swipe = { x: touch.clientX, y: touch.clientY, time: Date.now(), calendar, atTop: this._atTop() };
+    }
+
+    _swipeMove(event) {
+      const swipe = this._swipe;
+      const touch = event.touches?.[0];
+      if (!swipe || !touch) return;
+      const dy = touch.clientY - swipe.y;
+      const pulling = swipe.atTop && !swipe.calendar && dy > 12 && dy > Math.abs(touch.clientX - swipe.x) * 1.5;
+      let hint = this.shadowRoot?.querySelector?.('.ptr');
+      if (!pulling) {
+        hint?.remove();
+        return;
+      }
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.className = 'ptr';
+        this.shadowRoot.querySelector('.page')?.appendChild(hint);
+      }
+      hint.textContent = this._t(dy >= PULL_MIN_PX ? 'dashboard_release_refresh' : 'dashboard_pull_refresh');
+    }
+
+    _swipeEnd(event) {
+      const swipe = this._swipe;
+      const touch = event.changedTouches?.[0];
+      this._swipe = null;
+      this.shadowRoot?.querySelector?.('.ptr')?.remove();
+      if (!swipe || !touch) return;
+      const dx = touch.clientX - swipe.x;
+      const dy = touch.clientY - swipe.y;
+      if (swipe.atTop && !swipe.calendar && dy >= PULL_MIN_PX && dy > Math.abs(dx) * 1.5) {
+        this._refreshNow();
+      } else if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - swipe.time < 700) {
+        if (swipe.calendar) {
+          swipe.calendar._changeMonth(dx < 0 ? 1 : -1);
+          swipe.calendar._render();
+        } else {
+          this._stepView(dx < 0 ? 1 : -1);
+        }
+      }
+    }
+
+    // Loads everything again: the long history, the household bar and the settings from the server.
+    _refreshNow() {
+      this._fullHistoryCache = {};
+      this._householdSummaryFetchedAt = 0;
+      this._message = this._t('dashboard_refreshed');
+      this._lastRenderSig = null;
+      this.render();
+      this._syncPrefsFromBackend(this._activeProfile, this._activeMode);
+    }
+
+    _look() {
+      return this._editMode ? this._editDraft : this._prefs;
+    }
+
+    // Sets theme and accent colour on the panel itself, so the cards inside follow.
+    _applyLook(prefs) {
+      const theme = THEMES.includes(prefs?.theme) ? prefs.theme : 'auto';
+      if (theme === 'auto') this.removeAttribute?.('data-theme');
+      else this.setAttribute?.('data-theme', theme);
+      const accent = prefs?.accent && prefs.accent !== 'rose' ? ACCENTS[prefs.accent] : null;
+      if (accent) {
+        this.style?.setProperty('--mc-accent', accent);
+        this.style?.setProperty('--mc-accent-deep', `color-mix(in srgb, ${accent} 80%, #000)`);
+      } else {
+        this.style?.removeProperty('--mc-accent');
+        this.style?.removeProperty('--mc-accent-deep');
+      }
+    }
+
+    _renderLookControls(prefs) {
+      const themes = THEMES.map((id) => `<option value="${id}"${prefs.theme === id ? ' selected' : ''}>${escapeHtml(this._t(`dashboard_theme_${id}`))}</option>`).join('');
+      const swatches = Object.entries(ACCENTS).map(([id, color]) => `<button type="button" class="accent-swatch" data-action="accent" data-accent="${id}" aria-pressed="${prefs.accent === id}" aria-label="${escapeHtml(this._t(`dashboard_accent_${id}`))}" title="${escapeHtml(this._t(`dashboard_accent_${id}`))}" style="background:${color}"></button>`).join('');
+      return `<label>${escapeHtml(this._t('dashboard_theme'))} <select data-pref="theme">${themes}</select></label>
+          <div class="accent-picker" role="group" aria-label="${escapeHtml(this._t('dashboard_accent'))}">${swatches}</div>`;
+    }
+
+    // Step 2 of the setup assistant: which cards are shown.
+    _applyCardsPreset(prefs, kind) {
+      const base = this._preset(this._activeMode).widgetVisibility;
+      prefs.widgetVisibility = Object.fromEntries(WIDGET_IDS.map((id) => [id, kind === 'all' ? true : (kind === 'compact' ? COMPACT_WIDGETS.includes(id) : base[id] !== false)]));
+    }
+
+    _wizardSyncName() {
+      const input = this.shadowRoot?.querySelector('[data-wizard="view-name"]');
+      if (input && this._wizard) this._wizard.viewName = input.value;
+    }
+
+    _wizardFinish(withView) {
+      if (!this._wizard) return;
+      this._wizardSyncName();
+      const prefs = this._look();
+      const name = withView ? String(this._wizard.viewName || '').trim() : '';
+      if (name) {
+        const first = this._viewsOf(prefs)[0].id;
+        if (this._addViewIn(prefs, name)) this._switchViewIn(prefs, first); // the new view is there, the first one stays shown
+      }
+      prefs.onboarded = true;
+      this._wizard = null;
+      if (!this._editMode) this._savePrefs();
+      this._enterPlayed = false;
+      this.render();
+    }
+
+    // Opens the assistant once for a profile that has no saved settings anywhere (checked after the sync with the server).
+    _maybeStartWizard(profile) {
+      if (this._activeProfile !== profile || !this._prefs || this._prefs.onboarded || this._wizard || this._editMode) return;
+      this._wizard = { step: 1, cards: 'standard', viewName: '' };
+      this.render();
+    }
+
+    _renderWizard() {
+      if (!this._wizard) return '';
+      const prefs = this._look();
+      const step = this._wizard.step;
+      let body;
+      if (step === 1) {
+        body = `<h3>${escapeHtml(this._t('dashboard_wizard_display_title'))}</h3>
+          <div class="wizard-controls">
+            ${this._renderLookControls(prefs)}
+            <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${prefs.discreetMode ? 'checked' : ''}/> ${escapeHtml(this._t('dashboard_discreet_mode'))}</label>
+            <label class="toggle"><input type="checkbox" data-pref="animations" ${prefs.animations !== false ? 'checked' : ''}/> ${escapeHtml(this._t('dashboard_animations'))}</label>
+          </div>`;
+      } else if (step === 2) {
+        const choice = (kind) => `<button type="button" class="wizard-choice" data-action="wizard-cards" data-cards="${kind}" aria-pressed="${this._wizard.cards === kind}"><strong>${escapeHtml(this._t(`dashboard_wizard_cards_${kind}`))}</strong><span>${escapeHtml(this._t(`dashboard_wizard_cards_${kind}_hint`))}</span></button>`;
+        body = `<h3>${escapeHtml(this._t('dashboard_wizard_cards_title'))}</h3>
+          <div class="wizard-choices">${choice('compact')}${choice('standard')}${choice('all')}</div>
+          <p class="helper">${escapeHtml(this._t('dashboard_wizard_cards_hint'))}</p>`;
+      } else {
+        body = `<h3>${escapeHtml(this._t('dashboard_wizard_view_title'))}</h3>
+          <p class="helper">${escapeHtml(this._t('dashboard_wizard_view_hint'))}</p>
+          <input type="text" maxlength="30" data-wizard="view-name" value="${escapeHtml(this._wizard.viewName || '')}" placeholder="${escapeHtml(this._t('dashboard_wizard_view_placeholder'))}" aria-label="${escapeHtml(this._t('dashboard_view_name'))}"/>`;
+      }
+      const last = step === WIZARD_STEPS;
+      return `<div class="mc-modal-backdrop wizard-backdrop" role="presentation">
+          <div class="mc-modal wizard" role="dialog" aria-modal="true" aria-label="${escapeHtml(this._t('dashboard_wizard_title'))}">
+            <div class="wizard-head"><h2>${escapeHtml(this._t('dashboard_wizard_title'))}</h2><span class="helper">${escapeHtml(this._t('dashboard_wizard_step').replace('{n}', String(step)).replace('{total}', String(WIZARD_STEPS)))}</span></div>
+            ${body}
+            <div class="wizard-actions">
+              <button type="button" data-action="wizard-skip">${escapeHtml(this._t('dashboard_wizard_skip'))}</button>
+              <span class="wizard-nav">
+                ${step > 1 ? `<button type="button" data-action="wizard-back">${escapeHtml(this._t('dashboard_wizard_back'))}</button>` : ''}
+                <button type="button" class="mode-btn active" data-action="${last ? 'wizard-done' : 'wizard-next'}">${escapeHtml(this._t(last ? 'dashboard_wizard_done' : 'dashboard_wizard_next'))}</button>
+              </span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // A view as a short text to copy to another device or profile, and back.
+    _viewCode(prefs) {
+      const view = this._viewsOf(prefs).find((item) => item.id === this._activeViewId(prefs));
+      return VIEW_CODE_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify({ n: view?.name || '', l: this._layoutOf(prefs) }))));
+    }
+
+    // Returns the new view's name, or 'error' / 'full'.
+    _importViewCode(prefs, code) {
+      let data;
+      try {
+        const text = String(code || '').trim();
+        if (!text.startsWith(VIEW_CODE_PREFIX)) return 'error';
+        data = JSON.parse(decodeURIComponent(escape(atob(text.slice(VIEW_CODE_PREFIX.length)))));
+        if (!data || typeof data !== 'object' || typeof data.l !== 'object' || !data.l) return 'error';
+      } catch (_error) {
+        return 'error';
+      }
+      const layout = this._normalizeLayout(data.l, this._preset(this._activeMode));
+      const id = this._addViewIn(prefs, String(data.n || ''), layout);
+      return id ? prefs.views.find((view) => view.id === id).name : 'full';
+    }
+
+    _goToView(id) {
+      const prefs = this._editMode ? this._editDraft : this._prefs;
+      if (!prefs || !this._switchViewIn(prefs, id)) return;
+      if (!this._editMode) {
+        this._savePrefs();
+        this._enterPlayed = false; // play the opening animation again
+      }
+      this.render();
+    }
+
+    _stepView(direction) {
+      const views = this._viewsOf(this._prefs);
+      const next = views[views.findIndex((view) => view.id === this._activeViewId(this._prefs)) + direction];
+      if (views.length > 1 && next) this._goToView(next.id);
     }
 
     _renderViewSwitch() {
@@ -1537,6 +1776,8 @@
       return `<p class="helper">${escapeHtml(this._t('dashboard_views'))}</p>
           <div class="edit-tray">${pills}${add}</div>
           <div class="edit-actions">${rename}${remove}</div>
+          <div class="view-code-row"><button type="button" data-action="view-export">${escapeHtml(this._t('dashboard_view_export'))}</button><button type="button" data-action="view-import">${escapeHtml(this._t('dashboard_view_import'))}</button></div>
+          <textarea rows="2" data-pref="viewCode" placeholder="${escapeHtml(this._t('dashboard_view_code'))}" aria-label="${escapeHtml(this._t('dashboard_view_code'))}">${escapeHtml(this._viewCodeText || '')}</textarea>
           <p class="helper">${escapeHtml(this._t('dashboard_view_hint'))}</p>`;
     }
 
@@ -1638,6 +1879,7 @@
         console.warn('[menstruation-cycle-dashboard-panel] get_dashboard_prefs failed:', err);
       } finally {
         this._prefsSyncFetching.delete(profile);
+        this._maybeStartWizard(profile);
       }
     }
 
@@ -4070,7 +4312,7 @@
       // — including inert areas with no data-action of their own, like the
       // title or padding — doesn't bubble-match a stale ancestor action. Only
       // clicking the backdrop itself (outside the modal box) closes it.
-      if (rawTarget.classList.contains('mc-modal-backdrop')) {
+      if (rawTarget.classList.contains('mc-modal-backdrop') && !rawTarget.classList.contains('wizard-backdrop')) {
         this._closeQuickLog();
         return;
       }
@@ -4253,14 +4495,47 @@
       } else if (action === 'todo' && target.dataset.todo) {
         this._openTodo(target.dataset.todo);
       } else if (action === 'view-switch' && target.dataset.view) {
-        const prefs = this._editMode ? this._editDraft : this._prefs;
-        if (prefs && this._switchViewIn(prefs, target.dataset.view)) {
-          if (!this._editMode) {
-            this._savePrefs();
-            this._enterPlayed = false; // play the opening animation again
-          }
+        this._goToView(target.dataset.view);
+      } else if (action === 'view-export' && this._editMode && this._editDraft) {
+        this._viewCodeText = this._viewCode(this._editDraft);
+        this._message = this._t('dashboard_view_exported_manual');
+        this.render();
+        navigator.clipboard?.writeText?.(this._viewCodeText).then(() => {
+          this._message = this._t('dashboard_view_exported');
           this.render();
+        }, () => {});
+      } else if (action === 'view-import' && this._editMode && this._editDraft) {
+        const result = this._importViewCode(this._editDraft, this.shadowRoot?.querySelector('[data-pref="viewCode"]')?.value);
+        if (result === 'error') this._message = this._t('dashboard_view_import_error');
+        else if (result === 'full') this._message = this._t('dashboard_view_import_full');
+        else {
+          this._viewCodeText = '';
+          this._message = this._t('dashboard_view_imported').replace('{name}', result);
         }
+        this.render();
+      } else if (action === 'theme-cycle' && this._prefs) {
+        this._prefs.theme = THEMES[(THEMES.indexOf(this._prefs.theme) + 1) % THEMES.length];
+        this._savePrefs();
+        this.render();
+      } else if (action === 'accent' && ACCENTS[target.dataset.accent]) {
+        const prefs = this._look();
+        prefs.accent = target.dataset.accent;
+        if (!this._editMode) this._savePrefs();
+        this.render();
+      } else if (action === 'wizard-start') {
+        this._wizard = { step: 1, cards: 'standard', viewName: '' };
+        this.render();
+      } else if (action === 'wizard-next' || action === 'wizard-back') {
+        this._wizardSyncName();
+        this._wizard.step = Math.max(1, Math.min(WIZARD_STEPS, this._wizard.step + (action === 'wizard-next' ? 1 : -1)));
+        this.render();
+      } else if (action === 'wizard-cards' && this._wizard) {
+        this._wizard.cards = target.dataset.cards;
+        this._applyCardsPreset(this._look(), target.dataset.cards);
+        if (!this._editMode) this._savePrefs();
+        this.render();
+      } else if (action === 'wizard-skip' || action === 'wizard-done') {
+        this._wizardFinish(action === 'wizard-done');
       } else if (action === 'view-add' && this._editMode && this._editDraft) {
         this._addViewIn(this._editDraft);
         this.render();
@@ -4294,6 +4569,7 @@
       } else if (action === 'reset-preset') {
         const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
         const current = this._editMode ? this._editDraft : this._prefs;
+        Object.assign(reset, { theme: current?.theme, accent: current?.accent });
         reset.views = current?.views || []; // only the layout of the current view goes back to the preset
         reset.activeView = current?.activeView || null;
         if (this._editMode) {
@@ -4349,6 +4625,14 @@
       }
 
       if (!this._prefs) return;
+
+      if (target.tagName === 'SELECT' && target.dataset.pref === 'theme') {
+        const prefs = this._look();
+        prefs.theme = THEMES.includes(target.value) ? target.value : 'auto';
+        if (!this._editMode) this._savePrefs();
+        this.render();
+        return;
+      }
 
       if (target.tagName === 'SELECT' && target.dataset.pref === 'chartRange') {
         this._prefs = { ...this._prefs, chartRange: CHART_RANGES.includes(target.value) ? target.value : 'auto' };
@@ -4431,17 +4715,6 @@
           <button type="submit" ${this._pending ? 'disabled' : ''}>${this._pending ? this._t('saving') : this._t('save')}</button>
           <div class="helper">${discreetMode ? this._t('dashboard_discreet_note') : this._t('dashboard_quick_log_note')}</div>
         </form>
-      `;
-    }
-
-    _renderTodayCard(stateObj, discreetMode) {
-      const attrs = stateObj?.attributes || {};
-      const state = String(stateObj?.state || this._t('unknown'));
-      const cycleDay = attrs.cycle_day ?? this._t('unknown');
-      return `
-        <div class="kv"><span>${this._t('dashboard_label_state')}</span><strong>${escapeHtml(discreetMode ? this._t('dashboard_neutral_state') : state)}</strong></div>
-        <div class="kv"><span>${this._t('cycle_day')}</span><strong>${escapeHtml(cycleDay)}</strong></div>
-        <div class="kv"><span>${this._t('dashboard_days_until_next')}</span><strong>${escapeHtml(attrs.days_until_next_start ?? attrs.days_until_menarche ?? this._t('unknown'))}</strong></div>
       `;
     }
 
@@ -7340,9 +7613,11 @@
           <h2>${this._t('dashboard_edit_mode')}</h2>
           <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${draft.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
           <label class="toggle"><input type="checkbox" data-pref="animations" ${draft.animations !== false ? 'checked' : ''}/> ${this._t('dashboard_animations')}</label>
+          ${this._renderLookControls(draft)}
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
           ${this._renderViewEditor()}
+          <div class="edit-actions"><button type="button" data-action="wizard-start">${escapeHtml(this._t('dashboard_wizard_restart'))}</button></div>
           <p class="helper">${this._t('dashboard_hidden_widgets')}</p>
           ${tray}
           <p class="helper">${this._t('dashboard_category_order_label') || 'Reihenfolge und Sichtbarkeit der Symptom-Kategorien'}</p>
@@ -8108,9 +8383,9 @@
                --primary-text-color and "-tint" backgrounds blend toward
                --card-background-color, so both automatically adapt to the active HA
                theme (light or dark) instead of being fixed light-mode pastels. */
-            --mc-rose: #E8637D;
-            --mc-rose-deep: color-mix(in srgb, #C43F5E 78%, var(--primary-text-color, #000) 22%);
-            --mc-rose-tint: color-mix(in srgb, var(--card-background-color, #fff) 84%, #E8637D 16%);
+            --mc-rose: var(--mc-accent, #E8637D);
+            --mc-rose-deep: color-mix(in srgb, var(--mc-accent-deep, #C43F5E) 78%, var(--primary-text-color, #000) 22%);
+            --mc-rose-tint: color-mix(in srgb, var(--card-background-color, #fff) 84%, var(--mc-accent, #E8637D) 16%);
             --mc-plum: color-mix(in srgb, #6B3654 78%, var(--primary-text-color, #000) 22%);
             --mc-plum-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #6B3654 12%);
             --mc-sage: #7C9885;
@@ -8123,6 +8398,41 @@
             --mc-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
             --mc-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
           }
+          /* Look chosen in the panel (per profile); "auto" leaves everything to Home Assistant. */
+          :host([data-theme="dark"]) {
+            color-scheme: dark; background: var(--primary-background-color);
+            --primary-text-color: #e7e7ea; --secondary-text-color: #a3a3ad; --primary-background-color: #16171a;
+            --card-background-color: #212226; --ha-card-background: #212226; --divider-color: #3b3c42;
+          }
+          :host([data-theme="light"]) {
+            color-scheme: light; background: var(--primary-background-color);
+            --primary-text-color: #1f2937; --secondary-text-color: #6b7280; --primary-background-color: #f5f5f7;
+            --card-background-color: #fff; --ha-card-background: #fff; --divider-color: #e5e7eb;
+          }
+          .accent-picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+          .accent-swatch { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 3px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--divider-color, #d1d5db); }
+          .accent-swatch[aria-pressed="true"] { border-color: var(--card-background-color, #fff); box-shadow: 0 0 0 2px var(--primary-text-color, #1f2937); }
+          .view-code-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+          .view-code-row button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 10px; background: var(--card-background-color, #fff); color: inherit; padding: 6px 12px; cursor: pointer; font-size: .85rem; }
+          textarea[data-pref="viewCode"] { width: 100%; box-sizing: border-box; margin-top: 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: .75rem var(--mc-font-mono); padding: 6px 8px; resize: vertical; }
+          .wizard { max-width: 460px; }
+          .wizard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+          .wizard-head h2 { margin: 0; font-family: var(--mc-font-display); font-size: 1.15rem; font-weight: 500; }
+          .wizard h3 { margin: 6px 0 10px; font-size: 1rem; }
+          .wizard-controls { display: grid; gap: 12px; }
+          .wizard-controls label { display: grid; gap: 4px; }
+          .wizard-controls label.toggle { display: flex; align-items: center; gap: 8px; }
+          .wizard-controls select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; }
+          .wizard-choices { display: grid; gap: 8px; }
+          .wizard-choice { display: grid; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; }
+          .wizard-choice span { font-size: .8rem; color: var(--secondary-text-color); }
+          .wizard-choice[aria-pressed="true"] { border-color: var(--mc-rose); background: var(--mc-rose-tint); }
+          .wizard input[type="text"] { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; }
+          .wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 16px; }
+          .wizard-nav { display: flex; gap: 8px; }
+          .wizard-actions button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 999px; background: var(--card-background-color, #fff); color: inherit; padding: 6px 16px; cursor: pointer; font: inherit; font-size: .85rem; }
+          .wizard-actions .mode-btn.active { background: var(--mc-rose-deep); color: #fff; border-color: transparent; }
+          .ptr { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 40; padding: 6px 14px; border-radius: 999px; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: .8rem; pointer-events: none; }
           .page { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
           /* The header stays in view while scrolling (not in edit mode, where the edit bar is the sticky one). */
           .toolbar {
@@ -9113,6 +9423,7 @@
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
+              ${!this._editMode ? `<button type="button" class="icon-only" data-action="theme-cycle" aria-label="${escapeHtml(this._t('dashboard_theme_cycle_aria').replace('{mode}', this._t(`dashboard_theme_${this._prefs?.theme || 'auto'}`)))}" title="${escapeHtml(this._t('dashboard_theme'))}"><ha-icon icon="mdi:theme-light-dark"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="print" aria-label="${this._t('dashboard_print')}" title="${this._t('dashboard_print')}"><ha-icon icon="mdi:printer-outline"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
@@ -9126,11 +9437,13 @@
           ${this._message ? `<div class="message${messagePop ? ' mc-pop' : ''}" aria-live="polite">${escapeHtml(this._message)}${this._quickLogUndo ? `<button type="button" data-action="quick-log-undo" style="margin-left:8px;border:none;background:none;color:var(--primary-color,#6b3654);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;">${escapeHtml(this._t('dashboard_undo') || 'Rückgängig')}</button>` : ''}</div>` : ''}
           ${this._renderEditPanel(stateObj)}
           ${this._renderQuickLogModal(stateObj)}
+          ${this._renderWizard()}
           ${this._renderChatFab(stateObj)}
           <section class="grid${enter ? ' mc-enter' : ''}" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
           ${this._editMode ? '' : `<div class="mobile-bar"><button type="button" data-action="open-quick-log">${this._t('dashboard_log_today') || 'Heute loggen'}</button></div>`}
         </main>
       `;
+      this._applyLook(this._look());
       this._mountEmbeddedCards();
       this._messageShown = this._message || null;
       if (enter) {

@@ -3,6 +3,11 @@
 ## 1.10.0
 
 ### Added
+- **Day dialog of the calendar card animates:** the dialog for editing a day grows out of the tapped day and shrinks back into it when it is closed. When the card is scrolled out of view, it shrinks away too and grows back on return (what was typed stays). Nothing moves with "reduce motion" on.
+- **Dashboard panel, swipe on the phone:** swiping sideways switches to the previous/next view (over the calendar card: the month); pulling down at the top reloads the history, the household bar and the saved settings.
+- **Dashboard panel, views as text:** in the edit mode a view can be copied as a short code and imported again (other device or profile). Invalid codes change nothing.
+- **Dashboard panel, light/dark and accent colour per profile:** independent of the Home Assistant theme (button in the header, choice in the edit mode), six accent colours.
+- **Dashboard panel, setup assistant:** three steps (look, which cards, an optional second view), shown once for a profile that has no saved settings; can be started again in the edit mode.
 - **Dashboard panel, card "Today":** one card replaces the loose rows and the strip of open items (period start/end, LH test, temperature, pill, supplies). What is still open today is listed first, the rest sits behind "More". The doctor report moved into a menu; all texts in five languages.
 - **Dashboard panel, jump bar:** a bar under the header jumps to Overview, History, Calendar, Supplies and Insights (only groups that are visible are shown). On the phone it sits at the bottom edge, with room for the iPhone safe area.
 - **Dashboard panel, compact empty cards:** cards without data shrink to a single line instead of an empty box.
@@ -36,6 +41,7 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- The saved visibility of dashboard cards now only keeps known cards (an imported or old entry with other keys is dropped).
 - **Dashboard panel on the phone:** the page no longer scrolls sideways (cards in the grid and product rows could be wider than the screen).
 - Dashboard panel: the full symptom history was loaded once per session and never refreshed, so a just logged temperature or LH test only showed up in the quick rows after a reload. It is now reloaded when the sensor state changes.
 - New profiles got entity IDs like `sensor.anna` instead of `sensor.menstruation_anna` on Home Assistant 2026.10 (which no longer reads the attribute the integration used to propose the ID), and a "rename entities" repair appeared right after setup. All entities now propose their ID through `entity_id`; profiles that already exist keep theirs. Found by running the integration in a real Home Assistant (`tools/real_ha/run.sh`).
