@@ -555,6 +555,7 @@
     { id: 'kpi_strip', title: 'dashboard_widget_today_status', sensitive: false, span: 12 },
     { id: 'phase_timeline', title: 'dashboard_widget_cycle_phase_overview', sensitive: false, span: 12 },
     { id: 'week_ahead', title: 'dashboard_widget_week_ahead', sensitive: true, span: 6 },
+    { id: 'week_review', title: 'dashboard_widget_week_review', sensitive: true, span: 6 },
     { id: 'pregnancy_prediction', title: 'dashboard_widget_pregnancy_prediction', sensitive: false, span: 5 },
     { id: 'basal_temp', title: 'dashboard_widget_basal_temp', sensitive: false, span: 7 },
     { id: 'phase_donut', title: 'dashboard_widget_phase_donut', sensitive: false, span: 5 },
@@ -575,6 +576,7 @@
     { id: 'symptom_insights', title: 'dashboard_widget_symptom_insights', sensitive: false, span: 4 },
     { id: 'progress_badges', title: 'dashboard_widget_progress_badges', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
+    { id: 'cycle_day_earlier', title: 'dashboard_widget_cycle_day_earlier', sensitive: true, span: 6 },
     { id: 'history_search', title: 'dashboard_widget_history_search', sensitive: true, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
@@ -582,8 +584,8 @@
 
   // Groups of the jump bar under the header: a tap scrolls to the first visible card of the group.
   const NAV_GROUPS = [
-    ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'week_ahead', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
-    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'history_search', 'statistics_card', 'year_overview']],
+    ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'week_ahead', 'week_review', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
+    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'cycle_day_earlier', 'history_search', 'statistics_card', 'year_overview']],
     ['calendar', 'dashboard_nav_calendar', ['calendar_card']],
     ['supplies', 'dashboard_nav_supplies', ['product_usage', 'inventory_card', 'timer_card', 'pill_card']],
     ['insights', 'dashboard_nav_insights', ['symptom_heatmap', 'anomaly_insights', 'cycle_insights', 'symptom_insights', 'progress_badges', 'support_card']],
@@ -594,6 +596,7 @@
     'kpi_strip',
     'phase_timeline',
     'week_ahead',
+    'week_review',
     'pregnancy_prediction',
     'basal_temp',
     'phase_donut',
@@ -613,6 +616,7 @@
     'symptom_insights',
     'progress_badges',
     'pain_mood_trend',
+    'cycle_day_earlier',
     'history_search',
     'year_overview',
   ];
@@ -634,6 +638,30 @@
   const VIEW_CODE_PREFIX = 'MCV1:';
   // Setup assistant: three steps, and the card choice of step 2.
   const WIZARD_STEPS = 3;
+  // Ready-made views: the cards that belong to a situation, in this order (everything else is hidden in the new view).
+  const VIEW_TEMPLATES = [
+    ['doctor', 'dashboard_tpl_doctor', ['kpi_strip', 'statistics_card', 'cycle_history', 'long_term_trend', 'pain_mood_trend', 'symptom_heatmap', 'cycle_insights', 'anomaly_insights', 'calendar_card']],
+    ['travel', 'dashboard_tpl_travel', ['kpi_strip', 'week_ahead', 'inventory_card', 'pill_card', 'timer_card']],
+    ['minimal', 'dashboard_tpl_minimal', ['kpi_strip', 'calendar_card']],
+  ];
+  // Small picture per kind of card for the gallery of hidden cards (drawn with the text colour, so it follows the theme).
+  const WIDGET_THUMBS = {
+    ring: '<circle cx="24" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="5" opacity=".55"/><path d="M24 6a10 10 0 0 1 10 10" fill="none" stroke="currentColor" stroke-width="5"/>',
+    chart: '<path d="M4 24l9-8 8 4 10-12 13 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>',
+    bars: '<rect x="6" y="14" width="6" height="14" rx="1.5" fill="currentColor" opacity=".55"/><rect x="16" y="8" width="6" height="20" rx="1.5" fill="currentColor"/><rect x="26" y="12" width="6" height="16" rx="1.5" fill="currentColor" opacity=".55"/><rect x="36" y="5" width="6" height="23" rx="1.5" fill="currentColor"/>',
+    grid: '<g fill="currentColor"><rect x="5" y="5" width="8" height="6" rx="1.5" opacity=".4"/><rect x="16" y="5" width="8" height="6" rx="1.5"/><rect x="27" y="5" width="8" height="6" rx="1.5" opacity=".4"/><rect x="38" y="5" width="6" height="6" rx="1.5" opacity=".7"/><rect x="5" y="14" width="8" height="6" rx="1.5"/><rect x="16" y="14" width="8" height="6" rx="1.5" opacity=".4"/><rect x="27" y="14" width="8" height="6" rx="1.5" opacity=".7"/><rect x="38" y="14" width="6" height="6" rx="1.5"/><rect x="5" y="23" width="8" height="5" rx="1.5" opacity=".7"/><rect x="16" y="23" width="8" height="5" rx="1.5"/><rect x="27" y="23" width="8" height="5" rx="1.5" opacity=".4"/></g>',
+    list: '<g fill="currentColor"><circle cx="8" cy="8" r="2.5"/><rect x="15" y="6" width="26" height="4" rx="2" opacity=".55"/><circle cx="8" cy="16" r="2.5"/><rect x="15" y="14" width="20" height="4" rx="2" opacity=".55"/><circle cx="8" cy="24" r="2.5"/><rect x="15" y="22" width="24" height="4" rx="2" opacity=".55"/></g>',
+    timeline: '<g fill="currentColor"><rect x="4" y="12" width="12" height="8" rx="4"/><rect x="18" y="12" width="9" height="8" rx="4" opacity=".55"/><rect x="29" y="12" width="15" height="8" rx="4" opacity=".8"/></g>',
+  };
+  const WIDGET_THUMB_KIND = {
+    kpi_strip: 'ring', phase_donut: 'ring', progress_badges: 'ring',
+    basal_temp: 'chart', long_term_trend: 'chart', pain_mood_trend: 'chart', pregnancy_prediction: 'chart',
+    cycle_history: 'bars', statistics_card: 'bars', product_usage: 'bars',
+    calendar_card: 'grid', symptom_heatmap: 'grid', year_overview: 'grid',
+    phase_timeline: 'timeline',
+  };
+  // Cards that read the long history: while it loads they are dimmed and marked busy, so nothing jumps unannounced.
+  const HISTORY_WIDGETS = ['basal_temp', 'symptom_heatmap', 'symptom_insights', 'pain_mood_trend', 'cycle_day_earlier', 'history_search', 'week_review', 'year_overview', 'product_usage'];
   const COMPACT_WIDGETS = ['kpi_strip', 'phase_timeline', 'calendar_card', 'product_usage', 'pill_card'];
   const SWIPE_MIN_PX = 70;
   const PULL_MIN_PX = 80;
@@ -700,6 +728,8 @@
         progress_badges: true,
         pain_mood_trend: false,
         week_ahead: false,
+        week_review: false,
+        cycle_day_earlier: false,
         history_search: false,
         year_overview: false,
       },
@@ -736,6 +766,8 @@
         progress_badges: true,
         pain_mood_trend: true,
         week_ahead: true,
+        week_review: true,
+        cycle_day_earlier: true,
         history_search: true,
         year_overview: true,
       },
@@ -838,6 +870,12 @@
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+
+  const addDaysIso = (iso, n) => {
+    const date = new Date(`${iso}T12:00:00`);
+    date.setDate(date.getDate() + n);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
 
   // Per-profile identity color, picked deterministically from the profile
   // id/name (same hash approach as the avatar variant picker below).
@@ -945,6 +983,7 @@
       // Keyed by profile so multiple profiles' data doesn't collide.
       this._fullHistoryCache = {};
       this._fullHistoryFetching = new Set();
+      this._historyErrors = new Set(); // profiles whose full history could not be loaded
       // Wunsch 01.10.2026: dashboard prefs (widgets + categories) now sync
       // through the backend (get/save_dashboard_prefs) instead of being stuck
       // to one browser's localStorage - this just dedupes in-flight fetches,
@@ -1535,6 +1574,19 @@
       return id;
     }
 
+    // A new view from a template: only its cards are shown, in its order; width and folding start fresh.
+    _addTemplateView(prefs, key) {
+      const template = VIEW_TEMPLATES.find(([id]) => id === key);
+      if (!template) return null;
+      const ids = template[2];
+      return this._addViewIn(prefs, this._t(template[1]), {
+        widgetVisibility: Object.fromEntries(WIDGET_IDS.map((id) => [id, ids.includes(id)])),
+        widgetOrder: [...ids, ...WIDGET_IDS.filter((id) => !ids.includes(id))],
+        widgetSpan: {},
+        widgetCollapsed: {},
+      });
+    }
+
     _renameViewIn(prefs, id, name) {
       const clean = String(name || '').trim().slice(0, 30);
       this._ensureViews(prefs);
@@ -1616,6 +1668,7 @@
     // Loads everything again: the long history, the household bar and the settings from the server.
     _refreshNow() {
       this._fullHistoryCache = {};
+      this._historyErrors.clear();
       this._householdSummaryFetchedAt = 0;
       this._message = this._t('dashboard_refreshed');
       this._lastRenderSig = null;
@@ -1780,10 +1833,14 @@
       const current = views.find((view) => view.id === active) || views[0];
       const pills = views.map((view) => `<button type="button" class="edit-chip${view.id === active ? ' active' : ''}" data-action="view-switch" data-view="${escapeHtml(view.id)}" aria-pressed="${view.id === active}">${escapeHtml(view.name)}</button>`).join('');
       const add = views.length < MAX_VIEWS ? `<button type="button" class="edit-chip" data-action="view-add"><span aria-hidden="true">＋</span> ${escapeHtml(this._t('dashboard_view_new'))}</button>` : '';
+      const templates = views.length < MAX_VIEWS
+        ? `<p class="helper">${escapeHtml(this._t('dashboard_view_templates'))}</p><div class="edit-tray">${VIEW_TEMPLATES.map(([key, label]) => `<button type="button" class="edit-chip" data-action="view-template" data-template="${key}"><span aria-hidden="true">＋</span> ${escapeHtml(this._t(label))}</button>`).join('')}</div>`
+        : '';
       const rename = `<label class="edit-view-name">${escapeHtml(this._t('dashboard_view_name'))} <input type="text" maxlength="30" data-pref="viewName" data-view="${escapeHtml(current.id)}" value="${escapeHtml(current.name)}"/></label>`;
       const remove = views.length > 1 ? `<button type="button" data-action="view-delete" data-view="${escapeHtml(current.id)}">${escapeHtml(this._t('dashboard_view_delete'))}</button>` : '';
       return `<p class="helper">${escapeHtml(this._t('dashboard_views'))}</p>
           <div class="edit-tray">${pills}${add}</div>
+          ${templates}
           <div class="edit-actions">${rename}${remove}</div>
           <div class="view-code-row"><button type="button" data-action="view-export">${escapeHtml(this._t('dashboard_view_export'))}</button><button type="button" data-action="view-import">${escapeHtml(this._t('dashboard_view_import'))}</button></div>
           <textarea rows="2" data-pref="viewCode" placeholder="${escapeHtml(this._t('dashboard_view_code'))}" aria-label="${escapeHtml(this._t('dashboard_view_code'))}">${escapeHtml(this._viewCodeText || '')}</textarea>
@@ -4298,8 +4355,13 @@
         this._handleEditCardKey(event, editCard);
         return;
       }
-      if (!this._quickLogOpen) return;
-      const modal = this.shadowRoot?.querySelector('.mc-modal-backdrop .mc-modal');
+      if (this._wizard && event.key === 'Escape') {
+        event.preventDefault();
+        this._wizardFinish(false);
+        return;
+      }
+      if (!this._quickLogOpen && !this._wizard) return;
+      const modal = this.shadowRoot?.querySelector(this._wizard ? '.wizard-backdrop .mc-modal' : '.mc-modal-backdrop .mc-modal');
       if (!modal) return;
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -4562,6 +4624,11 @@
         this._wizardFinish(action === 'wizard-done');
       } else if (action === 'view-add' && this._editMode && this._editDraft) {
         this._addViewIn(this._editDraft);
+        this.render();
+      } else if (action === 'retry-history') {
+        this._retryHistory();
+      } else if (action === 'view-template' && this._editMode && this._editDraft && target.dataset.template) {
+        this._addTemplateView(this._editDraft, target.dataset.template);
         this.render();
       } else if (action === 'view-delete' && this._editMode && this._editDraft && target.dataset.view) {
         this._deleteViewIn(this._editDraft, target.dataset.view);
@@ -6336,13 +6403,16 @@
         const response = result?.response;
         if (response && Array.isArray(response.symptom_history)) {
           this._fullHistoryCache[cacheKey] = { ...response, stamp, days };
+          this._historyErrors.delete(cacheKey);
           console.debug('[menstruation-cycle] Full history fetched for', cacheKey, `(${response.symptom_history.length} symptom entries)`);
         } else {
+          this._historyErrors.add(cacheKey);
           console.warn('[menstruation-cycle] get_full_history returned no usable data for', cacheKey, '— raw result:', result);
           this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [], stamp, days };
         }
       } catch (err) {
         console.warn('[menstruation-cycle] get_full_history call failed for', cacheKey, err);
+        this._historyErrors.add(cacheKey);
         this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [], stamp, days }; // avoid retry-looping until the state changes
       } finally {
         this._fullHistoryFetching.delete(cacheKey);
@@ -6357,6 +6427,26 @@
      * fallback while the full fetch is in flight. Triggers the fetch as a side
      * effect if not yet cached — safe to call from any widget's render path.
      */
+    _historyKey(stateObj) {
+      return stateObj?.attributes?.profile || this._selectedEntityId || null;
+    }
+
+    // Without a connection, or when the long history could not be loaded: say so, and offer to try again.
+    _renderStatusBanner(stateObj) {
+      if (this._hass?.connected === false) return `<div class="status-banner warn" role="alert">${escapeHtml(this._t('dashboard_offline'))}</div>`;
+      const key = this._historyKey(stateObj);
+      if (!key || !this._historyErrors.has(key)) return '';
+      return `<div class="status-banner" role="status"><span>${escapeHtml(this._t('dashboard_history_failed'))}</span><button type="button" data-action="retry-history">${escapeHtml(this._t('dashboard_retry'))}</button></div>`;
+    }
+
+    _retryHistory() {
+      const key = this._historyKey(this._hass?.states?.[this._selectedEntityId]);
+      if (!key) return;
+      this._historyErrors.delete(key);
+      delete this._fullHistoryCache[key];
+      this.render();
+    }
+
     _getFullSymptomHistory(stateObj) {
       const attrs = stateObj?.attributes || {};
       const profile = attrs.profile || null;
@@ -7261,11 +7351,7 @@
     _weekAheadItems(stateObj) {
       const attrs = stateObj?.attributes || {};
       const today = this._todayIso();
-      const addDays = (iso, n) => {
-        const date = new Date(`${iso}T12:00:00`);
-        date.setDate(date.getDate() + n);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      };
+      const addDays = addDaysIso;
       const last = addDays(today, 6);
       const items = [];
       const iso = (value) => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null);
@@ -7329,6 +7415,104 @@
         });
     }
 
+    // The logged values of one day as chips ({category, text}): categories, pain strength, basal temperature.
+    _dayChips(entry, categories, unit) {
+      const chips = [];
+      if (!entry) return chips;
+      categories.forEach((cat) => {
+        const raw = entry[cat.key] ?? entry.symptom_data?.[cat.key];
+        const values = (Array.isArray(raw) ? raw : [raw]).filter((v) => v !== undefined && v !== null && v !== '' && v !== 'none');
+        if (values.length) {
+          const parts = values.map((v) => this._optionLabel(v));
+          chips.push({ category: cat.key, label: cat.label, parts, text: `${cat.label}: ${parts.join(', ')}` });
+        }
+      });
+      const strength = entry.pain_intensity ?? entry.symptom_data?.pain_intensity;
+      if (Number.isInteger(strength) && this._prefs?.categoryVisibility?.pain !== false) chips.push({ category: 'pain', strength: true, text: this._t('dashboard_hs_pain').replace('{n}', String(strength)) });
+      const temp = entry.basal_temp ?? entry.symptom_data?.basal_temp;
+      if (temp != null && temp !== '') chips.push({ category: 'basal_temp', text: `${this._displayTemperature(temp, unit, 2)} ${unit}` });
+      return chips;
+    }
+
+    // ---- Widget "This cycle day before": what was logged on the same cycle day in the earlier cycles. ----
+    _cycleDayEarlierRows(stateObj) {
+      const attrs = stateObj?.attributes || {};
+      const day = Number(attrs.cycle_day) || 0;
+      const today = this._todayIso();
+      const past = (Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts : []).filter((value) => typeof value === 'string').sort().filter((value) => value <= today);
+      if (day < 1 || past.length < 2) return [];
+      const history = this._getFullSymptomHistory(stateObj);
+      const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
+      const categories = this._searchCategories(stateObj);
+      const unit = this._temperatureUnit(attrs);
+      const rows = [];
+      // past.at(-1) is the running cycle; every earlier cycle counts if it lasted that many days
+      for (let i = past.length - 2; i >= 0 && rows.length < 6; i -= 1) {
+        const date = addDaysIso(past[i], day - 1);
+        if (date >= past[i + 1]) continue;
+        rows.push({ start: past[i], date, chips: this._dayChips(byDate.get(date), categories, unit) });
+      }
+      return rows;
+    }
+
+    _renderCycleDayEarlier(stateObj) {
+      if (NON_CYCLE_STATES.includes(String(stateObj?.state || ''))) return '';
+      const rows = this._cycleDayEarlierRows(stateObj);
+      if (!rows.length) return `<div class="helper">${escapeHtml(this._t('dashboard_cde_empty'))}</div>`;
+      const day = Number(stateObj.attributes.cycle_day);
+      const dayFormat = new Intl.DateTimeFormat(this._lang || 'en', { day: 'numeric', month: 'short', year: 'numeric' });
+      const at = (iso) => dayFormat.format(new Date(`${iso}T12:00:00`));
+      const logged = rows.filter((row) => row.chips.length);
+      if (!logged.length) return `<div class="helper">${escapeHtml(this._t('dashboard_cde_none'))}</div>`;
+      // the value that came back most often (in at least two cycles) as one sentence on top
+      const counts = new Map();
+      logged.forEach((row) => new Set(row.chips.filter((chip) => chip.category !== 'basal_temp').map((chip) => chip.text)).forEach((text) => counts.set(text, (counts.get(text) || 0) + 1)));
+      const top = [...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1])[0];
+      const summary = top
+        ? this._t('dashboard_cde_common').replace('{day}', String(day)).replace('{text}', top[0]).replace('{n}', String(top[1])).replace('{total}', String(rows.length))
+        : this._t('dashboard_cde_title').replace('{day}', String(day));
+      const list = rows.map((row) => `<li class="cde-row"><span class="cde-when">${escapeHtml(this._t('dashboard_cde_row').replace('{date}', at(row.start)))}</span>${row.chips.length
+        ? `<span class="hs-chips">${row.chips.map((chip) => `<span class="hs-chip">${escapeHtml(chip.text)}</span>`).join('')}</span>`
+        : `<span class="cde-none">${escapeHtml(this._t('dashboard_cde_nothing'))}</span>`}</li>`).join('');
+      return `<p class="helper cde-summary">${escapeHtml(summary)}</p><ul class="cde-list">${list}</ul>`;
+    }
+
+    // ---- Widget "Week in review": the last seven days in three lines. ----
+    _weekReviewData(stateObj) {
+      const today = this._todayIso();
+      const days = Array.from({ length: 7 }, (_, i) => addDaysIso(today, i - 6));
+      const history = this._getFullSymptomHistory(stateObj);
+      const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
+      const categories = this._searchCategories(stateObj);
+      const unit = this._temperatureUnit(stateObj?.attributes || {});
+      const strengths = [];
+      const counts = new Map();
+      const perDay = days.map((date) => {
+        const entry = byDate.get(date);
+        const chips = this._dayChips(entry, categories, unit);
+        const strength = entry?.pain_intensity ?? entry?.symptom_data?.pain_intensity;
+        if (Number.isInteger(strength) && this._prefs?.categoryVisibility?.pain !== false) strengths.push(strength);
+        chips.filter((chip) => chip.parts).forEach((chip) => chip.parts.forEach((part) => counts.set(`${chip.label}: ${part}`, (counts.get(`${chip.label}: ${part}`) || 0) + 1)));
+        return { date, logged: chips.length > 0 };
+      });
+      const common = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+      return { perDay, strengths, common, loggedDays: perDay.filter((day) => day.logged).length };
+    }
+
+    _renderWeekReview(stateObj) {
+      const data = this._weekReviewData(stateObj);
+      if (!data.loggedDays) return `<div class="helper">${escapeHtml(this._t('dashboard_wr_none'))}</div>`;
+      const weekday = new Intl.DateTimeFormat(this._lang || 'en', { weekday: 'narrow' });
+      const strip = data.perDay.map((day) => `<span class="wr-day${day.logged ? ' on' : ''}">${escapeHtml(weekday.format(new Date(`${day.date}T12:00:00`)))}</span>`).join('');
+      const rows = [`<li><span>${escapeHtml(this._t('dashboard_wr_days'))}</span><strong>${escapeHtml(this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays)))}</strong></li>`];
+      if (data.strengths.length) {
+        const avg = (data.strengths.reduce((sum, value) => sum + value, 0) / data.strengths.length).toLocaleString(this._lang || 'en', { maximumFractionDigits: 1 });
+        rows.push(`<li><span>${escapeHtml(this._t('dashboard_wr_pain'))}</span><strong>${escapeHtml(this._t('dashboard_wr_pain_value').replace('{avg}', avg).replace('{max}', String(Math.max(...data.strengths))))}</strong></li>`);
+      }
+      if (data.common.length) rows.push(`<li><span>${escapeHtml(this._t('dashboard_wr_common'))}</span><strong>${escapeHtml(data.common.map(([text, n]) => (n > 1 ? `${text} (${n}×)` : text)).join(', '))}</strong></li>`);
+      return `<div class="wr-strip" role="img" aria-label="${escapeHtml(this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays)))}">${strip}</div><ul class="wr-list">${rows.join('')}</ul>`;
+    }
+
     _historySearchRows(stateObj) {
       const search = this._historySearch;
       const attrs = stateObj?.attributes || {};
@@ -7345,16 +7529,7 @@
       const rows = [];
       (Array.isArray(this._getFullSymptomHistory(stateObj)) ? this._getFullSymptomHistory(stateObj) : []).forEach((entry) => {
         if (!entry?.date || entry.date > today || entry.date < cutoff) return;
-        const chips = [];
-        categories.forEach((cat) => {
-          const raw = entry[cat.key] ?? entry.symptom_data?.[cat.key];
-          const values = (Array.isArray(raw) ? raw : [raw]).filter((v) => v !== undefined && v !== null && v !== '' && v !== 'none');
-          if (values.length) chips.push({ category: cat.key, text: `${cat.label}: ${values.map((v) => this._optionLabel(v)).join(', ')}` });
-        });
-        const strength = entry.pain_intensity ?? entry.symptom_data?.pain_intensity;
-        if (Number.isInteger(strength) && this._prefs?.categoryVisibility?.pain !== false) chips.push({ category: 'pain', text: this._t('dashboard_hs_pain').replace('{n}', String(strength)) });
-        const temp = entry.basal_temp ?? entry.symptom_data?.basal_temp;
-        if (temp != null && temp !== '') chips.push({ category: 'basal_temp', text: `${this._displayTemperature(temp, unit, 2)} ${unit}` });
+        const chips = this._dayChips(entry, categories, unit);
         if (!chips.length) return;
         if (search.category && !chips.some((chip) => chip.category === search.category)) return;
         if (query && !chips.some((chip) => chip.text.toLowerCase().includes(query))) return;
@@ -7771,7 +7946,8 @@
         .filter((id) => draft.widgetVisibility[id] === false && WIDGET_DEFS.some((w) => w.id === id));
       const trayChips = hiddenWidgets.map((id) => {
         const title = this._t(WIDGET_DEFS.find((w) => w.id === id).title);
-        return `<button type="button" class="edit-chip" data-action="widget-show" data-widget="${id}" aria-label="${escapeHtml(this._t('dashboard_show_widget_aria').replace('{widget}', title))}"><span aria-hidden="true">＋</span> ${escapeHtml(title)}</button>`;
+        const thumb = WIDGET_THUMBS[WIDGET_THUMB_KIND[id] || 'list'];
+        return `<button type="button" class="edit-chip gallery-tile" data-action="widget-show" data-widget="${id}" aria-label="${escapeHtml(this._t('dashboard_show_widget_aria').replace('{widget}', title))}"><svg class="gallery-thumb" viewBox="0 0 48 32" aria-hidden="true">${thumb}</svg><span class="gallery-text"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(this._t(`dashboard_widget_desc_${id}`))}</small></span><span class="gallery-add" aria-hidden="true">＋</span></button>`;
       }).join('');
       const tray = `<div class="edit-tray" aria-label="${escapeHtml(this._t('dashboard_hidden_widgets'))}">${trayChips || `<span class="helper">${escapeHtml(this._t('dashboard_hidden_widgets_none'))}</span>`}</div>`;
 
@@ -8012,7 +8188,7 @@
     _widgetIdsForMode(mode, order) {
       const without = (ids) => order.filter((id) => !ids.includes(id));
       if (mode === 'pregnancy') {
-        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead']);
+        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier']);
         if (kept.includes('fetal_development')) return kept;
         const idx = kept.indexOf('phase_timeline');
         return idx >= 0 ? [...kept.slice(0, idx), 'fetal_development', ...kept.slice(idx)] : [...kept, 'fetal_development'];
@@ -8023,7 +8199,7 @@
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development', 'cycle_card', 'week_ahead',
+          'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier',
         ]);
       }
       if (mode === 'menopause') {
@@ -8031,7 +8207,7 @@
         // widgets and cycle-length anomaly detection, but keep general symptom
         // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
         // bleeding and symptoms are still worth logging during perimenopause.
-        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead']);
+        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier']);
       }
       if (mode === 'postpartum') {
         // No cycle to predict during the postpartum window — hide the same
@@ -8039,7 +8215,7 @@
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier',
         ]);
       }
       return without(['fetal_development']);
@@ -8094,9 +8270,10 @@
       if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       // These two show what is planned or logged, so discreet mode leaves them out.
-      if (widgetId === 'week_ahead' || widgetId === 'history_search') {
+      if (['week_ahead', 'week_review', 'cycle_day_earlier', 'history_search'].includes(widgetId)) {
         if (discreetMode || !stateObj) return '';
-        body = widgetId === 'week_ahead' ? this._renderWeekAhead(stateObj) : this._renderHistorySearch(stateObj);
+        body = { week_ahead: '_renderWeekAhead', week_review: '_renderWeekReview', cycle_day_earlier: '_renderCycleDayEarlier', history_search: '_renderHistorySearch' }[widgetId];
+        body = this[body](stateObj);
         if (!body) return '';
       }
       if (widgetId === 'year_overview') body = this._renderYearOverview(stateObj);
@@ -8105,9 +8282,10 @@
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
       // A card whose whole content is a note like "No data yet" shrinks to one line (nothing to fold, nothing to look at).
       const empty = !this._editMode && /^\s*<div class="helper">[^<]*<\/div>\s*$/.test(body);
-      const cardClasses = ['card', spanClass, sensitiveClass, empty ? 'is-empty' : ''].filter(Boolean).join(' ');
+      const syncing = HISTORY_WIDGETS.includes(widgetId) && this._fullHistoryFetching.has(this._historyKey(stateObj));
+      const cardClasses = ['card', spanClass, sensitiveClass, empty ? 'is-empty' : '', syncing ? 'is-syncing' : ''].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="${cardClasses}">${empty ? `<h2>${title}</h2>` : this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
+      return `<article class="${cardClasses}"${syncing ? ' aria-busy="true"' : ''}>${empty ? `<h2>${title}</h2>` : this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
     }
 
     // Title of a card; outside edit mode a click (or Enter / Space) folds the card up to its title. The state is saved per profile.
@@ -8648,7 +8826,9 @@
                --card-background-color, so both automatically adapt to the active HA
                theme (light or dark) instead of being fixed light-mode pastels. */
             --mc-rose: var(--mc-accent, #E8637D);
-            --mc-rose-deep: color-mix(in srgb, var(--mc-accent-deep, #C43F5E) 78%, var(--primary-text-color, #000) 22%);
+            --mc-rose-deep: color-mix(in srgb, var(--mc-accent-deep, #C43F5E) 52%, var(--primary-text-color, #000) 48%);
+            /* Fill behind white text (buttons, active tabs): dark enough for 4.5:1 in every accent colour and in light and dark. */
+            --mc-accent-solid: color-mix(in srgb, var(--mc-accent, #E8637D) 70%, #000);
             --mc-rose-tint: color-mix(in srgb, var(--card-background-color, #fff) 84%, var(--mc-accent, #E8637D) 16%);
             --mc-plum: color-mix(in srgb, #6B3654 78%, var(--primary-text-color, #000) 22%);
             --mc-plum-tint: color-mix(in srgb, var(--card-background-color, #fff) 88%, #6B3654 12%);
@@ -8681,7 +8861,7 @@
           textarea[data-pref="viewCode"] { width: 100%; box-sizing: border-box; margin-top: 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: .75rem var(--mc-font-mono); padding: 6px 8px; resize: vertical; }
           .pain-scale { display: flex; gap: 4px; flex-wrap: wrap; }
           .pain-scale button { min-width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .8rem; }
-          .pain-scale button[aria-pressed="true"] { background: var(--mc-rose-deep); border-color: transparent; color: #fff; font-weight: 600; }
+          .pain-scale button[aria-pressed="true"] { background: var(--mc-accent-solid); border-color: transparent; color: #fff; font-weight: 600; }
           .week-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
           .week-item { display: grid; grid-template-columns: 10px 1fr auto; align-items: baseline; gap: 10px; }
           .week-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mc-rose); align-self: center; }
@@ -8702,6 +8882,19 @@
           .hs-chip { padding: 2px 8px; border-radius: 999px; background: var(--mc-rose-tint); font-size: .78rem; }
           .hs-more { margin-top: 8px; padding: 6px 16px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .85rem; }
           @media (max-width: 700px) { .hs-row { grid-template-columns: 1fr; gap: 4px; } }
+          .status-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--mc-sand); border-left: 4px solid var(--mc-amber); font-size: .88rem; }
+          .status-banner.warn { border-left-color: var(--error-color, #dc2626); }
+          .status-banner button { flex: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .82rem; }
+          .card.is-syncing { opacity: .62; transition: opacity .2s; }
+          .cde-list, .wr-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+          .cde-row { display: grid; gap: 4px; }
+          .cde-when, .cde-none { font-size: .8rem; color: var(--secondary-text-color); }
+          .wr-strip { display: flex; gap: 6px; }
+          .wr-day { flex: 1; text-align: center; padding: 5px 0; border-radius: 8px; background: var(--mc-sand); font-size: .75rem; color: var(--secondary-text-color); }
+          .wr-day.on { background: var(--mc-accent-solid); color: #fff; font-weight: 600; }
+          .wr-list li { display: flex; justify-content: space-between; gap: 12px; font-size: .88rem; }
+          .wr-list li span { color: var(--secondary-text-color); }
+          .wr-list li strong { text-align: right; font-weight: 600; }
           .wizard { max-width: 460px; }
           .wizard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
           .wizard-head h2 { margin: 0; font-family: var(--mc-font-display); font-size: 1.15rem; font-weight: 500; }
@@ -8718,7 +8911,7 @@
           .wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 16px; }
           .wizard-nav { display: flex; gap: 8px; }
           .wizard-actions button { border: 1px solid var(--divider-color, #d1d5db); border-radius: 999px; background: var(--card-background-color, #fff); color: inherit; padding: 6px 16px; cursor: pointer; font: inherit; font-size: .85rem; }
-          .wizard-actions .mode-btn.active { background: var(--mc-rose-deep); color: #fff; border-color: transparent; }
+          .wizard-actions .mode-btn.active { background: var(--mc-accent-solid); color: #fff; border-color: transparent; }
           .ptr { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 40; padding: 6px 14px; border-radius: 999px; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: .8rem; pointer-events: none; }
           .page { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
           /* The header stays in view while scrolling (not in edit mode, where the edit bar is the sticky one). */
@@ -8826,7 +9019,7 @@
             height: 56px;
             border-radius: 50%;
             border: none;
-            background: var(--mc-rose-deep, #C43F5E);
+            background: var(--mc-accent-solid, #C43F5E);
             color: #fff;
             display: flex;
             align-items: center;
@@ -8856,7 +9049,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 14px 16px;
-            background: var(--mc-rose-deep, #C43F5E);
+            background: var(--mc-accent-solid, #C43F5E);
             color: #fff;
             font-family: var(--mc-font-display);
             font-weight: 500;
@@ -9297,6 +9490,12 @@
             border: 1px dashed var(--divider-color, #9ca3af); border-radius: 999px; padding: 5px 12px;
             background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .85rem; cursor: pointer;
           }
+          .edit-tray:has(.gallery-tile) { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+          .gallery-tile { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border-radius: 12px; }
+          .gallery-thumb { flex: none; width: 56px; height: 38px; padding: 4px; border-radius: 8px; background: var(--mc-sand); color: var(--mc-rose-deep); box-sizing: border-box; }
+          .gallery-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+          .gallery-text small { color: var(--secondary-text-color); font-size: .74rem; line-height: 1.25; }
+          .gallery-add { flex: none; font-size: 1.1rem; color: var(--mc-rose-deep); }
           .edit-chip:hover { border-style: solid; background: var(--secondary-background-color, #f3f4f6); }
           .edit-card { position: relative; cursor: grab; outline: 1.5px dashed color-mix(in srgb, var(--primary-color, #6b3654) 45%, transparent); outline-offset: -1px; user-select: none; -webkit-user-select: none; }
           .edit-card:focus-visible { outline: 2px solid var(--primary-color, #2563eb); }
@@ -9657,7 +9856,7 @@
             }
             .mobile-bar button {
               flex: 1; height: 46px; border: none; border-radius: 999px; font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
-              background: var(--mc-rose-deep, #C43F5E); color: #fff;
+              background: var(--mc-accent-solid, #C43F5E); color: #fff;
             }
             .toolbar .today-pill, .toolbar button[data-action="open-quick-log"], .toolbar button[data-action="print"], .toolbar button.discreet-toggle span:first-child { display: none; }
             .mc-chat-fab-button { bottom: 80px; right: 14px; width: 48px; height: 48px; }
@@ -9716,6 +9915,7 @@
             </div>
             ${this._editMode || isFreshProfile ? '' : this._renderSubnav(shown)}
           </header>
+          ${this._renderStatusBanner(stateObj)}
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderOpenIssues(discreetMode)}

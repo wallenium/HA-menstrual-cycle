@@ -1583,6 +1583,182 @@ const makeHass = (stateObj) => ({
   await new Promise((resolve) => setTimeout(resolve, 10));
   assert.deepStrictEqual(hsPanel._quickLogSelections, { pain: ['cramps'], pain_intensity: 5 }, 'filled with what is there (no date, no empty values)');
   global.window.MenstruationFunctions = realFunctionsHs;
+
+  // ---- This cycle day before / Week in review ----
+  const realFunctionsCd = global.window.MenstruationFunctions;
+  global.window.MenstruationFunctions = {
+    getSymptomConfig: () => [{ key: 'pain' }, { key: 'cervix_texture', hiddenInModal: true }],
+    normalizeOptionKey: (v) => v,
+    renderOptionIcon: () => '',
+    renderCategoryIcon: () => '',
+    fetchFreshSymptomData: async () => ({ data: null }),
+  };
+  const cdPanel = await freshPanel();
+  const cdHistory = [
+    { date: dayAt(-28), pain: ['cramps'] },
+    { date: dayAt(-56), pain: ['cramps'], pain_intensity: 4, basal_temp: 36.5 },
+    { date: dayAt(-1), pain_intensity: 2 },
+    { date: dayAt(0), pain_intensity: 6, pain: ['cramps'], basal_temp: 36.7 },
+    { date: dayAt(-2), pain: ['cramps', 'headache'] },
+    { date: dayAt(-8), pain: ['migraine'] },
+  ];
+  const cdState = (attrs = {}, state = 'luteal') => painState({ cycle_day: 10, grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-37), dayAt(-9)], symptom_history: cdHistory, ...attrs }, state);
+  cdPanel._hass.states[cdPanel._selectedEntityId] = cdState();
+  const cdRows = cdPanel._cycleDayEarlierRows(cdState());
+  assert.deepStrictEqual(cdRows.map((row) => row.date), [dayAt(-28), dayAt(-56), dayAt(-84)], 'same cycle day in each earlier cycle, newest cycle first');
+  assert.deepStrictEqual(cdRows.map((row) => row.chips.length), [1, 3, 0], 'what was logged then (pain type; type, strength and temperature; nothing)');
+  assert.strictEqual(cdPanel._cycleDayEarlierRows(cdState({ cycle_day: 25, grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-45), dayAt(-9)] })).length, 2, 'an earlier cycle shorter than that many days is skipped');
+  assert.deepStrictEqual(cdPanel._cycleDayEarlierRows(cdState({ cycle_day: 0 })), [], 'no cycle day, no rows');
+  assert.deepStrictEqual(cdPanel._cycleDayEarlierRows(cdState({ grouped_starts: [dayAt(-9)] })), [], 'no earlier cycle, no rows');
+  const cdHtml = cdPanel._renderCycleDayEarlier(cdState());
+  assert.strictEqual((cdHtml.match(/class="cde-row"/g) || []).length, 3);
+  assert.strictEqual((cdHtml.match(/class="cde-none"/g) || []).length, 1, 'a cycle with nothing says so');
+  assert.ok(cdHtml.includes('dashboard_cde_common'), 'a value that came back in two cycles is named in one sentence');
+  const cdOnce = cdPanel._renderCycleDayEarlier(cdState({ symptom_history: [cdHistory[0]] }));
+  assert.ok(cdOnce.includes('dashboard_cde_title') && !cdOnce.includes('dashboard_cde_common'), 'a single hit is no pattern');
+  assert.ok(cdPanel._renderCycleDayEarlier(cdState({ cycle_day: 0 })).includes('dashboard_cde_empty'));
+  assert.ok(cdPanel._renderCycleDayEarlier(cdState({ symptom_history: [] })).includes('dashboard_cde_none') && !cdPanel._renderCycleDayEarlier(cdState({ symptom_history: [] })).includes('cde-row'), 'earlier cycles but nothing logged: one line instead of a list of nothing');
+  assert.ok(cdPanel._renderWidget('cycle_day_earlier', cdState({ symptom_history: [] }), false).includes('is-empty'), 'and the card shrinks');
+  assert.strictEqual(cdPanel._renderWidget('cycle_day_earlier', cdState(), true), '', 'nothing in discreet mode');
+  assert.strictEqual(cdPanel._renderWidget('cycle_day_earlier', cdState({}, 'pregnant'), false), '', 'nothing while pregnant');
+  assert.ok(cdPanel._renderWidget('cycle_day_earlier', cdState(), false).includes('cde-list'));
+  ['pregnancy', 'menarche', 'menopause', 'postpartum'].forEach((mode) => {
+    assert.ok(!cdPanel._widgetIdsForMode(mode, ['cycle_day_earlier', 'kpi_strip']).includes('cycle_day_earlier'), `no cycle comparison in ${mode}`);
+  });
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.cycle_day_earlier, true);
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.cycle_day_earlier, false);
+  assert.ok(cdPanel._renderJumpNav(['cycle_day_earlier', 'week_ahead', 'calendar_card', 'inventory_card']).includes('data-group="history"'), 'part of the history chip');
+
+  const wrData = cdPanel._weekReviewData(cdState());
+  assert.strictEqual(wrData.loggedDays, 3, 'three of the last seven days have entries (the eighth day back does not count)');
+  assert.deepStrictEqual(wrData.strengths, [2, 6]);
+  assert.deepStrictEqual(wrData.common[0], ['Pain: Cramps', 2], 'the most frequent value, with its category; strength and temperature are no "values"');
+  assert.ok(!wrData.common.some(([text]) => /36\.|\/10/.test(text)));
+  const wrHtml = cdPanel._renderWeekReview(cdState());
+  assert.strictEqual((wrHtml.match(/class="wr-day on"/g) || []).length, 3);
+  assert.strictEqual((wrHtml.match(/class="wr-day"/g) || []).length, 4);
+  assert.ok(wrHtml.includes('dashboard_wr_pain_value') && wrHtml.includes('dashboard_wr_common'));
+  assert.ok(!cdPanel._renderWeekReview(cdState({ symptom_history: [{ date: dayAt(-1), pain: ['cramps'] }] })).includes('dashboard_wr_pain_value'), 'no strength logged: no strength line');
+  assert.ok(cdPanel._renderWeekReview(cdState({ symptom_history: [] })).includes('dashboard_wr_none'));
+  assert.ok(cdPanel._renderWidget('week_review', cdState({ symptom_history: [] }), false).includes('is-empty'), 'an empty week shrinks to one line');
+  assert.strictEqual(cdPanel._renderWidget('week_review', cdState(), true), '', 'nothing in discreet mode');
+  assert.ok(cdPanel._widgetIdsForMode('pregnancy', ['week_review']).includes('week_review'), 'logging goes on in every mode');
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.week_review, true);
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.week_review, false);
+  assert.ok(cdPanel._renderJumpNav(['week_review', 'cycle_history', 'calendar_card', 'inventory_card']).includes('data-group="overview"'));
+
+  // ---- View templates and the gallery of hidden cards ----
+  const tp = await freshPanel();
+  const tpClick = (action, data = {}) => tp._handleClick({ target: new ClickTarget({ action, ...data }) });
+  tpClick('view-template', { template: 'travel' });
+  assert.strictEqual(tp._prefs.views.length, 0, 'outside the edit mode nothing is added');
+  tpClick('toggle-edit');
+  ['doctor', 'travel', 'minimal'].forEach((key) => assert.ok(tp.shadowRoot.innerHTML.includes(`data-action="view-template" data-template="${key}"`), `template ${key} is offered`));
+  tpClick('view-template', { template: 'travel' });
+  const tpIds = ['kpi_strip', 'week_ahead', 'inventory_card', 'pill_card', 'timer_card'];
+  assert.strictEqual(tp._editDraft.views.length, 2, 'a new view next to the standard one');
+  assert.strictEqual(tp._editDraft.views[1].name, 'dashboard_tpl_travel', 'named after the template');
+  assert.strictEqual(tp._editDraft.activeView, tp._editDraft.views[1].id, 'and shown right away');
+  assert.deepStrictEqual(Object.keys(tp._editDraft.widgetVisibility).filter((id) => tp._editDraft.widgetVisibility[id]).sort(), [...tpIds].sort(), 'only the cards of the template are shown');
+  assert.deepStrictEqual(tp._editDraft.widgetOrder.slice(0, 5), tpIds, 'in the order of the template');
+  assert.strictEqual(new Set(tp._editDraft.widgetOrder).size, tp._editDraft.widgetOrder.length, 'no card twice');
+  assert.ok(tp._editDraft.widgetOrder.includes('statistics_card'), 'the hidden ones are still in the order, for later');
+  tpClick('view-switch', { view: 'default' });
+  assert.strictEqual(tp._editDraft.widgetVisibility.statistics_card, true, 'the first view is untouched');
+  assert.strictEqual(tp._addTemplateView(tp._editDraft, 'nonsense'), null);
+  const tpCount = tp._editDraft.views.length;
+  tpClick('view-template', { template: 'doctor' });
+  tpClick('view-template', { template: 'minimal' });
+  assert.strictEqual(tp._editDraft.views.length, tpCount + 2);
+  assert.strictEqual(tp._editDraft.widgetVisibility.calendar_card, true);
+  assert.strictEqual(tp._editDraft.widgetVisibility.week_ahead, false, 'minimal shows two cards');
+  for (let i = 0; i < 10; i += 1) tpClick('view-template', { template: 'minimal' });
+  assert.strictEqual(tp._editDraft.views.length, 8, 'at most eight views');
+  assert.ok(!tp.shadowRoot.innerHTML.includes('data-action="view-template"'), 'no templates offered at eight');
+  assert.deepStrictEqual(tp._normalizePrefs(JSON.parse(JSON.stringify(tp._editDraft)), 'a', 'general').views.map((view) => view.name), tp._editDraft.views.map((view) => view.name), 'templates survive saving');
+  tpClick('cancel-edit');
+
+  tpClick('toggle-edit');
+  tpClick('widget-hide', { widget: 'kpi_strip' });
+  tpClick('widget-hide', { widget: 'week_ahead' });
+  const galleryHtml = tp.shadowRoot.innerHTML;
+  assert.ok(galleryHtml.includes('gallery-tile" data-action="widget-show" data-widget="kpi_strip"') && galleryHtml.includes('data-widget="week_ahead"'), 'hidden cards are tiles');
+  assert.ok(galleryHtml.includes('dashboard_widget_desc_kpi_strip') && galleryHtml.includes('dashboard_widget_desc_week_ahead'), 'with a line of explanation');
+  const tile = (id) => galleryHtml.split('<button').find((part) => part.includes(`data-widget="${id}"`) && part.includes('gallery-tile'));
+  assert.ok(tile('kpi_strip').includes('<circle cx="24"') && tile('week_ahead').includes('<rect x="15" y="6"'), 'and a picture fitting the kind of card');
+  tpClick('widget-show', { widget: 'kpi_strip' });
+  assert.ok(!tp.shadowRoot.innerHTML.includes('data-action="widget-show" data-widget="kpi_strip"'), 'a tap brings the card back');
+  const enJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/www/translations/en.json'), 'utf8'));
+  const defIds = [...fs.readFileSync(path.join(__dirname, '../custom_components/menstruation_cycle/www/menstruation-cycle-dashboard-panel.js'), 'utf8').matchAll(/\{ id: '([a-z_]+)', title: 'dashboard_widget_/g)].map((m) => m[1]);
+  assert.ok(defIds.length >= 28);
+  assert.deepStrictEqual(defIds.filter((id) => !enJson[`dashboard_widget_desc_${id}`]), [], 'every card has an explanation');
+  tpClick('cancel-edit');
+
+  // ---- Connection and loading banner ----
+  const bp = await freshPanel();
+  const bpState = () => painState({ profile: 'alice', cycle_day: 3 });
+  bp._hass.states[bp._selectedEntityId] = bpState();
+  assert.strictEqual(bp._renderStatusBanner(bpState()), '', 'nothing wrong: no banner');
+  bp._hass.connected = false;
+  assert.ok(bp._renderStatusBanner(bpState()).includes('role="alert"') && bp._renderStatusBanner(bpState()).includes('dashboard_offline'), 'no connection is announced');
+  bp._hass.connected = true;
+  let bpFail = true;
+  const bpCalls = [];
+  bp._hass.connection = { sendMessagePromise: async (msg) => { bpCalls.push(msg.service); if (bpFail) throw new Error('boom'); return { response: { symptom_history: [], product_usage: [] } }; } };
+  await bp._fetchFullHistory(bp._selectedEntityId, 'alice', 's1');
+  assert.ok(bp._historyErrors.has('alice'), 'a failed load is remembered');
+  const failedBanner = bp._renderStatusBanner(bpState());
+  assert.ok(failedBanner.includes('dashboard_history_failed') && failedBanner.includes('data-action="retry-history"'), 'and offered to try again');
+  assert.ok(bp.shadowRoot.innerHTML.includes('class="status-banner"'), 'the banner is part of the page');
+  bpCalls.length = 0;
+  bp._handleClick({ target: new ClickTarget({ action: 'retry-history' }) });
+  assert.ok(!bp._historyErrors.has('alice') && !bp._fullHistoryCache.alice, 'the retry forgets the failure');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(bpCalls.includes('get_full_history'), 'and loads again');
+  assert.ok(bp._historyErrors.has('alice'), 'which fails again while the problem stays');
+  bpFail = false;
+  bp._handleClick({ target: new ClickTarget({ action: 'retry-history' }) });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(!bp._historyErrors.has('alice') && bp._fullHistoryCache.alice, 'a successful load clears the banner');
+  bp._historyErrors.add('alice');
+  await bp._fetchFullHistory(bp._selectedEntityId, 'alice', 'newer-state');
+  assert.ok(!bp._historyErrors.has('alice'), 'a later successful load (state changed) clears an old failure too');
+  const realSend = bp._hass.connection.sendMessagePromise;
+  bp._hass.connection.sendMessagePromise = async () => ({ response: {} });
+  await bp._fetchFullHistory(bp._selectedEntityId, 'alice', 'newest-state');
+  assert.ok(bp._historyErrors.has('alice'), 'an answer without a history counts as a failure as well');
+  bp._hass.connection.sendMessagePromise = realSend;
+  bp._refreshNow();
+  assert.strictEqual(bp._historyErrors.size, 0, 'pull to refresh starts clean');
+  bp._fullHistoryFetching.add('alice');
+  const busyHtml = bp._renderWidget('pain_mood_trend', bpState(), false);
+  assert.ok(busyHtml.includes('is-syncing') && busyHtml.includes('aria-busy="true"'), 'cards that read the history are marked while it loads');
+  assert.ok(!bp._renderWidget('cycle_history', bpState(), false).includes('is-syncing'), 'the others are not');
+  bp._fullHistoryFetching.delete('alice');
+  bp._fullHistoryCache.alice = { symptom_history: [], product_usage: [], stamp: bpState().last_updated ?? null, days: bp._historyDays() };
+  assert.ok(!bp._renderWidget('pain_mood_trend', bpState(), false).includes('aria-busy'), 'and not after it is loaded');
+
+  // ---- Keyboard in the setup assistant ----
+  const wz = await freshPanel();
+  wz._handleClick({ target: new ClickTarget({ action: 'wizard-start' }) });
+  assert.ok(wz._wizard, 'the assistant is open');
+  const wzFocus = [];
+  const wzFirst = { focus: () => wzFocus.push('first') };
+  const wzLast = { focus: () => wzFocus.push('last') };
+  const wzRealQuery = wz.shadowRoot.querySelector;
+  const wzSelectors = [];
+  wz.shadowRoot.querySelector = (sel) => { wzSelectors.push(sel); return { querySelectorAll: () => [wzFirst, wzLast] }; };
+  wz.shadowRoot.activeElement = wzLast;
+  const wzTab = { key: 'Tab', shiftKey: false, target: { dataset: {} }, preventDefault: () => {} };
+  wz._handleKeydown(wzTab);
+  assert.deepStrictEqual(wzFocus, ['first'], 'Tab on the last control goes round to the first');
+  assert.ok(wzSelectors.some((sel) => sel.includes('wizard-backdrop')), 'the assistant is the dialog that traps the focus');
+  wz.shadowRoot.querySelector = wzRealQuery;
+  let wzPrevented = false;
+  wz._handleKeydown({ key: 'Escape', target: { dataset: {} }, preventDefault: () => { wzPrevented = true; } });
+  assert.ok(wzPrevented && wz._wizard === null, 'Escape leaves the assistant like "Skip"');
+  assert.strictEqual(wz._prefs.onboarded, true, 'and it does not start again');
+  global.window.MenstruationFunctions = realFunctionsCd;
   assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.history_search, true);
   assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.history_search, false);
 

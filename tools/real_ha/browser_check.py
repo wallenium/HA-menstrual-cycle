@@ -521,6 +521,98 @@ def pain_week_search_check(page):
     return problems
 
 
+def round5_check(page, shots=None):
+    """Real browser: banner, the new cards, several days in the calendar, dialog keyboard, view templates and the gallery."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    panel_js = "document.querySelector('menstruation-cycle-dashboard-panel')"
+
+    page.evaluate(f"() => {{ const p = {panel_js}; p._hass.connected = false; p.render(); }}")
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.status-banner[role=alert]").count() != 1:
+        problems.append("banner: no notice without a connection")
+    page.evaluate(f"() => {{ const p = {panel_js}; p._hass.connected = true; p.render(); }}")
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.status-banner").count() != 0:
+        problems.append("banner: still shown with a connection")
+
+    for card in ("week_review", "cycle_day_earlier"):
+        if page.locator(root + f'css=[data-card="{card}"]').count() != 1:
+            problems.append(f"new card {card}: not on the page")
+
+    # several days in the calendar: two taps, one dialog for all of them; Escape closes it and the focus goes back
+    cal = page.locator(root + "menstruation-calendar-card")
+    cal.evaluate("(c) => c.scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(200)
+    cal.locator("css=[data-action=prev-month]").click()
+    page.wait_for_timeout(200)
+    cal.locator("css=[data-action=range-toggle]").click()
+    page.wait_for_timeout(200)
+    isos = cal.evaluate("(c) => [...c.shadowRoot.querySelectorAll('button[data-iso]')].map((b) => b.dataset.iso)")
+    if len(isos) < 5:
+        problems.append("calendar range: no days found")
+        return problems
+    first, last = isos[1], isos[3]
+    cal.locator(f'css=button[data-iso="{first}"]').click()
+    page.wait_for_timeout(200)
+    if cal.locator("css=.range-edge").count() != 1:
+        problems.append("calendar range: the first tap did not mark the start")
+    cal.locator(f'css=button[data-iso="{last}"]').click()
+    page.wait_for_timeout(500)
+    dialog = cal.locator("css=.sym-dialog[role=dialog][aria-modal=true]")
+    if dialog.count() != 1:
+        problems.append("calendar range: no dialog after the second tap")
+        return problems
+    if cal.locator("css=#sym-range-period").count() != 1 or cal.locator("css=#sym-basal-temp").count() != 0:
+        problems.append("calendar range: dialog is not the several-days form")
+    if cal.evaluate("(c) => c.shadowRoot.activeElement?.classList.contains('sym-dialog')") is not True:
+        problems.append("calendar range: the dialog did not take the focus")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "range_dialog.png"))
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(600)
+    if cal.locator("css=.sym-dialog").count() != 0:
+        problems.append("calendar range: Escape did not close the dialog")
+    if cal.evaluate("(c) => c.shadowRoot.activeElement?.dataset?.iso") != first:
+        problems.append("calendar range: the focus did not return to the day")
+    if cal.locator("css=[data-action=range-toggle]").get_attribute("aria-pressed") != "false":
+        problems.append("calendar range: the mode stayed on after closing")
+    cal.locator("css=[data-action=next-month]").click()
+    page.wait_for_timeout(200)
+
+    # templates and the gallery in the edit mode
+    page.locator(root + 'css=[data-action="toggle-edit"]').click()
+    page.wait_for_timeout(300)
+    page.locator(root + 'css=[data-action="view-template"][data-template="minimal"]').click()
+    page.wait_for_timeout(300)
+    cards = page.locator(root + "css=.edit-card").count()
+    if not 1 <= cards <= 2:
+        problems.append(f"template: the minimal view should show one or two cards, shows {cards}")
+    tiles = page.locator(root + "css=.gallery-tile")
+    if tiles.count() < 10:
+        problems.append(f"gallery: expected the hidden cards as tiles, found {tiles.count()}")
+    else:
+        box = tiles.first.locator("css=svg.gallery-thumb").bounding_box()
+        if not box or box["width"] < 20:
+            problems.append("gallery: tile without a picture")
+        if not tiles.first.locator("css=small").inner_text().strip() or "dashboard_widget_desc_" in tiles.first.inner_text():
+            problems.append("gallery: tile without a (translated) explanation")
+    if shots:
+        page.locator(root + "css=.gallery-tile").first.scroll_into_view_if_needed()
+        page.screenshot(path=str(Path(shots) / "gallery.png"))
+        for card in ("week_review", "cycle_day_earlier"):
+            el = page.locator(root + f'css=[data-card="{card}"]')
+        page.screenshot(path=str(Path(shots) / "template_edit.png"), full_page=True)
+    page.locator(root + 'css=[data-action="cancel-edit"]').click()
+    page.wait_for_timeout(300)
+    if shots:
+        for card in ("week_review", "cycle_day_earlier"):
+            el = page.locator(root + f'css=[data-card="{card}"]')
+            if el.count():
+                el.screenshot(path=str(Path(shots) / f"card_{card}.png"))
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -560,6 +652,7 @@ def run(fixture_dir, shots=None):
                 if level == "full" and lang == "en":
                     problems += wizard_check(page, shots)
                     problems += pain_week_search_check(page)
+                    problems += round5_check(page, shots)
                     problems += view_features_check(page)
                     problems += view_code_check(page)
                     problems += calendar_dialog_check(page)

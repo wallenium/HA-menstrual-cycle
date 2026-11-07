@@ -3,6 +3,13 @@
 ## 1.10.0
 
 ### Added
+- **Calendar card, several days at once:** the new switch "Several days" lets you tap a first and a last day (past days, at most 31); one dialog then saves the same entries for all of them and can enter them all as period days. A single temperature is not offered for several days.
+- **Dashboard panel, card "This cycle day before":** shows what was logged on the same cycle day in the earlier cycles (up to six) and names a value that came back in at least two of them. Not shown in discreet mode, pregnancy, menarche, menopause and postpartum; off in the "young" preset.
+- **Dashboard panel, card "Week in review":** the last seven days in three lines (days logged, pain strength average and maximum, most frequent entries). Not shown in discreet mode; off in the "young" preset.
+- **Dashboard panel, view templates:** "Doctor visit", "On the go" and "Minimal" create a new view with only the matching cards (in the edit mode, below the views).
+- **Dashboard panel, gallery of hidden cards:** in the edit mode the hidden cards appear as tiles with a small picture and a line of explanation (all five languages); a tap brings the card back.
+- **Dashboard panel, notice bar:** a notice without a connection to Home Assistant, and a notice with "Try again" when the long history could not be loaded; cards that read the history are dimmed and marked busy while it loads.
+- **Accessibility:** the day dialog of the calendar card is a real dialog (name, Escape closes it, Tab stays inside, focus goes in and back to the day); Escape leaves the setup assistant; accent colours reach 4.5:1 contrast in light and dark (accent text and the fill behind white text are separate colours now, checked for all six accents by `tests/dashboard-contrast.test.js`).
 - **Dashboard panel, pain strength in the card "Today":** a row 0 to 10 saves the strength of the day with one tap (shown while a period is running or pain was logged recently; a second tap on the same number clears it; undo is offered). Not shown in discreet mode.
 - **Dashboard panel, "Pain & Mood Trend" shows the strength** (0 to 10) per day instead of only counting pain types; days with pain types but no strength are marked as unrated.
 - **Dashboard panel, widget "Next 7 days":** period, fertile window, ovulation, pill pack, supplies and reminders of the coming week in one list. Not shown in discreet mode, in pregnancy, menarche, menopause and postpartum; off in the "young" preset.
@@ -45,6 +52,7 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- **Calendar card:** the click handler of the day dialog was attached again on every redraw, so one tap on "Save" could run several times (several saves, several conflict questions). It is attached once now.
 - The saved visibility of dashboard cards now only keeps known cards (an imported or old entry with other keys is dropped).
 - **Dashboard panel on the phone:** the page no longer scrolls sideways (cards in the grid and product rows could be wider than the screen).
 - Dashboard panel: the full symptom history was loaded once per session and never refreshed, so a just logged temperature or LH test only showed up in the quick rows after a reload. It is now reloaded when the sensor state changes.

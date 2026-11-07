@@ -816,6 +816,166 @@ function testDayDialogGrowsFromTheDayAndShrinksBack() {
   assert.strictEqual(card._modalIso, '2026-07-05', 'what was typed is kept');
 }
 
+function testSeveralDaysPickFirstAndLastDay() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass();
+  card._render = () => {};
+  const opened = [];
+  card._openSymptomModalForDay = (iso) => opened.push(iso);
+  card._activateDay('2020-03-10');
+  assert.deepStrictEqual(opened, ['2020-03-10'], 'normally a tap opens that day');
+  card._rangeMode = true;
+  card._activateDay('2020-03-12');
+  assert.strictEqual(card._rangeStart, '2020-03-12', 'the first tap only marks the start');
+  assert.strictEqual(card._modalRange, null);
+  card._activateDay('2020-03-10');
+  assert.deepStrictEqual(card._modalRange.days, ['2020-03-10', '2020-03-11', '2020-03-12'], 'the second tap picks the range, in either direction');
+  assert.strictEqual(card._modalIso, '2020-03-10');
+  assert.strictEqual(card._rangeStart, null);
+  assert.strictEqual(opened.length, 1, 'no single day dialog in this mode');
+  card._modalRange = null; card._modalIso = null;
+  card._activateDay('2020-01-01');
+  card._activateDay('2020-03-01');
+  assert.strictEqual(card._modalRange.days.length, 31, 'at most 31 days');
+  assert.strictEqual(card._modalRange.to, '2020-01-31');
+  card._modalRange = null; card._modalIso = null; card._rangeStart = null;
+  card._activateDay('2999-01-01');
+  assert.strictEqual(card._rangeStart, null, 'a day in the future cannot start a range');
+  card._activateDay('2020-03-05');
+  card._activateDay('2020-03-05');
+  assert.deepStrictEqual(card._modalRange.days, ['2020-03-05'], 'the same day twice is a range of one');
+}
+
+function testSeveralDaysDialog() {
+  const render = (range, state = 'ok') => {
+    const card = new CardClass();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass();
+    hass.states['sensor.menstruation'].state = state;
+    card._hass = hass;
+    card._modalRange = range;
+    return card._renderSymptomModal('2020-03-10', card._buildModel());
+  };
+  const single = render(null);
+  assert.ok(single.includes('id="sym-basal-temp"') && !single.includes('sym-range-period'), 'the single day dialog is unchanged');
+  const range = render({ from: '2020-03-10', to: '2020-03-12', days: ['2020-03-10', '2020-03-11', '2020-03-12'] });
+  assert.ok(range.includes('Edit days') && range.includes('(3)'), 'names the days');
+  assert.ok(range.includes('Applies to all 3 days'), 'says what happens');
+  assert.ok(range.includes('id="sym-range-period"'), 'offers to enter them as period days');
+  assert.ok(range.includes('class="sym-range-period"'), 'as a plain checkbox, not an option tile');
+  assert.ok(!range.includes('id="sym-basal-temp"'), 'one temperature for many days makes no sense');
+  assert.ok(!range.includes('data-cat="_period"'), 'no single day period toggle');
+  assert.ok(!render({ from: '2020-03-10', to: '2020-03-12', days: ['2020-03-10'] }, 'pre_menarche').includes('sym-range-period'), 'no period days before the first period');
+}
+
+async function testSeveralDaysSave() {
+  const run = async ({ period, selected }) => {
+    const card = new CardClass();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass();
+    const calls = [];
+    hass.callService = async (domain, service, data) => { calls.push([service, data.date, data.symptom_data]); };
+    card._hass = hass;
+    card.shadowRoot.getElementById = (id) => (id === 'sym-range-period' ? { checked: period } : null);
+    card.shadowRoot.querySelector = (sel) => (selected && sel === '.sym-opt-btn.sym-selected[data-cat="bleeding_strength"]' ? { getAttribute: () => 'light' } : null);
+    card._render = () => {};
+    card._modalRange = { from: '2020-03-10', to: '2020-03-11', days: ['2020-03-10', '2020-03-11'] };
+    card._modalIso = '2020-03-10';
+    card._rangeMode = true;
+    await card._handleModalSave();
+    assert.strictEqual(card._modalRange, null);
+    assert.strictEqual(card._modalIso, null);
+    assert.strictEqual(card._rangeMode, false, 'back to the normal mode');
+    return calls.filter((call) => call[0] !== 'update_entity');
+  };
+  const both = await run({ period: true, selected: true });
+  assert.deepStrictEqual(both.filter((call) => call[0] === 'add_cycle_start').map((call) => call[1]), ['2020-03-10', '2020-03-11'], 'every day becomes a period day');
+  assert.deepStrictEqual(both.filter((call) => call[0] === 'add_symptom').map((call) => [call[1], call[2]]), [['2020-03-10', { bleeding_strength: 'light' }], ['2020-03-11', { bleeding_strength: 'light' }]], 'and gets the same entries');
+  const onlyEntries = await run({ period: false, selected: true });
+  assert.ok(!onlyEntries.some((call) => call[0] === 'add_cycle_start'), 'no period days unless asked');
+  assert.strictEqual(onlyEntries.length, 2);
+  const nothing = await run({ period: false, selected: false });
+  assert.deepStrictEqual(nothing, [], 'empty fields change nothing');
+}
+
+function testSeveralDaysMarkersAndRenderKey() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass();
+  card._viewDate = new Date(2026, 6, 15);
+  const before = card._buildRenderKey();
+  card._rangeMode = true;
+  assert.notStrictEqual(card._buildRenderKey(), before, 'switching the mode redraws');
+  card._rangeStart = '2026-07-14';
+  card._lastRenderKey = null;
+  card._render();
+  const html = card.shadowRoot.innerHTML;
+  assert.ok(html.includes('data-action="range-toggle"') && html.includes('aria-pressed="true"'), 'the switch shows it is on');
+  assert.ok(html.includes('Now tap the last day.'), 'and what to do next');
+  card._modalRange = { from: '2026-07-14', to: '2026-07-15', days: ['2026-07-14', '2026-07-15'] };
+  card._lastRenderKey = null;
+  card._render();
+  assert.ok(!card.shadowRoot.innerHTML.includes('Now tap the last day.') && !card.shadowRoot.innerHTML.includes('Tap the first day.'), 'no hint behind the open dialog');
+  card._modalRange = null;
+  const marked = html.split('<button').slice(1).filter((part) => part.includes('range-edge'));
+  assert.strictEqual(marked.length, 1, 'exactly the first day is marked');
+  assert.ok(marked[0].includes('data-iso="2026-07-14"'));
+  const key = card._buildRenderKey();
+  card._rangeStart = null;
+  assert.notStrictEqual(card._buildRenderKey(), key, 'picking the start redraws');
+}
+
+function testDialogListenersAreAttachedOnce() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass();
+  const added = [];
+  card.shadowRoot.addEventListener = (type) => added.push(type);
+  for (let month = 0; month < 4; month += 1) {
+    card._viewDate = new Date(2026, month, 15);
+    card._render();
+  }
+  assert.strictEqual(added.filter((type) => type === 'click').length, 1, 'one click listener on the shadow root, however often the card is redrawn (else a save would run several times)');
+  assert.strictEqual(added.filter((type) => type === 'keydown').length, 1, 'and one keyboard listener for the dialog');
+}
+
+function testDayDialogIsAnAccessibleDialog() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  card._hass = makeHass();
+  const html = card._renderSymptomModal('2026-07-14', card._buildModel());
+  assert.ok(/<div class="sym-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-label="Edit Day: /.test(html), 'a dialog with a name');
+  assert.ok(html.includes('tabindex="-1"'), 'which can take the focus');
+  assert.ok(/class="sym-close" aria-label="Close"/.test(html), 'the close button has a real name');
+  const key = (init) => { let prevented = false; return { key: init.key, shiftKey: !!init.shiftKey, preventDefault: () => { prevented = true; }, get prevented() { return prevented; } }; };
+  const handlers = {};
+  card.shadowRoot.addEventListener = (type, fn) => { handlers[type] = fn; };
+  const focused = [];
+  const first = { focus: () => focused.push('first') };
+  const last = { focus: () => focused.push('last') };
+  card.shadowRoot.querySelectorAll = (sel) => (sel.includes('.sym-dialog') ? [first, last] : []);
+  card.shadowRoot.activeElement = last;
+  card._lastRenderKey = null;
+  card._modalIso = '2026-07-14';
+  card._render();
+  let closed = 0;
+  card._closeModal = () => { closed += 1; };
+  const esc = key({ key: 'Escape' });
+  handlers.keydown(esc);
+  assert.ok(closed === 1 && esc.prevented, 'Escape closes the dialog');
+  const tab = key({ key: 'Tab' });
+  handlers.keydown(tab);
+  assert.deepStrictEqual(focused, ['first'], 'Tab on the last control goes to the first (focus stays in the dialog)');
+  card.shadowRoot.activeElement = first;
+  handlers.keydown(key({ key: 'Tab', shiftKey: true }));
+  assert.deepStrictEqual(focused, ['first', 'last'], 'and Shift+Tab on the first goes to the last');
+  card._modalIso = null;
+  const other = key({ key: 'Escape' });
+  handlers.keydown(other);
+  assert.strictEqual(closed, 1, 'Escape does nothing while no dialog is open');
+}
+
 let failed = 0;
 
 function testBasalTempFieldFollowsProfileUnit() {
@@ -870,16 +1030,21 @@ function testBasalTempFieldFollowsProfileUnit() {
   testLutealForecastMarker,
   testBasalTempFieldFollowsProfileUnit,
   testDayDialogGrowsFromTheDayAndShrinksBack,
-].forEach((fn) => {
+  testSeveralDaysPickFirstAndLastDay,
+  testSeveralDaysDialog,
+  testSeveralDaysSave,
+  testSeveralDaysMarkersAndRenderKey,
+  testDialogListenersAreAttachedOnce,
+  testDayDialogIsAnAccessibleDialog,
+].reduce((chain, fn) => chain.then(async () => {
   try {
-    fn();
+    await fn();
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`  ✗ ${fn.name}: ${err.message}`);
     failed += 1;
   }
-});
-
+}), Promise.resolve()).then(() => {
 if (failed > 0) {
   // eslint-disable-next-line no-console
   console.error(`\n${failed} test(s) failed.`);
@@ -888,3 +1053,4 @@ if (failed > 0) {
   // eslint-disable-next-line no-console
   console.log('\nAll tests passed.');
 }
+});
