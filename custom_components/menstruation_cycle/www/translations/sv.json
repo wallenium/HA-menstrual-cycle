@@ -665,6 +665,7 @@
   "milestone_menopause_confirmed": "12 månader — bekräftad",
   "dashboard_widget_symptom_insights": "Symtominsikter",
   "dashboard_symptom_insights_none": "Inga tydliga mönster upptäckta ännu.",
+  "dashboard_symptom_today": "Idag ({phase}) loggas oftare: {symptoms}",
   "dashboard_symptom_insight_more": "{symptom} är {ratio}x vanligare under {phase}-fasen.",
   "dashboard_symptom_insight_less": "{symptom} är mindre vanligt under {phase}-fasen ({ratio}x basnivå).",
   "dashboard_confidence_low": "Låg tillförlitlighet",

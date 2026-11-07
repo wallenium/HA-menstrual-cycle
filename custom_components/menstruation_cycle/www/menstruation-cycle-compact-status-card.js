@@ -85,6 +85,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         unknown: 'Unknown',
         title: 'Cycle Status',
         cycle_day: 'Cycle Day',
+        dashboard_expected: 'expected',
         period: 'Period',
         fertile: 'Fertile',
         ovulation: 'Ovulation',
@@ -595,6 +596,9 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     const ICON_TEXT_MODES = ['menarche', 'menopause'];
 
     let bodyHtml = '';
+    const windowText = this._escapeHtml(
+      window.MenstruationFunctions?.periodWindowText?.(attrs, this._lang(), this._t('dashboard_expected')) || '',
+    );
 
     if (CYCLE_MODES.includes(statusKey)) {
       // Mode 1: Cycle circle (left) | info text (centre) | status icon with tooltip (right)
@@ -606,6 +610,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
           <div class="info">
             <div class="status-text">${status.label}</div>
             <div class="cycle-day">${this._t('cycle_day')} ${cycleDay}/${cycleLength}</div>
+            ${windowText ? `<div class="cycle-window">${windowText}</div>` : ''}
           </div>
           <div class="icon-right-wrap">
             <button class="icon-right-btn" style="border-color:${status.color};color:${status.color};" aria-label="${this._t('tt_status_icon')}: ${status.label}" aria-describedby="status-tooltip" tabindex="0">
@@ -631,6 +636,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
           <div class="info">
             <div class="status-text">${status.label}</div>
             <div class="cycle-day">${this._t('cycle_day')} ${cycleDay}/${cycleLength}</div>
+            ${windowText ? `<div class="cycle-window">${windowText}</div>` : ''}
           </div>
           <div class="icon-right-wrap">
             <button class="icon-right-btn" style="border-color:${status.color};color:${status.color};" aria-label="${this._t('tt_status_icon')}: ${status.label}" aria-describedby="status-tooltip" tabindex="0">
@@ -667,6 +673,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
         .info { min-width: 0; flex: 1; display: grid; gap: 4px; }
         .status-text { font-size: 0.95rem; font-weight: 600; color: var(--primary-text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .cycle-day { color: var(--secondary-text-color); font-size: 0.82rem; }
+        .cycle-window { color: var(--secondary-text-color); font-size: 0.74rem; opacity: 0.85; }
 
         /* === Right status icon === */
         .icon-right-wrap {
@@ -777,6 +784,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
           .wrap { gap: 8px; }
           .status-text { font-size: 0.9rem; }
           .cycle-day { font-size: 0.76rem; }
+          .cycle-window { font-size: 0.7rem; }
           .progress-icon { width: 28px; height: 28px; }
           .big-icon { width: 32px; height: 32px; }
           .icon-tooltip { max-width: 180px; font-size: 0.74rem; }

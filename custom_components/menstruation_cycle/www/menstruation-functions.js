@@ -885,7 +885,29 @@ function attributesWithFullHistory(hass, stateObj, onUpdate, days = 180, forceSy
   };
 }
 
+// "expected 12 Nov - 16 Nov" for the period forecast window (period_forecast.window_start/_end), or ''
+// when there is no usable window: a single day, a window that is already over (overdue period),
+// or no forecast at all (private profiles, pregnancy, ...). Shared by the gauge, status and compact cards.
+function periodWindowText(attrs, locale, expectedWord, today = new Date()) {
+  const forecast = attrs && attrs.period_forecast;
+  const iso = (value) => (/^\d{4}-\d{2}-\d{2}/.test(String(value || '')) ? String(value).slice(0, 10) : null);
+  const start = iso(forecast && forecast.window_start);
+  const end = iso(forecast && forecast.window_end);
+  if (!start || !end || start >= end) return '';
+  const todayIso = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  if (end < todayIso) return '';
+  let format;
+  try {
+    format = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  } catch (_e) {
+    format = new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  }
+  const label = (day) => format.format(new Date(`${day}T12:00:00Z`));
+  return `${expectedWord} ${label(start)} \u2013 ${label(end)}`;
+}
+
 const MenstruationFunctions = {
+  periodWindowText,
   normalizeOptionKey,
   getSymptomConfig,
   fetchFreshSymptomData,

@@ -136,6 +136,7 @@ class MenstruationGaugeCard extends HTMLElement {
         card_description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
         days_unit: 'days',
         days_unknown: '-- days',
+        dashboard_expected: 'expected',
         days_until_menarche: 'Days until menarche',
         menarche_expected_in: 'Menarche expected in {days} days',
         menarche_overdue: 'Menarche {days} days overdue',
@@ -661,6 +662,8 @@ class MenstruationGaugeCard extends HTMLElement {
     const windowStartIso = series60[0]?.iso || '';
     const windowEndIso = series60[59]?.iso || '';
 
+    // No forecast window while pregnant or before the first period (countdown shows something else there).
+    const state0IsCycle = !pregnancyInfo?.isPregnant && String(stateObj?.state || '') !== 'pre_menarche';
     return {
       entityId,
       stateObj,
@@ -676,6 +679,7 @@ class MenstruationGaugeCard extends HTMLElement {
       menarcheData,
       daysUntilMenarche,
       pregnancyInfo,
+      windowText: state0IsCycle ? (window.MenstruationFunctions?.periodWindowText?.(attrs, this._hass?.locale?.language || 'de', this._t('dashboard_expected'), this._todayDate?.() || new Date()) || '') : '',
       symptomByDate,
       currentBleedingBlock,
       daysInMonth,
@@ -1420,6 +1424,7 @@ class MenstruationGaugeCard extends HTMLElement {
         <button type="button" class="center-panel ${isOverdueSoon ? 'overdue-soon' : ''} ${canEdit ? '' : 'passive'}" data-action="toggle-editor">
           ${statusIconMarkup ? `<div class="center-icon" aria-hidden="true">${statusIconMarkup}</div>` : ''}
           <div class="center-days">${countdown}</div>
+          ${model.windowText ? `<div class="center-window">${this._escapeHtml(model.windowText)}</div>` : ''}
         </button>
       `;
     }
@@ -2433,6 +2438,7 @@ class MenstruationGaugeCard extends HTMLElement {
       model.pregnancyInfo?.trimester,
       countdown,
       model.predicted || '',
+      model.windowText || '',
       (model.predictedStarts || []).join(','),
       model.daysUntilMenarche,
       isOverdueSoon ? 1 : 0,
@@ -2547,6 +2553,7 @@ class MenstruationGaugeCard extends HTMLElement {
         .center-icon svg { width: 56px; height: 56px; display: block; }
         .center-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .center-days { font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+        .center-window { font-size: .72rem; font-weight: 500; line-height: 1.2; opacity: .8; }
         .center-primary { font-size: 1rem; font-weight: 700; line-height: 1.2; }
         .center-secondary { font-size: .76rem; line-height: 1.25; opacity: .84; }
         /* Today button in gauge-wrap top-right */

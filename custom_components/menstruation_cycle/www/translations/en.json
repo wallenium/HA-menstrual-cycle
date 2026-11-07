@@ -698,6 +698,7 @@
   "milestone_menopause_confirmed": "12 months — confirmed",
   "dashboard_widget_symptom_insights": "Symptom Insights",
   "dashboard_symptom_insights_none": "No strong patterns detected yet.",
+  "dashboard_symptom_today": "Today ({phase}), logged more often: {symptoms}",
   "dashboard_symptom_insight_more": "{symptom} is {ratio}x more frequent in the {phase} phase.",
   "dashboard_symptom_insight_less": "{symptom} is less common in the {phase} phase ({ratio}x baseline).",
   "dashboard_confidence_low": "Low confidence",

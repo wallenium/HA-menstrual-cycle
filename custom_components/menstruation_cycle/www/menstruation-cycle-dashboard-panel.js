@@ -266,6 +266,7 @@
     milestone_menopause_confirmed: '12 months — confirmed',
     dashboard_widget_symptom_insights: 'Symptom Insights',
     dashboard_symptom_insights_none: 'No strong patterns detected yet.',
+    dashboard_symptom_today: 'Today ({phase}), logged more often: {symptoms}',
     dashboard_symptom_insight_more: '{symptom} is {ratio}x more frequent in the {phase} phase.',
     dashboard_symptom_insight_less: '{symptom} is less common in the {phase} phase ({ratio}x baseline).',
     dashboard_confidence_low: 'Low confidence',
@@ -6407,10 +6408,30 @@
         late_luteal: 'phase_luteal',
       };
 
+      // symptom_key is "<category>:<value>" (e.g. "pain:headache"); the option labels are keyed by the bare value
+      // ("opt_headache" or "headache"). Falls back to the bare value, never the raw "category:value".
+      const labelOf = (ins) => {
+        const value = String(ins.symptom_key || '').split(':').slice(1).join(':') || String(ins.symptom_key || '');
+        for (const key of ['opt_' + value, value]) {
+          if (this._t(key) !== key) return this._t(key);
+        }
+        return value;
+      };
+
+      // "Today" line: what the own log shows as more frequent in the phase the cycle is in right now
+      // (cycle_phase attribute; same phase assignment as the insights themselves). Describes, never advises.
+      const todayPhase = attrs.cycle_phase;
+      const todayInsights = todayPhase
+        ? insights.filter((ins) => ins.phase === todayPhase && ins.direction === 'more_frequent').slice(0, 3)
+        : [];
+      const todayHtml = todayInsights.length
+        ? `<p class="helper symptom-today">${escapeHtml(this._t('dashboard_symptom_today')
+          .replace('{phase}', this._t(phaseKeyMap[todayPhase] || todayPhase))
+          .replace('{symptoms}', todayInsights.map(labelOf).join(', ')))}</p>`
+        : '';
+
       const items = insights.slice(0, 4).map((ins) => {
-        const symptomLabel = this._t(ins.symptom_key) !== ins.symptom_key
-          ? this._t(ins.symptom_key)
-          : (this._t('opt_' + ins.symptom_key) !== ('opt_' + ins.symptom_key) ? this._t('opt_' + ins.symptom_key) : ins.symptom_key);
+        const symptomLabel = labelOf(ins);
         const phaseLabel = this._t(phaseKeyMap[ins.phase] || ins.phase);
         const moreFrequent = ins.direction === 'more_frequent';
         const template = moreFrequent
@@ -6432,7 +6453,7 @@
           </div>`;
       }).join('');
 
-      return `<div class="anomaly-list">${items}</div>`;
+      return `${todayHtml}<div class="anomaly-list">${items}</div>`;
     }
 
     _renderProgressBadges(stateObj) {

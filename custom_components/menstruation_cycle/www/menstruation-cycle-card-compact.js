@@ -142,12 +142,16 @@ class MenstruationCycleCard extends HTMLElement {
       `;
     }
 
+    const windowText = this._escapeHtmlText(
+      window.MenstruationFunctions?.periodWindowText?.(attrs, this._lang(), this._t('dashboard_expected')) || '',
+    );
     if (cycleInfo) {
       cycleInfo.innerHTML = `
         <div class="info-row">
           <span class="info-label">${this._t('cycle_day')}</span>
           <span class="info-value">${cycleDay}/${cycleLength}</span>
         </div>
+        ${windowText ? `<div class="info-row"><span class="info-label">${windowText}</span></div>` : ''}
       `;
     }
 
@@ -349,6 +353,10 @@ class MenstruationCycleCard extends HTMLElement {
     return statusMap[state] || statusMap.neutral;
   }
 
+  _escapeHtmlText(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   _loadTranslations() {
     const lang = this._lang();
     if (_mcCompactCardI18n.cache[lang] || _mcCompactCardI18n.loading[lang]) return;
@@ -367,6 +375,7 @@ class MenstruationCycleCard extends HTMLElement {
     const translations = {
       en: {
         cycle_day: "Cycle Day",
+        dashboard_expected: "expected",
         period: "Period",
         fertile: "Fertile",
         pms: "PMS",

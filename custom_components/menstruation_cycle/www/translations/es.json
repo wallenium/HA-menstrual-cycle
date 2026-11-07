@@ -665,6 +665,7 @@
   "milestone_menopause_confirmed": "12 meses — confirmada",
   "dashboard_widget_symptom_insights": "Perspectivas de síntomas",
   "dashboard_symptom_insights_none": "Aún no se detectan patrones claros.",
+  "dashboard_symptom_today": "Hoy ({phase}), se registra con más frecuencia: {symptoms}",
   "dashboard_symptom_insight_more": "{symptom} es {ratio}x más frecuente en la fase {phase}.",
   "dashboard_symptom_insight_less": "{symptom} es menos frecuente en la fase {phase} ({ratio}x la base).",
   "dashboard_confidence_low": "Confianza baja",
