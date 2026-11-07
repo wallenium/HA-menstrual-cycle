@@ -81,6 +81,136 @@ def visible_text(page, handle):
     }""", handle)
 
 
+def view_features_check(page):
+    """Real browser: folding a card, sticky header, chart period selector and the print view."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    title = page.locator(root + 'css=h2[data-action="widget-collapse"][data-widget="cycle_history"]')
+    if title.count() != 1:
+        return [f"view: no foldable title for cycle_history ({title.count()})"]
+    body_visible = lambda: page.locator(root + 'css=article:has(h2[data-widget="cycle_history"]) > :not(h2)').first.is_visible()
+    title.scroll_into_view_if_needed()
+    if not body_visible():
+        problems.append("view: card body is not visible before folding")
+    title.click()
+    page.wait_for_timeout(200)
+    if body_visible():
+        problems.append("view: clicking the title did not fold the card")
+    page.emulate_media(media="print")
+    if not body_visible():
+        problems.append("view: a folded card must be complete in the print view")
+    toolbar_buttons = page.locator(root + "css=header.toolbar button")
+    shown = [toolbar_buttons.nth(i).evaluate("(e) => e.className + '|' + e.dataset.action") for i in range(toolbar_buttons.count()) if toolbar_buttons.nth(i).is_visible()]
+    if shown:
+        problems.append(f"view: toolbar buttons are still shown in the print view: {shown}")
+    page.emulate_media(media="screen")
+    page.locator(root + 'css=h2[data-widget="cycle_history"]').click()
+    page.wait_for_timeout(200)
+    if not body_visible():
+        problems.append("view: second click did not open the card again")
+
+    # sticky header: stays at the top after scrolling far down
+    page.evaluate("window.scrollTo(0, 2500)")
+    page.wait_for_timeout(150)
+    top = page.locator(root + "css=header.toolbar").bounding_box()["y"]
+    if abs(top) > 2:
+        problems.append(f"view: header is not sticky (top {top:.0f} after scrolling)")
+    page.evaluate("window.scrollTo(0, 0)")
+
+    # chart period: picking a period re-renders without losing the page
+    picker = page.locator(root + "css=select.range-picker")
+    if picker.count() != 1:
+        problems.append("view: no chart period selector in the header")
+    else:
+        for value in ("3", "all", "auto"):
+            picker.select_option(value)
+            page.wait_for_timeout(150)
+            if page.locator(root + "css=select.range-picker").input_value() != value:
+                problems.append(f"view: period {value} was not kept")
+        if page.locator(root + "css=section.grid > article.card").count() < 4:
+            problems.append("view: cards are gone after changing the period")
+    return problems
+
+
+def edit_mode_check(page, shots=None):
+    """Real mouse: hide a card with the X, bring it back from the list, resize by dragging the corner, move a card by dragging."""
+    problems = []
+    cards = "menstruation-cycle-dashboard-panel >> css=.edit-card"
+    # the mouse only reaches what is in the viewport: scroll the card into view first
+    def box(widget):
+        loc = page.locator(f'{cards}[data-widget-id="{widget}"]')
+        loc.scroll_into_view_if_needed()
+        return loc.bounding_box()
+    order = lambda: page.eval_on_selector_all(cards, "(els) => els.map((e) => e.dataset.widgetId)")
+    page.locator('menstruation-cycle-dashboard-panel >> css=[data-action="toggle-edit"]').first.click()
+    page.wait_for_timeout(400)
+    ids = order()
+    if len(ids) < 4 or "inventory_card" not in ids or "timer_card" not in ids:
+        return [f"edit mode: expected editable cards incl. inventory_card and timer_card, got {ids}"]
+
+    # hide with the X, bring back from the list of hidden widgets
+    page.locator(f'{cards}[data-widget-id="timer_card"] >> css=.edit-x').click()
+    page.wait_for_timeout(200)
+    if "timer_card" in order():
+        problems.append("edit mode: the X did not hide the card")
+    chip = page.locator('menstruation-cycle-dashboard-panel >> css=[data-action="widget-show"][data-widget="timer_card"]')
+    if chip.count() != 1:
+        problems.append("edit mode: hidden card is not in the list of hidden widgets")
+    else:
+        chip.click()
+        page.wait_for_timeout(200)
+        if "timer_card" not in order():
+            problems.append("edit mode: card did not come back from the list")
+
+    # resize: drag the corner two columns to the right
+    before = box("inventory_card")
+    grid_w = page.locator("menstruation-cycle-dashboard-panel >> css=section.grid").bounding_box()["width"]
+    col = (grid_w + 16) / 12
+    x, y = before["x"] + before["width"] - 6, before["y"] + before["height"] - 6
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + col, y, steps=6)
+    page.mouse.move(x + 2 * col, y, steps=6)
+    mid = box("inventory_card")
+    page.mouse.up()
+    page.wait_for_timeout(250)
+    after = box("inventory_card")
+    cls = page.locator(f'{cards}[data-widget-id="inventory_card"]').get_attribute("class")
+    if not (after["width"] > before["width"] + col and "span-8" in cls):
+        problems.append(f"edit mode: resize did not widen the card by two columns ({before['width']:.0f} -> {after['width']:.0f}, {cls})")
+    if abs(mid["width"] - after["width"]) > 6:
+        problems.append(f"edit mode: width during the drag ({mid['width']:.0f}) differs from the result ({after['width']:.0f})")
+
+    # move: take the first card and drop it behind the second one
+    ids = order()
+    first, second = ids[0], ids[1]
+    b = box(second)
+    a = box(first)
+    b = box(second)
+    page.mouse.move(a["x"] + a["width"] / 2, a["y"] + a["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(b["x"] + b["width"] * 0.7, b["y"] + b["height"] * 0.8, steps=12)
+    page.mouse.up()
+    page.wait_for_timeout(250)
+    new_ids = order()
+    if not (new_ids.index(first) > new_ids.index(second)):
+        problems.append(f"edit mode: dragging {first} behind {second} did not reorder: {new_ids[:4]}")
+    if sorted(new_ids) != sorted(ids):
+        problems.append("edit mode: cards were lost or duplicated by the move")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "panel_edit_mode.png"), full_page=True)
+
+    # save: the arrangement stays, the editing marks go
+    page.locator('menstruation-cycle-dashboard-panel >> css=[data-action="save-edit"]').click()
+    page.wait_for_timeout(300)
+    if page.locator(cards).count() != 0:
+        problems.append("edit mode: editing marks are still there after saving")
+    texts = page.eval_on_selector_all("menstruation-cycle-dashboard-panel >> css=section.grid > article.card", "(els) => els.map((e) => e.className)")
+    if not any("span-8" in t for t in texts):
+        problems.append("edit mode: the new width was not kept after saving")
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -117,6 +247,9 @@ def run(fixture_dir, shots=None):
                 if shots:
                     Path(shots).mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(Path(shots) / f"panel_{level}_{lang}.png"), full_page=True)
+                if level == "full" and lang == "en":
+                    problems += view_features_check(page)
+                    problems += edit_mode_check(page, shots)
                 if lang == "en":
                     for tag in CARDS:
                         if tag == "menstruation-support-card":  # only shown while the profile is in an early stage

@@ -363,6 +363,22 @@
     dashboard_widget_timer_card: 'Timer',
     dashboard_widget_pill_card: 'Pill pack',
     dashboard_animations: 'Animations',
+    dashboard_edit_hint: 'Drag cards to move them, drag the lower right corner to resize, ✕ hides a card. Arrow keys also work on a selected card.',
+    dashboard_hide_widget_aria: 'Hide {widget}',
+    dashboard_show_widget_aria: 'Show {widget}',
+    dashboard_hidden_widgets: 'Hidden widgets',
+    dashboard_hidden_widgets_none: 'No hidden widgets.',
+    dashboard_toggle_widget_aria: 'Show or hide the content of {widget}',
+    dashboard_chart_range: 'Chart period',
+    dashboard_range_auto: 'Default',
+    dashboard_range_all: 'All',
+    dashboard_today_open: 'Open today',
+    dashboard_todo_temp: 'Take temperature',
+    dashboard_todo_lh: 'LH test',
+    dashboard_todo_pill: 'Pill taken',
+    dashboard_todo_stock: 'Low stock: {products}',
+    dashboard_pill_done: 'Pill logged.',
+    dashboard_print: 'Print',
     dashboard_widget_status_card: 'Status',
     dashboard_widget_cycle_card: 'Cycle & quick log',
     dashboard_pill_card_hidden_hint: 'Hidden outside of edit mode: this profile does not use the pill as its current contraception method.',
@@ -574,6 +590,27 @@
   ];
 
   const WIDGET_IDS = WIDGET_DEFS.map((widget) => widget.id);
+
+  // Widget width in the 12-column grid: dragged in the edit mode, snaps to whole columns.
+  const MIN_WIDGET_SPAN = 3;
+  const MAX_WIDGET_SPAN = 12;
+  // Period of the charts: 'auto' keeps each chart's own window, the rest is months back from today.
+  const CHART_RANGES = ['auto', '3', '6', '12', 'all'];
+  const GRID_GAP_PX = 16;
+
+  // Width after dragging the resize handle dx pixels (colWidth = one column plus one gap).
+  const spanFromDrag = (startSpan, dx, colWidth) => {
+    if (!(colWidth > 0)) return startSpan;
+    return Math.max(MIN_WIDGET_SPAN, Math.min(MAX_WIDGET_SPAN, Math.round(startSpan + dx / colWidth)));
+  };
+
+  // New widget order after the cards that are shown were rearranged: the shown ones take the slots
+  // of the shown ones in the new sequence, hidden ones (and ones not applicable to this mode) keep theirs.
+  const mergeVisibleOrder = (fullOrder, shownIds, newShownOrder) => {
+    const shown = new Set(shownIds);
+    const queue = newShownOrder.filter((id) => shown.has(id));
+    return fullOrder.map((id) => (shown.has(id) && queue.length ? queue.shift() : id));
+  };
 
   // Wunsch 01.10.2026 ("jede Kategorie einblendbar ... Drag & Drop"): mirrors
   // the menstruation-functions.js symptom catalog order. Kept as a separate
@@ -1348,11 +1385,23 @@
       const categoryOrder = [...rawCategoryOrder, ...CATEGORY_KEYS.filter((key) => !rawCategoryOrder.includes(key))];
       const discreetMode = typeof raw?.discreetMode === 'boolean' ? raw.discreetMode : preset.discreetMode;
       const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
+      const widgetSpan = {};
+      Object.entries(raw?.widgetSpan || {}).forEach(([id, span]) => {
+        if (WIDGET_IDS.includes(id) && Number.isInteger(span) && span >= MIN_WIDGET_SPAN && span <= MAX_WIDGET_SPAN) widgetSpan[id] = span;
+      });
+      const widgetCollapsed = {};
+      Object.entries(raw?.widgetCollapsed || {}).forEach(([id, on]) => {
+        if (WIDGET_IDS.includes(id) && on === true) widgetCollapsed[id] = true;
+      });
+      const chartRange = CHART_RANGES.includes(raw?.chartRange) ? raw.chartRange : 'auto';
       return {
         __profile: profile,
         __mode: mode,
         discreetMode,
         animations,
+        widgetSpan,
+        widgetCollapsed,
+        chartRange,
         widgetVisibility,
         widgetOrder,
         categoryVisibility,
@@ -2098,7 +2147,85 @@
       this.render();
     }
 
+    // Card on the grid (edit mode): a press on the resize handle resizes, a press anywhere else on the card moves it.
+    // Touch screens only move from the grip, so the page can still be scrolled with a finger.
+    _startCardGesture(event) {
+      if (!this._editMode || !this._editDraft) return false;
+      const target = event.target;
+      const card = target.closest?.('.edit-card');
+      if (!card || target.closest('.edit-x')) return false;
+      const resize = !!target.closest('[data-resize-handle]');
+      if (!resize && event.pointerType === 'touch' && !target.closest('.edit-grip')) return false;
+      if (event.button !== undefined && event.button > 0) return false;
+      const grid = card.parentElement;
+      const gridWidth = grid?.getBoundingClientRect?.().width || 0;
+      const rect = card.getBoundingClientRect();
+      this._dragState = {
+        kind: resize ? 'resize' : 'card',
+        itemId: card.dataset.widgetId,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        grabX: event.clientX - rect.left,
+        grabY: event.clientY - rect.top,
+        startSpan: this._widgetSpan(card.dataset.widgetId),
+        colWidth: (gridWidth + GRID_GAP_PX) / 12,
+        span: this._widgetSpan(card.dataset.widgetId),
+        moved: false,
+        card,
+      };
+      card.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      return true;
+    }
+
+    _moveCardGesture(event) {
+      const state = this._dragState;
+      const card = state.card;
+      if (!state.moved && Math.hypot(event.clientX - state.startX, event.clientY - state.startY) < 5) return;
+      state.moved = true;
+      if (state.kind === 'resize') {
+        state.span = spanFromDrag(state.startSpan, event.clientX - state.startX, state.colWidth);
+        card.className = card.className.replace(/\bspan-\d+\b/, `span-${state.span}`);
+        const badge = card.querySelector?.('.edit-size');
+        if (badge) badge.textContent = `${state.span}/${MAX_WIDGET_SPAN}`;
+        return;
+      }
+      card.classList.add('dragging');
+      // Find the card under the pointer (the dragged one is skipped) and move the dragged one before or after it.
+      const under = (this.shadowRoot?.elementsFromPoint?.(event.clientX, event.clientY) || [])
+        .map((el) => el.closest?.('.edit-card'))
+        .find((el) => el && el !== card);
+      if (under) {
+        const rect = under.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 3 || (event.clientY <= rect.bottom - rect.height / 3 && event.clientX < rect.left + rect.width / 2);
+        under.parentElement.insertBefore(card, before ? under : under.nextSibling);
+      }
+      // Keep the card under the pointer wherever the grid placed it.
+      card.style.transform = 'none';
+      const natural = card.getBoundingClientRect();
+      card.style.transform = `translate(${event.clientX - state.grabX - natural.left}px, ${event.clientY - state.grabY - natural.top}px)`;
+    }
+
+    _endCardGesture(event) {
+      const state = this._dragState;
+      this._dragState = null;
+      state.card.releasePointerCapture?.(event.pointerId);
+      state.card.classList.remove('dragging');
+      state.card.style.transform = '';
+      if (!state.moved || !this._editDraft) return;
+      if (state.kind === 'resize') {
+        this._setWidgetSpan(state.itemId, state.span);
+      } else {
+        const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+        const order = Array.from(state.card.parentElement?.querySelectorAll('.edit-card') || []).map((el) => el.dataset.widgetId);
+        this._setWidgetOrderFromShown(order, stateObj);
+      }
+      this.render();
+    }
+
     _handleDragPointerDown(event) {
+      if (this._startCardGesture(event)) return;
       const handle = event.target.closest?.('[data-drag-handle]');
       if (!handle) return;
       const row = handle.closest('.edit-row');
@@ -2111,6 +2238,11 @@
 
     _handleDragPointerMove(event) {
       if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
+      if (this._dragState.card) {
+        this._moveCardGesture(event);
+        event.preventDefault();
+        return;
+      }
       const container = this.shadowRoot?.querySelector(`.edit-widget-list[data-drag-group="${this._dragState.group}"]`);
       const dragRow = container?.querySelector(`.edit-row[data-item-id="${this._dragState.itemId}"]`);
       if (!container || !dragRow) return;
@@ -2130,6 +2262,10 @@
 
     _handleDragPointerUp(event) {
       if (!this._dragState || this._dragState.pointerId !== event.pointerId) return;
+      if (this._dragState.card) {
+        this._endCardGesture(event);
+        return;
+      }
       const { group, itemId } = this._dragState;
       const container = this.shadowRoot?.querySelector(`.edit-widget-list[data-drag-group="${group}"]`);
       const dragRow = container?.querySelector(`.edit-row[data-item-id="${itemId}"]`);
@@ -2165,6 +2301,18 @@
      * trend line overlaid so a genuine multi-year drift is visible at a
      * glance, not just cycle-to-cycle variation.
      */
+    // Entries of a chart inside the chosen period; "auto" keeps the chart's own window (the last autoCount entries).
+    // ponytail: a chosen period shows at most 200 entries, so the bars of the dense charts stay readable.
+    _inChartRange(items, dateOf, autoCount) {
+      const range = CHART_RANGES.includes(this._prefs?.chartRange) ? this._prefs.chartRange : 'auto';
+      if (range === 'auto') return items.slice(-autoCount);
+      if (range === 'all') return items.slice(-200);
+      const since = new Date();
+      since.setMonth(since.getMonth() - Number(range));
+      const iso = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+      return items.filter((item) => String(dateOf(item) || '') >= iso).slice(-200);
+    }
+
     _renderLongTermTrendChart(stateObj) {
       const attrs = stateObj?.attributes || {};
       const starts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
@@ -2174,7 +2322,7 @@
         if (len > 10 && len < 80) points.push({ date: starts[i], length: len }); // same outlier filter as anomaly_insights
       }
       // Cap to a sane rendering window (~5 years) even if more history exists.
-      const recent = points.slice(-60);
+      const recent = this._inChartRange(points, (point) => point.date, 60);
 
       if (recent.length < 4) {
         return `<div class="helper">${this._t('dashboard_not_enough_data') || 'Noch nicht genug Daten.'}</div>`;
@@ -3753,6 +3901,16 @@
     // shadowRoot.activeElement (not document.activeElement) is used since focus
     // lives inside an open shadow root.
     _handleKeydown(event) {
+      if (event.target?.dataset?.action === 'widget-collapse' && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        this._toggleCollapsed(event.target.dataset.widget);
+        return;
+      }
+      const editCard = this._editMode && this._editDraft ? event.target?.closest?.('.edit-card') : null;
+      if (editCard && event.target === editCard) {
+        this._handleEditCardKey(event, editCard);
+        return;
+      }
       if (!this._quickLogOpen) return;
       const modal = this.shadowRoot?.querySelector('.mc-modal-backdrop .mc-modal');
       if (!modal) return;
@@ -3961,10 +4119,16 @@
         this._editDraft = null;
         this._editMode = false;
         this.render();
-      } else if (action === 'widget-up' && widget) {
-        this._moveOrderItem('widgetOrder', widget, 'up');
-      } else if (action === 'widget-down' && widget) {
-        this._moveOrderItem('widgetOrder', widget, 'down');
+      } else if (action === 'widget-collapse' && widget) {
+        this._toggleCollapsed(widget);
+      } else if (action === 'todo' && target.dataset.todo) {
+        this._openTodo(target.dataset.todo);
+      } else if (action === 'print') {
+        window.print();
+      } else if (action === 'widget-hide' && widget) {
+        this._hideWidget(widget);
+      } else if (action === 'widget-show' && widget) {
+        this._showWidget(widget);
       } else if (action === 'category-up' && target.dataset.category) {
         this._moveOrderItem('categoryOrder', target.dataset.category, 'up');
       } else if (action === 'category-down' && target.dataset.category) {
@@ -4034,6 +4198,13 @@
 
       if (!this._prefs) return;
 
+      if (target.tagName === 'SELECT' && target.dataset.pref === 'chartRange') {
+        this._prefs = { ...this._prefs, chartRange: CHART_RANGES.includes(target.value) ? target.value : 'auto' };
+        this._savePrefs();
+        this.render();
+        return;
+      }
+
       if (target.tagName === 'SELECT' && target.classList.contains('entity-picker')) {
         this._handleEntityChange(target.value);
         return;
@@ -4041,11 +4212,6 @@
 
       const draft = this._editMode ? this._editDraft : this._prefs;
       if (!draft) return;
-      if (target instanceof HTMLInputElement && target.dataset.widgetVisibility) {
-        draft.widgetVisibility[target.dataset.widgetVisibility] = target.checked;
-        if (!this._editMode) this._savePrefs();
-        this.render();
-      }
       if (target instanceof HTMLInputElement && target.dataset.categoryVisibility) {
         draft.categoryVisibility[target.dataset.categoryVisibility] = target.checked;
         if (!this._editMode) this._savePrefs();
@@ -4447,7 +4613,8 @@
         return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       }
 
-      const recent = cycleLengths.slice(-12);
+      const recent = this._inChartRange(cycleLengths, (cycle) => cycle.start, 12);
+      if (!recent.length) return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       // Prefer the backend's own cycle_statistics (computed with a wider window and
       // consistent regularity math shared with anomaly detection) over local
       // recomputation. Falls back to local values only if the attribute is missing.
@@ -5678,14 +5845,26 @@
      * workaround. Caches per profile; safe to call repeatedly, only fetches once
      * per profile per session unless explicitly invalidated.
      */
-    async _fetchFullHistory(entityId, profile) {
+    // Days of history to load: 6 months, or what the chosen chart period needs (the service allows up to 730).
+    _historyDays() {
+      const range = this._prefs?.chartRange;
+      return range === 'all' ? 730 : (range === '12' ? 366 : 180);
+    }
+
+    // The cached copy is up to date when it was loaded for the sensor's current state (a logged value changes it) and covers the period.
+    _historyFresh(cached, stamp) {
+      return !!cached && cached.stamp === stamp && cached.days >= this._historyDays();
+    }
+
+    async _fetchFullHistory(entityId, profile, stamp = null) {
       const cacheKey = profile || entityId;
       if (!cacheKey) return;
-      if (this._fullHistoryCache[cacheKey] || this._fullHistoryFetching.has(cacheKey)) return;
+      if (this._historyFresh(this._fullHistoryCache[cacheKey], stamp) || this._fullHistoryFetching.has(cacheKey)) return;
       if (!this._hass?.connection?.sendMessagePromise) return;
       this._fullHistoryFetching.add(cacheKey);
+      const days = this._historyDays();
       try {
-        const payload = entityId ? { entity_id: entityId, days: 180 } : { profile, days: 180 };
+        const payload = entityId ? { entity_id: entityId, days } : { profile, days };
         const result = await this._hass.connection.sendMessagePromise({
           type: 'call_service',
           domain: 'menstruation_cycle',
@@ -5695,15 +5874,15 @@
         });
         const response = result?.response;
         if (response && Array.isArray(response.symptom_history)) {
-          this._fullHistoryCache[cacheKey] = response;
+          this._fullHistoryCache[cacheKey] = { ...response, stamp, days };
           console.debug('[menstruation-cycle] Full history fetched for', cacheKey, `(${response.symptom_history.length} symptom entries)`);
         } else {
           console.warn('[menstruation-cycle] get_full_history returned no usable data for', cacheKey, '— raw result:', result);
-          this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [] };
+          this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [], stamp, days };
         }
       } catch (err) {
         console.warn('[menstruation-cycle] get_full_history call failed for', cacheKey, err);
-        this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [] }; // avoid retry-looping
+        this._fullHistoryCache[cacheKey] = { symptom_history: [], product_usage: [], stamp, days }; // avoid retry-looping until the state changes
       } finally {
         this._fullHistoryFetching.delete(cacheKey);
       }
@@ -5721,8 +5900,9 @@
       const attrs = stateObj?.attributes || {};
       const profile = attrs.profile || null;
       const cached = profile ? this._fullHistoryCache[profile] : null;
-      if (cached) return cached.symptom_history;
-      if (profile) this._fetchFullHistory(this._selectedEntityId, profile); // fire-and-forget, re-renders on completion
+      const stamp = stateObj?.last_updated || null;
+      if (profile && !this._historyFresh(cached, stamp)) this._fetchFullHistory(this._selectedEntityId, profile, stamp); // fire-and-forget, re-renders on completion
+      if (cached) return cached.symptom_history; // the older copy stays visible while the new one loads
       return Array.isArray(attrs.symptom_history) ? attrs.symptom_history : [];
     }
 
@@ -6107,7 +6287,7 @@
         return `${statHeader}<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
       }
 
-      const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-28) : [];
+      const entries = Array.isArray(symptomHistory) ? this._inChartRange(symptomHistory, (entry) => entry?.date, 28) : [];
       if (entries.length === 0) return `${statHeader}<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
 
       const symptomKeys = ['bleeding', 'pain', 'mood'];
@@ -6558,7 +6738,7 @@
 
     _renderPainMoodTrend(stateObj) {
       const symptomHistory = this._getFullSymptomHistory(stateObj);
-      const entries = Array.isArray(symptomHistory) ? symptomHistory.slice(-14) : [];
+      const entries = Array.isArray(symptomHistory) ? this._inChartRange(symptomHistory, (entry) => entry?.date, 14) : [];
 
       if (entries.length < 2) {
         return `<div class="helper">${this._t('dashboard_pain_no_data')}</div>`;
@@ -6900,40 +7080,14 @@
     _renderEditPanel(stateObj) {
       if (!this._editMode || !this._editDraft) return '';
       const draft = this._editDraft;
-      const widgetById = {};
-      WIDGET_DEFS.forEach((w) => { widgetById[w.id] = w; });
-      // Show widgets in their actual current order, not the fixed definition order —
-      // otherwise the up/down (and now drag) reordering wouldn't visibly do anything.
-      // Any widget missing from widgetOrder (e.g. newly added since the person's last
-      // save) is appended at the end so it's still reachable/toggleable.
-      const orderedIds = [
-        ...draft.widgetOrder.filter((id) => widgetById[id]),
-        ...WIDGET_DEFS.map((w) => w.id).filter((id) => !draft.widgetOrder.includes(id)),
-      ];
-      const rows = orderedIds.map((widgetId) => {
-        const widget = widgetById[widgetId];
-        const visible = draft.widgetVisibility[widget.id] !== false;
-        const idx = draft.widgetOrder.indexOf(widget.id);
-        const widgetLabel = this._t(widget.title);
-        return `
-          <div class="edit-row" data-drag-group="widget" data-item-id="${widget.id}">
-            <span class="edit-drag-handle" data-drag-handle="true" aria-hidden="true" title="${this._t('dashboard_drag_to_reorder') || 'Ziehen zum Sortieren'}">⠿</span>
-            <label>
-              <input type="checkbox" data-widget-visibility="${widget.id}" ${visible ? 'checked' : ''}
-                aria-label="${this._t('dashboard_toggle_widget_aria').replace('{widget}', widgetLabel)}"/>
-              ${widgetLabel}
-            </label>
-            <div class="edit-buttons">
-              <button type="button" data-action="widget-up" data-widget="${widget.id}"
-                ${idx <= 0 ? 'disabled' : ''}
-                aria-label="${this._t('dashboard_move_up_aria').replace('{widget}', widgetLabel)}">↑</button>
-              <button type="button" data-action="widget-down" data-widget="${widget.id}"
-                ${idx >= draft.widgetOrder.length - 1 ? 'disabled' : ''}
-                aria-label="${this._t('dashboard_move_down_aria').replace('{widget}', widgetLabel)}">↓</button>
-            </div>
-          </div>
-        `;
+      // Hidden widgets that would be shown in this mode: put back with a click.
+      const hiddenWidgets = this._widgetIdsForMode(this._resolveContentMode(stateObj), draft.widgetOrder)
+        .filter((id) => draft.widgetVisibility[id] === false && WIDGET_DEFS.some((w) => w.id === id));
+      const trayChips = hiddenWidgets.map((id) => {
+        const title = this._t(WIDGET_DEFS.find((w) => w.id === id).title);
+        return `<button type="button" class="edit-chip" data-action="widget-show" data-widget="${id}" aria-label="${escapeHtml(this._t('dashboard_show_widget_aria').replace('{widget}', title))}"><span aria-hidden="true">＋</span> ${escapeHtml(title)}</button>`;
       }).join('');
+      const tray = `<div class="edit-tray" aria-label="${escapeHtml(this._t('dashboard_hidden_widgets'))}">${trayChips || `<span class="helper">${escapeHtml(this._t('dashboard_hidden_widgets_none'))}</span>`}</div>`;
 
       // Wunsch 01.10.2026: same show/hide + drag/up-down reordering as the
       // widget list above, for the quick-log modal's symptom categories.
@@ -7015,23 +7169,28 @@
         </div>
       ` : '';
 
-      return `
+      // Toolbar that stays at the top while the grid is edited (like the bar of the widget editor on macOS).
+      const editBar = `
+        <div class="edit-bar" role="toolbar" aria-label="${this._t('dashboard_edit_mode')}">
+          <span class="edit-bar-hint">${escapeHtml(this._t('dashboard_edit_hint'))}</span>
+          <span class="edit-bar-buttons">
+            <button type="button" data-action="reset-preset" aria-label="${this._t('dashboard_reset_aria')}">${this._t('dashboard_reset_preset')}</button>
+            <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
+            <button type="button" class="edit-bar-primary" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
+          </span>
+        </div>`;
+      return `${editBar}
         <section class="edit-mode" aria-label="${this._t('dashboard_edit_mode')}">
           <h2>${this._t('dashboard_edit_mode')}</h2>
           <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${draft.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
           <label class="toggle"><input type="checkbox" data-pref="animations" ${draft.animations !== false ? 'checked' : ''}/> ${this._t('dashboard_animations')}</label>
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
-          <p class="helper">${this._t('dashboard_widget_order_label')}</p>
-          <div class="edit-widget-list" data-drag-group="widget">${rows}</div>
+          <p class="helper">${this._t('dashboard_hidden_widgets')}</p>
+          ${tray}
           <p class="helper">${this._t('dashboard_category_order_label') || 'Reihenfolge und Sichtbarkeit der Symptom-Kategorien'}</p>
           <div class="edit-widget-list" data-drag-group="category">${categoryRows}</div>
           ${copyProfileSection}
-          <div class="edit-actions">
-            <button type="button" data-action="save-edit" aria-label="${this._t('dashboard_save_aria')}">${this._t('save')}</button>
-            <button type="button" data-action="cancel-edit" aria-label="${this._t('dashboard_cancel_aria')}">${this._t('cancel')}</button>
-            <button type="button" data-action="reset-preset" aria-label="${this._t('dashboard_reset_aria')}">${this._t('dashboard_reset_preset')}</button>
-          </div>
         </section>
       `;
     }
@@ -7073,10 +7232,135 @@
       </article>`;
     }
 
-    _renderWidget(widgetId, stateObj, discreetMode) {
-      if (this._prefs?.widgetVisibility?.[widgetId] === false) return '';
+    // Edit mode: every card on the grid gets a hide button (top left), a grip (top middle, for touch)
+    // and a resize handle (bottom right); its content is inert, like the widget editor on macOS.
+    _decorateEditCard(widgetId, html) {
       const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
-      const spanClass = `span-${def?.span || 6}`;
+      const label = escapeHtml(this._t(def?.title || widgetId));
+      const span = this._widgetSpan(widgetId);
+      const controls = `<button type="button" class="edit-x" data-action="widget-hide" data-widget="${widgetId}" aria-label="${escapeHtml((this._t('dashboard_hide_widget_aria')).replace('{widget}', this._t(def?.title || widgetId)))}">✕</button>`
+        + `<span class="edit-grip" aria-hidden="true">⠿</span>`
+        + `<span class="edit-size" aria-hidden="true">${span}/${MAX_WIDGET_SPAN}</span>`
+        + `<span class="edit-resize" data-resize-handle="true" aria-hidden="true"></span>`;
+      return html
+        .replace(/^<article class="([^"]*)"/, `<article class="$1 edit-card" data-widget-id="${widgetId}" tabindex="0" title="${label}"`)
+        .replace(/^(<article[^>]*>)/, `$1${controls}`);
+    }
+
+    _hideWidget(widgetId) {
+      if (!this._editDraft) return;
+      this._editDraft.widgetVisibility[widgetId] = false;
+      this.render();
+    }
+
+    _showWidget(widgetId) {
+      if (!this._editDraft) return;
+      this._editDraft.widgetVisibility[widgetId] = true;
+      this.render();
+    }
+
+    _setWidgetSpan(widgetId, span) {
+      const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
+      if (!this._editDraft || !def) return;
+      const draftSpans = { ...(this._editDraft.widgetSpan || {}) };
+      if (span === def.span) delete draftSpans[widgetId];
+      else draftSpans[widgetId] = span;
+      this._editDraft.widgetSpan = draftSpans;
+    }
+
+    // Shown cards in their current order (only those on the grid right now, in the draft's sequence).
+    _shownWidgetIds(stateObj) {
+      const mode = this._resolveContentMode(stateObj);
+      return this._widgetIdsForMode(mode, this._editDraft?.widgetOrder || WIDGET_IDS)
+        .filter((id) => this._editDraft?.widgetVisibility?.[id] !== false);
+    }
+
+    _setWidgetOrderFromShown(newShownOrder, stateObj) {
+      const shown = this._shownWidgetIds(stateObj);
+      this._editDraft.widgetOrder = mergeVisibleOrder(this._editDraft.widgetOrder, shown, newShownOrder);
+    }
+
+    // Keyboard: arrows move the focused card, Shift+left/right resizes it, Delete hides it.
+    _handleEditCardKey(event, card) {
+      const id = card.dataset.widgetId;
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const shown = this._shownWidgetIds(stateObj);
+      const idx = shown.indexOf(id);
+      const key = event.key;
+      let handled = true;
+      if (event.shiftKey && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+        this._setWidgetSpan(id, spanFromDrag(this._widgetSpan(id), key === 'ArrowRight' ? 1 : -1, 1));
+      } else if ((key === 'ArrowLeft' || key === 'ArrowUp') && idx > 0) {
+        const next = [...shown];
+        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+        this._setWidgetOrderFromShown(next, stateObj);
+      } else if ((key === 'ArrowRight' || key === 'ArrowDown') && idx >= 0 && idx < shown.length - 1) {
+        const next = [...shown];
+        [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+        this._setWidgetOrderFromShown(next, stateObj);
+      } else if (key === 'Delete' || key === 'Backspace') {
+        this._editDraft.widgetVisibility[id] = false;
+      } else {
+        handled = false;
+      }
+      if (!handled) return;
+      event.preventDefault();
+      this.render();
+      this.shadowRoot?.querySelector(`.edit-card[data-widget-id="${id}"]`)?.focus?.();
+    }
+
+    // While editing, the grid shows the draft (order, hidden, widths), otherwise the saved settings.
+    _layoutPrefs() {
+      return this._editMode && this._editDraft ? this._editDraft : this._prefs;
+    }
+
+    _widgetSpan(widgetId) {
+      const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
+      return this._layoutPrefs()?.widgetSpan?.[widgetId] || def?.span || 6;
+    }
+
+    // Which of the given widgets make sense in the profile's current mode (pregnancy, before the first period, ...).
+    _widgetIdsForMode(mode, order) {
+      const without = (ids) => order.filter((id) => !ids.includes(id));
+      if (mode === 'pregnancy') {
+        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card']);
+        if (kept.includes('fetal_development')) return kept;
+        const idx = kept.indexOf('phase_timeline');
+        return idx >= 0 ? [...kept.slice(0, idx), 'fetal_development', ...kept.slice(idx)] : [...kept, 'fetal_development'];
+      }
+      if (mode === 'menarche') {
+        // Before the first period there's no cycle to analyze — hide everything
+        // that depends on cycle history, phases, fertility, or temperature data.
+        return without([
+          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
+          'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
+          'fetal_development', 'cycle_card',
+        ]);
+      }
+      if (mode === 'menopause') {
+        // No regular cycle to analyze anymore — hide phase/fertility/temperature
+        // widgets and cycle-length anomaly detection, but keep general symptom
+        // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
+        // bleeding and symptoms are still worth logging during perimenopause.
+        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card']);
+      }
+      if (mode === 'postpartum') {
+        // No cycle to predict during the postpartum window — hide the same
+        // cycle/fertility-dependent widgets as pregnancy, but keep symptom/product
+        // tracking (recovery symptoms, bleeding, product usage are still relevant).
+        return without([
+          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card',
+        ]);
+      }
+      return without(['fetal_development']);
+    }
+
+    _renderWidget(widgetId, stateObj, discreetMode) {
+      if (this._layoutPrefs()?.widgetVisibility?.[widgetId] === false) return '';
+      const def = WIDGET_DEFS.find((widget) => widget.id === widgetId);
+      const collapsed = !this._editMode && this._prefs?.widgetCollapsed?.[widgetId] === true;
+      const spanClass = `span-${this._widgetSpan(widgetId)}${collapsed ? ' collapsed' : ''}`;
       let body = '';
       if (widgetId === 'kpi_strip') {
         const strip = this._renderHeroWheel(stateObj, discreetMode);
@@ -7086,7 +7370,7 @@
         const timeline = this._renderPhaseTimeline(stateObj, discreetMode);
         const mode = this._resolveContentMode(stateObj);
         const titleKey = mode === 'pregnancy' ? 'dashboard_widget_pregnancy_prediction' : (mode === 'menarche' ? 'dashboard_widget_progress' : (mode === 'menopause' ? 'dashboard_widget_menopause_timeline' : 'dashboard_widget_cycle_phase_overview'));
-        return `<article class="card ${spanClass}"><h2>${this._t(titleKey)}</h2>${timeline}</article>`;
+        return `<article class="card ${spanClass}">${this._widgetHeading(widgetId, this._t(titleKey), collapsed)}${timeline}</article>`;
       }
       if (widgetId === 'cycle_history') body = this._renderCycleHistoryGraph(stateObj);
       if (widgetId === 'calendar_card') body = this._renderCalendarCard(stateObj);
@@ -7126,7 +7410,100 @@
       const sensitiveClass = def?.sensitive ? 'sensitive' : '';
       const cardClasses = ['card', spanClass, sensitiveClass].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="${cardClasses}"><h2>${title}</h2>${body}</article>`;
+      return `<article class="${cardClasses}">${this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
+    }
+
+    // Title of a card; outside edit mode a click (or Enter / Space) folds the card up to its title. The state is saved per profile.
+    _widgetHeading(widgetId, title, collapsed) {
+      if (this._editMode) return `<h2>${title}</h2>`;
+      const label = escapeHtml(this._t('dashboard_toggle_widget_aria').replace('{widget}', String(title)));
+      return `<h2 class="collapsible" role="button" tabindex="0" aria-expanded="${!collapsed}" aria-label="${label}" data-action="widget-collapse" data-widget="${widgetId}">${title}</h2>`;
+    }
+
+    _toggleCollapsed(widgetId) {
+      if (!this._prefs) return;
+      const next = { ...(this._prefs.widgetCollapsed || {}) };
+      if (next[widgetId]) delete next[widgetId]; else next[widgetId] = true;
+      this._prefs = { ...this._prefs, widgetCollapsed: next };
+      this._savePrefs();
+      this.render();
+      this.shadowRoot?.querySelector(`[data-action="widget-collapse"][data-widget="${widgetId}"]`)?.focus?.();
+    }
+
+    // "Open today": what is still missing today. The rows with the buttons stay where they are, the strip only points at them
+    // (the pill is logged right from here). Not shown in discreet mode, because it names the method and the cycle phase.
+    _todayOpenItems(stateObj) {
+      if (!stateObj || NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return [];
+      const items = [];
+      if (this._recentTemperatures(stateObj).length && !this._recentTemperatures(stateObj).some((item) => item.date === this._todayIso())) {
+        items.push({ key: 'temp', label: this._t('dashboard_todo_temp') });
+      }
+      if (this._lhTestOffered(stateObj) && !this._todaysLhTests(stateObj).some((value) => value === 'positive_ovulation' || value === 'negative_ovulation')) {
+        items.push({ key: 'lh', label: this._t('dashboard_todo_lh') });
+      }
+      const pill = stateObj.attributes?.pill_pack;
+      if (pill && !pill.in_pause && !pill.today_taken) items.push({ key: 'pill', label: this._t('dashboard_todo_pill') });
+      const stock = this._hass?.states?.['sensor.household_product_stock']?.attributes;
+      const used = new Set((Array.isArray(stock?.consumption_log) ? stock.consumption_log : []).map((entry) => String(entry?.product || '').toLowerCase()));
+      const low = ['tampon', 'pad', 'liner']
+        .filter((product) => used.has(product) && Number(stock?.inventory?.[product]) <= Number(stock?.thresholds?.[product]?.critical ?? 5))
+        .map((product) => this._t(product));
+      if (low.length) {
+        items.push({ key: 'stock', label: this._t('dashboard_todo_stock').replace('{products}', low.join(', ')), plain: this._layoutPrefs()?.widgetVisibility?.inventory_card === false });
+      }
+      return items;
+    }
+
+    _renderTodayOpen(stateObj, discreetMode) {
+      if (discreetMode || this._editMode) return '';
+      const items = this._todayOpenItems(stateObj);
+      if (!items.length) return '';
+      const chips = items.map((item) => (item.plain
+        ? `<span class="todo-chip">${escapeHtml(item.label)}</span>`
+        : `<button type="button" class="todo-chip" data-action="todo" data-todo="${item.key}">${escapeHtml(item.label)}</button>`)).join('');
+      return `<section class="today-open" aria-label="${escapeHtml(this._t('dashboard_today_open'))}"><strong>${escapeHtml(this._t('dashboard_today_open'))}</strong>${chips}</section>`;
+    }
+
+    _openTodo(key) {
+      if (key === 'pill') {
+        this._logPillTaken();
+        return;
+      }
+      const selector = { temp: 'input[data-action="temp-input"]', lh: '[data-action="lh-test"]', stock: '[data-mount="inventory-card"]' }[key];
+      const el = selector ? this.shadowRoot?.querySelector(selector) : null;
+      el?.scrollIntoView?.({ block: 'center', behavior: this._prefs?.animations === false ? 'auto' : 'smooth' });
+      if (key !== 'stock') el?.focus?.();
+    }
+
+    // Same call as the pill card: today's contraception method "pill" is the intake.
+    async _logPillTaken() {
+      if (!this._hass || !this._selectedEntityId) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: this._todayIso(),
+          symptom_data: { contraception_method: 'pill' },
+        });
+        this._message = this._t('dashboard_pill_done');
+      } catch (_error) {
+        this._message = this._t('pill_card_save_error');
+      }
+      try {
+        await this._hass.callService('homeassistant', 'update_entity', { entity_id: this._selectedEntityId });
+      } catch (_error) {
+        // update_entity may be unavailable in some environments — non-fatal.
+      }
+      this.render();
+    }
+
+    _renderRangePicker() {
+      const current = CHART_RANGES.includes(this._prefs?.chartRange) ? this._prefs.chartRange : 'auto';
+      const label = { auto: 'dashboard_range_auto', 3: 'months_3', 6: 'months_6', 12: 'months_12', all: 'dashboard_range_all' };
+      const options = CHART_RANGES.map((value) => `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(`${this._t('dashboard_chart_range')}: ${this._t(label[value])}`)}</option>`).join('');
+      const aria = escapeHtml(this._t('dashboard_chart_range'));
+      return `<select class="range-picker" data-pref="chartRange" aria-label="${aria}" title="${aria}">${options}</select>`;
     }
 
     _renderTodayPill() {
@@ -7186,14 +7563,18 @@
     }
 
     // One-tap LH (ovulation) test for today, offered inside the fertile window. A positive test moves the ovulation estimate.
-    _renderLhTestActions(stateObj, discreetMode) {
-      if (discreetMode || !stateObj) return '';
+    _lhTestOffered(stateObj) {
+      if (!stateObj) return false;
       const state = String(stateObj.state || '');
-      if (state === 'period' || NON_CYCLE_STATES.includes(state)) return '';
+      if (state === 'period' || NON_CYCLE_STATES.includes(state)) return false;
       const attrs = stateObj.attributes || {};
       const today = this._todayIso();
-      if (!attrs.fertile_window_start || !attrs.fertile_window_end) return '';
-      if (today < attrs.fertile_window_start || today > attrs.fertile_window_end) return '';
+      if (!attrs.fertile_window_start || !attrs.fertile_window_end) return false;
+      return today >= attrs.fertile_window_start && today <= attrs.fertile_window_end;
+    }
+
+    _renderLhTestActions(stateObj, discreetMode) {
+      if (discreetMode || !this._lhTestOffered(stateObj)) return '';
       const current = this._todaysLhTests(stateObj);
       const button = (value, key) =>
         `<button type="button" class="${current.includes(value) ? 'mode-btn active' : ''}" data-action="lh-test" data-value="${value}" aria-pressed="${current.includes(value)}">${escapeHtml(this._t(key))}</button>`;
@@ -7239,15 +7620,21 @@
 
     // Quick entry for today's basal temperature, offered to people who logged one in the last 14 days.
     // The unit (°C/°F) is a profile option the panel does not know, so the service validates the value.
-    _renderTemperatureAction(stateObj, discreetMode) {
-      if (discreetMode || !stateObj) return '';
-      if (NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return '';
+    // Temperature entries of the last 14 days; the row (and the "open today" chip) only exist for people who log one.
+    _recentTemperatures(stateObj) {
+      if (!stateObj || NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return [];
       const since = new Date();
       since.setDate(since.getDate() - 14);
       const sinceIso = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
       const today = this._todayIso();
-      const logged = this._getFullSymptomHistory(stateObj)
+      return this._getFullSymptomHistory(stateObj)
         .filter((item) => item && item.basal_temp != null && item.date >= sinceIso && item.date <= today);
+    }
+
+    _renderTemperatureAction(stateObj, discreetMode) {
+      if (discreetMode || !stateObj) return '';
+      const today = this._todayIso();
+      const logged = this._recentTemperatures(stateObj);
       if (!logged.length) return '';
       const current = logged.find((item) => item.date === today);
       const unit = this._temperatureUnit(stateObj.attributes);
@@ -7477,48 +7864,12 @@
 
       const discreetMode = !!this._prefs?.discreetMode;
       const mode = this._resolveContentMode(stateObj);
-      let order = this._prefs?.widgetOrder || WIDGET_IDS;
-      if (mode === 'pregnancy') {
-        order = order.filter((id) => !['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card'].includes(id));
-        if (!order.includes('fetal_development')) {
-          const idx = order.indexOf('phase_timeline');
-          order = idx >= 0
-            ? [...order.slice(0, idx), 'fetal_development', ...order.slice(idx)]
-            : [...order, 'fetal_development'];
-        }
-      } else if (mode === 'menarche') {
-        // Before the first period there's no cycle to analyze — hide everything
-        // that depends on cycle history, phases, fertility, or temperature data.
-        const menarcheHidden = [
-          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development', 'cycle_card',
-        ];
-        order = order.filter((id) => !menarcheHidden.includes(id));
-      } else if (mode === 'menopause') {
-        // No regular cycle to analyze anymore — hide phase/fertility/temperature
-        // widgets and cycle-length anomaly detection, but keep general symptom
-        // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
-        // bleeding and symptoms are still worth logging during perimenopause.
-        const menopauseHidden = [
-          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'cycle_card',
-        ];
-        order = order.filter((id) => !menopauseHidden.includes(id));
-      } else if (mode === 'postpartum') {
-        // No cycle to predict during the postpartum window — hide the same
-        // cycle/fertility-dependent widgets as pregnancy, but keep symptom/product
-        // tracking (recovery symptoms, bleeding, product usage are still relevant).
-        const postpartumHidden = [
-          'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card',
-        ];
-        order = order.filter((id) => !postpartumHidden.includes(id));
-      } else {
-        order = order.filter((id) => id !== 'fetal_development');
-      }
+      const order = this._widgetIdsForMode(mode, this._layoutPrefs()?.widgetOrder || WIDGET_IDS);
       const cards = order
-        .map((widgetId) => this._renderWidget(widgetId, stateObj, discreetMode))
+        .map((widgetId) => {
+          const html = this._renderWidget(widgetId, stateObj, discreetMode);
+          return html && this._editMode ? this._decorateEditCard(widgetId, html) : html;
+        })
         .filter(Boolean);
 
       const attrsForEmptyCheck = stateObj?.attributes || {};
@@ -7576,7 +7927,14 @@
             --mc-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
           }
           .page { padding: 16px; display: grid; gap: 16px; }
-          .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+          /* The header stays in view while scrolling (not in edit mode, where the edit bar is the sticky one). */
+          .toolbar {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+            position: sticky; top: 0; z-index: 15; padding: 8px 0; margin: -8px 0;
+            background: color-mix(in srgb, var(--primary-background-color, #f5f5f5) 85%, transparent);
+            -webkit-backdrop-filter: saturate(180%) blur(12px); backdrop-filter: saturate(180%) blur(12px);
+          }
+          .page.editing .toolbar { position: static; }
           .toolbar h1 { margin: 0; font-family: var(--mc-font-display); font-weight: 500; font-size: 1.4rem; letter-spacing: -0.01em; }
           .toolbar button {
             border: 1px solid var(--divider-color, #d1d5db);
@@ -7597,7 +7955,7 @@
           .toolbar button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
           .toolbar button ha-icon { --mdc-icon-size: 20px; display: block; }
           .toolbar button.icon-only { width: 42px; padding: 0; }
-          .entity-picker {
+          .entity-picker, .range-picker {
             width: auto;
             border: 1px solid var(--divider-color, #d1d5db);
             border-radius: 999px;
@@ -7855,6 +8213,28 @@
             grid-column: span 12;
           }
           .card:hover { box-shadow: 0 2px 8px rgba(43,27,36,.08), 0 12px 28px -12px rgba(43,27,36,.16); }
+          .card h2.collapsible { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 8px; }
+          .card h2.collapsible::after { content: '▾'; font-size: .8em; color: var(--secondary-text-color, #9ca3af); transition: transform .15s; }
+          .card.collapsed h2.collapsible::after { transform: rotate(-90deg); }
+          .card h2.collapsible:focus-visible { outline: 2px solid var(--primary-color, #2563eb); outline-offset: 2px; }
+          .card.collapsed { align-self: start; }
+          @media screen { .card.collapsed > :not(h2) { display: none; } }
+          .today-open { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .875rem; }
+          .todo-chip {
+            font: inherit; font-size: .8125rem; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+            border: 1px solid color-mix(in srgb, var(--mc-amber) 60%, transparent); background: var(--mc-amber-tint); color: var(--mc-amber-deep);
+          }
+          span.todo-chip { cursor: default; }
+          button.todo-chip:hover { background: color-mix(in srgb, var(--mc-amber) 22%, var(--card-background-color, #fff)); }
+          @media print {
+            :host, .page { background: #fff; }
+            .page { padding: 0; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
+            .toolbar { position: static; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; margin: 0; }
+            .toolbar button, .toolbar select, .today-open, .edit-bar, .page > div.helper, .mc-modal-backdrop, .mc-chat-fab-button, .mc-chat-fab-panel, .message { display: none !important; }
+            .card { break-inside: avoid; box-shadow: none; }
+            .card h2.collapsible::after { content: none; }
+          }
           .card h2 {
             margin: 0;
             font-size: 0.9375rem;
@@ -7862,14 +8242,18 @@
             color: var(--primary-text-color, #1f2937);
             letter-spacing: -0.005em;
           }
+          .span-3 { grid-column: span 3; }
           .span-4 { grid-column: span 4; }
           .span-5 { grid-column: span 5; }
           .span-6 { grid-column: span 6; }
           .span-7 { grid-column: span 7; }
           .span-8 { grid-column: span 8; }
+          .span-9 { grid-column: span 9; }
+          .span-10 { grid-column: span 10; }
+          .span-11 { grid-column: span 11; }
           .span-12 { grid-column: span 12; }
           @media (max-width: 900px) {
-            .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 1; }
+            .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-9, .span-10, .span-11, .span-12 { grid-column: span 1; }
           }
           /* Hero card */
           .card--hero { padding: 26px 26px 22px; }
@@ -8067,6 +8451,51 @@
             background: var(--secondary-background-color, #f9fafb);
           }
           .edit-mode h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+          /* Edit mode on the grid: cards can be moved, resized and hidden (macOS widget editor as the model). */
+          .edit-bar {
+            position: sticky; top: 8px; z-index: 20;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+            padding: 8px 12px; border-radius: 14px;
+            background: color-mix(in srgb, var(--card-background-color, #fff) 82%, transparent);
+            -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
+            border: 1px solid var(--divider-color, #d1d5db);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+          }
+          .edit-bar-hint { font-size: .8rem; color: var(--secondary-text-color, #6b7280); flex: 1 1 260px; }
+          .edit-bar-buttons { display: flex; gap: 8px; }
+          .edit-bar-buttons button {
+            border: 1px solid var(--divider-color, #d1d5db); border-radius: 8px; padding: 5px 14px;
+            background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .85rem; cursor: pointer;
+          }
+          .edit-bar-buttons .edit-bar-primary { background: var(--primary-color, #6b3654); color: #fff; border-color: transparent; font-weight: 600; }
+          .edit-tray { display: flex; flex-wrap: wrap; gap: 8px; }
+          .edit-chip {
+            border: 1px dashed var(--divider-color, #9ca3af); border-radius: 999px; padding: 5px 12px;
+            background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .85rem; cursor: pointer;
+          }
+          .edit-chip:hover { border-style: solid; background: var(--secondary-background-color, #f3f4f6); }
+          .edit-card { position: relative; cursor: grab; outline: 1.5px dashed color-mix(in srgb, var(--primary-color, #6b3654) 45%, transparent); outline-offset: -1px; user-select: none; -webkit-user-select: none; }
+          .edit-card:focus-visible { outline: 2px solid var(--primary-color, #2563eb); }
+          .edit-card > :not(.edit-x):not(.edit-grip):not(.edit-size):not(.edit-resize) { pointer-events: none; }
+          .edit-card.dragging { z-index: 30; opacity: .92; cursor: grabbing; box-shadow: 0 18px 44px rgba(0,0,0,0.28); transition: none !important; }
+          .edit-x {
+            position: absolute; top: -9px; left: -9px; z-index: 6; width: 22px; height: 22px; padding: 0; line-height: 20px;
+            border-radius: 50%; border: 1px solid rgba(0,0,0,0.18); background: var(--card-background-color, #fff);
+            color: var(--secondary-text-color, #4b5563); font-size: 11px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+          }
+          .edit-x:hover { background: #e5484d; color: #fff; border-color: transparent; }
+          .edit-grip { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 6; padding: 0 10px; font-size: 14px; line-height: 1; color: var(--secondary-text-color, #9ca3af); touch-action: none; cursor: grab; }
+          .edit-size {
+            position: absolute; right: 12px; bottom: 10px; z-index: 6; font-size: .7rem; padding: 1px 7px; border-radius: 999px;
+            background: rgba(0,0,0,0.55); color: #fff; opacity: 0; transition: opacity .15s;
+          }
+          .edit-card:hover .edit-size, .edit-card:focus-visible .edit-size { opacity: 1; }
+          .edit-resize {
+            position: absolute; right: 0; bottom: 0; z-index: 6; width: 24px; height: 24px; cursor: nwse-resize; touch-action: none;
+            background: linear-gradient(135deg, transparent 55%, var(--secondary-text-color, #9ca3af) 55%, var(--secondary-text-color, #9ca3af) 62%, transparent 62%, transparent 72%, var(--secondary-text-color, #9ca3af) 72%, var(--secondary-text-color, #9ca3af) 79%, transparent 79%);
+            border-bottom-right-radius: 12px;
+          }
+          @media (max-width: 900px) { .edit-resize, .edit-size { display: none; } }
           .edit-widget-list { position: relative; }
           .edit-row {
             display: flex; justify-content: space-between; gap: 8px; align-items: center;
@@ -8423,7 +8852,7 @@
             * { transition: none !important; animation: none !important; }
           }
         </style>
-        <main class="page${animations ? '' : ' no-motion'}">
+        <main class="page${animations ? '' : ' no-motion'}${this._editMode ? ' editing' : ''}">
           <header class="toolbar">
             <div class="brand">
               <img src="/menstruation_cycle/assets/brands/calendar.svg" class="brand-mark" alt="" width="38" height="38" loading="lazy" onerror="this.style.display='none';"/>
@@ -8432,18 +8861,21 @@
             <div class="header-right">
               ${this._renderEntityPicker(availableEntities)}
               ${this._renderTodayPill()}
+              ${!this._editMode ? this._renderRangePicker() : ''}
               ${!this._editMode ? `
                 <button type="button" class="discreet-toggle" data-action="toggle-discreet-quick" role="switch" aria-checked="${discreetMode}" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}">
                   <span>${this._t('dashboard_discreet_mode')}</span>
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
               ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
+              ${!this._editMode ? `<button type="button" class="icon-only" data-action="print" aria-label="${this._t('dashboard_print')}" title="${this._t('dashboard_print')}"><ha-icon icon="mdi:printer-outline"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
           </header>
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
           ${this._renderLastUpdated(stateObj)}
           ${this._renderOpenIssues(discreetMode)}
+          ${this._renderTodayOpen(stateObj, discreetMode)}
           ${this._renderDoctorReportAction(discreetMode)}
           ${this._renderPeriodActions(stateObj, discreetMode)}
           ${this._renderLhTestActions(stateObj, discreetMode)}
