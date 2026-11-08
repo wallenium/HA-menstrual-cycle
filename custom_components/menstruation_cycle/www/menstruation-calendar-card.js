@@ -30,6 +30,9 @@ class MenstruationCalendarCard extends HTMLElement {
     // Keyed by avgCycleLength so the set is invalidated if cycle length changes.
     this._extraPredictedStarts = [];
     this._extraPredictedCycleLength = null;
+    this._undo = null; // {iso, data}: the entries of a day that was just deleted, for "Undo"
+    this._undoNote = '';
+    this._undoTimer = null;
   }
 
   static getConfigElement() {
@@ -118,6 +121,14 @@ class MenstruationCalendarCard extends HTMLElement {
         edit_symptoms: 'Edit symptoms',
         conflict_warning: 'This data was changed on another device in the meantime. Overwrite it with your version anyway?',
         confirm_remove_cycle_start: 'Remove this confirmed period start?',
+        confirm_remove_day: 'Delete all entries of this day? A period day stays.',
+        delete_day: 'Delete all entries of this day',
+        day_deleted: 'Entries of {date} deleted.',
+        undo_delete: 'Undo',
+        undo_done: 'Restored.',
+        undo_failed: 'Could not restore everything.',
+        pain_strength_day: 'Pain {n}/10',
+        pain_strength_legend: 'Pain strength',
         confirm_add_close_period_start: 'The previous period day was {days} days ago. Add this day as a new period anyway?',
         save: 'Save',
         close: 'Close',
@@ -1040,6 +1051,7 @@ class MenstruationCalendarCard extends HTMLElement {
             </div>
           </div>
           <div class="sym-footer">
+            ${!range && Object.keys(existing).some((key) => key !== 'date' && key !== 'found') ? `<button type="button" class="btn ghost sym-delete">${this._t('delete_day')}</button>` : ''}
             <button type="button" class="btn sym-save">${saveLabel}</button>
             <button type="button" class="btn ghost sym-cancel">${this._t('cancel')}</button>
           </div>
@@ -1218,6 +1230,101 @@ class MenstruationCalendarCard extends HTMLElement {
     this._render();
   }
 
+  // Delete every entry of the open day (remove_symptom; a period day stays). The old entry is kept for "Undo" for ten seconds.
+  async _handleDayDelete() {
+    const iso = this._modalIso;
+    if (!iso || this._modalRange) return;
+    const model = this._buildModel();
+    if (model.missing) return;
+    if (!window.confirm(this._t('confirm_remove_day'))) return;
+    const entityId = model.entityId || this._config?.entity || '';
+    const entryId = model.stateObj?.attributes?.entry_id || this._config?.entry_id || '';
+    const profile = model.stateObj?.attributes?.profile;
+    let previous = this._symptomOverrides?.[iso] || model.symptomByDate?.[iso] || null;
+    if (window.MenstruationFunctions) {
+      const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, entityId, iso, '[menstruation-calendar-card]');
+      if (data && data.found !== false) previous = data;
+    }
+    try {
+      await this._hass.callService('menstruation_cycle', 'remove_symptom', {
+        date: iso,
+        ...(entityId ? { entity_id: entityId } : {}),
+        ...(entryId ? { entry_id: entryId } : {}),
+        ...(profile ? { profile } : {}),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('menstruation-calendar-card: failed to delete the entries of a day', err);
+      return; // the dialog stays open
+    }
+    if (this._symptomOverrides) delete this._symptomOverrides[iso];
+    this._modalIso = null;
+    const locale = this._hass?.locale?.language || 'en';
+    const dt = this._parseISO(iso);
+    const label = dt ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(dt) : iso;
+    this._undo = previous ? { iso, data: previous } : null;
+    this._setUndoNote(this._t('day_deleted').replace('{date}', label));
+    await this._refreshSensorEntity(entityId);
+    this._render();
+  }
+
+  _setUndoNote(text) {
+    clearTimeout(this._undoTimer);
+    this._undoNote = text;
+    this._undoTimer = setTimeout(() => { this._undo = null; this._undoNote = ''; this._render(); }, 10000);
+  }
+
+  // What add_symptom accepts back from a stored entry: no date/found, no empty values, temperature in the profile's unit.
+  _restorableData(entry, model) {
+    const data = {};
+    Object.entries(entry || {}).forEach(([key, value]) => {
+      if (key === 'date' || key === 'found' || value === null || value === '' || (Array.isArray(value) && !value.length)) return;
+      data[key] = value;
+    });
+    if (data.basal_temp != null && model.stateObj?.attributes?.temperature_unit === 'fahrenheit') {
+      data.basal_temp = Math.round((Number(data.basal_temp) * 9 / 5 + 32) * 10) / 10;
+    }
+    return data;
+  }
+
+  async _undoDelete() {
+    const undo = this._undo;
+    if (!undo) return;
+    clearTimeout(this._undoTimer);
+    this._undo = null;
+    const model = this._buildModel();
+    const data = model.missing ? {} : this._restorableData(undo.data, model);
+    const entityId = model.entityId || this._config?.entity || '';
+    const entryId = model.stateObj?.attributes?.entry_id || this._config?.entry_id || '';
+    const profile = model.stateObj?.attributes?.profile;
+    const call = (symptomData) => this._hass.callService('menstruation_cycle', 'add_symptom', {
+      date: undo.iso,
+      symptom_data: symptomData,
+      ...(entityId ? { entity_id: entityId } : {}),
+      ...(entryId ? { entry_id: entryId } : {}),
+      ...(profile ? { profile } : {}),
+    });
+    let failed = false;
+    if (Object.keys(data).length) {
+      try {
+        await call(data);
+      } catch (_err) {
+        // One unknown or outdated field must not cost the whole entry: write the fields one by one.
+        for (const [key, value] of Object.entries(data)) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await call({ [key]: value });
+          } catch (_inner) {
+            failed = true;
+          }
+        }
+      }
+    }
+    this._setUndoNote(this._t(failed ? 'undo_failed' : 'undo_done'));
+    await this._refreshSensorEntity(entityId);
+    this._render();
+  }
+
   _daysSincePreviousPeriodDay(confirmedSet, iso) {
     const previous = [...(confirmedSet || [])].filter((day) => day < iso).sort().pop();
     if (!previous) return null;
@@ -1304,6 +1411,8 @@ class MenstruationCalendarCard extends HTMLElement {
       const isModalOpen = this._modalIso === iso;
       const intermenstrual = model.intermenstrualByDate?.[iso];
       const isLutealForecast = model.lutealForecastIso === iso;
+      const painRaw = model.symptomByDate?.[iso]?.pain_intensity;
+      const pain = Number.isInteger(painRaw) && painRaw >= 1 && painRaw <= 10 ? painRaw : 0;
 
       const classes = [
         'day',
@@ -1332,6 +1441,7 @@ class MenstruationCalendarCard extends HTMLElement {
       const hintParts = [baseHint];
       if (intermenstrual) hintParts.push(this._t('bleeding_outside_period'));
       if (isLutealForecast) hintParts.push(this._t('luteal_forecast_hint'));
+      if (pain) hintParts.push(this._t('pain_strength_day').replace('{n}', String(pain)));
       const cycleHint = hintParts.join(' · ');
       items.push(`
         <button
@@ -1347,6 +1457,7 @@ class MenstruationCalendarCard extends HTMLElement {
             ? `<span class="cycle-day">${st.cycleDay}</span>`
             : ''}
           ${hasSymptoms ? '<span class="sym-dot" aria-hidden="true"></span>' : ''}
+          ${pain ? `<span class="pain-bar pain-${pain >= 7 ? 'high' : (pain >= 4 ? 'mid' : 'low')}" style="width:calc((100% - 14px) * ${pain / 10})" aria-hidden="true"></span>` : ''}
           ${intermenstrual ? '<span class="im-mark" aria-hidden="true"></span>' : ''}
           ${isLutealForecast ? '<span class="luteal-mark" aria-hidden="true"></span>' : ''}
           ${isPredictedDay ? `<span class="confidence-chip" aria-hidden="true">${confidenceLevel === 'high' ? 'H' : confidenceLevel === 'medium' ? 'M' : 'L'}</span>` : ''}
@@ -1496,6 +1607,8 @@ class MenstruationCalendarCard extends HTMLElement {
       range_start: this._rangeStart || '',
       range_days: this._modalRange?.days?.length || 0,
       extra_predicted_count: this._extraPredictedStarts.length,
+      undo: this._undo ? this._undo.iso : '',
+      undo_note: this._undoNote,
     });
   }
 
@@ -1607,6 +1720,9 @@ class MenstruationCalendarCard extends HTMLElement {
           background: var(--warning-color, #d97706);
           opacity: .85;
         }
+        .pain-bar { position: absolute; left: 7px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--error-color, #dc2626); }
+        .pain-bar.pain-low { opacity: .45; }
+        .pain-bar.pain-mid { opacity: .7; }
         .luteal-mark {
           position: absolute;
           right: 7px;
@@ -1649,9 +1765,12 @@ class MenstruationCalendarCard extends HTMLElement {
           border-radius: 50%;
           background: var(--success-color, #16a34a);
         }
+        .cal-toast { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; font-size: .82rem; background: color-mix(in srgb, var(--primary-text-color) 9%, var(--card-background-color)); }
+        .cal-undo { margin-left: auto; border: none; background: none; color: var(--primary-color); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
         .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: .74rem; color: var(--secondary-text-color); }
         .legend-item { display: inline-flex; align-items: center; gap: 5px; }
         .swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--divider-color); }
+        .swatch.pain-bar-swatch { width: 14px; height: 3px; border: none; border-radius: 2px; background: var(--error-color, #dc2626); }
         .swatch.period { background: color-mix(in srgb, var(--error-color, #e11d48) 68%, transparent); }
         .swatch.fertile { background: color-mix(in srgb, var(--warning-color, #facc15) 68%, transparent); }
         .swatch.ovulation { background: var(--success-color, #16a34a); }
@@ -1689,6 +1808,7 @@ class MenstruationCalendarCard extends HTMLElement {
         .sym-close { background: transparent; border: none; cursor: pointer; font-size: 1rem; color: inherit; opacity: .7; padding: 2px 6px; }
         .sym-close:hover { opacity: 1; }
         .sym-body { overflow-y: auto; padding: 10px 14px; display: grid; gap: 10px; }
+        .sym-delete { margin-right: auto; color: var(--error-color, #be123c); }
         .sym-footer { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid rgba(128,128,128,.2); justify-content: flex-end; }
         .sym-row { display: grid; gap: 6px; min-width: 0; }
         .sym-cat-head { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; opacity: .85; }
@@ -1783,6 +1903,7 @@ class MenstruationCalendarCard extends HTMLElement {
           </div>
           <div class="legend">
             <span class="legend-item"><span class="swatch period"></span> ${this._t('period')}</span>
+            ${Object.values(model.symptomByDate || {}).some((entry) => Number.isInteger(entry?.pain_intensity) && entry.pain_intensity >= 1) ? `<span class="legend-item"><span class="swatch pain-bar-swatch"></span> ${this._t('pain_strength_legend')}</span>` : ''}
             ${this._config?.show_fertile_period !== false ? `<span class="legend-item"><span class="swatch fertile"></span> ${this._t('fertile')}</span>` : ''}
             ${this._config?.show_ovulation_marker !== false && !(model.learningPhase && String(model.predictionGating?.confidence || 'low').toLowerCase() === 'low') ? `<span class="legend-item"><span class="swatch ovulation"></span> ${this._t('ovulation')}</span>` : ''}
             ${this._config?.show_predicted_cycles !== false ? `<span class="legend-item"><span class="swatch predicted-period"></span> ${this._t('predicted_period')}</span>` : ''}
@@ -1792,6 +1913,7 @@ class MenstruationCalendarCard extends HTMLElement {
             ${model.currentPeriodTailSet?.size > 0 ? `<span class="legend-item"><span class="swatch current-period-tail"></span> ${this._t('predicted_current_period')}</span>` : ''}
             ${model.nfpAnalysis && model.nfpAnalysis.ovulation_detected && model.nfpAnalysis.confidence_level !== 'low' ? `<span class="legend-item nfp-method-badge"><img src="/menstruation_cycle/assets/state/nfp.svg" alt="NFP Method" class="method-icon" /><span>NFP</span></span>` : (model.sensorOvulation ? `<span class="legend-item nfp-method-badge"><img src="/menstruation_cycle/assets/state/hybrid.svg" alt="Standard Method" class="method-icon" /><span>Standard</span></span>` : '')}
           </div>
+          ${this._undoNote ? `<div class="cal-toast" role="status" aria-live="polite"><span>${this._undoNote}</span>${this._undo ? `<button type="button" class="cal-undo">${this._t('undo_delete')}</button>` : ''}</div>` : ''}
         </div>
       </ha-card>
       ${this._modalIso ? this._renderSymptomModal(this._modalIso, model) : ''}
@@ -1870,7 +1992,15 @@ class MenstruationCalendarCard extends HTMLElement {
       }
     });
     this.shadowRoot.addEventListener('click', (ev) => {
+      if (ev.target?.closest?.('.cal-undo')) {
+        this._undoDelete();
+        return;
+      }
       if (!this._modalIso) return;
+      if (ev.target?.closest('.sym-delete')) {
+        this._handleDayDelete();
+        return;
+      }
       // Close on backdrop or close/cancel buttons
       if (ev.target?.closest('.sym-backdrop') || ev.target?.closest('.sym-close') || ev.target?.closest('.sym-cancel')) {
         this._closeModal();

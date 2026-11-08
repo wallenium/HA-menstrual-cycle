@@ -999,7 +999,159 @@ function testBasalTempFieldFollowsProfileUnit() {
   assert.ok(f.includes('min="95" max="107.6"') && f.includes('placeholder="97.7"'), 'fahrenheit range and placeholder');
 }
 
+function pendingTimers() {
+  const timers = [];
+  const realSet = global.setTimeout;
+  const realClear = global.clearTimeout;
+  global.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+  global.clearTimeout = () => {};
+  return { timers, restore: () => { global.setTimeout = realSet; global.clearTimeout = realClear; } };
+}
+
+async function testDeleteDayWithUndo() {
+  const fake = pendingTimers();
+  const realFns = window.MenstruationFunctions;
+  const realConfirm = window.confirm;
+  try {
+    const card = new CardClass();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass();
+    const calls = [];
+    hass.callService = async (domain, service, data) => { calls.push([service, data]); };
+    card._hass = hass;
+    const iso = '2026-07-14';
+    const stored = { date: iso, bleeding_strength: 'light', pain: ['cramps'], basal_temp: 36.6, mood: 'tired', note: '', found: true, cervical_mucus: null };
+    window.MenstruationFunctions = { ...realFns, fetchFreshSymptomData: async () => ({ data: stored }) };
+    card._symptomOverrides = { [iso]: stored };
+
+    // the button: only for a single day that has entries
+    const model = card._buildModel();
+    assert.ok(card._renderSymptomModal(iso, model).includes('class="btn ghost sym-delete">Delete all entries of this day'), 'a day with entries offers deleting');
+    card._symptomOverrides = {};
+    assert.ok(!card._renderSymptomModal('2026-07-20', model).includes('sym-delete'), 'an empty day does not');
+    card._modalRange = { from: iso, to: iso, days: [iso] };
+    assert.ok(!card._renderSymptomModal(iso, model).includes('sym-delete'), 'nor the several-days dialog');
+    card._modalIso = iso;
+    window.confirm = () => true;
+    await card._handleDayDelete();
+    assert.strictEqual(calls.filter(([service]) => service === 'remove_symptom').length, 0, 'with several days picked nothing is deleted');
+    card._modalRange = null;
+    card._symptomOverrides = { [iso]: stored };
+
+    // declined: nothing happens, the dialog stays
+    card._modalIso = iso;
+    window.confirm = () => false;
+    await card._handleDayDelete();
+    assert.strictEqual(calls.filter(([service]) => service === 'remove_symptom').length, 0);
+    assert.strictEqual(card._modalIso, iso, 'dialog stays open');
+
+    // a failing service keeps the dialog and offers no undo
+    window.confirm = () => true;
+    hass.callService = async (domain, service) => { if (service === 'remove_symptom') throw new Error('boom'); };
+    const quiet = console.error; console.error = () => {};
+    await card._handleDayDelete();
+    console.error = quiet;
+    assert.ok(card._modalIso === iso && !card._undo, 'on an error the dialog stays and nothing can be undone');
+    hass.callService = async (domain, service, data) => { calls.push([service, data]); };
+
+    // delete: remove_symptom for the day, dialog closed, toast with Undo
+    await card._handleDayDelete();
+    const removal = calls.find(([service]) => service === 'remove_symptom');
+    assert.deepStrictEqual(removal[1], { date: iso, entry_id: 'entry-1', profile: 'default', entity_id: 'sensor.menstruation' }, 'the call names the day and the profile');
+    assert.ok(card._modalIso === null && card._undo.iso === iso && !(iso in card._symptomOverrides), 'closed, remembered for undo, cached copy dropped');
+    assert.ok(/class="cal-toast"[^>]*>.*Entries of July 14 deleted\..*class="cal-undo">Undo/.test(card.shadowRoot.innerHTML), card.shadowRoot.innerHTML.slice(-900));
+    assert.ok(fake.timers.some((t) => t.ms === 10000), 'the toast goes away after ten seconds');
+    fake.timers.find((t) => t.ms === 10000).fn();
+    assert.ok(!card._undo && !card.shadowRoot.innerHTML.includes('class="cal-toast"'), 'gone again');
+
+    // undo: every stored value comes back (no date/found/empty values), the toast says so
+    card._undo = { iso, data: stored };
+    calls.length = 0;
+    await card._undoDelete();
+    const restore = calls.find(([service]) => service === 'add_symptom');
+    assert.deepStrictEqual(restore[1].symptom_data, { bleeding_strength: 'light', pain: ['cramps'], basal_temp: 36.6, mood: 'tired' });
+    assert.strictEqual(restore[1].date, iso);
+    assert.ok(card._undo === null && card.shadowRoot.innerHTML.includes('Restored.') && !card.shadowRoot.innerHTML.includes('class="cal-undo"'), 'done, no second undo');
+    // Fahrenheit profiles get the temperature in their unit again
+    hass.states['sensor.menstruation'].attributes.temperature_unit = 'fahrenheit';
+    card._undo = { iso, data: stored };
+    calls.length = 0;
+    await card._undoDelete();
+    assert.strictEqual(calls[0][1].symptom_data.basal_temp, 97.9);
+    hass.states['sensor.menstruation'].attributes.temperature_unit = 'celsius';
+
+    // one rejected field must not cost the others
+    hass.callService = async (domain, service, data) => {
+      calls.push([service, data]);
+      if (service === 'add_symptom' && ('mood' in data.symptom_data)) throw new Error('unknown field');
+    };
+    card._undo = { iso, data: stored };
+    calls.length = 0;
+    await card._undoDelete();
+    const written = calls.filter(([service, data]) => service === 'add_symptom' && Object.keys(data.symptom_data).length === 1).map(([, data]) => Object.keys(data.symptom_data)[0]);
+    assert.deepStrictEqual(written, ['bleeding_strength', 'pain', 'basal_temp', 'mood'], 'then field by field');
+    assert.ok(card.shadowRoot.innerHTML.includes('Could not restore everything.'), 'and the note says something was lost');
+
+    // wiring: the click handler reaches both actions, the delete button only inside the dialog
+    const handlers = {};
+    card.shadowRoot.addEventListener = (type, fn) => { handlers[type] = fn; };
+    card._modalBound = false;
+    card._lastRenderKey = null;
+    card._render();
+    let deleted = 0; let undone = 0;
+    card._handleDayDelete = () => { deleted += 1; };
+    card._undoDelete = () => { undone += 1; };
+    const click = (selector) => handlers.click({ target: { closest: (sel) => (sel === selector ? {} : null) } });
+    click('.cal-undo');
+    assert.strictEqual(undone, 1, 'Undo works without an open dialog');
+    click('.sym-delete');
+    assert.strictEqual(deleted, 0, 'the delete button does nothing when no dialog is open');
+    card._modalIso = iso;
+    click('.sym-delete');
+    assert.strictEqual(deleted, 1);
+  } finally {
+    window.MenstruationFunctions = realFns;
+    window.confirm = realConfirm;
+    fake.restore();
+  }
+}
+
+function testPainStrengthInTheMonthGrid() {
+  const card = new CardClass();
+  card.setConfig({ entity: 'sensor.menstruation' });
+  const hass = makeHass();
+  hass.states['sensor.menstruation'].attributes.symptom_history = [
+    { date: '2026-07-14', pain_intensity: 7 },
+    { date: '2026-07-15', pain_intensity: 5 },
+    { date: '2026-07-16', pain_intensity: 1 },
+    { date: '2026-07-12', pain_intensity: 4 },
+    { date: '2026-07-13', pain_intensity: 3 },
+    { date: '2026-07-17', pain_intensity: 0 },
+    { date: '2026-07-18', pain_intensity: 11 },
+    { date: '2026-07-19', pain_intensity: 2.5 },
+    { date: '2026-07-20', pain_intensity: '7' },
+  ];
+  card._hass = hass;
+  card._viewDate = new Date(2026, 6, 15);
+  const grid = card._calendarGrid(card._buildModel(), 'en');
+  const cell = (iso) => grid.split('data-iso="').slice(1).find((part) => part.startsWith(`${iso}"`)) || '';
+  assert.ok(/pain-bar pain-high" style="width:calc\(\(100% - 14px\) \* 0\.7\)"/.test(cell('2026-07-14')), 'strong pain: long dark bar');
+  assert.ok(/pain-bar pain-mid" style="width:calc\(\(100% - 14px\) \* 0\.5\)"/.test(cell('2026-07-15')), 'medium');
+  assert.ok(/pain-bar pain-low" style="width:calc\(\(100% - 14px\) \* 0\.1\)"/.test(cell('2026-07-16')), 'weak: short pale bar');
+  assert.ok(cell('2026-07-12').includes('pain-mid') && cell('2026-07-13').includes('pain-low'), '4 is medium, 3 is weak');
+  assert.ok(cell('2026-07-14').includes('Pain 7/10') && /aria-label="14\. [^"]*Pain 7\/10"/.test(cell('2026-07-14')), 'the number is in the tooltip and the screen reader label (the bar alone would be colour only)');
+  ['2026-07-17', '2026-07-18', '2026-07-19', '2026-07-20', '2026-07-21'].forEach((iso) => assert.ok(!cell(iso).includes('pain-bar'), `${iso}: 0, out of range, not whole, text and no entry show no bar`));
+  const page = card._render && (card._lastRenderKey = null, card._render(), card.shadowRoot.innerHTML);
+  assert.ok(page.includes('swatch pain-bar-swatch') && page.includes('Pain strength'), 'legend entry when a bar is shown');
+  hass.states['sensor.menstruation'].attributes.symptom_history = [{ date: '2026-07-14', bleeding_strength: 'light' }];
+  card._lastRenderKey = null;
+  card._render();
+  assert.ok(!card.shadowRoot.innerHTML.includes('class="legend-item"><span class="swatch pain-bar-swatch"'), 'no legend entry without any pain strength');
+}
+
 [
+  testDeleteDayWithUndo,
+  testPainStrengthInTheMonthGrid,
   testRegistration,
   testWeekStartOption,
   testCalendarRenderingStates,

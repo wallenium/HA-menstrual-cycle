@@ -151,7 +151,9 @@ const withInput = (panel, value) => {
     assert.strictEqual(celsius.length, 4);
     assert.ok(celsius.every((n) => n > 36 && n < 37.1), celsius.join());
     assert.ok(fahr.every((n) => n > 97 && n < 99), fahr.join());
-    assert.deepStrictEqual(chart().replace(/>[\d.]+<\/text>/g, '><'), chart('fahrenheit').replace(/>[\d.]+<\/text>/g, '><'), 'only the labels differ');
+    const bare = (svg) => svg.replace(/>[\d.]+<\/text>/g, '><').replace(/ data-tip="[^"]*"/g, '');
+    assert.deepStrictEqual(bare(chart()), bare(chart('fahrenheit')), 'only the labels and tooltips differ');
+    assert.ok(chart().includes('· 36.4 °C"') && chart('fahrenheit').includes('· 97.52 °F"'), 'the tooltip follows the unit');
   }
 
   // saving: the click reads the field and calls add_symptom for today (comma decimal accepted)

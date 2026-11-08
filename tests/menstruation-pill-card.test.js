@@ -71,6 +71,41 @@ assert.ok(html.includes('Pack break: day 2 of 7') && !html.includes('data-action
 html = make({ ...pack, taken: [], position: 1, new_pack: true }).html();
 assert.ok(html.includes('starts a new pack') && count(html, 'today') === 1);
 
+// forgotten pills: the cells listed in pack.editable are buttons, the others stay plain cells
+{
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const daysAgo = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+  const gap = { ...pack, taken: [1, 2, 3, 8], position: 8, today_taken: true, editable: [4, 5] };
+  const forgot = make(gap);
+  const fh = forgot.html();
+  assert.strictEqual((fh.match(/data-action="take-past"/g) || []).length, 2, 'two cells can be logged afterwards');
+  assert.ok(/data-action="take-past" data-day="4"/.test(fh) && /data-action="take-past" data-day="5"/.test(fh) && !/data-day="6"/.test(fh), 'only the listed cells');
+  assert.ok(fh.includes('Forgot a pill? Tap its day to log it.') && fh.includes('Tap to log it for'), 'hint in the status line and on the cell');
+  assert.strictEqual(count(fh, 'missed'), 4, 'the other missed cells are still shown as missed');
+  assert.ok(!make({ ...gap, editable: undefined }).html().includes('take-past'), 'an older backend without the list offers nothing');
+  assert.ok(!make({ ...gap, editable: [] }).html().includes('Forgot a pill'), 'no hint when nothing can be logged');
+  window.confirm = (text) => { forgot.asked = text; return true; };
+  const tapPast = (card, day) => card.shadowRoot.handlers.click({ target: { closest: (sel) => (sel === '[data-action="take-past"]' ? { dataset: { day: String(day) } } : null) } });
+  tapPast(forgot.card, 4);
+  assert.strictEqual(forgot.calls.length, 1);
+  const [, svc, payload] = forgot.calls[0];
+  assert.deepStrictEqual([svc, payload.entity_id, payload.date, payload.symptom_data], ['add_symptom', 'sensor.menstruation', iso(daysAgo(4)), { contraception_method: 'pill' }], 'the date is the cell\'s day: four cells before today');
+  assert.ok(/^Log the pill for .+\?$/.test(forgot.asked), forgot.asked);
+  const declined = make(gap);
+  window.confirm = () => false;
+  tapPast(declined.card, 5);
+  assert.strictEqual(declined.calls.length, 0, 'declined: nothing is logged');
+  window.confirm = () => { throw new Error('no question expected'); };
+  tapPast(declined.card, 6); // not in the list
+  tapPast(declined.card, 'x');
+  assert.strictEqual(declined.calls.length, 0, 'a cell that is not offered cannot be logged');
+  const withStart = make({ ...gap, position: 3, taken: [3], today_taken: true, editable: [1, 2] });
+  window.confirm = () => true;
+  tapPast(withStart.card, 1);
+  assert.strictEqual(withStart.calls[0][2].date, iso(daysAgo(2)), 'cell 1 of position 3 is two days back');
+  delete window.confirm;
+}
+
 // no pill pack / unknown entity / other language
 assert.ok(make(null).html().includes('No pill pack to show'));
 const lost = new Card(); lost.setConfig({ entity: 'sensor.x' }); lost.hass = { states: {} };

@@ -127,6 +127,65 @@ class PillPackStartDateTests(unittest.TestCase):
             self.assertEqual(model.pill_pack_view(status, TODAY, 7, bad), guess, bad)
 
 
+class PillPackForgottenPillTests(unittest.TestCase):
+    """A forgotten pill can be logged afterwards: which cells may be tapped, and that the logged day shows up."""
+
+    @staticmethod
+    def _history(days_ago):
+        return [{"date": (TODAY - timedelta(days=n)).isoformat(), "contraception_method": "pill"} for n in days_ago]
+
+    def _with_start(self, days_ago, start_days_ago=10):
+        status = model.compute_contraception_status(self._history(days_ago), today=TODAY)
+        return model.pill_pack_view(status, TODAY, 7, (TODAY - timedelta(days=start_days_ago)).isoformat())
+
+    def test_recent_days_cover_the_last_28_days_only(self) -> None:
+        status = model.compute_contraception_status(self._history([0, 1, 27, 28, 40]), today=TODAY)
+        self.assertEqual(status["pill_recent_days"], sorted((TODAY - timedelta(days=n)).isoformat() for n in (0, 1, 27)))
+        self.assertEqual(model.compute_contraception_status([], today=TODAY)["pill_recent_days"], [])
+
+    def test_with_a_start_date_every_logged_day_shows_and_the_rest_is_editable(self) -> None:
+        view = self._with_start([0, 1, 5, 6])  # started 10 days ago (cell 11 today); cells 7, 8 (days 5, 4 ago) logged, 9..
+        self.assertEqual(view["position"], 11)
+        self.assertEqual(view["taken"], [5, 6, 10, 11])
+        self.assertEqual(view["editable"], [1, 2, 3, 4, 7, 8, 9], "past pill cells that are not taken; not today, no pause cell")
+
+    def test_logging_a_forgotten_pill_moves_it_to_taken(self) -> None:
+        before = self._with_start([0, 1, 5, 6])
+        after = self._with_start([0, 1, 5, 6, 3])  # day 3 ago = cell 8
+        self.assertEqual(after["taken"], [5, 6, 8, 10, 11])
+        self.assertEqual(after["editable"], [c for c in before["editable"] if c != 8])
+
+    def test_the_pause_and_the_future_are_not_editable(self) -> None:
+        view = self._with_start([1, 2], start_days_ago=24)  # cell 25 today: in the pause
+        self.assertTrue(view["in_pause"])
+        self.assertTrue(all(cell <= 21 for cell in view["editable"]))
+        self.assertNotIn(25, view["editable"])
+        self.assertTrue(self._with_start([0], start_days_ago=0)["editable"] == [])
+
+    def test_without_a_start_date_only_the_cell_after_the_run_is_editable(self) -> None:
+        status = model.compute_contraception_status(self._history([3, 4, 5, 6, 7]), today=TODAY)
+        view = model.pill_pack_view(status, TODAY, 7)
+        self.assertEqual((view["position"], view["taken"], view["editable"]), (8, [1, 2, 3, 4, 5], [6]))
+        # logging that day keeps today's cell where it is and offers the next one
+        again = model.pill_pack_view(model.compute_contraception_status(self._history([2, 3, 4, 5, 6, 7]), today=TODAY), TODAY, 7)
+        self.assertEqual((again["position"], again["taken"], again["editable"]), (8, [1, 2, 3, 4, 5, 6], [7]))
+        # nothing left to offer once only today is open
+        done = model.pill_pack_view(model.compute_contraception_status(self._history([1, 2, 3, 4, 5, 6, 7]), today=TODAY), TODAY, 7)
+        self.assertEqual(done["editable"], [])
+
+    def test_without_a_start_date_today_itself_is_not_a_forgotten_pill(self) -> None:
+        view = model.pill_pack_view(model.compute_contraception_status(self._history([1, 2, 3]), today=TODAY), TODAY, 7)
+        self.assertEqual((view["position"], view["taken"], view["editable"]), (4, [1, 2, 3], []))
+
+    def test_without_a_start_date_the_pause_is_not_editable(self) -> None:
+        view = model.pill_pack_view(model.compute_contraception_status(self._history(range(3, 24)), today=TODAY), TODAY, 7)
+        self.assertEqual((view["position"], view["in_pause"], view["editable"]), (24, True, []))
+
+    def test_a_new_pack_offers_nothing(self) -> None:
+        self.assertEqual(_view(21, 8)["editable"], [])
+        self.assertEqual(model.pill_pack_view(model.compute_contraception_status([{"date": "2026-09-30", "contraception_method": "pill"}], today=TODAY), TODAY, 7)["editable"], [])
+
+
 class PillPackSensorAttributeTests(unittest.TestCase):
     def test_attribute_is_exposed_at_full_visibility_only(self) -> None:
         source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")

@@ -1,6 +1,7 @@
 /**
  * Pill blister card: a 28-day blister (taken pills filled, pause days gray) built from the `pill_pack`
- * attribute of the cycle sensor. Tap today's pill to log it (menstruation_cycle.add_symptom, contraception_method pill).
+ * attribute of the cycle sensor. Tap today's pill to log it (menstruation_cycle.add_symptom, contraception_method pill);
+ * a forgotten pill can be logged afterwards by tapping its cell (the cells in pill_pack.editable).
  * Card config: entity (the cycle sensor), title (optional), show_legend (optional, default true).
  */
 const _mcPillI18n = window.menstruationCycleI18n || (window.menstruationCycleI18n = { cache: {}, loading: {}, fallback: { en: {} } });
@@ -18,6 +19,9 @@ const MC_PILL_FALLBACK_EN = {
   pill_card_taken_today: "Today's pill is taken.",
   pill_card_tap: "Tap today's pill to log it.",
   pill_card_new_pack: 'The next pill starts a new pack.',
+  pill_card_tap_past: 'Tap to log it for {date}.',
+  pill_card_forgot_hint: 'Forgot a pill? Tap its day to log it.',
+  pill_card_confirm_past: 'Log the pill for {date}?',
   pill_card_no_pill: 'No pill pack to show. Log "pill" as the contraception method to see your blister.',
   pill_card_state_taken: 'taken',
   pill_card_state_today: 'due today',
@@ -95,6 +99,22 @@ class MenstruationPillCard extends HTMLElement {
     return 'upcoming';
   }
 
+  // The date a blister cell stands for: today's cell is pack.position, every cell before it is one day earlier.
+  _cellDate(pack, day) {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() - (pack.position - day));
+    return date;
+  }
+
+  _dateLabel(date) {
+    try {
+      return date.toLocaleDateString(this._lang(), { day: 'numeric', month: 'long' });
+    } catch (_error) {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
   _render() {
     if (!this._config || !this.shadowRoot) return;
     const stateObj = this._hass?.states?.[this._config.entity];
@@ -109,12 +129,15 @@ class MenstruationPillCard extends HTMLElement {
       const cells = [];
       for (let day = 1; day <= total; day += 1) {
         const state = this._cellState(pack, day);
-        const label = `${day}: ${this._t(`pill_card_state_${state}`)}`;
+        const editable = state === 'missed' && Array.isArray(pack.editable) && pack.editable.includes(day);
+        const label = `${day}: ${this._t(`pill_card_state_${state}`)}${editable ? `. ${this._t('pill_card_tap_past', { date: this._dateLabel(this._cellDate(pack, day)) })}` : ''}`;
         const here = day === pack.position && !pack.new_pack ? ' here' : '';
         const mark = MC_PILL_MARKS[state] ? ` data-mark="${MC_PILL_MARKS[state]}"` : '';
         cells.push(state === 'today'
           ? `<button class="cell today" data-action="take" aria-label="${this._esc(label)}"${this._busy ? ' disabled' : ''}>${day}</button>`
-          : `<div class="cell ${state}${here}"${mark} role="img" aria-label="${this._esc(label)}">${day}</div>`);
+          : (editable
+            ? `<button class="cell missed" data-action="take-past" data-day="${day}"${mark} aria-label="${this._esc(label)}" title="${this._esc(label)}"${this._busy ? ' disabled' : ''}>${day}</button>`
+            : `<div class="cell ${state}${here}"${mark} role="img" aria-label="${this._esc(label)}">${day}</div>`));
       }
       let status;
       if (pack.in_pause) status = this._t('pill_card_break', { day: pack.position - pack.active, pause: pack.pause });
@@ -123,6 +146,7 @@ class MenstruationPillCard extends HTMLElement {
       const legend = this._config.show_legend === false ? '' : `<div class="legend">${['taken', 'missed', 'today', 'pause'].map(
         (state) => `<span class="legend-item"><span class="swatch ${state}"${MC_PILL_MARKS[state] ? ` data-mark="${MC_PILL_MARKS[state]}"` : ''}></span>${this._esc(this._t(`pill_card_state_${state}`))}</span>`,
       ).join('')}</div>`;
+      if (Array.isArray(pack.editable) && pack.editable.length) status += ` ${this._t('pill_card_forgot_hint')}`;
       const error = this._error ? `<div class="error" role="alert">${this._esc(this._t('pill_card_save_error'))}</div>` : '';
       body = `<div class="blister"${this._busy ? ' aria-busy="true"' : ''}>${cells.join('')}</div>${legend}<div class="status">${this._esc(status)}</div>${error}`;
     }
@@ -139,6 +163,9 @@ class MenstruationPillCard extends HTMLElement {
         .cell.taken { background: var(--primary-color, #9b59b6); border-color: var(--primary-color, #9b59b6); color: #fff; }
         .cell.pause { background: var(--disabled-color, #bdbdbd); border-style: dashed; opacity: 0.5; }
         .cell.missed { border-color: var(--warning-color, #f39c12); }
+        button.cell { font: inherit; font-size: 0.72rem; color: var(--secondary-text-color); }
+        button.cell.missed { cursor: pointer; }
+        button.cell.missed:hover { background: color-mix(in srgb, var(--warning-color, #f39c12) 18%, transparent); }
         .cell.today { border-color: var(--primary-color, #9b59b6); color: var(--primary-text-color); font-weight: 700;
                       cursor: pointer; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #9b59b6) 30%, transparent); }
         .cell.here { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #9b59b6) 30%, transparent); }
@@ -167,12 +194,23 @@ class MenstruationPillCard extends HTMLElement {
   }
 
   _onClick(ev) {
-    if (!ev.target?.closest?.('[data-action="take"]') || this._busy || !this._hass) return;
+    if (this._busy || !this._hass) return;
+    let date;
+    if (ev.target?.closest?.('[data-action="take"]')) {
+      const now = new Date();
+      date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    } else {
+      const cell = ev.target?.closest?.('[data-action="take-past"]');
+      const pack = this._hass.states?.[this._config.entity]?.attributes?.pill_pack;
+      const day = Number(cell?.dataset?.day);
+      if (!cell || !pack || !Array.isArray(pack.editable) || !pack.editable.includes(day)) return;
+      const when = this._cellDate(pack, day);
+      if (!window.confirm(this._t('pill_card_confirm_past', { date: this._dateLabel(when) }))) return;
+      date = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`;
+    }
     this._busy = true;
     this._error = false;
     this._render();
-    const now = new Date();
-    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     Promise.resolve(this._hass.callService('menstruation_cycle', 'add_symptom', {
       entity_id: this._config.entity,
       date,

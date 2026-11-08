@@ -577,6 +577,7 @@
     { id: 'progress_badges', title: 'dashboard_widget_progress_badges', sensitive: false, span: 6 },
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
     { id: 'cycle_day_earlier', title: 'dashboard_widget_cycle_day_earlier', sensitive: true, span: 6 },
+    { id: 'cycle_compare', title: 'dashboard_widget_cycle_compare', sensitive: true, span: 6 },
     { id: 'history_search', title: 'dashboard_widget_history_search', sensitive: true, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
@@ -585,7 +586,7 @@
   // Groups of the jump bar under the header: a tap scrolls to the first visible card of the group.
   const NAV_GROUPS = [
     ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'week_ahead', 'week_review', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
-    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'cycle_day_earlier', 'history_search', 'statistics_card', 'year_overview']],
+    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'cycle_day_earlier', 'cycle_compare', 'history_search', 'statistics_card', 'year_overview']],
     ['calendar', 'dashboard_nav_calendar', ['calendar_card']],
     ['supplies', 'dashboard_nav_supplies', ['product_usage', 'inventory_card', 'timer_card', 'pill_card']],
     ['insights', 'dashboard_nav_insights', ['symptom_heatmap', 'anomaly_insights', 'cycle_insights', 'symptom_insights', 'progress_badges', 'support_card']],
@@ -617,6 +618,7 @@
     'progress_badges',
     'pain_mood_trend',
     'cycle_day_earlier',
+    'cycle_compare',
     'history_search',
     'year_overview',
   ];
@@ -661,7 +663,7 @@
     phase_timeline: 'timeline',
   };
   // Cards that read the long history: while it loads they are dimmed and marked busy, so nothing jumps unannounced.
-  const HISTORY_WIDGETS = ['basal_temp', 'symptom_heatmap', 'symptom_insights', 'pain_mood_trend', 'cycle_day_earlier', 'history_search', 'week_review', 'year_overview', 'product_usage'];
+  const HISTORY_WIDGETS = ['basal_temp', 'symptom_heatmap', 'symptom_insights', 'pain_mood_trend', 'cycle_day_earlier', 'cycle_compare', 'history_search', 'week_review', 'year_overview', 'product_usage'];
   const COMPACT_WIDGETS = ['kpi_strip', 'phase_timeline', 'calendar_card', 'product_usage', 'pill_card'];
   const SWIPE_MIN_PX = 70;
   const PULL_MIN_PX = 80;
@@ -730,6 +732,7 @@
         week_ahead: false,
         week_review: false,
         cycle_day_earlier: false,
+        cycle_compare: false,
         history_search: false,
         year_overview: false,
       },
@@ -768,6 +771,7 @@
         week_ahead: true,
         week_review: true,
         cycle_day_earlier: true,
+        cycle_compare: true,
         history_search: true,
         year_overview: true,
       },
@@ -994,6 +998,7 @@
       this._viewCodeText = '';
       this._swipe = null;
       this._historySearch = { q: '', category: '', range: '90', limit: 30 };
+      this._compare = { a: '', b: '' }; // start dates of the two cycles in the comparison card
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
       // get_household_summary service and shown as a compact bar above the
@@ -1013,6 +1018,7 @@
       // callback = no-op) prevents listeners from stacking up and firing multiple
       // times per interaction.
       this._boundHandleClick = (event) => this._handleClick(event);
+      this._boundHandleTip = (event) => this._handleTip(event);
       this._boundHandleChange = (event) => this._handleChange(event);
       this._boundHandleQuickLogSearchInput = (event) => this._handleQuickLogSearchInput(event);
       this._boundHandleSubmit = (event) => this._handleSubmit(event);
@@ -1043,6 +1049,7 @@
     connectedCallback() {
       window.addEventListener?.('scroll', this._boundScroll, { passive: true });
       this.shadowRoot?.addEventListener('click', this._boundHandleClick);
+      ['pointerover', 'pointerout', 'pointerdown'].forEach((type) => this.shadowRoot?.addEventListener(type, this._boundHandleTip));
       this.shadowRoot?.addEventListener('change', this._boundHandleChange);
       this.shadowRoot?.addEventListener('input', this._boundHandleQuickLogSearchInput);
       this.shadowRoot?.addEventListener('submit', this._boundHandleSubmit);
@@ -2869,7 +2876,7 @@
       }).join('');
 
       const lineD = lens.map((v, i) => `${i === 0 ? 'M' : 'L'}${Math.round(toX(i))},${Math.round(toY(v))}`).join(' ');
-      const dots = lens.map((v, i) => `<circle cx="${Math.round(toX(i))}" cy="${Math.round(toY(v))}" r="2.2" fill="var(--mc-rose-deep)"/>`).join('');
+      const dots = lens.map((v, i) => `<circle cx="${Math.round(toX(i))}" cy="${Math.round(toY(v))}" r="2.2" fill="var(--mc-rose-deep)"/><circle cx="${Math.round(toX(i))}" cy="${Math.round(toY(v))}" r="9" fill="transparent"${this._tip(recent[i].date, this._t('dashboard_cc_length_days').replace('{n}', String(v)))}/>`).join('');
       const trendD = `M${Math.round(toX(0))},${Math.round(toY(trendStart))} L${Math.round(toX(n - 1))},${Math.round(toY(trendEnd))}`;
 
       const xLabelCount = Math.min(5, recent.length);
@@ -4714,6 +4721,8 @@
         this._savePainIntensity(Number(target.dataset.value));
       } else if (action === 'hs-open' && target.dataset.date) {
         this._openQuickLogForDate(target.dataset.date);
+      } else if (action === 'week-share') {
+        this._shareWeekReview();
       } else if (action === 'hs-more') {
         this._historySearch.limit += 30;
         this.render();
@@ -4828,6 +4837,12 @@
 
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-end-date-change') {
         this._quickLogEndDate = target.value || null;
+        return;
+      }
+
+      if (target.tagName === 'SELECT' && ['cc-a', 'cc-b'].includes(target.dataset.action)) {
+        this._compare[target.dataset.action === 'cc-a' ? 'a' : 'b'] = target.value;
+        this.render();
         return;
       }
 
@@ -5329,7 +5344,7 @@
         const fill = isOutlier ? 'var(--mc-amber)' : 'var(--mc-sage,#7C9885)';
         const label = String(c.len);
         const cx = slotX + slotW / 2;
-        return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(barW)}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.85" rx="5"/>
+        return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(barW)}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.85" rx="5"${this._tip(c.start, this._t('dashboard_cc_length_days').replace('{n}', label))}/>
                 <text x="${Math.round(cx)}" y="${Math.round(y - 6)}" text-anchor="middle" font-size="10" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(label)}</text>
                 <text x="${Math.round(cx)}" y="${H - 10}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">Z${idx + 1}</text>`;
       }).join('');
@@ -6909,7 +6924,7 @@
         const x = Math.round(toX(i));
         const y = Math.round(toY(v));
         const isRiseDay = i === riseIdx;
-        return `<circle cx="${x}" cy="${y}" r="${isRiseDay ? 5 : 2.2}" fill="${isRiseDay ? 'var(--mc-sage-deep,#3F5A47)' : 'var(--mc-rose-deep)'}" stroke="${isRiseDay ? 'var(--card-background-color,#fff)' : 'none'}" stroke-width="${isRiseDay ? 1.5 : 0}"/>`;
+        return `<circle cx="${x}" cy="${y}" r="${isRiseDay ? 5 : 2.2}" fill="${isRiseDay ? 'var(--mc-sage-deep,#3F5A47)' : 'var(--mc-rose-deep)'}" stroke="${isRiseDay ? 'var(--card-background-color,#fff)' : 'none'}" stroke-width="${isRiseDay ? 1.5 : 0}"/><circle cx="${x}" cy="${y}" r="9" fill="transparent"${this._tip(recent[i].date, `${this._displayTemperature(v, tempUnit, 2)} ${tempUnit}`)}/>`;
       }).join('');
 
       const riseLabel = riseIdx >= 0
@@ -7608,9 +7623,8 @@
     }
 
     // ---- Widget "Week in review": the last seven days in three lines. ----
-    _weekReviewData(stateObj) {
-      const today = this._todayIso();
-      const days = Array.from({ length: 7 }, (_, i) => addDaysIso(today, i - 6));
+    // What was logged on the given days: days with entries, pain strengths and the most frequent values.
+    _daySummary(stateObj, days) {
       const history = this._getFullSymptomHistory(stateObj);
       const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
       const categories = this._searchCategories(stateObj);
@@ -7629,18 +7643,120 @@
       return { perDay, strengths, common, loggedDays: perDay.filter((day) => day.logged).length };
     }
 
+    _weekReviewData(stateObj) {
+      const today = this._todayIso();
+      return this._daySummary(stateObj, Array.from({ length: 7 }, (_, i) => addDaysIso(today, i - 6)));
+    }
+
+    // label/value pairs of the week review: shown in the card and shared as text
+    _weekReviewRows(data) {
+      const rows = [[this._t('dashboard_wr_days'), this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays))]];
+      if (data.strengths.length) {
+        const avg = (data.strengths.reduce((sum, value) => sum + value, 0) / data.strengths.length).toLocaleString(this._lang || 'en', { maximumFractionDigits: 1 });
+        rows.push([this._t('dashboard_wr_pain'), this._t('dashboard_wr_pain_value').replace('{avg}', avg).replace('{max}', String(Math.max(...data.strengths)))]);
+      }
+      if (data.common.length) rows.push([this._t('dashboard_wr_common'), data.common.map(([text, n]) => (n > 1 ? `${text} (${n}×)` : text)).join(', ')]);
+      return rows;
+    }
+
     _renderWeekReview(stateObj) {
       const data = this._weekReviewData(stateObj);
       if (!data.loggedDays) return `<div class="helper">${escapeHtml(this._t('dashboard_wr_none'))}</div>`;
       const weekday = new Intl.DateTimeFormat(this._lang || 'en', { weekday: 'narrow' });
       const strip = data.perDay.map((day) => `<span class="wr-day${day.logged ? ' on' : ''}">${escapeHtml(weekday.format(new Date(`${day.date}T12:00:00`)))}</span>`).join('');
-      const rows = [`<li><span>${escapeHtml(this._t('dashboard_wr_days'))}</span><strong>${escapeHtml(this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays)))}</strong></li>`];
-      if (data.strengths.length) {
-        const avg = (data.strengths.reduce((sum, value) => sum + value, 0) / data.strengths.length).toLocaleString(this._lang || 'en', { maximumFractionDigits: 1 });
-        rows.push(`<li><span>${escapeHtml(this._t('dashboard_wr_pain'))}</span><strong>${escapeHtml(this._t('dashboard_wr_pain_value').replace('{avg}', avg).replace('{max}', String(Math.max(...data.strengths))))}</strong></li>`);
+      const rows = this._weekReviewRows(data).map(([label, value]) => `<li><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></li>`);
+      return `<div class="wr-strip" role="img" aria-label="${escapeHtml(this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays)))}">${strip}</div><ul class="wr-list">${rows.join('')}</ul>
+        <button type="button" class="wr-share" data-action="week-share">${escapeHtml(this._t('dashboard_wr_share'))}</button>`;
+    }
+
+    // Native share sheet where the browser has one, the clipboard otherwise.
+    async _shareWeekReview() {
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const data = this._weekReviewData(stateObj);
+      const text = [this._t('dashboard_widget_week_review'), ...this._weekReviewRows(data).map(([label, value]) => `${label}: ${value}`)].join('\n');
+      try {
+        if (navigator.share) await navigator.share({ text });
+        else {
+          await navigator.clipboard.writeText(text);
+          this._message = this._t('dashboard_wr_copied');
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        this._message = this._t('dashboard_wr_copy_failed');
       }
-      if (data.common.length) rows.push(`<li><span>${escapeHtml(this._t('dashboard_wr_common'))}</span><strong>${escapeHtml(data.common.map(([text, n]) => (n > 1 ? `${text} (${n}×)` : text)).join(', '))}</strong></li>`);
-      return `<div class="wr-strip" role="img" aria-label="${escapeHtml(this._t('dashboard_wr_days_value').replace('{n}', String(data.loggedDays)))}">${strip}</div><ul class="wr-list">${rows.join('')}</ul>`;
+      this.render();
+    }
+
+    // One tooltip for every chart: the point or bar carries `data-tip`, hovering (mouse) or tapping (touch) shows it.
+    _tip(date, text) {
+      const day = date ? new Intl.DateTimeFormat(this._lang || 'en', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${String(date).slice(0, 10)}T12:00:00`)) : '';
+      return ` data-tip="${escapeHtml(day ? `${day} · ${text}` : text)}"`;
+    }
+
+    _handleTip(event) {
+      const root = this.shadowRoot;
+      const el = event.type === 'pointerout' ? null : event.target?.closest?.('[data-tip]');
+      if (event.type === 'pointerout' && event.pointerType === 'touch') return; // a tap keeps its tip until the next tap
+      let tip = root.querySelector('.mc-tip');
+      if (!el) {
+        tip?.remove();
+        return;
+      }
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.className = 'mc-tip';
+        tip.setAttribute('role', 'tooltip');
+        root.appendChild(tip);
+      }
+      tip.textContent = el.dataset.tip;
+      const box = el.getBoundingClientRect();
+      const above = box.top > 48;
+      tip.style.left = `${Math.min(Math.max(box.left + box.width / 2, 90), window.innerWidth - 90)}px`;
+      tip.style.top = `${above ? box.top - 8 : box.bottom + 8}px`;
+      tip.style.transform = above ? 'translate(-50%, -100%)' : 'translate(-50%, 0)';
+    }
+
+    // ---- Widget "Compare cycles": two cycles side by side. ----
+    _compareCycles(stateObj) {
+      const today = this._todayIso();
+      const past = (Array.isArray(stateObj?.attributes?.grouped_starts) ? stateObj.attributes.grouped_starts : []).filter((value) => typeof value === 'string' && value <= today).sort();
+      // newest first; the last one is still running and ends today
+      return past.map((start, i) => {
+        const running = i === past.length - 1;
+        const end = running ? addDaysIso(today, 1) : past[i + 1];
+        return { start, end, running, length: Math.round((new Date(`${end}T12:00:00`) - new Date(`${start}T12:00:00`)) / 86400000) };
+      }).reverse();
+    }
+
+    _renderCycleCompare(stateObj) {
+      if (NON_CYCLE_STATES.includes(String(stateObj?.state || ''))) return '';
+      const cycles = this._compareCycles(stateObj);
+      if (cycles.length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_not_enough_data'))}</div>`;
+      const pick = (start, fallback) => cycles.find((cycle) => cycle.start === start) || fallback;
+      const a = pick(this._compare.a, cycles[0]);
+      const b = pick(this._compare.b, cycles.find((cycle) => cycle !== a) || cycles[1]);
+      const at = new Intl.DateTimeFormat(this._lang || 'en', { day: 'numeric', month: 'short', year: '2-digit' });
+      const date = (iso) => at.format(new Date(`${iso}T12:00:00`));
+      const select = (which, chosen, label) => `<select data-action="cc-${which}" aria-label="${escapeHtml(label)}">${cycles.map((cycle) => `<option value="${escapeHtml(cycle.start)}"${cycle === chosen ? ' selected' : ''}>${escapeHtml(cycle.running ? this._t('dashboard_cc_option_running').replace('{date}', date(cycle.start)) : date(cycle.start))}</option>`).join('')}</select>`;
+      const column = (cycle) => {
+        const days = Array.from({ length: cycle.length }, (_, i) => addDaysIso(cycle.start, i));
+        const sum = this._daySummary(stateObj, days);
+        const pain = sum.strengths.length
+          ? this._t('dashboard_wr_pain_value').replace('{avg}', (sum.strengths.reduce((x, y) => x + y, 0) / sum.strengths.length).toLocaleString(this._lang || 'en', { maximumFractionDigits: 1 })).replace('{max}', String(Math.max(...sum.strengths)))
+          : '–';
+        return [
+          cycle.running ? this._t('dashboard_cc_length_running').replace('{n}', String(cycle.length)) : String(cycle.length),
+          this._t('dashboard_cc_logged_value').replace('{n}', String(sum.loggedDays)).replace('{total}', String(cycle.length)),
+          pain,
+          sum.common.length ? sum.common.map(([text, n]) => (n > 1 ? `${text} (${n}×)` : text)).join(', ') : '–',
+        ];
+      };
+      const left = column(a);
+      const right = column(b);
+      const labels = ['dashboard_cc_length', 'dashboard_cc_logged', 'dashboard_wr_pain', 'dashboard_wr_common'];
+      const rows = labels.map((key, i) => `<tr><th scope="row">${escapeHtml(this._t(key))}</th><td>${escapeHtml(left[i])}</td><td>${escapeHtml(right[i])}</td></tr>`).join('');
+      return `<div class="cc-pick">${select('a', a, this._t('dashboard_cc_first'))}${select('b', b, this._t('dashboard_cc_second'))}</div>
+        <table class="cc-table"><tbody>${rows}</tbody></table>`;
     }
 
     _historySearchRows(stateObj) {
@@ -7783,19 +7899,19 @@
         const painY = padT + chartH - painH;
         const painTitle = useStrength ? `${pain}/10` : `${pain} ${pain === 1 ? this._t('dashboard_pain_type_singular') || 'Schmerzart' : this._t('dashboard_pain_type_plural') || 'Schmerzarten'}`;
         const painBar = painH > 0
-          ? `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"><title>${escapeHtml(painTitle)}</title></rect>`
-          : (unrated[idx] ? `<rect x="${x}" y="${padT + chartH - 3}" width="${halfW}" height="3" fill="#E8637D" opacity="0.4" rx="1"><title>${escapeHtml(this._t('dashboard_pain_unrated'))}</title></rect>` : '');
+          ? `<rect x="${x}" y="${painY}" width="${halfW}" height="${painH}" fill="#E8637D" opacity="0.8" rx="1"${this._tip(entry.date, painTitle)}/>`
+          : (unrated[idx] ? `<rect x="${x}" y="${padT + chartH - 3}" width="${halfW}" height="3" fill="#E8637D" opacity="0.4" rx="1"${this._tip(entry.date, this._t('dashboard_pain_unrated'))}/>` : '');
 
         let moodBar = '';
         if (typeof mood === 'number' && mood > 0) {
           const moodH = Math.max(2, (mood / maxMood) * chartH);
           const moodY = padT + chartH - moodH;
-          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.8" rx="1"/>`;
+          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.8" rx="1"${this._tip(entry.date, `${this._t('mood')}: ${mood}`)}/>`;
         } else if (mood === 'logged') {
           // Presence-only marker: we know something was logged, not what it means.
           const moodH = 3;
           const moodY = padT + chartH - moodH;
-          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.4" rx="1"/>`;
+          moodBar = `<rect x="${x + halfW}" y="${moodY}" width="${barW - halfW}" height="${moodH}" fill="#6B3654" opacity="0.4" rx="1"${this._tip(entry.date, this._t('mood'))}/>`;
         }
 
         return `${painBar}${moodBar}`;
@@ -8318,7 +8434,7 @@
     _widgetIdsForMode(mode, order) {
       const without = (ids) => order.filter((id) => !ids.includes(id));
       if (mode === 'pregnancy') {
-        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier']);
+        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare']);
         if (kept.includes('fetal_development')) return kept;
         const idx = kept.indexOf('phase_timeline');
         return idx >= 0 ? [...kept.slice(0, idx), 'fetal_development', ...kept.slice(idx)] : [...kept, 'fetal_development'];
@@ -8329,7 +8445,7 @@
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier',
+          'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare',
         ]);
       }
       if (mode === 'menopause') {
@@ -8337,7 +8453,7 @@
         // widgets and cycle-length anomaly detection, but keep general symptom
         // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
         // bleeding and symptoms are still worth logging during perimenopause.
-        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier']);
+        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare']);
       }
       if (mode === 'postpartum') {
         // No cycle to predict during the postpartum window — hide the same
@@ -8345,7 +8461,7 @@
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare',
         ]);
       }
       return without(['fetal_development']);
@@ -8400,9 +8516,9 @@
       if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       // These two show what is planned or logged, so discreet mode leaves them out.
-      if (['week_ahead', 'week_review', 'cycle_day_earlier', 'history_search'].includes(widgetId)) {
+      if (['week_ahead', 'week_review', 'cycle_day_earlier', 'cycle_compare', 'history_search'].includes(widgetId)) {
         if (discreetMode || !stateObj) return '';
-        body = { week_ahead: '_renderWeekAhead', week_review: '_renderWeekReview', cycle_day_earlier: '_renderCycleDayEarlier', history_search: '_renderHistorySearch' }[widgetId];
+        body = { week_ahead: '_renderWeekAhead', week_review: '_renderWeekReview', cycle_day_earlier: '_renderCycleDayEarlier', cycle_compare: '_renderCycleCompare', history_search: '_renderHistorySearch' }[widgetId];
         body = this[body](stateObj);
         if (!body) return '';
       }
@@ -9042,6 +9158,15 @@
           .cde-row { display: grid; gap: 4px; }
           .cde-when, .cde-none { font-size: .8rem; color: var(--secondary-text-color); }
           .wr-strip { display: flex; gap: 6px; }
+          .mc-tip { position: fixed; z-index: 30; max-width: 180px; padding: 4px 8px; border-radius: 8px; background: var(--primary-text-color, #1f2937); color: var(--card-background-color, #fff); font-size: .75rem; line-height: 1.3; pointer-events: none; text-align: center; }
+          [data-tip] { cursor: default; }
+          .cc-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-left: 28%; }
+          .cc-pick select { min-width: 0; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .82rem; }
+          .cc-table { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: .85rem; table-layout: fixed; }
+          .cc-table th { width: 28%; text-align: left; font-weight: 400; color: var(--secondary-text-color); }
+          .cc-table th, .cc-table td { padding: 5px 6px 5px 0; border-top: 1px solid var(--divider-color, #e5e7eb); vertical-align: top; overflow-wrap: anywhere; }
+          .cc-table td { padding-left: 6px; font-weight: 600; }
+          .wr-share { align-self: flex-start; margin-top: 8px; padding: 4px 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: .8rem; }
           .wr-day { flex: 1; text-align: center; padding: 5px 0; border-radius: 8px; background: var(--mc-sand); font-size: .75rem; color: var(--secondary-text-color); }
           .wr-day.on { background: var(--mc-accent-solid); color: #fff; font-weight: 600; }
           .wr-list li { display: flex; justify-content: space-between; gap: 12px; font-size: .88rem; }

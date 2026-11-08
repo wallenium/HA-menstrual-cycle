@@ -3524,6 +3524,8 @@ def compute_contraception_status(
         pill_last_run_days: int — length of the most recent run of consecutive
             "pill" days, even if it ended days ago (used to recognise the pack break).
         pill_last_taken: str | None — most recent date with a logged "pill" entry.
+        pill_recent_days: list[str] — every date of the last 28 days with a logged "pill" entry (for the blister,
+            so a forgotten pill logged afterwards shows up as taken).
         renewal_since: str | None — start of the current renewal period: method_since, or the date of a confirmed
             renewal (`renewed`, {"method", "date"}) of the same method when that is newer.
         rhythm: dict | None — next patch/ring step, see contraception_rhythm.
@@ -3538,6 +3540,7 @@ def compute_contraception_status(
         "pill_streak_days": 0,
         "pill_last_run_days": 0,
         "pill_last_taken": None,
+        "pill_recent_days": [],
         "renewal_since": None,
         "rhythm": None,
     }
@@ -3608,6 +3611,9 @@ def compute_contraception_status(
         "pill_streak_days": pill_run if still_running else 0,
         "pill_last_run_days": pill_run,
         "pill_last_taken": pill_last_taken,
+        "pill_recent_days": sorted(
+            day for day in pill_dates if 0 <= (today - date.fromisoformat(day)).days < PILL_PACK_DAYS
+        ),
         "current_method": current_method,
         "method_since": method_since,
         "is_hormonal": is_hormonal,
@@ -3666,7 +3672,9 @@ def pill_pack_view(
     """Where today sits in a 28-day pill blister, from the logged intakes (None unless the current method is the pill).
 
     Keys: active (pill cells), pause (pause cells), taken (1-based cells with a pill), position (today's cell, 1-28),
-    in_pause (today is a pause day), today_taken, new_pack (no pill logged yet, or the last pack ended long ago).
+    in_pause (today is a pause day), today_taken, new_pack (no pill logged yet, or the last pack ended long ago),
+    editable (cells whose pill may still be logged afterwards: past pill cells that are not taken. Without a pack
+    start date only the first cell after the logged run, because logging a later one would move the guessed start).
     The pack is assumed to have started with the last unbroken run of intakes, so a profile that started logging
     mid-pack sees a shifted blister, unless `pack_start` (first day of any pack, ISO date) is given: today's cell is then
     (days since that date) mod 28, so later packs are assumed to follow without a gap, and the cells that count as taken
@@ -3678,7 +3686,7 @@ def pill_pack_view(
     active = PILL_PACK_DAYS - pause
     view: dict[str, Any] = {
         "active": active, "pause": pause, "taken": [], "position": 1,
-        "in_pause": False, "today_taken": False, "new_pack": True,
+        "in_pause": False, "today_taken": False, "new_pack": True, "editable": [],
     }
     last = status.get("pill_last_taken")
     run = int(status.get("pill_last_run_days") or 0)
@@ -3690,10 +3698,15 @@ def pill_pack_view(
         offset = (today - start).days % PILL_PACK_DAYS
         position = offset + 1
         view.update(position=position, in_pause=position > active, new_pack=False)
-        if last and run >= 1:
+        recent = status.get("pill_recent_days")
+        if recent is not None:  # every logged day inside the pack, also a forgotten one logged later
+            taken = [c for c in range(1, position + 1) if (today - timedelta(days=position - c)).isoformat() in recent]
+            view.update(taken=taken, today_taken=position in taken)
+        elif last and run >= 1:
             last_cell = (date.fromisoformat(last) - (today - timedelta(days=offset))).days + 1
             if 1 <= last_cell <= position:
                 view.update(taken=list(range(max(1, last_cell - run + 1), last_cell + 1)), today_taken=last_cell == position)
+        view["editable"] = [c for c in range(1, min(position, active + 1)) if c not in view["taken"]]
         return view
     if not last or run < 1:
         return view
@@ -3709,6 +3722,9 @@ def pill_pack_view(
         today_taken=gap == 0,
         new_pack=False,
     )
+    first_missed = last_cell + 1  # logging a day that touches the run keeps the guessed pack start where it is
+    if first_missed < position and first_missed <= active:
+        view["editable"] = [first_missed]
     return view
 
 

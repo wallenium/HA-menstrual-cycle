@@ -677,6 +677,69 @@ def round7_check(page, hass, shots=None):
     return problems
 
 
+def round8_check(page, hass, shots=None):
+    """Real browser: compare-cycles card, share button of the week review, one tooltip for the charts, pain bars in the calendar."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    page.evaluate("window.scrollTo(0, 0)")
+    # compare cycles: two selects and the table; choosing another cycle redraws
+    selects = page.locator(root + "css=select[data-action=cc-a]")
+    if selects.count() and page.locator(root + "css=.cc-table").count():
+        first = page.evaluate("document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot.querySelector('select[data-action=cc-a]').value")
+        options = page.evaluate("[...document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot.querySelectorAll('select[data-action=cc-a] option')].map((o) => o.value)")
+        other = next((o for o in options if o != first), None)
+        if other:
+            selects.first.select_option(other)
+            page.wait_for_timeout(200)
+            now = page.evaluate("document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot.querySelector('select[data-action=cc-a]').value")
+            if now != other:
+                problems.append("round8: choosing another cycle did not stick")
+        card = page.locator(root + "css=.cc-table")
+        card.first.scroll_into_view_if_needed()
+        if shots:
+            page.screenshot(path=str(Path(shots) / "round8_compare.png"))
+    else:
+        problems.append("round8: no compare-cycles card with a table")
+    # week review: the share button hands the text to the browser's share sheet
+    button = page.locator(root + "css=[data-action=week-share]")
+    if button.count():
+        page.evaluate("window.__shared = null; navigator.share = async (d) => { window.__shared = d; }")
+        button.first.click()
+        page.wait_for_timeout(200)
+        text = page.evaluate("window.__shared && window.__shared.text")
+        if not text or "\n" not in text:
+            problems.append(f"round8: week review share gave {text!r}")
+    # one tooltip: hovering a bar of the cycle length chart
+    bar = page.locator(root + "css=.cycle-history-wrap rect[data-tip]")
+    if bar.count():
+        bar.first.scroll_into_view_if_needed()
+        bar.first.hover()
+        page.wait_for_timeout(150)
+        shown = page.evaluate("(() => { const t = document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot.querySelector('.mc-tip'); if (!t) return null; const r = t.getBoundingClientRect(); return {text: t.textContent, inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0}; })()")
+        if not shown or not shown["text"] or not shown["inside"]:
+            problems.append(f"round8: tooltip on a chart bar: {shown}")
+        elif shots:
+            page.screenshot(path=str(Path(shots) / "round8_tooltip.png"))
+        page.mouse.move(0, 0)
+        page.wait_for_timeout(100)
+        if page.locator(root + "css=.mc-tip").count():
+            problems.append("round8: tooltip stays after the mouse left")
+    else:
+        problems.append("round8: no chart bar with a tooltip")
+    # calendar: a logged pain strength shows as a bar in the month grid
+    bars = page.evaluate_handle("""([h, entity]) => { const el = document.createElement('menstruation-calendar-card');
+        el.setConfig({entity, entities: [entity], type: 'custom:menstruation-calendar-card'});
+        const d = new Date(); const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const hh = JSON.parse(JSON.stringify(h)); hh.states[entity].attributes.symptom_history = [{date: iso, pain: ['cramps'], pain_intensity: 8}];
+        document.getElementById('root').appendChild(el); el.hass = hh; return el; }""", [hass, ENTITY])
+    page.wait_for_timeout(400)
+    count = bars.evaluate("(el) => el.shadowRoot.querySelectorAll('.pain-bar').length")
+    if count < 1:
+        problems.append("round8: no pain bar in the calendar although a strength is logged")
+    bars.evaluate("(el) => el.remove()")
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -723,6 +786,7 @@ def run(fixture_dir, shots=None):
                     problems += edit_mode_check(page, shots)
                     problems += ui_check(page)
                     problems += round7_check(page, hass, shots)
+                    problems += round8_check(page, hass, shots)
                 else:
                     skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
                     if skip.count():

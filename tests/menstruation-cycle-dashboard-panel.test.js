@@ -1465,13 +1465,40 @@ const makeHass = (stateObj) => ({
   const trendPanel = await freshPanel();
   const trendHtml = (history) => trendPanel._renderPainMoodTrend(painState({ symptom_history: history }));
   const withStrength = trendHtml([{ date: dayAt(-3), pain_intensity: 6 }, { date: dayAt(-2), pain: ['cramps'] }, { date: dayAt(-1), pain_intensity: 2 }]);
-  assert.ok(withStrength.includes('<title>6/10</title>') && withStrength.includes('<title>2/10</title>'), 'bars carry the strength');
+  assert.ok(withStrength.includes('· 6/10"') && withStrength.includes('· 2/10"'), 'bars carry the strength');
   assert.ok(withStrength.includes('Pain strength'), 'legend names the strength');
   assert.ok(withStrength.includes('dashboard_pain_unrated'), 'a day with pain types but no strength gets a small marker');
-  const heightOf = (html, title) => parseFloat(new RegExp(`height="([\\d.]+)"[^>]*><title>${title}</title>`).exec(html)[1]);
+  const heightOf = (html, title) => parseFloat(new RegExp(`height="([\\d.]+)"[^>]*· ${title}"`).exec(html)[1]);
   assert.ok(heightOf(withStrength, '6/10') > heightOf(withStrength, '2/10'), 'stronger pain, taller bar');
   const typesOnly = trendHtml([{ date: dayAt(-3), pain: ['cramps', 'headache'] }, { date: dayAt(-2), pain: ['cramps'] }]);
   assert.ok(!typesOnly.includes('/10') && !typesOnly.includes('dashboard_pain_unrated') && typesOnly.includes('Number of pain types'), 'without any strength: the number of pain types as before');
+
+  // ---- one tooltip for all charts ----
+  const tipPanel = await freshPanel();
+  const tipRoot = { children: [], querySelector(sel) { return sel === '.mc-tip' ? this.children[0] || null : null; }, appendChild(el) { this.children = [el]; } };
+  {
+    const makeTip = () => { const el = { className: '', style: {}, attrs: {}, textContent: '', setAttribute(k, v) { this.attrs[k] = v; }, remove() { tipRoot.children = []; } }; return el; };
+    global.document.createElement = (tag) => (tag === 'div' ? makeTip() : null);
+    tipPanel.shadowRoot.querySelector = tipRoot.querySelector.bind(tipRoot);
+    tipPanel.shadowRoot.appendChild = tipRoot.appendChild.bind(tipRoot);
+    global.window.innerWidth = 400;
+    const bar = (top, left) => { const el = { closest: () => el, dataset: { tip: 'Nov 1, 2026 · 6/10' }, getBoundingClientRect: () => ({ top, bottom: top + 10, left, width: 6 }) }; return el; };
+    tipPanel._handleTip({ type: 'pointerover', target: bar(200, 100) });
+    assert.strictEqual(tipRoot.children[0].textContent, 'Nov 1, 2026 · 6/10', 'hovering shows the text');
+    assert.strictEqual(tipRoot.children[0].style.top, '192px', 'above the point');
+    tipPanel._handleTip({ type: 'pointerover', target: bar(10, 3) });
+    assert.strictEqual(tipRoot.children[0].style.top, '28px', 'below it when there is no room above');
+    assert.strictEqual(tipRoot.children[0].style.left, '90px', 'kept inside the screen');
+    tipPanel._handleTip({ type: 'pointerout', pointerType: 'touch', target: bar(10, 3) });
+    assert.strictEqual(tipRoot.children.length, 1, 'a tap keeps the tip when the finger lifts');
+    tipPanel._handleTip({ type: 'pointerdown', target: { closest: () => null } });
+    assert.strictEqual(tipRoot.children.length, 0, 'tapping elsewhere hides it');
+    tipPanel._handleTip({ type: 'pointerover', target: bar(200, 100) });
+    tipPanel._handleTip({ type: 'pointerout', pointerType: 'mouse', target: bar(200, 100) });
+    assert.strictEqual(tipRoot.children.length, 0, 'the mouse leaving hides it');
+  }
+  assert.ok(tipPanel._renderCycleHistoryGraph(painState({ grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-37), dayAt(-9)] })).includes(' data-tip="'), 'cycle length bars have a tip');
+  assert.ok(!/<title>[^<]*<\/title><\/rect>/.test(withStrength), 'no second native tooltip next to ours');
 
   // ---- Next 7 days ----
   const weekPanel = await freshPanel();
@@ -1668,6 +1695,65 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.week_review, true);
   assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.week_review, false);
   assert.ok(cdPanel._renderJumpNav(['week_review', 'cycle_history', 'calendar_card', 'inventory_card']).includes('data-group="overview"'));
+  // compare two cycles
+  const ccCycles = cdPanel._compareCycles(cdState());
+  assert.deepStrictEqual(ccCycles.map((c) => [c.start, c.length, c.running]), [[dayAt(-9), 10, true], [dayAt(-37), 28, false], [dayAt(-65), 28, false], [dayAt(-93), 28, false]], 'newest first, the running one counts up to today');
+  cdPanel._compare = { a: '', b: '' };
+  const ccHtml = cdPanel._renderCycleCompare(cdState());
+  assert.ok(ccHtml.includes('data-action="cc-a"') && ccHtml.includes('data-action="cc-b"'));
+  assert.ok(ccHtml.includes('dashboard_cc_length_running') && ccHtml.includes('<td>28</td>'), 'default: running cycle against the one before');
+  assert.strictEqual((ccHtml.match(/<option /g) || []).length, 8, 'both selects list all four cycles');
+  assert.strictEqual((ccHtml.match(/ selected>/g) || []).length, 2);
+  assert.ok(ccHtml.includes(`value="${dayAt(-9)}" selected`) && ccHtml.includes(`value="${dayAt(-37)}" selected`));
+  cdPanel._compare = { a: dayAt(-93), b: dayAt(-65) };
+  const ccPicked = cdPanel._renderCycleCompare(cdState());
+  assert.ok(ccPicked.includes(`value="${dayAt(-93)}" selected`) && ccPicked.includes(`value="${dayAt(-65)}" selected`) && !ccPicked.includes('dashboard_cc_length_running'), 'own choice is kept');
+  cdPanel._compare = { a: dayAt(-37), b: '' };
+  assert.ok(cdPanel._renderCycleCompare(cdState()).includes(`value="${dayAt(-9)}" selected`), 'the second side avoids the cycle that is already picked on the first');
+  cdPanel._compare = { a: '1999-01-01', b: dayAt(-9) };
+  assert.ok(cdPanel._renderCycleCompare(cdState()).includes(`value="${dayAt(-9)}" selected`), 'a start date that is gone falls back to the default');
+  const ccPick = (action, value) => cdPanel._handleChange({ target: Object.assign(new ClickTarget({ action }), { tagName: 'SELECT', value }) });
+  ccPick('cc-a', dayAt(-65));
+  ccPick('cc-b', dayAt(-93));
+  assert.deepStrictEqual(cdPanel._compare, { a: dayAt(-65), b: dayAt(-93) }, 'the two selects set their own side');
+  cdPanel._compare = { a: '', b: '' };
+  const ccEarlier = cdPanel._renderCycleCompare(cdState({ symptom_history: [{ date: dayAt(-30), pain: ['cramps'], pain_intensity: 4 }, { date: dayAt(-31), pain: ['cramps'], pain_intensity: 6 }, { date: dayAt(-3), pain: ['headache'] }] }));
+  assert.ok(ccEarlier.includes('dashboard_wr_pain_value') && ccEarlier.includes('Pain: Cramps (2×)'), 'pain and most frequent values of the cycle that was picked');
+  assert.ok(ccEarlier.includes('dashboard_cc_logged_value') && ccEarlier.includes('–'), 'a cycle without strength shows a dash');
+  assert.ok(cdPanel._renderCycleCompare(cdState({ grouped_starts: [dayAt(-9)] })).includes('Not enough data yet.'), 'one cycle is nothing to compare');
+  assert.strictEqual(cdPanel._renderCycleCompare(cdState({}, 'pregnant')), '');
+  assert.strictEqual(cdPanel._renderWidget('cycle_compare', cdState(), true), '', 'nothing in discreet mode');
+  assert.ok(cdPanel._renderWidget('cycle_compare', cdState(), false).includes('cc-table'));
+  assert.ok(/class="card[^"]*sensitive/.test(cdPanel._renderWidget('cycle_compare', cdState(), false)), 'blurred with the other personal cards');
+  cdPanel._prefs.categoryVisibility = { ...cdPanel._prefs.categoryVisibility, pain: false };
+  assert.ok(!cdPanel._renderCycleCompare(cdState({ symptom_history: [{ date: dayAt(-30), pain_intensity: 4 }] })).includes('dashboard_wr_pain_value'), 'a hidden pain category shows no strength');
+  cdPanel._prefs.categoryVisibility.pain = true;
+  ['pregnancy', 'menarche', 'menopause', 'postpartum'].forEach((mode) => assert.ok(!cdPanel._widgetIdsForMode(mode, ['cycle_compare', 'kpi_strip']).includes('cycle_compare'), `no comparison in ${mode}`));
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.cycle_compare, true);
+  assert.strictEqual(cdPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.cycle_compare, false);
+  assert.ok(cdPanel._renderJumpNav(['cycle_compare', 'week_ahead', 'calendar_card', 'inventory_card']).includes('data-group="history"'));
+  // sharing: share sheet where there is one, clipboard otherwise, a cancelled sheet is no error
+  assert.ok(wrHtml.includes('data-action="week-share"') && !cdPanel._renderWeekReview(cdState({ symptom_history: [] })).includes('week-share'), 'no button for an empty week');
+  const realNavigator = global.navigator;
+  const setNavigator = (value) => Object.defineProperty(global, 'navigator', { value, configurable: true });
+  let shared = null;
+  setNavigator({ language: 'en', share: async (data) => { shared = data; } });
+  await cdPanel._shareWeekReview();
+  assert.ok(shared.text.startsWith('dashboard_widget_week_review\ndashboard_wr_days: '), 'title, then one line per row');
+  assert.strictEqual(shared.text.split('\n').length, 4, 'title, days, strength, most often');
+  let copied = null;
+  setNavigator({ language: 'en', clipboard: { writeText: async (text) => { copied = text; } } });
+  await cdPanel._shareWeekReview();
+  assert.strictEqual(copied, shared.text, 'same text on the clipboard');
+  assert.strictEqual(cdPanel._message, 'dashboard_wr_copied');
+  cdPanel._message = '';
+  setNavigator({ language: 'en', share: async () => { const err = new Error('x'); err.name = 'AbortError'; throw err; } });
+  await cdPanel._shareWeekReview();
+  assert.strictEqual(cdPanel._message, '', 'cancelling the share sheet says nothing');
+  setNavigator({ language: 'en', clipboard: { writeText: async () => { throw new Error('denied'); } } });
+  await cdPanel._shareWeekReview();
+  assert.strictEqual(cdPanel._message, 'dashboard_wr_copy_failed');
+  setNavigator(realNavigator);
 
   // ---- View templates and the gallery of hidden cards ----
   const tp = await freshPanel();
