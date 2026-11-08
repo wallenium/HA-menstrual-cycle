@@ -7754,7 +7754,7 @@
     }
 
     // Temperature or pain strength of two cycles over the cycle day.
-    _renderCompareChart(stateObj, cycleA, cycleB, metric, dateLabel) {
+    _renderCompareChart(stateObj, cycleA, cycleB, metric, dateLabel, allCycles = []) {
       const history = this._getFullSymptomHistory(stateObj);
       const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
       const unit = this._temperatureUnit(stateObj?.attributes || {});
@@ -7766,14 +7766,28 @@
         const value = entry?.basal_temp ?? entry?.symptom_data?.basal_temp;
         return value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
       };
-      const series = [cycleA, cycleB].map((cycle) => Array.from({ length: cycle.length }, (_, i) => {
+      const pointsOf = (cycle) => Array.from({ length: cycle.length }, (_, i) => {
         const date = addDaysIso(cycle.start, i);
         return { day: i + 1, date, value: read(byDate.get(date)) };
-      }).filter((point) => point.value !== null));
+      }).filter((point) => point.value !== null);
+      const series = [cycleA, cycleB].map(pointsOf);
+      // mean of all cycles per cycle day (only days with a value in at least two cycles; pointless with just two cycles)
+      const byDay = new Map();
+      if (allCycles.length >= 3) allCycles.forEach((cycle) => pointsOf(cycle).forEach((point) => byDay.set(point.day, [...(byDay.get(point.day) || []), point.value])));
+      const average = [...byDay].filter(([, list]) => list.length >= 2).sort((a, b) => a[0] - b[0]).map(([day, list]) => ({ day, value: list.reduce((x, y) => x + y, 0) / list.length }));
+      // first positive LH test of each shown cycle
+      const lhDays = [cycleA, cycleB].map((cycle) => {
+        for (let i = 0; i < cycle.length; i += 1) {
+          const date = addDaysIso(cycle.start, i);
+          const tests = byDate.get(date)?.test;
+          if (Array.isArray(tests) && tests.includes('positive_ovulation')) return { day: i + 1, date };
+        }
+        return null;
+      });
       if (series.flat().length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_cc_chart_none'))}</div>`;
       const W = 560; const H = 180; const padL = 38; const padR = 10; const padT = 10; const padB = 24;
       const maxDay = Math.max(cycleA.length, cycleB.length, 2);
-      const values = series.flat().map((point) => point.value);
+      const values = [...series.flat(), ...(average.length >= 2 ? average : [])].map((point) => point.value);
       const lo = metric === 'pain' ? 0 : Math.min(...values) - 0.1;
       const hi = metric === 'pain' ? 10 : Math.max(...values) + 0.1;
       const toX = (day) => padL + ((day - 1) / (maxDay - 1)) * (W - padL - padR);
@@ -7793,9 +7807,16 @@
         }).join('');
         return `<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="2"${dashes[i]} stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
       }).join('');
-      const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('');
+      const avgLine = average.length >= 2 ? `<path d="${average.map((point, j) => `${j === 0 ? 'M' : 'L'}${Math.round(toX(point.day))},${Math.round(toY(point.value))}`).join(' ')}" fill="none" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3" stroke-linecap="round"/>` : '';
+      const lhMarks = lhDays.map((lh, i) => {
+        if (!lh) return '';
+        const x = Math.round(toX(lh.day));
+        return `<line x1="${x}" x2="${x}" y1="${padT}" y2="${H - padB}" stroke="${colors[i]}" stroke-width="1" opacity="0.55"/><text x="${x + 3}" y="${padT + 8}" font-size="9" font-family="IBM Plex Mono, monospace" fill="${colors[i]}">LH</text><rect x="${x - 6}" y="${padT}" width="12" height="${H - padT - padB}" fill="transparent"${this._tip(lh.date, `${this._t('dashboard_cc_day').replace('{n}', String(lh.day))} · ${this._t('dashboard_cc_lh')}`)}/>`;
+      }).join('');
+      const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('')
+        + (avgLine ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${escapeHtml(this._t('dashboard_cc_average'))}</span>` : '');
       const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
-      return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${lines}</svg><div class="cc-legend">${legend}</div></div>`;
+      return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}</svg><div class="cc-legend">${legend}</div></div>`;
     }
 
     _renderCycleCompare(stateObj) {
@@ -7832,7 +7853,7 @@
       const metricSelect = `<select data-action="cc-metric" aria-label="${escapeHtml(this._t('dashboard_cc_curve'))}">${metrics.map((key) => `<option value="${key}"${key === metric ? ' selected' : ''}>${escapeHtml(this._t(key === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp'))}</option>`).join('')}</select>`;
       return `<div class="cc-pick">${select('a', a, this._t('dashboard_cc_first'))}${select('b', b, this._t('dashboard_cc_second'))}</div>
         <table class="cc-table"><tbody>${rows}</tbody></table>
-        <div class="cc-metric">${metricSelect}</div>${this._renderCompareChart(stateObj, a, b, metric, date)}`;
+        <div class="cc-metric">${metricSelect}</div>${this._renderCompareChart(stateObj, a, b, metric, date, cycles)}`;
     }
 
     _historySearchRows(stateObj) {

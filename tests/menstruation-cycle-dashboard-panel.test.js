@@ -1751,6 +1751,25 @@ const makeHass = (stateObj) => ({
   assert.ok(ownPain.includes(`${tipDay(dayAt(-9))} · dashboard_cc_day · 3/10`), 'the tip names the date of the dot');
   assert.ok(!ownPain.includes('NaN') && (ownPain.match(/r="2\.6"/g) || []).length === 2, 'a value that is not a number is left out');
   assert.ok(ownPain.includes('>0</text>') && ownPain.includes('>10</text>'), 'the pain axis always runs from 0 to 10');
+  // mean of all cycles and the first positive LH test
+  const tempOn = (offset, day, value) => ({ date: dayAt(offset + day - 1), basal_temp: value });
+  const meanHistory = [tempOn(-9, 3, 36.0), tempOn(-9, 4, 36.0), tempOn(-9, 5, 36.0), tempOn(-65, 3, 37.0), tempOn(-65, 4, 37.0), tempOn(-37, 3, 36.5), tempOn(-37, 4, 36.5), tempOn(-37, 2, 36.0), tempOn(-65, 2, 37.0)];
+  cdPanel._compare = { a: dayAt(-9), b: dayAt(-65), metric: 'temp' };
+  const meanHtml = cdPanel._renderCycleCompare(cdState({ symptom_history: meanHistory }));
+  const meanPath = (meanHtml.match(/<path d="([^"]*)" fill="none" stroke="var\(--secondary-text-color,#9ca3af\)"/) || [])[1] || '';
+  assert.strictEqual((meanPath.match(/[ML]/g) || []).length, 3, 'only days with a value in two cycles: day 5 is left out');
+  const meanXs = [...meanPath.matchAll(/[ML](\d+),/g)].map((m) => Number(m[1]));
+  assert.deepStrictEqual(meanXs, [...meanXs].sort((x, y) => x - y), 'drawn from the first day to the last');
+  assert.ok((meanPath.match(/,83/g) || []).length === 3, `the mean of 36.0, 36.5 and 37.0 sits in the middle: ${meanPath}`);
+  assert.ok(meanHtml.includes('dashboard_cc_average'), 'the legend names the mean');
+  assert.ok(!cdPanel._renderCycleCompare(cdState({ symptom_history: [tempOn(-9, 3, 36.0), tempOn(-65, 3, 37.0), tempOn(-37, 3, 36.5)] })).includes('dashboard_cc_average'), 'one day is no line');
+  assert.ok(!cdPanel._renderCycleCompare(cdState({ grouped_starts: [dayAt(-37), dayAt(-9)], symptom_history: meanHistory })).includes('dashboard_cc_average'), 'two cycles: the mean would only repeat them');
+  const lhHistory = [...meanHistory, { date: dayAt(-4), test: ['positive_ovulation'] }, { date: dayAt(-2), test: ['positive_ovulation'] }, { date: dayAt(-60), test: ['negative_ovulation'] }];
+  const lhHtml = cdPanel._renderCycleCompare(cdState({ symptom_history: lhHistory }));
+  assert.strictEqual((lhHtml.match(/>LH<\/text>/g) || []).length, 1, 'one mark: the first positive test of the cycle that has one; a negative test is no mark');
+  assert.ok(lhHtml.includes(`${tipDay(dayAt(-4))} · dashboard_cc_day · dashboard_cc_lh`), 'the tip names the day of the first positive test');
+  assert.ok(lhHtml.includes('<line x1="133"'), 'cycle day 6 of 28 on the axis');
+  cdPanel._compare = { a: dayAt(-9), b: dayAt(-65), metric: 'pain' };
   cdPanel._prefs.categoryVisibility = { ...cdPanel._prefs.categoryVisibility, pain: false };
   const noPain = cdPanel._renderCycleCompare(cdState());
   assert.ok(!noPain.includes('value="pain"') && noPain.includes('36.7 °C'), 'a hidden pain category offers no pain curve, even if it was chosen before');

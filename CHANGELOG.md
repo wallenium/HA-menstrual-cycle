@@ -3,6 +3,8 @@
 ## 1.10.0
 
 ### Added
+- **Pill card, one button for all open days:** "Log all n open days" next to "Log several days" (shown from two open days on): one question, then one entry per open day.
+- **Dashboard panel, card "Compare cycles", mean and LH:** the curve gets a dotted line with the mean of all cycles per cycle day (from three cycles on, only days with a value in at least two cycles) and a vertical "LH" mark in the cycle that has a positive LH test.
 - **Pill card, several forgotten days at once:** "Log several days" turns the open days into toggles; one question, then one entry per picked day (oldest first). Only the days the card offers for a single tap can be picked.
 - **Calendar card, copy a day:** the day dialog has "Like yesterday" and, when an earlier cycle exists, "Like this cycle day last cycle". The entries are filled in for checking and only saved with "Save"; a measured temperature is never copied.
 - **Dashboard panel, card "Compare cycles", curve:** temperature or pain strength of the two picked cycles over the cycle day (second cycle dashed, values in the tooltip). The choice of cycles and curve is remembered per profile in the browser.

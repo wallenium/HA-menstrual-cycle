@@ -23,6 +23,7 @@ const MC_PILL_FALLBACK_EN = {
   pill_card_forgot_hint: 'Forgot a pill? Tap its day to log it.',
   pill_card_confirm_past: 'Log the pill for {date}?',
   pill_card_multi: 'Log several days',
+  pill_card_multi_all: 'Log all {n} open days',
   pill_card_multi_hint: 'Tap the days you took the pill.',
   pill_card_multi_save: 'Log {n} pills',
   pill_card_multi_cancel: 'Cancel',
@@ -165,7 +166,7 @@ class MenstruationPillCard extends HTMLElement {
       const count = this._picked ? this._picked.size : 0;
       const multi = this._picked
         ? `<div class="multi-row"><span class="multi-hint">${this._esc(this._t('pill_card_multi_hint'))}</span><button type="button" class="multi" data-action="multi-save"${count && !this._busy ? '' : ' disabled'}>${this._esc(this._t('pill_card_multi_save', { n: count }))}</button><button type="button" class="multi ghost" data-action="multi-cancel">${this._esc(this._t('pill_card_multi_cancel'))}</button></div>`
-        : (Array.isArray(pack.editable) && pack.editable.length >= 2 ? `<div class="multi-row"><button type="button" class="multi ghost" data-action="multi"${this._busy ? ' disabled' : ''}>${this._esc(this._t('pill_card_multi'))}</button></div>` : '');
+        : (Array.isArray(pack.editable) && pack.editable.length >= 2 ? `<div class="multi-row"><button type="button" class="multi ghost" data-action="multi"${this._busy ? ' disabled' : ''}>${this._esc(this._t('pill_card_multi'))}</button><button type="button" class="multi ghost" data-action="multi-all"${this._busy ? ' disabled' : ''}>${this._esc(this._t('pill_card_multi_all', { n: pack.editable.length }))}</button></div>` : '');
       const error = this._error ? `<div class="error" role="alert">${this._esc(this._t('pill_card_save_error'))}</div>` : '';
       body = `<div class="blister"${this._busy ? ' aria-busy="true"' : ''}>${cells.join('')}</div>${legend}<div class="status">${this._esc(status)}</div>${multi}${error}`;
     }
@@ -238,9 +239,9 @@ class MenstruationPillCard extends HTMLElement {
       this._render();
       return;
     }
-    if (action === 'multi-save') {
+    if (action === 'multi-save' || action === 'multi-all') {
       const open = new Set(pack?.editable || []);
-      const days = [...(this._picked || [])].filter((day) => open.has(day)).sort((a, b) => a - b);
+      const days = [...(action === 'multi-all' ? open : (this._picked || []))].filter((day) => open.has(day)).sort((a, b) => a - b);
       if (!days.length) return;
       const dates = days.map((day) => this._cellDate(pack, day));
       if (!window.confirm(this._t('pill_card_confirm_multi', { n: days.length, from: this._dateLabel(dates[0]), to: this._dateLabel(dates[dates.length - 1]) }))) return;

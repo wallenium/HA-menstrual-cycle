@@ -744,7 +744,6 @@ def round9_check(page, hass, shots=None):
     """Real browser: several pill days at once, copy buttons in the calendar day dialog, curve in the compare card."""
     problems = []
     root = "menstruation-cycle-dashboard-panel >> "
-    shadow = "document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot"
     # compare cycles: curve area and the remembered metric choice
     if page.locator(root + "css=select[data-action=cc-metric]").count():
         page.locator(root + "css=select[data-action=cc-metric]").first.select_option("temp")
@@ -763,13 +762,14 @@ def round9_check(page, hass, shots=None):
         document.getElementById('root').appendChild(el); el.hass = hh; return el; }""", [hass, ENTITY])
     page.wait_for_timeout(300)
     state = handle.evaluate("""(el) => { const r = el.shadowRoot; const click = (sel) => r.querySelector(sel).click();
+        const all = r.querySelector('[data-action=multi-all]') ? r.querySelector('[data-action=multi-all]').textContent.trim() : '';
         click('[data-action=multi]');
         const cells = r.querySelectorAll('[data-action=pick]').length;
         const off = r.querySelector('[data-action=multi-save]').disabled;
         r.querySelector('[data-action=pick][data-day="3"]').click();
         r.querySelector('[data-action=pick][data-day="2"]').click();
-        return {cells, off, save: r.querySelector('[data-action=multi-save]').textContent.trim(), disabled: r.querySelector('[data-action=multi-save]').disabled}; }""")
-    if state["cells"] != 3 or not state["off"] or state["disabled"] or "2" not in state["save"]:
+        return {all, cells, off, save: r.querySelector('[data-action=multi-save]').textContent.trim(), disabled: r.querySelector('[data-action=multi-save]').disabled}; }""")
+    if "3" not in state["all"] or state["cells"] != 3 or not state["off"] or state["disabled"] or "2" not in state["save"]:
         problems.append(f"round9: pill select mode {state}")
     elif shots:
         handle.evaluate("(el) => el.scrollIntoView()")
