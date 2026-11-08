@@ -93,6 +93,7 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- **Card picker, card listed twice:** a card file that Home Assistant loads twice (for example through an old extra dashboard resource) put its card into the "Add card" dialog twice. Every card removes an earlier entry of its own before it registers (`tests/card-picker-dedupe.test.js`). Cards that have both a preview and an entity suggestion still appear in both places of the dialog; that is Home Assistant's behaviour.
 - **Statistics card, badge titles:** the progress badges (symptom variety, confirmed ovulation, insights unlocked, temperature tracker, 12 cycles logged, doctor report, personalised profile, first sign, signs explored, wellness) showed raw keys; they now have titles, descriptions and icons (`tests/statistics-badge-titles.test.js`).
 - **Dashboard panel, card "Cycle phase overview":** the labels (uterine lining, estrogen, progesterone, LH surge, note on the curve) were hard-coded German; they are translated in all five languages now (FR/ES/SV self-translated, please proofread; `tests/phase-overview-i18n.test.js`).
 - **Heatmap card:** the default title is English ("Cycle Heatmap") instead of German; a title set in the card configuration is unchanged.

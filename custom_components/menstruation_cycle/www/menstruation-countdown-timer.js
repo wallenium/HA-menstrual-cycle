@@ -3354,7 +3354,8 @@ class MenstruationCountdownTimerEditor extends HTMLElement {
 customElements.define("menstruation-countdown-timer-editor", MenstruationCountdownTimerEditor);
 customElements.define("menstruation-countdown-timer", MenstruationCountdownTimer);
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-countdown-timer');
 window.customCards.push({
   type: "menstruation-countdown-timer",
   name: "Menstruation Countdown Timer",

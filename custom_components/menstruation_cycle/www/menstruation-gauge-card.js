@@ -3112,7 +3112,8 @@ if (!customElements.get('menstruation-gauge-card-editor')) {
   customElements.define('menstruation-gauge-card-editor', MenstruationGaugeCardEditor);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-gauge-card');
 window.customCards.push({
   type: 'menstruation-gauge-card',
   name: 'Menstruation Gauge Card',

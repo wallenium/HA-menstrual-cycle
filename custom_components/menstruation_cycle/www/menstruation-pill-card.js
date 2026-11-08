@@ -356,7 +356,8 @@ if (!customElements.get('menstruation-pill-card')) {
   customElements.define('menstruation-pill-card', MenstruationPillCard);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-pill-card');
 window.customCards.push({
   type: 'menstruation-pill-card',
   name: 'Menstruation Pill Pack',

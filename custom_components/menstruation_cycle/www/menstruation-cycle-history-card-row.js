@@ -653,7 +653,8 @@ if (!customElements.get('menstruation-cycle-history-card-row')) {
   customElements.define('menstruation-cycle-history-card-row', MenstruationCycleHistoryCardRow);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-cycle-history-card-row');
 window.customCards.push({
   type: 'menstruation-cycle-history-card-row',
   name: 'Menstruation Cycle History (Table)',

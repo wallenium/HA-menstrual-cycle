@@ -920,7 +920,8 @@ if (!customElements.get('menstruation-cycle-compact-status-editor')) {
   customElements.define('menstruation-cycle-compact-status-editor', MenstruationCycleCompactStatusEditor);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-cycle-compact-status');
 window.customCards.push({
   type: 'menstruation-cycle-compact-status',
   name: 'Menstruation Cycle Compact Status',

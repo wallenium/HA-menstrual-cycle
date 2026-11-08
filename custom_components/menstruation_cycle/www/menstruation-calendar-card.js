@@ -2313,7 +2313,8 @@ if (!customElements.get('menstruation-calendar-card')) {
   customElements.define('menstruation-calendar-card', MenstruationCalendarCard);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-calendar-card');
 window.customCards.push({
   type: 'menstruation-calendar-card',
   name: 'Menstruation Calendar Card',

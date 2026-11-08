@@ -3306,7 +3306,8 @@ customElements.define('menstruation-statistics-card-editor', MenstruationStatist
 
 customElements.define('menstruation-statistics-card', MenstruationStatisticsCard);
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-statistics-card');
 window.customCards.push({
   type: 'menstruation-statistics-card',
   name: 'Menstruation Statistics Card',

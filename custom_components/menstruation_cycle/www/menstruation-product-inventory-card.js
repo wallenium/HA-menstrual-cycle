@@ -1071,7 +1071,8 @@ if (!customElements.get("menstruation-product-inventory-card")) {
   customElements.define("menstruation-product-inventory-card", MenstruationProductInventoryCard);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-product-inventory-card');
 window.customCards.push({
   type: "menstruation-product-inventory-card",
   name: "Menstruation Product Inventory Card",

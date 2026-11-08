@@ -697,7 +697,8 @@ customElements.define("menstruation-cycle-card", MenstruationCycleCard);
 // `window.customCards` - im "Karte hinzufügen"-Dialog von Lovelace war sie
 // dadurch nicht auffindbar, nur per Hand eingetipptem YAML-Typ nutzbar,
 // anders als alle anderen Karten dieser Integration.
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-cycle-card');
 window.customCards.push({
   type: 'menstruation-cycle-card',
   name: 'Menstruation Cycle Status',

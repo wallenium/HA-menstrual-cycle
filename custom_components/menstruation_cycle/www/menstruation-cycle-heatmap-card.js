@@ -1391,7 +1391,8 @@ if (!customElements.get('menstruation-cycle-heatmap-card')) {
   customElements.define('menstruation-cycle-heatmap-card', MenstruationCycleHeatmapCard);
 }
 
-window.customCards = window.customCards || [];
+// A file loaded twice (old extra resource) must not list the card twice in the "Add card" dialog.
+window.customCards = (window.customCards || []).filter((c) => c.type !== 'menstruation-cycle-heatmap-card');
 window.customCards.push({
   type: 'menstruation-cycle-heatmap-card',
   name: 'Menstruation Cycle Heatmap',
