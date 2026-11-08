@@ -542,7 +542,7 @@
   "dashboard_show_widget_aria": "Show {widget}",
   "dashboard_hidden_widgets": "Hidden widgets",
   "dashboard_hidden_widgets_none": "No hidden widgets.",
-  "dashboard_toggle_widget_aria": "Show or hide the content of {widget}",
+  "dashboard_toggle_widget_aria": "Toggle {widget} widget visibility",
   "dashboard_chart_range": "Chart period",
   "dashboard_range_auto": "Default",
   "dashboard_range_all": "All",
@@ -744,7 +744,6 @@
   "dashboard_empty_state": "All widgets are hidden.",
   "dashboard_empty_state_hint": "Open edit mode to show widgets or reset to defaults.",
   "dashboard_widget_order_label": "Widget order and visibility",
-  "dashboard_toggle_widget_aria": "Toggle {widget} widget visibility",
   "dashboard_move_up_aria": "Move {widget} widget up",
   "dashboard_move_down_aria": "Move {widget} widget down",
   "dashboard_save_aria": "Save dashboard layout",
@@ -1525,5 +1524,10 @@
   "dashboard_welcome_dismiss": "Got it",
   "pill_card_save_error": "Could not log the pill. Please try again.",
   "pill_card_editor_title": "Title (optional)",
-  "pill_card_editor_legend": "Show legend"
+  "pill_card_editor_legend": "Show legend",
+  "dashboard_teen_title_kpi_strip": "At a glance",
+  "dashboard_teen_title_phase_donut": "Your rhythm",
+  "dashboard_teen_title_calendar_card": "My calendar",
+  "dashboard_teen_title_progress_badges": "My stickers",
+  "dashboard_teen_title_support_card": "Good to know"
 }

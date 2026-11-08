@@ -12,6 +12,8 @@ from typing import Any
 
 WALL_CALENDAR_LANGUAGES = ("de", "en", "es", "fr", "sv")
 WALL_CALENDAR_TITLE_MAX = 100
+WALL_CALENDAR_STYLES = ("auto", "standard", "teen")
+TEEN_UNDER_AGE = 16
 
 # Fields of a symptom entry that count for the small dot under a day (not temperature, tests, contraception, sex).
 SYMPTOM_DOT_FIELDS = (
@@ -91,6 +93,55 @@ td.today { outline: 2px solid #222; outline-offset: -2px; font-weight: 700; }
 """
 
 
+_TEEN_CSS = """
+body.teen { font-family: ui-rounded, "Nunito", "Quicksand", system-ui, sans-serif; background: #fff5fa; color: #4a2c44; }
+.teen h1 { font-size: 34px; color: #d6519b; }
+.teen h1::before { content: "\\2728  "; }
+.teen h1::after { content: "  \\2728"; }
+.teen .year { gap: 18px 20px; }
+.teen .month { background: var(--pastel); border: 2px dashed var(--edge); border-radius: 22px; padding: 10px 12px 12px; }
+.teen .month:nth-child(4n+1) { --pastel: #ffe3f1; --edge: #f4a6cf; }
+.teen .month:nth-child(4n+2) { --pastel: #ece4ff; --edge: #c9b3f2; }
+.teen .month:nth-child(4n+3) { --pastel: #dcf7ec; --edge: #8fddbe; }
+.teen .month:nth-child(4n+4) { --pastel: #ffeedd; --edge: #ffc592; }
+.teen .month h2 { font-size: 18px; color: #b0408a; }
+.teen table { border-collapse: separate; border-spacing: 3px; }
+.teen th { color: #a47c9c; }
+.teen td { border: 0; border-radius: 10px; background: rgba(255, 255, 255, .65); }
+.teen td.out { background: transparent; }
+.teen td .dot { background: #b47cff; width: 6px; height: 6px; }
+.teen td.period { background: #ff7eb6; color: #fff; }
+.teen td.period::after { content: "\\2665"; display: block; font-size: 8px; line-height: 6px; }
+.teen td.predicted { background: #fff; box-shadow: inset 0 0 0 2px #ff7eb6; }
+.teen td.fertile { background: #c5f0dc; }
+.teen td.ovulation { background: #4cc38a; }
+.teen td.ovulation::after { content: "\\2605"; display: block; font-size: 8px; line-height: 6px; }
+.teen td.today { outline: 2px solid #b0408a; outline-offset: -2px; }
+.teen .legend span::before { border-radius: 50%; }
+.teen .legend .l-period::before { background: #ff7eb6; border-color: #ff7eb6; }
+.teen .legend .l-predicted::before { background: #fff; border-color: #ff7eb6; }
+.teen .legend .l-fertile::before { background: #c5f0dc; }
+.teen .legend .l-ovulation::before { background: #4cc38a; border-color: #4cc38a; }
+.teen .legend .l-symptom::before { background: #b47cff; }
+.teen .note { color: #a47c9c; }
+"""
+
+# Little sticker in front of each month name in the teen design.
+_TEEN_MONTH_STICKERS = ("\u2744\ufe0f", "\U0001f48c", "\U0001f337", "\U0001f423", "\U0001f33c", "\u2600\ufe0f", "\U0001f366", "\U0001f33b", "\U0001f342", "\U0001f383", "\U0001f341", "\U0001f384")
+
+
+def is_teen(stage: str | None, birth_date: str | None, today: date) -> bool:
+    """The teen design: pre/early menarche, or under 16 years old by the stored birth date."""
+    if stage in ("pre_menarche", "early_menarche"):
+        return True
+    try:
+        born = date.fromisoformat(str(birth_date))
+    except ValueError:
+        return False
+    years = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    return 0 <= years < TEEN_UNDER_AGE
+
+
 def windows_to_days(windows: dict[str, Any] | None, year: int) -> tuple[set[date], set[date], set[date]]:
     """Days of the given year in the projected period windows, fertile windows and ovulation days of project_range_windows()."""
     periods: set[date] = set()
@@ -141,6 +192,7 @@ def generate_wall_calendar_html(
     symptoms: set[date],
     today: date,
     rough_estimate: bool = False,
+    teen: bool = False,
 ) -> str:
     """The year poster as one self-contained HTML page."""
     text = _TEXT.get(str(language or "en").lower()[:2], _TEXT["en"])
@@ -174,7 +226,7 @@ def generate_wall_calendar_html(
             rows.append(f"<tr>{''.join(cells)}</tr>")
         head = "".join(f"<th>{escape(name)}</th>" for name in text["weekdays"])
         months.append(
-            f'<section class="month"><h2>{escape(text["months"][month - 1])}</h2>'
+            f'<section class="month"><h2>{_TEEN_MONTH_STICKERS[month - 1] + " " if teen else ""}{escape(text["months"][month - 1])}</h2>'
             f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></section>"
         )
     legend = "".join(
@@ -188,12 +240,13 @@ def generate_wall_calendar_html(
         # nothing but inline styles may ever run or load here, even if some text were not escaped
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        "<title>{title}</title><style>{css}</style></head><body>"
+        "<title>{title}</title><style>{css}</style></head><body{body}>"
         "<h1>{title}</h1><div class=\"year\">{months}</div><div class=\"legend\">{legend}</div>{notes}</body></html>\n"
     ).format(
         lang=escape(str(language or "en")[:2]),
         title=escape(title),
-        css=_CSS,
+        css=_CSS + (_TEEN_CSS if teen else ""),
+        body=' class="teen"' if teen else "",
         months="".join(months),
         legend=legend,
         notes="".join(f'<p class="note">{escape(note)}</p>' for note in notes),

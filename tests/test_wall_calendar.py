@@ -129,6 +129,36 @@ class WallCalendarDaysTests(unittest.TestCase):
         self.assertEqual(wall.symptom_days(history, 2026), {date(2026, 3, 1), date(2026, 3, 2)})
         self.assertEqual(wall.symptom_days(None, 2026), set())
 
+    def test_teen_design_adds_stickers_and_its_own_style_only_when_asked(self) -> None:
+        plain = _html()
+        self.assertNotIn("<body", plain.replace("<body>", ""), "the plain design has a bare body tag")
+        self.assertNotIn("teen", plain)
+        self.assertNotIn(wall._TEEN_MONTH_STICKERS[0], plain, "no stickers in the plain design")
+        teen = _html(teen=True)
+        self.assertIn('<body class="teen">', teen)
+        self.assertIn(".teen .month", teen)
+        for sticker in wall._TEEN_MONTH_STICKERS:
+            self.assertIn(f"<h2>{sticker} ", teen)
+        self.assertEqual(len(wall._TEEN_MONTH_STICKERS), 12)
+        self.assertEqual(teen.count('<section class="month">'), 12, "same structure, same months")
+        self.assertIn("Content-Security-Policy", teen)
+
+    def test_teen_design_keeps_the_cells(self) -> None:
+        kw = dict(period_days={date(2026, 3, 3)}, symptoms={date(2026, 3, 5)})
+        self.assertEqual(re.findall(r'<td class="[^"]*">', _html(**kw)), re.findall(r'<td class="[^"]*">', _html(teen=True, **kw)))
+
+    def test_who_gets_the_teen_design(self) -> None:
+        today = date(2026, 11, 8)
+        self.assertTrue(wall.is_teen("pre_menarche", None, today))
+        self.assertTrue(wall.is_teen("early_menarche", "1980-01-01", today), "the menarche phase counts at any age")
+        self.assertTrue(wall.is_teen("established_cycle", "2012-05-01", today))
+        self.assertTrue(wall.is_teen(None, "2010-11-09", today), "15 until the 16th birthday")
+        self.assertFalse(wall.is_teen(None, "2010-11-08", today), "16 is not under 16")
+        self.assertFalse(wall.is_teen("established_cycle", "1990-01-01", today))
+        self.assertFalse(wall.is_teen("established_cycle", None, today))
+        self.assertFalse(wall.is_teen(None, "not a date", today))
+        self.assertFalse(wall.is_teen(None, "2030-01-01", today), "born in the future: no age")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1123,6 +1123,10 @@
         "title": {
           "name": "Titel",
           "description": "Überschrift des Kalenders."
+        },
+        "style": {
+          "name": "Stil",
+          "description": "Aussehen des Kalenders: auto, standard oder teen."
         }
       }
     },
@@ -1398,6 +1402,13 @@
         "delete_all": "Alles löschen",
         "keep_history": "Alles außer dem Zyklusverlauf löschen",
         "keep": "Alles behalten und nicht mehr fragen"
+      }
+    },
+    "wall_calendar_style": {
+      "options": {
+        "auto": "Automatisch",
+        "standard": "Standard",
+        "teen": "Teen"
       }
     }
   }

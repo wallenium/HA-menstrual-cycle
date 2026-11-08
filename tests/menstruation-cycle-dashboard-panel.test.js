@@ -1940,21 +1940,25 @@ const makeHass = (stateObj) => ({
   cdPanel._compare = { a: '', b: '', metric: 'temp', valuesOnly: false };
   onlyBox(true);
   assert.strictEqual(cdPanel._compare.valuesOnly, true);
-  assert.strictEqual(JSON.parse(onlySaved.at(-1)[1])[cdPanel._activeProfile].valuesOnly, true, 'stored per profile');
+  assert.strictEqual(JSON.parse(onlySaved.at(-1)[1]).valuesOnly, true, 'stored per profile');
   onlyBox(false);
   assert.strictEqual(cdPanel._compare.valuesOnly, false);
-  assert.strictEqual(JSON.parse(onlySaved.at(-1)[1])[cdPanel._activeProfile].valuesOnly, false);
+  assert.strictEqual(JSON.parse(onlySaved.at(-1)[1]).valuesOnly, false);
   onlyBox(true);
   const onlyGet = localStorage.getItem;
-  localStorage.getItem = (key) => (key === 'menstruation_cycle_compare' ? onlySaved.at(-1)[1] : null);
+  localStorage.getItem = (key) => (key === `menstruation_cycle_compare.${cdPanel._activeProfile}` ? onlySaved.at(-1)[1] : null);
   cdPanel._compare = { a: '', b: '', metric: '', valuesOnly: false };
   cdPanel._compareProfile = null;
   cdPanel._renderCycleCompare(cdState());
   assert.strictEqual(cdPanel._compare.valuesOnly, true, 'a new session starts with the switch as it was');
-  localStorage.getItem = () => JSON.stringify({ [cdPanel._activeProfile]: { valuesOnly: 'yes' } });
+  localStorage.getItem = () => JSON.stringify({ valuesOnly: 'yes', a: 5, b: 'not a day', metric: 'x' });
   cdPanel._compareProfile = null;
   cdPanel._renderCycleCompare(cdState());
-  assert.strictEqual(cdPanel._compare.valuesOnly, false, 'only a real true counts');
+  assert.deepStrictEqual(cdPanel._compare, { a: '', b: '', metric: '', valuesOnly: false }, 'only checked values are taken over: a real true, a date, a known curve');
+  localStorage.getItem = () => JSON.stringify({ a: '2026-10-02', metric: 'pain' });
+  cdPanel._compareProfile = null;
+  cdPanel._renderCycleCompare(cdState());
+  assert.deepStrictEqual([cdPanel._compare.a, cdPanel._compare.metric], ['2026-10-02', 'pain'], 'valid values are kept');
   localStorage.getItem = onlyGet;
   localStorage.setItem = onlySetItem;
   // bleeding days as strips under the curve
@@ -1978,10 +1982,10 @@ const makeHass = (stateObj) => ({
   localStorage.setItem = (key, value) => saved.push([key, value]);
   ccPick('cc-metric', 'temp');
   ccPick('cc-b', dayAt(-37));
-  assert.deepStrictEqual(JSON.parse(saved.at(-1)[1])[cdPanel._activeProfile], { a: dayAt(-9), b: dayAt(-37), metric: 'temp' }, 'the choice is stored per profile');
-  assert.strictEqual(saved.at(-1)[0], 'menstruation_cycle_compare');
+  assert.deepStrictEqual(JSON.parse(saved.at(-1)[1]), { a: dayAt(-9), b: dayAt(-37), metric: 'temp' }, 'the choice is stored per profile');
+  assert.strictEqual(saved.at(-1)[0], `menstruation_cycle_compare.${cdPanel._activeProfile}`, 'one entry per profile');
   const storeBefore = localStorage.getItem;
-  localStorage.getItem = (key) => (key === 'menstruation_cycle_compare' ? saved.at(-1)[1] : null);
+  localStorage.getItem = (key) => (key === `menstruation_cycle_compare.${cdPanel._activeProfile}` ? saved.at(-1)[1] : null);
   cdPanel._compare = { a: '', b: '', metric: '' };
   cdPanel._compareProfile = null;
   cdPanel._renderCycleCompare(cdState());
@@ -2016,6 +2020,48 @@ const makeHass = (stateObj) => ({
   await cdPanel._shareWeekReview();
   assert.strictEqual(cdPanel._message, 'dashboard_wr_copy_failed');
   setNavigator(realNavigator);
+
+  // ---- Teen design: pre/early menarche or under 16 ----
+  const teenPanel = await freshPanel();
+  const teenOf = (attributes) => teenPanel._resolveMode({ attributes });
+  assert.strictEqual(teenOf({ age_at_tracking: 12 }), 'young', 'under 16: the young profile');
+  assert.strictEqual(teenOf({ age_at_tracking: 0 }), 'young');
+  assert.strictEqual(teenOf({ age_at_tracking: 15 }), 'young');
+  assert.strictEqual(teenOf({ age_at_tracking: 16 }), 'general', '16 is not under 16');
+  assert.strictEqual(teenOf({ age_at_tracking: null }), 'general', 'no age: no teen design (null is not 0)');
+  assert.strictEqual(teenOf({}), 'general');
+  assert.strictEqual(teenOf({ age_at_tracking: '12' }), 'general', 'only a real number counts');
+  assert.strictEqual(teenOf({ age_at_tracking: -1 }), 'general');
+  assert.strictEqual(teenOf({ onboarding_stage: 'early_menarche', age_at_tracking: 30 }), 'young', 'the menarche phase counts at any age');
+  assert.strictEqual(teenOf({ onboarding_stage: 'pre_menarche' }), 'young');
+  assert.strictEqual(teenPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.calendar_card, true, 'the calendar is one of the few cards');
+  const teenAttrs = {};
+  teenPanel.setAttribute = (k, v) => { teenAttrs[k] = v; };
+  teenPanel.removeAttribute = (k) => { delete teenAttrs[k]; };
+  teenPanel.style = { setProperty() {}, removeProperty() {} };
+  teenPanel._activeMode = 'young';
+  teenPanel._applyLook(teenPanel._look());
+  assert.ok('data-teen' in teenAttrs, 'the panel carries the teen design');
+  teenPanel._activeMode = 'general';
+  teenPanel._applyLook(teenPanel._look());
+  assert.ok(!('data-teen' in teenAttrs), 'and loses it again');
+  const teenRealT = teenPanel._t;
+  teenPanel._t = (key) => (key === 'dashboard_teen_title_calendar_card' ? 'My calendar' : key === 'dashboard_toggle_widget_aria' ? 'Toggle {widget}' : teenRealT.call(teenPanel, key));
+  const headTeen = (id) => { teenPanel._activeMode = 'young'; return teenPanel._widgetHeading(id, 'Normal title', false); };
+  const calendarHead = headTeen('calendar_card');
+  assert.ok(calendarHead.includes('class="sticker" aria-hidden="true">📅</span>'), 'a sticker in front, hidden from screen readers');
+  assert.ok(calendarHead.includes('</span>My calendar</h2>') && !calendarHead.includes('Normal title'), 'the friendlier title replaces the normal one');
+  assert.ok(calendarHead.includes('aria-label="Toggle My calendar"') && !/aria-label="[^"]*📅/.test(calendarHead), 'the label has the title but not the sticker');
+  const plainHead = headTeen('anomaly_insights');
+  assert.ok(!plainHead.includes('sticker') && plainHead.includes('Normal title'), 'no sticker and no new title for the other cards');
+  teenPanel._activeMode = 'general';
+  const adultHead = teenPanel._widgetHeading('calendar_card', 'Normal title', false);
+  assert.ok(!adultHead.includes('sticker') && adultHead.includes('Normal title'), 'adults see nothing of it');
+  teenPanel._editMode = true;
+  teenPanel._activeMode = 'young';
+  assert.strictEqual(teenPanel._widgetHeading('calendar_card', 'Normal title', false), '<h2>Normal title</h2>', 'the edit mode keeps the real names');
+  teenPanel._editMode = false;
+  teenPanel._t = teenRealT;
 
   // ---- View templates and the gallery of hidden cards ----
   const tp = await freshPanel();
@@ -2198,11 +2244,11 @@ const makeHass = (stateObj) => ({
     sp._rememberScroll();
     runTimers(300);
     const slot = sp._scrollSlot();
-    assert.strictEqual(JSON.parse(storage.get('menstruation_cycle_scroll'))[slot], 600, 'position saved for profile+view');
+    assert.strictEqual(Number(storage.get(sp._scrollKey(slot))), 600, 'position saved for profile+view');
     global.window.scrollY = 20;
     sp._rememberScroll();
     runTimers(300);
-    assert.ok(!(slot in JSON.parse(storage.get('menstruation_cycle_scroll'))), 'near the top: nothing to remember');
+    assert.ok(!storage.has(sp._scrollKey(slot)), 'near the top: nothing to remember');
     global.window.scrollY = 600;
     sp._rememberScroll();
     runTimers(300);
@@ -2210,12 +2256,12 @@ const makeHass = (stateObj) => ({
     global.window.scrollY = 900;
     sp._rememberScroll();
     runTimers(300);
-    assert.strictEqual(JSON.parse(storage.get('menstruation_cycle_scroll'))[slot], 600, 'edit mode does not overwrite it');
+    assert.strictEqual(Number(storage.get(sp._scrollKey(slot))), 600, 'edit mode does not overwrite it');
     sp._editMode = false;
 
-    const savedScroll = storage.get('menstruation_cycle_scroll');
+    const savedScroll = storage.get(sp._scrollKey(slot));
     const sp2 = await freshPanel(); // new page load (freshPanel empties the storage, so put the memory back)
-    storage.set('menstruation_cycle_scroll', savedScroll);
+    storage.set(sp._scrollKey(slot), savedScroll);
     sp2.shadowRoot.querySelector = () => ({});
     sp2._scrollSlotDone = null;
     pageHeight = 100; // cards still loading: the page is short
@@ -2243,22 +2289,26 @@ const makeHass = (stateObj) => ({
     assert.deepStrictEqual(scrolls, [], 'the page is not pulled away from a user who scrolled');
     assert.strictEqual(sp2._scrollRestoring, false);
     // another view without a memory starts at the top; the very first load without memory does nothing
-    storage.delete('menstruation_cycle_scroll');
-    sp2._scrollMemo = null;
+    storage.delete(sp._scrollKey(slot));
     sp2._scrollSlotDone = 'other|view';
     scrolls.length = 0;
     sp2._restoreScroll();
     assert.deepStrictEqual(scrolls, [0], 'switching to a view without memory scrolls to the top');
+    assert.notStrictEqual(sp2._scrollKey(slot), sp2._scrollKey('other|view'), 'each profile and view has its own entry');
+    storage.set(sp2._scrollKey(sp2._scrollSlot()), 'abc');
+    sp2._scrollSlotDone = 'other|view';
+    scrolls.length = 0;
+    sp2._restoreScroll();
+    assert.deepStrictEqual(scrolls, [0], 'a stored value that is no number counts as no memory');
     // restoring in progress: the scroll events it causes are not remembered
-    storage.set('menstruation_cycle_scroll', savedScroll);
-    sp2._scrollMemo = null;
+    storage.set(sp._scrollKey(slot), savedScroll);
     sp2._scrollRestoring = true;
     global.window.scrollY = 123;
     sp2._rememberScroll();
     sp2._scrollRestoring = false; // the restore finishes after the timer was set: the timer must still check
     sp2._scrollRestoring = true;
     runTimers(300);
-    assert.strictEqual(storage.get('menstruation_cycle_scroll'), savedScroll, 'nothing is written while restoring');
+    assert.strictEqual(storage.get(sp._scrollKey(slot)), savedScroll, 'nothing is written while restoring');
     sp2._scrollRestoring = false;
     // edit mode: the page is not moved
     sp2._editMode = true;

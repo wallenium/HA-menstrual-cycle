@@ -1298,6 +1298,17 @@ export_wall_calendar:
       description: Heading of the calendar (default is the profile name and the year).
       selector:
         text:
+    style:
+      required: false
+      example: "auto"
+      description: Look of the calendar. "auto" (default) uses the playful teen design (pastel colours, stickers) for profiles in the pre-menarche or early-menarche mode and for profiles under 16, "standard" the plain design, "teen" always the teen design.
+      selector:
+        select:
+          translation_key: wall_calendar_style
+          options:
+            - "auto"
+            - "standard"
+            - "teen"
 
 set_profile_visibility:
   name: Set profile visibility

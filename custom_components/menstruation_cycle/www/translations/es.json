@@ -534,7 +534,7 @@
   "dashboard_empty_state": "Todos los widgets están ocultos.",
   "dashboard_empty_state_hint": "Abre el modo edición para mostrar widgets o restablecer los valores predeterminados.",
   "dashboard_widget_order_label": "Orden y visibilidad de widgets",
-  "dashboard_toggle_widget_aria": "Alternar visibilidad del widget {widget}",
+  "dashboard_toggle_widget_aria": "Mostrar u ocultar el contenido de {widget}",
   "dashboard_move_up_aria": "Mover el widget {widget} hacia arriba",
   "dashboard_move_down_aria": "Mover el widget {widget} hacia abajo",
   "dashboard_save_aria": "Guardar diseño del panel",
@@ -1066,7 +1066,6 @@
   "dashboard_show_widget_aria": "Mostrar {widget}",
   "dashboard_hidden_widgets": "Widgets ocultos",
   "dashboard_hidden_widgets_none": "No hay widgets ocultos.",
-  "dashboard_toggle_widget_aria": "Mostrar u ocultar el contenido de {widget}",
   "dashboard_chart_range": "Periodo de los gráficos",
   "dashboard_range_auto": "Predeterminado",
   "dashboard_range_all": "Todo",
@@ -1525,5 +1524,10 @@
   "dashboard_welcome_dismiss": "Entendido",
   "pill_card_save_error": "No se pudo registrar la píldora. Inténtalo de nuevo.",
   "pill_card_editor_title": "Título (opcional)",
-  "pill_card_editor_legend": "Mostrar leyenda"
+  "pill_card_editor_legend": "Mostrar leyenda",
+  "dashboard_teen_title_kpi_strip": "De un vistazo",
+  "dashboard_teen_title_phase_donut": "Tu ritmo",
+  "dashboard_teen_title_calendar_card": "Mi calendario",
+  "dashboard_teen_title_progress_badges": "Mis pegatinas",
+  "dashboard_teen_title_support_card": "Bueno saber"
 }

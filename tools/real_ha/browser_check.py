@@ -660,8 +660,8 @@ def round7_check(page, hass, shots=None):
     page.evaluate("window.scrollTo(0, 1400)")
     page.wait_for_timeout(700)
     y = page.evaluate("window.scrollY")
-    stored = page.evaluate("localStorage.getItem('menstruation_cycle_scroll')")
-    if y < 600 or not stored or max(json.loads(stored).values()) < y * 0.9:
+    stored = page.evaluate("Object.entries(localStorage).filter(([k]) => k.startsWith('menstruation_cycle_scroll.')).map(([, v]) => Number(v))")
+    if y < 600 or not stored or max(stored) < y * 0.9:
         problems.append(f"round7: scroll position {y} was not remembered ({stored})")
     else:
         page.evaluate("document.querySelector('menstruation-cycle-dashboard-panel').remove(); window.scrollTo(0, 0)")
@@ -750,14 +750,14 @@ def round9_check(page, hass, shots=None):
         page.wait_for_timeout(200)
         if not page.locator(root + "css=.cc-chart, .helper").count():
             problems.append("round9: compare card shows neither curve nor note")
-        stored = page.evaluate("localStorage.getItem('menstruation_cycle_compare')")
+        stored = page.evaluate("Object.entries(localStorage).filter(([k]) => k.startsWith('menstruation_cycle_compare.')).map(([, v]) => v).join(' ')")
         if not stored or '"temp"' not in stored:
             problems.append(f"round9: compare choice not remembered: {stored!r}")
         box = page.locator(root + "css=input[data-action=cc-values-only]")
         if box.count():
             box.first.check()
             page.wait_for_timeout(200)
-            stored = page.evaluate("localStorage.getItem('menstruation_cycle_compare')")
+            stored = page.evaluate("Object.entries(localStorage).filter(([k]) => k.startsWith('menstruation_cycle_compare.')).map(([, v]) => v).join(' ')")
             if not stored or '"valuesOnly":true' not in stored:
                 problems.append(f"round11: values-only switch not remembered: {stored!r}")
         else:
@@ -765,6 +765,10 @@ def round9_check(page, hass, shots=None):
     else:
         problems.append("round9: compare card has no metric select")
     # exports in the Today card: wall calendar and history CSV
+    more = page.locator(root + "css=[data-action=toggle-today-more]")
+    if more.count() and more.first.get_attribute("aria-expanded") != "true":
+        more.first.click()
+        page.wait_for_timeout(300)
     for action in ("create-wall-calendar", "download-history-csv"):
         if not page.locator(root + f"css=[data-action={action}]").count():
             problems.append(f"round11: no {action} button")
@@ -799,6 +803,24 @@ def round9_check(page, hass, shots=None):
     if "yesterday" not in buttons:
         problems.append(f"round9: calendar day dialog copy buttons {buttons}")
     cal.evaluate("(el) => el.remove()")
+    return problems
+
+
+def teen_check(page, hass, shots=None):
+    """Real browser: a profile under 16 gets the teen design (pastel cards with stickers) and the few teen cards."""
+    problems = []
+    handle = page.evaluate_handle("""([h, entity]) => { const state = h.states[entity]; const hh = {...h, states: {...h.states, [entity]: {...state, attributes: {...state.attributes, age_at_tracking: 13}}}};
+        try { localStorage.clear(); } catch (e) { /* none */ }
+        const p = document.createElement('menstruation-cycle-dashboard-panel');
+        p.panel = {config: {}}; p.narrow = false; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = hh; return p; }""", [hass, ENTITY])
+    page.wait_for_timeout(2500)
+    state = handle.evaluate("""(p) => ({teen: p.hasAttribute('data-teen'), stickers: p.shadowRoot.querySelectorAll('.sticker').length,
+        cards: p.shadowRoot.querySelectorAll('.grid > .card').length, edge: getComputedStyle(p.shadowRoot.querySelector('.grid > .card')).borderTopStyle})""")
+    if not state["teen"] or state["stickers"] < 1 or state["edge"] != "dashed":
+        problems.append(f"teen: design not applied {state}")
+    elif shots:
+        page.screenshot(path=str(Path(shots) / "teen_panel.png"), full_page=True)
+    handle.evaluate("(p) => p.remove()")
     return problems
 
 
@@ -850,6 +872,7 @@ def run(fixture_dir, shots=None):
                     problems += round7_check(page, hass, shots)
                     problems += round8_check(page, hass, shots)
                     problems += round9_check(page, hass, shots)
+                    problems += teen_check(page, hass, shots)
                 else:
                     skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
                     if skip.count():

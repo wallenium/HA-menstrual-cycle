@@ -1123,6 +1123,10 @@
         "title": {
           "name": "Rubrik",
           "description": "Kalenderns rubrik."
+        },
+        "style": {
+          "name": "Stil",
+          "description": "Kalenderns utseende: auto, standard eller teen."
         }
       }
     },
@@ -1398,6 +1402,13 @@
         "delete_all": "Radera allt",
         "keep_history": "Radera allt utom cykelhistoriken",
         "keep": "Behåll allt och fråga inte igen"
+      }
+    },
+    "wall_calendar_style": {
+      "options": {
+        "auto": "Automatisk",
+        "standard": "Standard",
+        "teen": "Tonåring"
       }
     }
   }

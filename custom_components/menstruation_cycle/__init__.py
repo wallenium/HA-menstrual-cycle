@@ -52,6 +52,7 @@ from .const import (
     ATTR_SYMPTOM_HISTORY,
     CONF_LINKED_PERSON_ENTITY_ID,
     CONF_BASAL_TEMP_SENSOR_ENTITY_ID,
+    CONF_BIRTH_DATE,
     STATE_PERIOD,
     STATE_FERTILE,
     STATE_PMS,
@@ -257,6 +258,7 @@ from .const import (
     SERVICE_FIELD_PATIENT_NAME,
     SERVICE_FIELD_PATIENT_BIRTHDATE,
     SERVICE_FIELD_LANGUAGE,
+    SERVICE_FIELD_STYLE,
     DOCTOR_REPORT_LANGUAGES,
     SERVICE_UPDATE_MENARCHE_DATE,
     SERVICE_UPDATE_MENOPAUSE_DATE,
@@ -321,8 +323,10 @@ from .statistics import (
 from .storage import MenstruationStorage
 from .wall_calendar import (
     WALL_CALENDAR_LANGUAGES,
+    WALL_CALENDAR_STYLES,
     WALL_CALENDAR_TITLE_MAX,
     generate_wall_calendar_html,
+    is_teen as wall_calendar_is_teen,
     symptom_days as wall_calendar_symptom_days,
     windows_to_days,
 )
@@ -3339,6 +3343,7 @@ def _register_domain_services(hass: HomeAssistant) -> None:
             vol.Optional(SERVICE_FIELD_YEAR): vol.All(vol.Coerce(int), vol.Range(min=2000, max=2100)),
             vol.Optional(SERVICE_FIELD_LANGUAGE): vol.In(list(WALL_CALENDAR_LANGUAGES)),
             vol.Optional(SERVICE_FIELD_TITLE): vol.All(cv.string, vol.Length(max=WALL_CALENDAR_TITLE_MAX)),
+            vol.Optional(SERVICE_FIELD_STYLE, default="auto"): vol.In(list(WALL_CALENDAR_STYLES)),
         })
     }
     if SupportsResponse is not None:
@@ -4441,6 +4446,9 @@ async def _async_handle_export_wall_calendar(hass: HomeAssistant, call: ServiceC
     year = int(call.data.get(SERVICE_FIELD_YEAR) or today.year)
     language = str(call.data.get(SERVICE_FIELD_LANGUAGE) or hass.config.language or "en").strip().lower()[:2]
     title = (str(call.data.get(SERVICE_FIELD_TITLE) or "").strip() or f"{runtime.friendly_name} {year}")[:WALL_CALENDAR_TITLE_MAX]
+    # "auto": the teen design for pre/early menarche profiles and for under 16 (by the stored birth date)
+    style = str(call.data.get(SERVICE_FIELD_STYLE) or "auto")
+    birth_date = entry.data.get(CONF_BIRTH_DATE) if entry is not None else None
 
     model = await hass.async_add_executor_job(
         partial(
@@ -4473,6 +4481,10 @@ async def _async_handle_export_wall_calendar(hass: HomeAssistant, call: ServiceC
         wall_calendar_symptom_days(runtime.symptom_history, year),
         today,
         rough_estimate=not (model.prediction_gating or {}).get("precision_allowed"),
+        teen=style == "teen" or (
+            style == "auto"
+            and wall_calendar_is_teen(model.onboarding_stage_effective, birth_date, today)
+        ),
     )
 
     target_dir = Path(hass.config.path(EXPORT_DIR_NAME))

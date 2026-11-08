@@ -136,6 +136,7 @@ def _entry(**options):
     entry = SimpleNamespace(
         entry_id="e1",
         options={const.CONF_NOTIFICATIONS_ENABLED: True, **options},
+        data={},
         async_on_unload=unloads.append,
     )
     entry.unloads = unloads
@@ -1219,7 +1220,7 @@ class DoctorReportResponseTests(unittest.TestCase):
 class WallCalendarServiceTests(unittest.TestCase):
     """export_wall_calendar writes the year poster next to the doctor report and returns it."""
 
-    def _export(self, data, *, language="en", history_offsets=None):
+    def _export(self, data, *, language="en", history_offsets=None, birth_date=None):
         import tempfile
 
         NOW[0] = datetime(2026, 10, 6, 9, 0, 0)
@@ -1230,7 +1231,9 @@ class WallCalendarServiceTests(unittest.TestCase):
             hass = _hass()
             hass.config.path = lambda *parts: str(Path(tmp, *parts))
             hass.config.language = language
-            hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: _entry())
+            entry = _entry()
+            entry.data = {const.CONF_BIRTH_DATE: birth_date} if birth_date else {}
+            hass.config_entries = SimpleNamespace(async_get_entry=lambda entry_id: entry)
 
             async def _executor(func, *args):
                 return func(*args)
@@ -1261,6 +1264,17 @@ class WallCalendarServiceTests(unittest.TestCase):
         self.assertGreater(self._count(html, "ovulation"), 0)
         self.assertEqual(html.count('class="dot"'), 1)
         self.assertEqual(self._count(html, "today"), 1)
+
+    def test_style_auto_follows_the_age_and_can_be_forced(self) -> None:
+        teen = '<body class="teen">'
+        self.assertNotIn(teen, self._export({})["html"], "no birth date: the plain design")
+        self.assertNotIn(teen, self._export({}, birth_date="1990-01-01")["html"], "an adult: the plain design")
+        self.assertIn(teen, self._export({}, birth_date="2012-05-01")["html"], "14 years old: the teen design")
+        self.assertIn(teen, self._export({const.SERVICE_FIELD_STYLE: "auto"}, birth_date="2012-05-01")["html"])
+        self.assertNotIn(teen, self._export({const.SERVICE_FIELD_STYLE: "standard"}, birth_date="2012-05-01")["html"], "forced plain")
+        self.assertIn(teen, self._export({const.SERVICE_FIELD_STYLE: "teen"})["html"], "forced teen, whatever the age")
+        source = (Path(integration.__file__)).read_text(encoding="utf-8")
+        self.assertIn("vol.In(list(WALL_CALENDAR_STYLES))", source)
 
     def test_past_years_show_only_what_was_logged(self) -> None:
         result = self._export({const.SERVICE_FIELD_YEAR: 2025, const.SERVICE_FIELD_TITLE: "Rückblick"}, history_offsets=[-300, -299, -298])

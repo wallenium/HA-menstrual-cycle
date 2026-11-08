@@ -517,6 +517,7 @@ SERVICE_FIELD_FUTURE_CYCLES = "future_cycles"
 SERVICE_FIELD_PATIENT_NAME = "patient_name"
 SERVICE_FIELD_PATIENT_BIRTHDATE = "patient_birthdate"
 SERVICE_FIELD_LANGUAGE = "language"
+SERVICE_FIELD_STYLE = "style"
 # Languages the doctor report is available in.
 DOCTOR_REPORT_LANGUAGES = ("de", "en", "es", "fr", "sv")
 SERVICE_FIELD_VISIBILITY_LEVEL = "level"

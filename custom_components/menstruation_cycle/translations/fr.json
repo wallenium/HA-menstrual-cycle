@@ -1123,6 +1123,10 @@
         "title": {
           "name": "Titre",
           "description": "Titre du calendrier."
+        },
+        "style": {
+          "name": "Style",
+          "description": "Apparence du calendrier : auto, standard ou teen."
         }
       }
     },
@@ -1398,6 +1402,13 @@
         "delete_all": "Tout supprimer",
         "keep_history": "Tout supprimer sauf l'historique des cycles",
         "keep": "Tout conserver et ne plus demander"
+      }
+    },
+    "wall_calendar_style": {
+      "options": {
+        "auto": "Automatique",
+        "standard": "Standard",
+        "teen": "Ado"
       }
     }
   }

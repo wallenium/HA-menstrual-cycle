@@ -639,6 +639,9 @@
   // Look of the panel per profile: light/dark independent of Home Assistant, and the accent colour of the app.
   const THEMES = ['auto', 'light', 'dark'];
   const ACCENTS = { rose: '#E8637D', plum: '#8E4B73', sage: '#5E8C6A', amber: '#D98E1F', blue: '#3B82C4', slate: '#64748B' };
+  // Teen design (pre/early menarche or under 16): a sticker in front of the card titles, and friendlier titles for a few cards.
+  const TEEN_STICKERS = { kpi_strip: '✨', phase_timeline: '🌙', phase_donut: '🌸', calendar_card: '📅', pill_card: '💊', support_card: '💬', progress_badges: '⭐', product_usage: '🛍️', inventory_card: '🎀', timer_card: '⏰' };
+  const TEEN_ADULT_AGE = 16;
   const VIEW_CODE_PREFIX = 'MCV1:';
   // Setup assistant: three steps, and the card choice of step 2.
   const WIZARD_STEPS = 3;
@@ -715,7 +718,7 @@
         cycle_history: false,
         phase_donut: true,
         basal_temp: false,
-        calendar_card: false,
+        calendar_card: true,
         product_usage: true,
         inventory_card: true,
         timer_card: true,
@@ -1037,7 +1040,6 @@
       this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
       this._boundDragPointerUp = (event) => this._handleDragPointerUp(event);
       this._boundScroll = () => this._rememberScroll();
-      this._scrollMemo = null;
       this._scrollSlotDone = null;
       this._scrollRestoring = false;
       this._scrollTimer = null;
@@ -1476,7 +1478,9 @@
       const stage = String(
         stateObj?.attributes?.onboarding_stage_effective || stateObj?.attributes?.onboarding_stage || 'established_cycle',
       ).toLowerCase();
-      return stage === 'pre_menarche' || stage === 'early_menarche' ? 'young' : 'general';
+      const age = stateObj?.attributes?.age_at_tracking;
+      const underAge = Number.isInteger(age) && age >= 0 && age < TEEN_ADULT_AGE;
+      return stage === 'pre_menarche' || stage === 'early_menarche' || underAge ? 'young' : 'general';
     }
 
     _storageKey(profile) {
@@ -1701,11 +1705,29 @@
       return this._editMode ? this._editDraft : this._prefs;
     }
 
+    _teen() {
+      return this._activeMode === 'young';
+    }
+
+    // Title of a card in the teen design: friendlier wording where there is one (dashboard_teen_title_<card>), else the normal title.
+    _teenText(widgetId, title) {
+      if (!this._teen()) return title;
+      const key = `dashboard_teen_title_${widgetId}`;
+      const own = this._t(key);
+      return own !== key ? own : title;
+    }
+
+    _teenSticker(widgetId) {
+      return this._teen() && TEEN_STICKERS[widgetId] ? `<span class="sticker" aria-hidden="true">${TEEN_STICKERS[widgetId]}</span>` : '';
+    }
+
     // Sets theme and accent colour on the panel itself, so the cards inside follow.
     _applyLook(prefs) {
       const theme = THEMES.includes(prefs?.theme) ? prefs.theme : 'auto';
       if (theme === 'auto') this.removeAttribute?.('data-theme');
       else this.setAttribute?.('data-theme', theme);
+      if (this._teen()) this.setAttribute?.('data-teen', '');
+      else this.removeAttribute?.('data-teen');
       const accent = prefs?.accent && prefs.accent !== 'rose' ? ACCENTS[prefs.accent] : null;
       if (accent) {
         this.style?.setProperty('--mc-accent', accent);
@@ -1879,20 +1901,23 @@
       return this._normalizePrefs(raw, profile, mode);
     }
 
-    // Scroll position per profile and view (localStorage, one small map): the panel opens where you left it.
+    // Scroll position per profile and view (localStorage, one small entry each): the panel opens where you left it.
     _scrollSlot() {
       return this._prefs && this._activeProfile ? `${this._activeProfile}|${this._activeViewId(this._prefs)}` : null;
     }
 
-    _scrollMap() {
-      if (!this._scrollMemo) {
-        try {
-          this._scrollMemo = safeJsonParse(localStorage.getItem('menstruation_cycle_scroll')) || {};
-        } catch (_error) {
-          this._scrollMemo = {};
-        }
+    // One small entry per profile+view; a saved value is never written back from what was read.
+    _scrollKey(slot) {
+      return `menstruation_cycle_scroll.${slot}`;
+    }
+
+    _readScroll(slot) {
+      try {
+        const y = Number(localStorage.getItem(this._scrollKey(slot)));
+        return Number.isFinite(y) ? y : 0;
+      } catch (_error) {
+        return 0;
       }
-      return this._scrollMemo;
     }
 
     _rememberScroll() {
@@ -1902,11 +1927,9 @@
         const slot = this._scrollSlot();
         if (!slot || this._scrollRestoring) return;
         const y = Math.round(window.scrollY || 0);
-        const map = this._scrollMap();
-        if (y > 80) map[slot] = y;
-        else delete map[slot];
         try {
-          localStorage.setItem('menstruation_cycle_scroll', JSON.stringify(map));
+          if (y > 80) localStorage.setItem(this._scrollKey(slot), String(y));
+          else localStorage.removeItem(this._scrollKey(slot));
         } catch (_error) {
           // localStorage may be unavailable
         }
@@ -1919,7 +1942,7 @@
       if (this._editMode || !slot || slot === this._scrollSlotDone || !this.shadowRoot?.querySelector?.('[data-card]')) return;
       const first = this._scrollSlotDone === null;
       this._scrollSlotDone = slot;
-      const y = this._scrollMap()[slot] || 0;
+      const y = this._readScroll(slot);
       if (first && !y) return;
       this._scrollRestoring = true;
       this._scrollAttempt(y, [500, 1200]);
@@ -7928,24 +7951,29 @@
       }).reverse();
     }
 
-    // The choice (two cycles, curve) is remembered per profile in this browser.
+    // The choice (two cycles, curve) is remembered per profile in this browser, one entry each.
+    // Only checked values are taken over from storage, and what is saved is never a stored value written back.
+    _compareKey() {
+      return `menstruation_cycle_compare.${this._activeProfile}`;
+    }
+
     _loadCompare() {
       if (this._compareProfile === this._activeProfile) return;
       this._compareProfile = this._activeProfile;
       let saved = null;
       try {
-        saved = (safeJsonParse(localStorage.getItem('menstruation_cycle_compare')) || {})[this._activeProfile];
+        saved = safeJsonParse(localStorage.getItem(this._compareKey()));
       } catch (_error) {
         saved = null;
       }
-      this._compare = { a: saved?.a || '', b: saved?.b || '', metric: saved?.metric || '', valuesOnly: saved?.valuesOnly === true };
+      const day = (value) => (typeof value === 'string' ? (value.match(/^\d{4}-\d{2}-\d{2}$/) || [''])[0] : '');
+      this._compare = { a: day(saved?.a), b: day(saved?.b), metric: ['temp', 'pain'].find((key) => key === saved?.metric) || '', valuesOnly: saved?.valuesOnly === true };
     }
 
     _saveCompare() {
+      const { a, b, metric, valuesOnly } = this._compare;
       try {
-        const all = safeJsonParse(localStorage.getItem('menstruation_cycle_compare')) || {};
-        all[this._activeProfile] = { ...this._compare };
-        localStorage.setItem('menstruation_cycle_compare', JSON.stringify(all));
+        localStorage.setItem(this._compareKey(), JSON.stringify({ a, b, metric, valuesOnly }));
       } catch (_error) {
         // no storage: the choice just lasts for this session
       }
@@ -8842,14 +8870,15 @@
       const syncing = HISTORY_WIDGETS.includes(widgetId) && this._fullHistoryFetching.has(this._historyKey(stateObj));
       const cardClasses = ['card', spanClass, sensitiveClass, empty ? 'is-empty' : '', syncing ? 'is-syncing' : ''].filter(Boolean).join(' ');
       const title = def?.title ? this._t(def.title) : widgetId;
-      return `<article class="${cardClasses}"${syncing ? ' aria-busy="true"' : ''}>${empty ? `<h2>${title}</h2>` : this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
+      return `<article class="${cardClasses}"${syncing ? ' aria-busy="true"' : ''}>${empty ? `<h2>${this._teenSticker(widgetId)}${this._teenText(widgetId, title)}</h2>` : this._widgetHeading(widgetId, title, collapsed)}${body}</article>`;
     }
 
     // Title of a card; outside edit mode a click (or Enter / Space) folds the card up to its title. The state is saved per profile.
     _widgetHeading(widgetId, title, collapsed) {
       if (this._editMode) return `<h2>${title}</h2>`;
-      const label = escapeHtml(this._t('dashboard_toggle_widget_aria').replace('{widget}', String(title)));
-      return `<h2 class="collapsible" role="button" tabindex="0" aria-expanded="${!collapsed}" aria-label="${label}" data-action="widget-collapse" data-widget="${widgetId}">${title}</h2>`;
+      const text = this._teenText(widgetId, title);
+      const label = escapeHtml(this._t('dashboard_toggle_widget_aria').replace('{widget}', String(text)));
+      return `<h2 class="collapsible" role="button" tabindex="0" aria-expanded="${!collapsed}" aria-label="${label}" data-action="widget-collapse" data-widget="${widgetId}">${this._teenSticker(widgetId)}${text}</h2>`;
     }
 
     _toggleCollapsed(widgetId) {
@@ -10500,6 +10529,20 @@
           @media (prefers-reduced-motion: reduce) {
             * { transition: none !important; animation: none !important; }
           }
+          /* Teen design: pastel cards with a dashed edge, round shapes, a sticker in front of the titles. The accent colour the user picked still wins. */
+          :host([data-teen]) { --mc-accent: #E36BAE; font-family: ui-rounded, 'Nunito', 'Quicksand', 'Inter', system-ui, sans-serif; }
+          :host([data-teen]) .grid > .card { --teen-c: #F4A6CF; }
+          :host([data-teen]) .grid > .card:nth-child(4n+2) { --teen-c: #C9B3F2; }
+          :host([data-teen]) .grid > .card:nth-child(4n+3) { --teen-c: #8FDDBE; }
+          :host([data-teen]) .grid > .card:nth-child(4n+4) { --teen-c: #FFC592; }
+          :host([data-teen]) .card { position: relative; border: 2px dashed color-mix(in srgb, var(--teen-c, #F4A6CF) 75%, transparent); border-radius: 30px; background: color-mix(in srgb, var(--card-background-color, #fff) 82%, var(--teen-c, #F4A6CF) 18%); }
+          :host([data-teen]) .card::after { content: '✦'; position: absolute; right: 18px; bottom: 10px; color: var(--teen-c, #F4A6CF); font-size: 1rem; pointer-events: none; }
+          :host([data-teen]) .card h2 { font-size: 1.125rem; font-weight: 800; letter-spacing: 0; }
+          :host([data-teen]) .card h2.collapsible { justify-content: flex-start; }
+          :host([data-teen]) .card h2.collapsible::after { margin-left: auto; }
+          :host([data-teen]) .sticker { display: inline-block; margin-right: .35em; transform: rotate(-8deg); font-size: 1.15em; }
+          :host([data-teen]) button, :host([data-teen]) .toolbar button { border-radius: 999px; }
+          :host([data-teen]) .mc-log-fab { border-radius: 999px; box-shadow: 0 6px 18px -6px var(--mc-accent); }
         </style>
         <main class="page${animations ? '' : ' no-motion'}${this._editMode ? ' editing' : ''}">
           <header class="toolbar">

@@ -534,7 +534,7 @@
   "dashboard_empty_state": "Tous les widgets sont masqués.",
   "dashboard_empty_state_hint": "Ouvrez le mode édition pour afficher les widgets ou réinitialiser aux valeurs par défaut.",
   "dashboard_widget_order_label": "Ordre et visibilité des widgets",
-  "dashboard_toggle_widget_aria": "Basculer la visibilité du widget {widget}",
+  "dashboard_toggle_widget_aria": "Afficher ou masquer le contenu de {widget}",
   "dashboard_move_up_aria": "Déplacer le widget {widget} vers le haut",
   "dashboard_move_down_aria": "Déplacer le widget {widget} vers le bas",
   "dashboard_save_aria": "Enregistrer la mise en page du tableau de bord",
@@ -1066,7 +1066,6 @@
   "dashboard_show_widget_aria": "Afficher {widget}",
   "dashboard_hidden_widgets": "Widgets masqués",
   "dashboard_hidden_widgets_none": "Aucun widget masqué.",
-  "dashboard_toggle_widget_aria": "Afficher ou masquer le contenu de {widget}",
   "dashboard_chart_range": "Période des graphiques",
   "dashboard_range_auto": "Par défaut",
   "dashboard_range_all": "Tout",
@@ -1525,5 +1524,10 @@
   "dashboard_welcome_dismiss": "Compris",
   "pill_card_save_error": "Impossible d'enregistrer la pilule. Veuillez réessayer.",
   "pill_card_editor_title": "Titre (facultatif)",
-  "pill_card_editor_legend": "Afficher la légende"
+  "pill_card_editor_legend": "Afficher la légende",
+  "dashboard_teen_title_kpi_strip": "En un coup d'œil",
+  "dashboard_teen_title_phase_donut": "Ton rythme",
+  "dashboard_teen_title_calendar_card": "Mon calendrier",
+  "dashboard_teen_title_progress_badges": "Mes stickers",
+  "dashboard_teen_title_support_card": "Bon à savoir"
 }

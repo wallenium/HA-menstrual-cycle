@@ -534,7 +534,7 @@
   "dashboard_empty_state": "Alla widgets är dolda.",
   "dashboard_empty_state_hint": "Öppna redigeringsläget för att visa widgets eller återställa standardinställningarna.",
   "dashboard_widget_order_label": "Widgetordning och synlighet",
-  "dashboard_toggle_widget_aria": "Växla synlighet för widget {widget}",
+  "dashboard_toggle_widget_aria": "Visa eller dölj innehållet i {widget}",
   "dashboard_move_up_aria": "Flytta widget {widget} uppåt",
   "dashboard_move_down_aria": "Flytta widget {widget} nedåt",
   "dashboard_save_aria": "Spara instrumentpanelslayout",
@@ -1066,7 +1066,6 @@
   "dashboard_show_widget_aria": "Visa {widget}",
   "dashboard_hidden_widgets": "Dolda widgets",
   "dashboard_hidden_widgets_none": "Inga dolda widgets.",
-  "dashboard_toggle_widget_aria": "Visa eller dölj innehållet i {widget}",
   "dashboard_chart_range": "Period för diagrammen",
   "dashboard_range_auto": "Standard",
   "dashboard_range_all": "Allt",
@@ -1525,5 +1524,10 @@
   "dashboard_welcome_dismiss": "Uppfattat",
   "pill_card_save_error": "Det gick inte att logga p-pillret. Försök igen.",
   "pill_card_editor_title": "Rubrik (valfri)",
-  "pill_card_editor_legend": "Visa teckenförklaring"
+  "pill_card_editor_legend": "Visa teckenförklaring",
+  "dashboard_teen_title_kpi_strip": "I korthet",
+  "dashboard_teen_title_phase_donut": "Din rytm",
+  "dashboard_teen_title_calendar_card": "Min kalender",
+  "dashboard_teen_title_progress_badges": "Mina klistermärken",
+  "dashboard_teen_title_support_card": "Bra att veta"
 }

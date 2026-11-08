@@ -542,7 +542,7 @@
   "dashboard_show_widget_aria": "{widget} einblenden",
   "dashboard_hidden_widgets": "Ausgeblendete Widgets",
   "dashboard_hidden_widgets_none": "Keine ausgeblendeten Widgets.",
-  "dashboard_toggle_widget_aria": "Inhalt von {widget} ein- oder ausklappen",
+  "dashboard_toggle_widget_aria": "Sichtbarkeit des Widgets {widget} umschalten",
   "dashboard_chart_range": "Zeitraum der Diagramme",
   "dashboard_range_auto": "Standard",
   "dashboard_range_all": "Alles",
@@ -744,7 +744,6 @@
   "dashboard_empty_state": "Alle Widgets sind ausgeblendet.",
   "dashboard_empty_state_hint": "Öffne den Bearbeitungsmodus, um Widgets anzuzeigen oder auf die Standards zurückzusetzen.",
   "dashboard_widget_order_label": "Widget-Reihenfolge und Sichtbarkeit",
-  "dashboard_toggle_widget_aria": "Sichtbarkeit des Widgets {widget} umschalten",
   "dashboard_move_up_aria": "Widget {widget} nach oben verschieben",
   "dashboard_move_down_aria": "Widget {widget} nach unten verschieben",
   "dashboard_save_aria": "Dashboard-Layout speichern",
@@ -1525,5 +1524,10 @@
   "dashboard_welcome_dismiss": "Verstanden",
   "pill_card_save_error": "Die Pille konnte nicht eingetragen werden. Bitte erneut versuchen.",
   "pill_card_editor_title": "Titel (optional)",
-  "pill_card_editor_legend": "Legende anzeigen"
+  "pill_card_editor_legend": "Legende anzeigen",
+  "dashboard_teen_title_kpi_strip": "Auf einen Blick",
+  "dashboard_teen_title_phase_donut": "Dein Rhythmus",
+  "dashboard_teen_title_calendar_card": "Mein Kalender",
+  "dashboard_teen_title_progress_badges": "Meine Sticker",
+  "dashboard_teen_title_support_card": "Gut zu wissen"
 }
