@@ -753,8 +753,21 @@ def round9_check(page, hass, shots=None):
         stored = page.evaluate("localStorage.getItem('menstruation_cycle_compare')")
         if not stored or '"temp"' not in stored:
             problems.append(f"round9: compare choice not remembered: {stored!r}")
+        box = page.locator(root + "css=input[data-action=cc-values-only]")
+        if box.count():
+            box.first.check()
+            page.wait_for_timeout(200)
+            stored = page.evaluate("localStorage.getItem('menstruation_cycle_compare')")
+            if not stored or '"valuesOnly":true' not in stored:
+                problems.append(f"round11: values-only switch not remembered: {stored!r}")
+        else:
+            problems.append("round11: compare card has no values-only switch")
     else:
         problems.append("round9: compare card has no metric select")
+    # exports in the Today card: wall calendar and history CSV
+    for action in ("create-wall-calendar", "download-history-csv"):
+        if not page.locator(root + f"css=[data-action={action}]").count():
+            problems.append(f"round11: no {action} button")
     # pill card: select mode with three open days
     handle = page.evaluate_handle("""([h, entity]) => { const el = document.createElement('menstruation-pill-card');
         el.setConfig({entity, type: 'custom:menstruation-pill-card'});

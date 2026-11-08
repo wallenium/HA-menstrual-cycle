@@ -578,6 +578,7 @@
     { id: 'pain_mood_trend', title: 'dashboard_widget_pain_mood_trend', sensitive: false, span: 12 },
     { id: 'cycle_day_earlier', title: 'dashboard_widget_cycle_day_earlier', sensitive: true, span: 6 },
     { id: 'cycle_compare', title: 'dashboard_widget_cycle_compare', sensitive: true, span: 6 },
+    { id: 'prediction_check', title: 'dashboard_widget_prediction_check', sensitive: true, span: 6 },
     { id: 'history_search', title: 'dashboard_widget_history_search', sensitive: true, span: 12 },
     { id: 'year_overview', title: 'dashboard_widget_year_overview', sensitive: false, span: 12 },
     { id: 'fetal_development', title: 'dashboard_widget_fetal_development', sensitive: false, span: 12 },
@@ -586,7 +587,7 @@
   // Groups of the jump bar under the header: a tap scrolls to the first visible card of the group.
   const NAV_GROUPS = [
     ['overview', 'dashboard_nav_overview', ['kpi_strip', 'phase_timeline', 'week_ahead', 'week_review', 'status_card', 'cycle_card', 'pregnancy_prediction', 'phase_donut', 'fetal_development']],
-    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'cycle_day_earlier', 'cycle_compare', 'history_search', 'statistics_card', 'year_overview']],
+    ['history', 'dashboard_nav_history', ['cycle_history', 'long_term_trend', 'basal_temp', 'pain_mood_trend', 'cycle_day_earlier', 'cycle_compare', 'prediction_check', 'history_search', 'statistics_card', 'year_overview']],
     ['calendar', 'dashboard_nav_calendar', ['calendar_card']],
     ['supplies', 'dashboard_nav_supplies', ['product_usage', 'inventory_card', 'timer_card', 'pill_card']],
     ['insights', 'dashboard_nav_insights', ['symptom_heatmap', 'anomaly_insights', 'cycle_insights', 'symptom_insights', 'progress_badges', 'support_card']],
@@ -619,6 +620,7 @@
     'pain_mood_trend',
     'cycle_day_earlier',
     'cycle_compare',
+    'prediction_check',
     'history_search',
     'year_overview',
   ];
@@ -663,6 +665,7 @@
     phase_timeline: 'timeline',
   };
   // Cards that read the long history: while it loads they are dimmed and marked busy, so nothing jumps unannounced.
+  const COPY_YESTERDAY_KEYS = ['pain', 'pain_intensity', 'mood', 'bleeding_strength', 'bleeding_type', 'clots', 'clot_size', 'spotting', 'discharge', 'smell', 'digestion', 'skin', 'energy_level', 'sleep_quality', 'libido', 'training_intensity', 'breast', 'urinary', 'vulva_vagina', 'hot_flashes'];
   const HISTORY_WIDGETS = ['basal_temp', 'symptom_heatmap', 'symptom_insights', 'pain_mood_trend', 'cycle_day_earlier', 'cycle_compare', 'history_search', 'week_review', 'year_overview', 'product_usage'];
   const COMPACT_WIDGETS = ['kpi_strip', 'phase_timeline', 'calendar_card', 'product_usage', 'pill_card'];
   const SWIPE_MIN_PX = 70;
@@ -733,6 +736,7 @@
         week_review: false,
         cycle_day_earlier: false,
         cycle_compare: false,
+        prediction_check: false,
         history_search: false,
         year_overview: false,
       },
@@ -772,6 +776,7 @@
         week_review: true,
         cycle_day_earlier: true,
         cycle_compare: true,
+        prediction_check: true,
         history_search: true,
         year_overview: true,
       },
@@ -998,7 +1003,7 @@
       this._viewCodeText = '';
       this._swipe = null;
       this._historySearch = { q: '', category: '', range: '90', limit: 30 };
-      this._compare = { a: '', b: '', metric: '' }; // start dates of the two cycles and the curve shown in the comparison card
+      this._compare = { a: '', b: '', metric: '', valuesOnly: false }; // start dates of the two cycles and the curve shown in the comparison card
       this._compareProfile = null;
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
@@ -2419,6 +2424,100 @@
       }
       this._doctorReportBusy = false;
       this.render();
+    }
+
+    // Year calendar for printing: export_wall_calendar returns the HTML (also saved in the export folder), shown as a
+    // blob link like the doctor report. The language follows the panel language.
+    async _createWallCalendar() {
+      const conn = this._hass?.connection;
+      if (!conn?.sendMessagePromise || !this._selectedEntityId || this._wallCalendarBusy) return;
+      const attrs = this._hass.states?.[this._selectedEntityId]?.attributes || {};
+      const year = this._wallYear || new Date().getFullYear();
+      this._wallCalendarBusy = true;
+      this.render();
+      try {
+        const result = await conn.sendMessagePromise({
+          type: 'call_service',
+          domain: 'menstruation_cycle',
+          service: 'export_wall_calendar',
+          service_data: {
+            entity_id: this._selectedEntityId,
+            ...(attrs.profile ? { profile: attrs.profile } : {}),
+            year,
+            language: ['de', 'en', 'es', 'fr', 'sv'].includes(this._lang) ? this._lang : 'en',
+          },
+          return_response: true,
+        });
+        const html = result?.response?.html;
+        if (typeof html !== 'string' || !html) throw new Error('no calendar returned');
+        if (this._wallCalendar?.url && typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(this._wallCalendar.url);
+        this._wallCalendar = {
+          url: URL.createObjectURL(new Blob([html], { type: 'text/html' })),
+          name: result.response.filename || `wall_calendar_${year}.html`,
+          entityId: this._selectedEntityId,
+        };
+        this._message = '';
+      } catch (_error) {
+        this._wallCalendar = null;
+        this._message = this._t('dashboard_wall_calendar_error');
+      }
+      this._wallCalendarBusy = false;
+      this.render();
+    }
+
+    // The logged days as one CSV (date, then every field that was ever logged; lists joined with ";"), built in the
+    // browser from the history the panel already holds.
+    _historyCsv(stateObj) {
+      const rows = (this._getFullSymptomHistory(stateObj) || []).filter((entry) => entry?.date).sort((a, b) => (a.date < b.date ? -1 : 1));
+      const flat = (entry) => {
+        const out = {};
+        Object.entries(entry.symptom_data && typeof entry.symptom_data === 'object' ? { ...entry, ...entry.symptom_data } : entry).forEach(([key, value]) => {
+          if (key === 'date' || key === 'symptom_data' || value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length)) return;
+          out[key] = Array.isArray(value) ? value.join(';') : typeof value === 'object' ? JSON.stringify(value) : String(value);
+        });
+        return out;
+      };
+      const flats = rows.map(flat);
+      const columns = [...new Set(flats.flatMap((entry) => Object.keys(entry)))].sort();
+      // a cell that starts with = + - @ would be read as a formula by a spreadsheet: prefix it with a quote
+      const cell = (value) => {
+        const text = String(value ?? '');
+        const safe = /^[=+\-@\t\r]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
+        return /[",\n;]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+      };
+      return [['date', ...columns].map(cell).join(','), ...rows.map((entry, i) => [entry.date, ...columns.map((key) => flats[i][key] ?? '')].map(cell).join(','))].join('\n');
+    }
+
+    _renderExportActions(stateObj, discreetMode) {
+      if (discreetMode || !this._selectedEntityId) return '';
+      const busy = !!this._wallCalendarBusy;
+      const done = this._wallCalendar && this._wallCalendar.entityId === this._selectedEntityId ? this._wallCalendar : null;
+      const links = done
+        ? ` <a href="${escapeHtml(done.url)}" target="_blank" rel="noopener">${escapeHtml(this._t('export_open'))}</a>`
+          + ` · <a href="${escapeHtml(done.url)}" download="${escapeHtml(done.name)}">${escapeHtml(this._t('export_download'))}</a>`
+        : '';
+      const thisYear = new Date().getFullYear();
+      const year = this._wallYear || thisYear;
+      const years = [thisYear - 1, thisYear, thisYear + 1].map((value) => `<option value="${value}"${value === year ? ' selected' : ''}>${value}</option>`).join('');
+      const hasHistory = (this._getFullSymptomHistory(stateObj) || []).some((entry) => entry?.date);
+      return `<div class="today-row today-more-body">
+        <span class="today-label">${escapeHtml(this._t('dashboard_wall_calendar_title'))}</span>
+        <select data-action="wall-calendar-year" aria-label="${escapeHtml(this._t('dashboard_wall_calendar_title'))}"${busy ? ' disabled' : ''}>${years}</select>
+        <button type="button" data-action="create-wall-calendar"${busy ? ' disabled' : ''}>${escapeHtml(this._t(busy ? 'dashboard_doctor_report_busy' : 'dashboard_wall_calendar_create'))}</button>${links}</div>
+        <div class="today-row today-more-body">
+        <span class="today-label">${escapeHtml(this._t('dashboard_history_csv_title'))}</span>
+        <button type="button" data-action="download-history-csv"${hasHistory ? '' : ' disabled'}>${escapeHtml(this._t('dashboard_history_csv_create'))}</button></div>`;
+    }
+
+    _downloadHistoryCsv() {
+      const stateObj = this._hass?.states?.[this._selectedEntityId];
+      if (!stateObj) return;
+      const url = URL.createObjectURL(new Blob([`﻿${this._historyCsv(stateObj)}`], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cycle_history_${this._todayIso()}.csv`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     _renderDoctorReportAction(discreetMode) {
@@ -4597,6 +4696,22 @@
         return;
       }
 
+      if (action === 'copy-yesterday') {
+        this._copyYesterday();
+        return;
+      }
+
+      if (action === 'create-wall-calendar') {
+        this._todayMore = true;
+        this._createWallCalendar();
+        return;
+      }
+
+      if (action === 'download-history-csv') {
+        this._downloadHistoryCsv();
+        return;
+      }
+
       if (action === 'create-doctor-report') {
         this._todayMore = true; // keep the result links in view
         this._createDoctorReport();
@@ -4816,6 +4931,11 @@
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
 
+      if (target.dataset.action === 'wall-calendar-year') {
+        const picked = Number(target.value);
+        this._wallYear = Number.isInteger(picked) && picked > 2000 && picked < 2200 ? picked : new Date().getFullYear();
+        return;
+      }
       if (target.dataset.action === 'doctor-report-days') {
         this._doctorReportDays = [90, 180, 365].includes(Number(target.value)) ? Number(target.value) : 180;
         return;
@@ -4838,6 +4958,13 @@
 
       if (target instanceof HTMLInputElement && target.dataset.action === 'quick-log-end-date-change') {
         this._quickLogEndDate = target.value || null;
+        return;
+      }
+
+      if (target instanceof HTMLInputElement && target.dataset.action === 'cc-values-only') {
+        this._compare.valuesOnly = target.checked === true;
+        this._saveCompare();
+        this.render();
         return;
       }
 
@@ -7494,6 +7621,59 @@
       this.render();
     }
 
+    // "Like yesterday" in the card "Today": one tap logs yesterday's how-I-feel entries for today. Only entries that
+    // describe the day (pain, bleeding, mood, discharge, energy, ...); never the pill, LH tests, intercourse,
+    // medication, temperature or appointments, because those are facts of one day and are saved without a second look.
+    // Offered while nothing of that kind is logged for today yet; the undo toast takes it back again.
+    _copyYesterdayData(stateObj) {
+      const entries = this._getFullSymptomHistory(stateObj) || [];
+      const visibility = this._prefs?.categoryVisibility || {};
+      const pick = (iso) => {
+        const entry = entries.find((item) => item?.date === iso);
+        const flat = entry && typeof entry === 'object' ? { ...entry, ...(entry.symptom_data && typeof entry.symptom_data === 'object' ? entry.symptom_data : {}) } : {};
+        return Object.fromEntries(Object.entries(flat).filter(([key, value]) => COPY_YESTERDAY_KEYS.includes(key) && visibility[key] !== false
+          && value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length)));
+      };
+      const today = this._todayIso();
+      const data = pick(addDaysIso(today, -1));
+      return Object.keys(data).length && !Object.keys(pick(today)).length ? data : null;
+    }
+
+    _renderCopyYesterday(stateObj, discreetMode) {
+      if (discreetMode || !stateObj || NON_CYCLE_STATES.includes(String(stateObj.state || ''))) return '';
+      const data = this._copyYesterdayData(stateObj);
+      if (!data) return '';
+      const label = this._t('dashboard_copy_yesterday');
+      return `<div class="today-row"><span class="today-label">${escapeHtml(label)}</span><button type="button" data-action="copy-yesterday">${escapeHtml(this._t('dashboard_copy_yesterday_button').replace('{n}', String(Object.keys(data).length)))}</button></div>`;
+    }
+
+    async _copyYesterday() {
+      const stateObj = this._selectedEntityId ? this._hass?.states?.[this._selectedEntityId] : null;
+      const data = stateObj ? this._copyYesterdayData(stateObj) : null;
+      if (!data || !this._hass?.callService) return;
+      const attrs = stateObj.attributes || {};
+      const today = this._todayIso();
+      try {
+        await this._hass.callService('menstruation_cycle', 'add_symptom', {
+          entity_id: this._selectedEntityId,
+          ...(attrs.profile ? { profile: attrs.profile } : {}),
+          date: today,
+          symptom_data: data,
+        });
+        this._message = this._t('dashboard_copy_yesterday_done');
+        clearTimeout(this._quickLogUndoTimer);
+        // nothing of these was logged today, so taking it back means clearing the same fields
+        this._quickLogUndo = { entityId: this._selectedEntityId, date: today, previous: Object.fromEntries(Object.keys(data).map((key) => [key, null])) };
+        this._quickLogUndoTimer = setTimeout(() => {
+          this._quickLogUndo = null;
+          this.render();
+        }, 8000);
+      } catch (error) {
+        this._message = (error && error.message) || this._t('dashboard_quick_log_failed');
+      }
+      this.render();
+    }
+
     // ---- Widget "Next 7 days": what the sensor already knows about the coming week, in one list. ----
     _weekAheadItems(stateObj) {
       const attrs = stateObj?.attributes || {};
@@ -7661,6 +7841,24 @@
       return rows;
     }
 
+    // Looking back: for each recent cycle the day the period was predicted (from the history before it) next to the
+    // day it really came. Data: prediction_accuracy of get_last_cycle_summary (diff > 0: later than predicted).
+    _renderPredictionCheck(stateObj) {
+      const accuracy = this._lastCycleSummary(stateObj)?.prediction_accuracy;
+      const errors = Array.isArray(accuracy?.errors) ? accuracy.errors.filter((item) => item && typeof item.actual === 'string' && Number.isFinite(item.diff)) : [];
+      if (!errors.length) return `<div class="helper">${escapeHtml(this._t('dashboard_pc_none'))}</div>`;
+      const at = new Intl.DateTimeFormat(this._lang || 'en', { day: 'numeric', month: 'short', year: '2-digit' });
+      const scale = Math.max(7, ...errors.map((item) => Math.abs(item.diff)));
+      const text = (diff) => (diff === 0 ? this._t('dashboard_pc_on_time') : this._t(diff > 0 ? 'dashboard_pc_late' : 'dashboard_pc_early').replace('{n}', String(Math.abs(diff))));
+      const rows = errors.slice().reverse().map((item) => {
+        const width = Math.round((Math.abs(item.diff) / scale) * 50);
+        const side = item.diff < 0 ? `right: 50%; width: ${width}%;` : `left: 50%; width: ${width}%;`;
+        return `<li class="pc-row"><span class="pc-date">${escapeHtml(at.format(new Date(`${item.actual}T12:00:00`)))}</span><span class="pc-track" aria-hidden="true"><span class="pc-bar${Math.abs(item.diff) <= 2 ? ' ok' : ''}" style="${side}"></span></span><span class="pc-text">${escapeHtml(text(item.diff))}</span></li>`;
+      }).join('');
+      const summary = this._t('dashboard_pc_summary').replace('{mean}', String(accuracy.mean_abs_error_days)).replace('{within}', String(accuracy.within_2_days)).replace('{cycles}', String(accuracy.cycles));
+      return `<ul class="pc-list">${rows}</ul><div class="helper">${escapeHtml(summary)}</div>`;
+    }
+
     _renderWeekReview(stateObj) {
       const data = this._weekReviewData(stateObj);
       if (!data.loggedDays) return `<div class="helper">${escapeHtml(this._t('dashboard_wr_none'))}</div>`;
@@ -7740,7 +7938,7 @@
       } catch (_error) {
         saved = null;
       }
-      this._compare = { a: saved?.a || '', b: saved?.b || '', metric: saved?.metric || '' };
+      this._compare = { a: saved?.a || '', b: saved?.b || '', metric: saved?.metric || '', valuesOnly: saved?.valuesOnly === true };
     }
 
     _saveCompare() {
@@ -7753,19 +7951,22 @@
       }
     }
 
+    // The value of the curve for one logged day: pain strength (0 to 10) or temperature, null when not logged.
+    _compareRead(entry, metric) {
+      if (metric === 'pain') {
+        const value = entry?.pain_intensity ?? entry?.symptom_data?.pain_intensity;
+        return Number.isInteger(value) ? value : null;
+      }
+      const value = entry?.basal_temp ?? entry?.symptom_data?.basal_temp;
+      return value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
+    }
+
     // Temperature or pain strength of two cycles over the cycle day.
     _renderCompareChart(stateObj, cycleA, cycleB, metric, dateLabel, allCycles = []) {
       const history = this._getFullSymptomHistory(stateObj);
       const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
       const unit = this._temperatureUnit(stateObj?.attributes || {});
-      const read = (entry) => {
-        if (metric === 'pain') {
-          const value = entry?.pain_intensity ?? entry?.symptom_data?.pain_intensity;
-          return Number.isInteger(value) ? value : null;
-        }
-        const value = entry?.basal_temp ?? entry?.symptom_data?.basal_temp;
-        return value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
-      };
+      const read = (entry) => this._compareRead(entry, metric);
       const pointsOf = (cycle) => Array.from({ length: cycle.length }, (_, i) => {
         const date = addDaysIso(cycle.start, i);
         return { day: i + 1, date, value: read(byDate.get(date)) };
@@ -7785,6 +7986,10 @@
         return null;
       });
       if (series.flat().length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_cc_chart_none'))}</div>`;
+      // bleeding days of the two cycles (the sensor keeps the last six bleeding blocks), drawn as strips under the curve
+      const bleeding = new Set((Array.isArray(stateObj?.attributes?.bleeding_blocks) ? stateObj.attributes.bleeding_blocks : []).flat());
+      const bleedingDays = [cycleA, cycleB].map((cycle) => Array.from({ length: cycle.length }, (_, i) => i + 1).filter((day) => bleeding.has(addDaysIso(cycle.start, day - 1))));
+      const stripped = bleedingDays.some((days) => days.length);
       const W = 560; const H = 180; const padL = 38; const padR = 10; const padT = 10; const padB = 24;
       const maxDay = Math.max(cycleA.length, cycleB.length, 2);
       const values = [...series.flat(), ...(average.length >= 2 ? average : [])].map((point) => point.value);
@@ -7807,6 +8012,7 @@
         }).join('');
         return `<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="2"${dashes[i]} stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
       }).join('');
+      const stripsSvg = bleedingDays.map((days, i) => days.map((day) => `<rect x="${(toX(day) - (W - padL - padR) / (maxDay - 1) / 2).toFixed(1)}" y="${H + 1 + i * 6}" width="${((W - padL - padR) / (maxDay - 1)).toFixed(1)}" height="4" fill="${colors[i]}" opacity="0.75"/>`).join('')).join('');
       const avgLine = average.length >= 2 ? `<path d="${average.map((point, j) => `${j === 0 ? 'M' : 'L'}${Math.round(toX(point.day))},${Math.round(toY(point.value))}`).join(' ')}" fill="none" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3" stroke-linecap="round"/>` : '';
       const lhMarks = lhDays.map((lh, i) => {
         if (!lh) return '';
@@ -7814,9 +8020,10 @@
         return `<line x1="${x}" x2="${x}" y1="${padT}" y2="${H - padB}" stroke="${colors[i]}" stroke-width="1" opacity="0.55"/><text x="${x + 3}" y="${padT + 8}" font-size="9" font-family="IBM Plex Mono, monospace" fill="${colors[i]}">LH</text><rect x="${x - 6}" y="${padT}" width="12" height="${H - padT - padB}" fill="transparent"${this._tip(lh.date, `${this._t('dashboard_cc_day').replace('{n}', String(lh.day))} · ${this._t('dashboard_cc_lh')}`)}/>`;
       }).join('');
       const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('')
+        + (stripped ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="var(--secondary-text-color,#9ca3af)" opacity="0.75"/></svg>${escapeHtml(this._t('dashboard_cc_bleeding_days'))}</span>` : '')
         + (avgLine ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${escapeHtml(this._t('dashboard_cc_average'))}</span>` : '');
       const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
-      return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}</svg><div class="cc-legend">${legend}</div></div>`;
+      return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H + (stripped ? 14 : 0)}" width="100%" height="${H + (stripped ? 14 : 0)}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}${stripsSvg}</svg><div class="cc-legend">${legend}</div></div>`;
     }
 
     _renderCycleCompare(stateObj) {
@@ -7824,12 +8031,22 @@
       const cycles = this._compareCycles(stateObj);
       if (cycles.length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_not_enough_data'))}</div>`;
       this._loadCompare();
-      const pick = (start, fallback) => cycles.find((cycle) => cycle.start === start) || fallback;
-      const a = pick(this._compare.a, cycles[0]);
-      const b = pick(this._compare.b, cycles.find((cycle) => cycle !== a) || cycles[1]);
+      const painShown = this._prefs?.categoryVisibility?.pain !== false;
+      const metrics = painShown ? ['temp', 'pain'] : ['temp'];
+      const metric = metrics.includes(this._compare.metric) ? this._compare.metric : 'temp';
+      // "only cycles with values": the selects offer just the cycles that have a value for the chosen curve
+      // (with fewer than two of them the filter would leave nothing to compare, so all cycles stay)
+      const history = this._getFullSymptomHistory(stateObj);
+      const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
+      const hasValue = (cycle) => Array.from({ length: cycle.length }, (_, i) => this._compareRead(byDate.get(addDaysIso(cycle.start, i)), metric)).some((value) => value !== null);
+      const withValues = this._compare.valuesOnly ? cycles.filter(hasValue) : cycles;
+      const offered = withValues.length >= 2 ? withValues : cycles;
+      const pick = (start, fallback) => offered.find((cycle) => cycle.start === start) || fallback;
+      const a = pick(this._compare.a, offered[0]);
+      const b = pick(this._compare.b, offered.find((cycle) => cycle !== a) || offered[1]);
       const at = new Intl.DateTimeFormat(this._lang || 'en', { day: 'numeric', month: 'short', year: '2-digit' });
       const date = (iso) => at.format(new Date(`${iso}T12:00:00`));
-      const select = (which, chosen, label) => `<select data-action="cc-${which}" aria-label="${escapeHtml(label)}">${cycles.map((cycle) => `<option value="${escapeHtml(cycle.start)}"${cycle === chosen ? ' selected' : ''}>${escapeHtml(cycle.running ? this._t('dashboard_cc_option_running').replace('{date}', date(cycle.start)) : date(cycle.start))}</option>`).join('')}</select>`;
+      const select = (which, chosen, label) => `<select data-action="cc-${which}" aria-label="${escapeHtml(label)}">${offered.map((cycle) => `<option value="${escapeHtml(cycle.start)}"${cycle === chosen ? ' selected' : ''}>${escapeHtml(cycle.running ? this._t('dashboard_cc_option_running').replace('{date}', date(cycle.start)) : date(cycle.start))}</option>`).join('')}</select>`;
       const column = (cycle) => {
         const days = Array.from({ length: cycle.length }, (_, i) => addDaysIso(cycle.start, i));
         const sum = this._daySummary(stateObj, days);
@@ -7847,13 +8064,10 @@
       const right = column(b);
       const labels = ['dashboard_cc_length', 'dashboard_cc_logged', 'dashboard_wr_pain', 'dashboard_wr_common'];
       const rows = labels.map((key, i) => `<tr><th scope="row">${escapeHtml(this._t(key))}</th><td>${escapeHtml(left[i])}</td><td>${escapeHtml(right[i])}</td></tr>`).join('');
-      const painShown = this._prefs?.categoryVisibility?.pain !== false;
-      const metrics = painShown ? ['temp', 'pain'] : ['temp'];
-      const metric = metrics.includes(this._compare.metric) ? this._compare.metric : 'temp';
       const metricSelect = `<select data-action="cc-metric" aria-label="${escapeHtml(this._t('dashboard_cc_curve'))}">${metrics.map((key) => `<option value="${key}"${key === metric ? ' selected' : ''}>${escapeHtml(this._t(key === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp'))}</option>`).join('')}</select>`;
       return `<div class="cc-pick">${select('a', a, this._t('dashboard_cc_first'))}${select('b', b, this._t('dashboard_cc_second'))}</div>
         <table class="cc-table"><tbody>${rows}</tbody></table>
-        <div class="cc-metric">${metricSelect}</div>${this._renderCompareChart(stateObj, a, b, metric, date, cycles)}`;
+        <div class="cc-metric">${metricSelect} <label class="cc-only"><input type="checkbox" data-action="cc-values-only"${this._compare.valuesOnly ? ' checked' : ''} /> ${escapeHtml(this._t('dashboard_cc_values_only'))}</label></div>${this._renderCompareChart(stateObj, a, b, metric, date, cycles)}`;
     }
 
     _historySearchRows(stateObj) {
@@ -8531,7 +8745,7 @@
     _widgetIdsForMode(mode, order) {
       const without = (ids) => order.filter((id) => !ids.includes(id));
       if (mode === 'pregnancy') {
-        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare']);
+        const kept = without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'calendar_card', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare', 'prediction_check']);
         if (kept.includes('fetal_development')) return kept;
         const idx = kept.indexOf('phase_timeline');
         return idx >= 0 ? [...kept.slice(0, idx), 'fetal_development', ...kept.slice(idx)] : [...kept, 'fetal_development'];
@@ -8542,7 +8756,7 @@
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
           'calendar_card', 'statistics_card', 'symptom_heatmap', 'anomaly_insights', 'symptom_insights', 'pain_mood_trend', 'year_overview',
-          'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare',
+          'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare', 'prediction_check',
         ]);
       }
       if (mode === 'menopause') {
@@ -8550,7 +8764,7 @@
         // widgets and cycle-length anomaly detection, but keep general symptom
         // tracking (heatmap, pain/mood, year overview, calendar) since sporadic
         // bleeding and symptoms are still worth logging during perimenopause.
-        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare']);
+        return without(['phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp', 'anomaly_insights', 'fetal_development', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare', 'prediction_check']);
       }
       if (mode === 'postpartum') {
         // No cycle to predict during the postpartum window — hide the same
@@ -8558,7 +8772,7 @@
         // tracking (recovery symptoms, bleeding, product usage are still relevant).
         return without([
           'phase_donut', 'cycle_history', 'long_term_trend', 'pregnancy_prediction', 'basal_temp',
-          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare',
+          'anomaly_insights', 'fetal_development', 'symptom_insights', 'statistics_card', 'cycle_card', 'week_ahead', 'cycle_day_earlier', 'cycle_compare', 'prediction_check',
         ]);
       }
       return without(['fetal_development']);
@@ -8613,9 +8827,9 @@
       if (widgetId === 'progress_badges') body = this._renderProgressBadges(stateObj);
       if (widgetId === 'pain_mood_trend') body = this._renderPainMoodTrend(stateObj);
       // These two show what is planned or logged, so discreet mode leaves them out.
-      if (['week_ahead', 'week_review', 'cycle_day_earlier', 'cycle_compare', 'history_search'].includes(widgetId)) {
+      if (['week_ahead', 'week_review', 'cycle_day_earlier', 'cycle_compare', 'prediction_check', 'history_search'].includes(widgetId)) {
         if (discreetMode || !stateObj) return '';
-        body = { week_ahead: '_renderWeekAhead', week_review: '_renderWeekReview', cycle_day_earlier: '_renderCycleDayEarlier', cycle_compare: '_renderCycleCompare', history_search: '_renderHistorySearch' }[widgetId];
+        body = { week_ahead: '_renderWeekAhead', week_review: '_renderWeekReview', cycle_day_earlier: '_renderCycleDayEarlier', cycle_compare: '_renderCycleCompare', prediction_check: '_renderPredictionCheck', history_search: '_renderHistorySearch' }[widgetId];
         body = this[body](stateObj);
         if (!body) return '';
       }
@@ -8689,10 +8903,11 @@
         ${this._renderLhTestActions(stateObj, discreetMode)}
         ${this._renderTemperatureAction(stateObj, discreetMode)}
         ${this._renderPainAction(stateObj, discreetMode)}
+        ${this._renderCopyYesterday(stateObj, discreetMode)}
         ${pillRow}${stockRow}`.trim();
-      const report = this._renderDoctorReportAction(discreetMode);
+      const report = `${this._renderDoctorReportAction(discreetMode)}${this._renderExportActions(stateObj, discreetMode)}`.trim();
       if (!rows && !report) return '';
-      const more = this._todayMore || this._doctorReportBusy;
+      const more = this._todayMore || this._doctorReportBusy || this._wallCalendarBusy;
       const badge = items.length
         ? `<span class="today-count">${escapeHtml(this._t('dashboard_today_open_count').replace('{count}', String(items.length)))}</span>`
         : '';
@@ -9265,6 +9480,14 @@
           .cc-table td { padding-left: 6px; font-weight: 600; }
           .cc-metric { margin-top: 10px; }
           .cc-metric select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .82rem; }
+          .pc-list { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+          .pc-row { display: grid; grid-template-columns: 5.5rem 1fr 7rem; gap: 8px; align-items: center; font-size: .8rem; }
+          .pc-date { color: var(--secondary-text-color); }
+          .pc-track { position: relative; height: 10px; border-radius: 5px; background: var(--divider-color, #e5e7eb); }
+          .pc-track::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--secondary-text-color); }
+          .pc-bar { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--mc-rose-deep); }
+          .pc-bar.ok { background: var(--mc-sage-deep, #3F5A47); }
+          .cc-only { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; font-size: .8rem; color: var(--secondary-text-color); }
           .cc-chart { margin-top: 8px; }
           .cc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: .75rem; color: var(--secondary-text-color); }
           .cc-key { display: inline-flex; align-items: center; gap: 5px; }
