@@ -750,7 +750,7 @@
     },
     "confirm_contraception_renewal": {
       "name": "Bekräfta förnyelse av preventivmedel",
-      "description": "Registrerar att den aktuella preventivmetoden förnyats (spiral, implantat, spruta) eller att en ny plåster- eller ringförpackning påbörjats. Förnyelsetiden eller plåster-/ringrytmen räknas från det datumet. Utan datum används idag.",
+      "description": "Registrerar att den aktuella preventivmetoden förnyats (spiral, implantat, spruta) eller att en ny plåster-, ring- eller pillerförpackning påbörjats (förpackningens första dag). Förnyelsetiden, plåster-/ringrytmen eller pillerkartan räknas från det datumet. Utan datum används idag.",
       "fields": {
         "entity_id": {
           "name": "Entitet",

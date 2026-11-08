@@ -241,10 +241,14 @@ class ConfirmServiceTests(unittest.TestCase):
         self.assertEqual(self.saved, 0)
 
     def test_a_method_without_renewal_period_is_refused(self) -> None:
-        for entries in ([_log("2026-10-01", "pill")], [_log("2026-10-01", "condom")], []):
+        for entries in ([_log("2026-10-01", "condom")], []):
             with self.assertRaises(_Error):
                 self._confirm(entries)
         self.assertEqual(self.saved, 0)
+
+    def test_the_pill_pack_start_can_be_confirmed(self) -> None:
+        runtime = self._confirm([_log("2026-10-01", "pill")], {"date": "2026-09-28"})
+        self.assertEqual(runtime.noncycle_data["contraception_renewed"], {"method": "pill", "date": "2026-09-28"})
 
     def test_patch_and_ring_can_be_confirmed(self) -> None:
         for method in ("patch", "ring"):

@@ -750,7 +750,7 @@
     },
     "confirm_contraception_renewal": {
       "name": "Verhütungsmittel-Erneuerung bestätigen",
-      "description": "Hält fest, dass die aktuelle Verhütungsmethode erneuert wurde (Spirale, Implantat, Spritze) oder dass eine neue Pflaster- bzw. Ringpackung begonnen hat. Ab diesem Datum zählen die Erneuerungsfrist bzw. der Pflaster-/Ring-Rhythmus. Ohne Datum wird heute verwendet.",
+      "description": "Hält fest, dass die aktuelle Verhütungsmethode erneuert wurde (Spirale, Implantat, Spritze) oder dass eine neue Pflaster-, Ring- bzw. Pillenpackung begonnen hat (erster Tag der Packung). Ab diesem Datum zählen die Erneuerungsfrist, der Pflaster-/Ring-Rhythmus bzw. der Pillen-Blister. Ohne Datum wird heute verwendet.",
       "fields": {
         "entity_id": {
           "name": "Entität",

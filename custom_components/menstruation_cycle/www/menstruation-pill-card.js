@@ -22,6 +22,7 @@ const MC_PILL_FALLBACK_EN = {
   pill_card_tap_past: 'Tap to log it for {date}.',
   pill_card_forgot_hint: 'Forgot a pill? Tap its day to log it.',
   pill_card_confirm_past: 'Log the pill for {date}?',
+  pill_card_new_pack_question: 'No pill is logged since {date}. Does a new pack start today?\n\nOK: yes, new pack from today.\nCancel: no, it is still the same pack (the missed days stay open to log).',
   pill_card_no_pill: 'No pill pack to show. Log "pill" as the contraception method to see your blister.',
   pill_card_state_taken: 'taken',
   pill_card_state_today: 'due today',
@@ -193,29 +194,41 @@ class MenstruationPillCard extends HTMLElement {
       </ha-card>`;
   }
 
+  _iso(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
   _onClick(ev) {
     if (this._busy || !this._hass) return;
+    const pack = this._hass.states?.[this._config.entity]?.attributes?.pill_pack;
     let date;
+    let packStart = null; // set when the pack start is settled by a question, so it stops being guessed
     if (ev.target?.closest?.('[data-action="take"]')) {
-      const now = new Date();
-      date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      date = this._iso(new Date());
+      // days missing before today and no known pack start: today's pill would look like a new pack
+      if (pack && !pack.anchored && !pack.today_taken && !pack.new_pack && Array.isArray(pack.editable) && pack.editable.length) {
+        const first = this._dateLabel(this._cellDate(pack, pack.editable[0]));
+        packStart = window.confirm(this._t('pill_card_new_pack_question', { date: first })) ? date : this._iso(this._cellDate(pack, 1));
+      }
     } else {
       const cell = ev.target?.closest?.('[data-action="take-past"]');
-      const pack = this._hass.states?.[this._config.entity]?.attributes?.pill_pack;
       const day = Number(cell?.dataset?.day);
       if (!cell || !pack || !Array.isArray(pack.editable) || !pack.editable.includes(day)) return;
       const when = this._cellDate(pack, day);
       if (!window.confirm(this._t('pill_card_confirm_past', { date: this._dateLabel(when) }))) return;
-      date = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`;
+      date = this._iso(when);
     }
     this._busy = true;
     this._error = false;
     this._render();
-    Promise.resolve(this._hass.callService('menstruation_cycle', 'add_symptom', {
+    const log = () => this._hass.callService('menstruation_cycle', 'add_symptom', {
       entity_id: this._config.entity,
       date,
       symptom_data: { contraception_method: 'pill' },
-    })).catch(() => { this._error = true; }).finally(() => { this._busy = false; this._render(); });
+    });
+    Promise.resolve(packStart
+      ? this._hass.callService('menstruation_cycle', 'confirm_contraception_renewal', { entity_id: this._config.entity, date: packStart }).then(log)
+      : log()).catch(() => { this._error = true; }).finally(() => { this._busy = false; this._render(); });
   }
 }
 

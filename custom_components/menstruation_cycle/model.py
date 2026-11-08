@@ -3446,6 +3446,22 @@ def _renewal_since(method: str, method_since: str, renewed: Any) -> str:
     return method_since
 
 
+def _confirmed_pill_pack(method: str | None, renewed: Any) -> str | None:
+    """First day of the pill pack that was confirmed on the pill card (service confirm_contraception_renewal), if valid."""
+    if method != CONTRACEPTION_METHOD_PILL or not isinstance(renewed, dict) or renewed.get("method") != method:
+        return None
+    try:
+        return date.fromisoformat(str(renewed.get("date"))).isoformat()
+    except ValueError:
+        return None
+
+
+def _effective_pack_start(status: dict[str, Any], pack_start: str | None) -> str | None:
+    """The later of the configured pack start and the start confirmed on the pill card (a confirmed new pack)."""
+    confirmed = status.get("pill_pack_confirmed")
+    return confirmed if confirmed and (not pack_start or str(confirmed) > str(pack_start)) else pack_start
+
+
 def contraception_rhythm(method: str | None, since: str | None, today: date) -> dict[str, Any] | None:
     """Next step of the patch/ring rhythm (None for other methods), counted in 28-day packs from `since`.
 
@@ -3542,6 +3558,7 @@ def compute_contraception_status(
         "pill_last_taken": None,
         "pill_recent_days": [],
         "renewal_since": None,
+        "pill_pack_confirmed": None,
         "rhythm": None,
     }
     if not symptom_history:
@@ -3620,6 +3637,7 @@ def compute_contraception_status(
         "renewal_due_date": renewal_due_date,
         "renewal_reminder_due": renewal_reminder_due,
         "renewal_since": renewal_since,
+        "pill_pack_confirmed": _confirmed_pill_pack(current_method, renewed),
         "rhythm": contraception_rhythm(current_method, renewal_since, today),
     }
 
@@ -3646,6 +3664,7 @@ def pill_pack_end(
     pill_pack_view places today in the pack: packs are assumed to follow each other without a gap.
     """
     pack_days = 28 - pause_days
+    pack_start = _effective_pack_start(status, pack_start)
     if pause_days and pack_start and today is not None:
         try:
             start = date.fromisoformat(pack_start)
@@ -3674,7 +3693,8 @@ def pill_pack_view(
     Keys: active (pill cells), pause (pause cells), taken (1-based cells with a pill), position (today's cell, 1-28),
     in_pause (today is a pause day), today_taken, new_pack (no pill logged yet, or the last pack ended long ago),
     editable (cells whose pill may still be logged afterwards: past pill cells that are not taken. Without a pack
-    start date only the first cell after the logged run, because logging a later one would move the guessed start).
+    start date only the first cell after the logged run, because logging a later one would move the guessed start),
+    anchored (the pack start is known from the settings or the pill card, not guessed from the intakes).
     The pack is assumed to have started with the last unbroken run of intakes, so a profile that started logging
     mid-pack sees a shifted blister, unless `pack_start` (first day of any pack, ISO date) is given: today's cell is then
     (days since that date) mod 28, so later packs are assumed to follow without a gap, and the cells that count as taken
@@ -3686,10 +3706,11 @@ def pill_pack_view(
     active = PILL_PACK_DAYS - pause
     view: dict[str, Any] = {
         "active": active, "pause": pause, "taken": [], "position": 1,
-        "in_pause": False, "today_taken": False, "new_pack": True, "editable": [],
+        "in_pause": False, "today_taken": False, "new_pack": True, "editable": [], "anchored": False,
     }
     last = status.get("pill_last_taken")
     run = int(status.get("pill_last_run_days") or 0)
+    pack_start = _effective_pack_start(status, pack_start)
     try:
         start = date.fromisoformat(pack_start) if pack_start else None
     except ValueError:
@@ -3697,7 +3718,7 @@ def pill_pack_view(
     if start is not None and start <= today:
         offset = (today - start).days % PILL_PACK_DAYS
         position = offset + 1
-        view.update(position=position, in_pause=position > active, new_pack=False)
+        view.update(position=position, in_pause=position > active, new_pack=False, anchored=True)
         recent = status.get("pill_recent_days")
         if recent is not None:  # every logged day inside the pack, also a forgotten one logged later
             taken = [c for c in range(1, position + 1) if (today - timedelta(days=position - c)).isoformat() in recent]

@@ -750,7 +750,7 @@
     },
     "confirm_contraception_renewal": {
       "name": "Confirmar la renovación del anticonceptivo",
-      "description": "Registra que se renovó el método anticonceptivo actual (DIU, implante, inyección) o que se empezó un nuevo envase de parches o un nuevo anillo. El plazo de renovación o el ritmo de parche/anillo cuenta desde esa fecha. Sin fecha se usa hoy.",
+      "description": "Registra que se renovó el método anticonceptivo actual (DIU, implante, inyección) o que se empezó un nuevo envase de parches, un nuevo anillo o un nuevo blíster de píldoras (primer día del envase). El plazo de renovación, el ritmo de parche/anillo o el blíster cuenta desde esa fecha. Sin fecha se usa hoy.",
       "fields": {
         "entity_id": {
           "name": "Entidad",

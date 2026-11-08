@@ -2,7 +2,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-![Version](https://img.shields.io/badge/version-1.10.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.2-blue.svg)
 
 
 HA Menstruation Cycle is a Home Assistant custom integration for tracking cycle history, showing cycle phases, and powering Lovelace dashboards with interactive menstrual-cycle cards.
@@ -95,7 +95,7 @@ Date reminders, the recap, overdue and checkup notifications are sent at **Notif
 - **Pill pack break:** set **Pill break (days per pack)** (for example 7 for a 21+7 pack) so no reminder is sent during the break. It also lets the integration add "order a new pill pack" to the shopping list a few days before the pack ends.
 - **Buttons** (mobile app targets only): *Period started*, *Pill taken*, *Started today* (on the patch and ring reminders that start a new pack) and *Remind me in 1 hour*. A snooze survives a Home Assistant restart.
 - **Bleeding without a period:** `menstruation_cycle.repair_storage` reports logged bleeding that never became a period; `menstruation_cycle.create_periods_from_bleeding` adds those days (bleeding within 14 days after a period day counts as bleeding outside the period and is not turned into a period). The doctor report lists such bleeding in its own neutral section.
-- **Contraception renewal:** the renewal reminder for an IUD, implant or injection counts from the first day the method was logged. After a renewal (or a new patch/ring pack) call `menstruation_cycle.confirm_contraception_renewal` or use the button in the dashboard; the period or the patch/ring rhythm then counts from that day.
+- **Contraception renewal:** the renewal reminder for an IUD, implant or injection counts from the first day the method was logged. After a renewal (or a new patch, ring or pill pack) call `menstruation_cycle.confirm_contraception_renewal` or use the button in the dashboard; the period, the patch/ring rhythm or the pill blister then counts from that day. The pill card asks this itself when you log today's pill after missed days and no pack start is known.
 - **Hormonal methods:** *No fertility notifications on hormonal contraception* skips the fertile-window and ovulation messages while the current method is hormonal. The sensor state and the dashboard stay unchanged.
 - **Partner target:** an optional second notify target that only receives the date reminders (period; fertile window and ovulation only at visibility level "Full"), never health details. Nothing is sent for private profiles.
 - **Check your setup:** call the service `menstruation_cycle.send_test_notification` (Developer tools → Actions). If the target does not exist or fails, a repair issue appears under **Settings → Repairs** and disappears again after the next successful delivery.

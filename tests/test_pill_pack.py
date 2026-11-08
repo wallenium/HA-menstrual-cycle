@@ -181,6 +181,34 @@ class PillPackForgottenPillTests(unittest.TestCase):
         view = model.pill_pack_view(model.compute_contraception_status(self._history(range(3, 24)), today=TODAY), TODAY, 7)
         self.assertEqual((view["position"], view["in_pause"], view["editable"]), (24, True, []))
 
+    def test_a_start_confirmed_on_the_card_is_used_like_the_setting(self) -> None:
+        # three days of pills a week ago, then today: without a start that is a new pack on day 1
+        history = self._history([0, 7, 8, 9])
+        guess = model.compute_contraception_status(history, today=TODAY)
+        self.assertEqual(model.pill_pack_view(guess, TODAY, 7)["position"], 1)
+        self.assertFalse(model.pill_pack_view(guess, TODAY, 7)["anchored"], "guessed")
+        confirmed = model.compute_contraception_status(history, today=TODAY, renewed={"method": "pill", "date": (TODAY - timedelta(days=9)).isoformat()})
+        view = model.pill_pack_view(confirmed, TODAY, 7)
+        self.assertEqual((view["position"], view["taken"], view["anchored"]), (10, [1, 2, 3, 10], True))
+        self.assertEqual(view["editable"], [4, 5, 6, 7, 8, 9], "the forgotten days can be logged now")
+
+    def test_the_later_of_setting_and_confirmed_start_wins(self) -> None:
+        old, new = (TODAY - timedelta(days=40)).isoformat(), (TODAY - timedelta(days=3)).isoformat()
+        status = model.compute_contraception_status(self._history([0]), today=TODAY, renewed={"method": "pill", "date": new})
+        self.assertEqual(model.pill_pack_view(status, TODAY, 7, old)["position"], 4)
+        self.assertEqual(model.pill_pack_view(status, TODAY, 7, (TODAY - timedelta(days=1)).isoformat())["position"], 2)
+
+    def test_a_confirmed_start_of_another_method_or_a_broken_date_is_ignored(self) -> None:
+        for renewed in ({"method": "patch", "date": TODAY.isoformat()}, {"method": "pill", "date": "nonsense"}, {"method": "pill"}, "x"):
+            status = model.compute_contraception_status(self._history([0, 1]), today=TODAY, renewed=renewed)
+            self.assertIsNone(status["pill_pack_confirmed"], renewed)
+        self.assertIsNone(model.compute_contraception_status([], today=TODAY)["pill_pack_confirmed"])
+
+    def test_the_refill_date_follows_the_confirmed_start(self) -> None:
+        start = (TODAY - timedelta(days=4)).isoformat()
+        status = model.compute_contraception_status(self._history([0]), today=TODAY, renewed={"method": "pill", "date": start})
+        self.assertEqual(model.pill_pack_end(status, 7, None, TODAY), TODAY - timedelta(days=4) + timedelta(days=20))
+
     def test_a_new_pack_offers_nothing(self) -> None:
         self.assertEqual(_view(21, 8)["editable"], [])
         self.assertEqual(model.pill_pack_view(model.compute_contraception_status([{"date": "2026-09-30", "contraception_method": "pill"}], today=TODAY), TODAY, 7)["editable"], [])

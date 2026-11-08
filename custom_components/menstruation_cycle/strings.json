@@ -750,7 +750,7 @@
     },
     "confirm_contraception_renewal": {
       "name": "Confirm contraception renewal",
-      "description": "Records that the current contraception method was renewed (IUD, implant, injection) or that a new patch or ring pack was started, so the renewal period or the patch/ring rhythm counts from that date. Without a date, today is used.",
+      "description": "Records that the current contraception method was renewed (IUD, implant, injection) or that a new patch, ring or pill pack was started (the first day of the pack), so the renewal period, the patch/ring rhythm or the pill blister counts from that date. Without a date, today is used.",
       "fields": {
         "entity_id": {
           "name": "Entity",

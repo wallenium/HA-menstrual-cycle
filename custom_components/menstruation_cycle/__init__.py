@@ -6170,7 +6170,7 @@ async def _async_handle_create_periods_from_bleeding(hass: HomeAssistant, call: 
 
 
 async def _async_handle_confirm_contraception_renewal(hass: HomeAssistant, call: ServiceCall) -> None:
-    """Start the renewal period (IUD, implant, injection) or the patch/ring pack from the given day (default today)."""
+    """Start the renewal period (IUD, implant, injection) or the patch/ring/pill pack from the given day (default today)."""
     from .model import compute_contraception_status
 
     runtime = _runtime_for_call(hass, call)
@@ -6180,9 +6180,9 @@ async def _async_handle_confirm_contraception_renewal(hass: HomeAssistant, call:
     if day > today:
         raise HomeAssistantError("The renewal date cannot be in the future.")
     method = compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))["current_method"]
-    if method not in CONTRACEPTION_RENEWAL_MONTHS and method not in CONTRACEPTION_RHYTHM_EVENTS:
+    if method not in CONTRACEPTION_RENEWAL_MONTHS and method not in CONTRACEPTION_RHYTHM_EVENTS and method != CONTRACEPTION_METHOD_PILL:
         raise HomeAssistantError(
-            "The current contraception method has no renewal period. Log an IUD, implant, injection, patch or ring first."
+            "The current contraception method has no renewal period. Log an IUD, implant, injection, patch, ring or pill first."
         )
     runtime.noncycle_data[NONCYCLE_CONTRACEPTION_RENEWED] = {"method": method, "date": day.isoformat()}
     await _async_save_and_notify(hass, runtime)

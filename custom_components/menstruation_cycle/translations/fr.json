@@ -750,7 +750,7 @@
     },
     "confirm_contraception_renewal": {
       "name": "Confirmer le renouvellement de la contraception",
-      "description": "Enregistre que la méthode contraceptive actuelle a été renouvelée (stérilet, implant, injection) ou qu’une nouvelle boîte de patchs ou un nouvel anneau a été commencé. Le délai de renouvellement ou le rythme patch/anneau compte à partir de cette date. Sans date, aujourd’hui est utilisé.",
+      "description": "Enregistre que la méthode contraceptive actuelle a été renouvelée (stérilet, implant, injection) ou qu’une nouvelle boîte de patchs, un nouvel anneau ou une nouvelle plaquette de pilules a été commencé (premier jour de la boîte). Le délai de renouvellement, le rythme patch/anneau ou la plaquette compte à partir de cette date. Sans date, aujourd’hui est utilisé.",
       "fields": {
         "entity_id": {
           "name": "Entité",

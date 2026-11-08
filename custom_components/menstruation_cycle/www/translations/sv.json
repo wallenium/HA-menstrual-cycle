@@ -1441,6 +1441,7 @@
   "pill_card_tap_past": "Tryck för att logga den för {date}.",
   "pill_card_forgot_hint": "Glömt ett piller? Tryck på dagen för att logga den.",
   "pill_card_confirm_past": "Logga pillret för {date}?",
+  "pill_card_new_pack_question": "Inget piller har loggats sedan {date}. Börjar en ny karta idag?\n\nOK: ja, ny karta från idag.\nAvbryt: nej, det är fortfarande samma karta (de missade dagarna kan fortfarande loggas).",
   "pill_card_no_pill": "Ingen pillerkarta att visa. Logga \"piller\" som preventivmetod för att se din karta.",
   "pill_card_state_taken": "taget",
   "pill_card_state_today": "ska tas i dag",

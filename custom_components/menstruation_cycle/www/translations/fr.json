@@ -1441,6 +1441,7 @@
   "pill_card_tap_past": "Touchez pour l’enregistrer le {date}.",
   "pill_card_forgot_hint": "Pilule oubliée ? Touchez son jour pour l’enregistrer.",
   "pill_card_confirm_past": "Enregistrer la pilule du {date} ?",
+  "pill_card_new_pack_question": "Aucune pilule n'est enregistrée depuis le {date}. Une nouvelle plaquette commence-t-elle aujourd'hui ?\n\nOK : oui, nouvelle plaquette à partir d'aujourd'hui.\nAnnuler : non, c'est toujours la même plaquette (les jours oubliés restent ouverts pour être saisis).",
   "pill_card_no_pill": "Aucune plaquette à afficher. Enregistrez « pilule » comme méthode de contraception pour voir votre plaquette.",
   "pill_card_state_taken": "prise",
   "pill_card_state_today": "à prendre aujourd'hui",

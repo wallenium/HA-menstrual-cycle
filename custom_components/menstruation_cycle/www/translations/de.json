@@ -1441,6 +1441,7 @@
   "pill_card_tap_past": "Zum Nachtragen für den {date} tippen.",
   "pill_card_forgot_hint": "Pille vergessen? Tippe auf den Tag, um sie nachzutragen.",
   "pill_card_confirm_past": "Pille für den {date} nachtragen?",
+  "pill_card_new_pack_question": "Seit {date} ist keine Pille geloggt. Beginnt heute eine neue Packung?\n\nOK: ja, neue Packung ab heute.\nAbbrechen: nein, es ist noch dieselbe Packung (die vergessenen Tage bleiben zum Nachtragen offen).",
   "pill_card_no_pill": "Keine Pillenpackung vorhanden. Trage „Pille“ als Verhütungsmethode ein, um den Blister zu sehen.",
   "pill_card_state_taken": "genommen",
   "pill_card_state_today": "heute fällig",
