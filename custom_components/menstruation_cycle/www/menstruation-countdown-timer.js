@@ -2988,10 +2988,10 @@ class MenstruationCountdownTimer extends HTMLElement {
     return document.createElement("menstruation-countdown-timer-editor");
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: "custom:menstruation-countdown-timer",
-      entity: "sensor.anna",
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || "sensor.anna",
       product_animations: true,
       animation_style: "realistic",
       tampon_duration: 4,
@@ -3358,5 +3358,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "menstruation-countdown-timer",
   name: "Menstruation Countdown Timer",
+  preview: true,
   description: "Countdown timer with direct product-usage logging for period products.",
 });

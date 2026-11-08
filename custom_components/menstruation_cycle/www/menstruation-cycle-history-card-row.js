@@ -21,10 +21,10 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
     return document.createElement('menstruation-cycle-history-card-row-editor');
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: 'custom:menstruation-cycle-history-card-row',
-      entity: 'sensor.menstruation',
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
       // Bugfix (15.09.2026): Der Default-Titel hier war Deutsch
       // ("Zyklus History"), obwohl die Karte selbst intern konsequent
@@ -657,5 +657,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-cycle-history-card-row',
   name: 'Menstruation Cycle History (Table)',
+  preview: true,
   description: 'Menstrual cycle history in table format',
 });

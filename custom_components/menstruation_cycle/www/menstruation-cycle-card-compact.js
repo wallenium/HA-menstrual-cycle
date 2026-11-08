@@ -607,10 +607,10 @@ class MenstruationCycleCard extends HTMLElement {
     return document.createElement("menstruation-cycle-card-editor");
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: "custom:menstruation-cycle-card",
-      entity: "sensor.cycle_status",
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || "sensor.cycle_status",
     };
   }
 }
@@ -701,5 +701,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-cycle-card',
   name: 'Menstruation Cycle Status',
+  preview: true,
   description: 'Compact status badge with cycle day indicator',
 });

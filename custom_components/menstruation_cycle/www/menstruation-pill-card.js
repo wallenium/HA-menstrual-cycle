@@ -43,8 +43,8 @@ const MC_PILL_FALLBACK_EN = {
 };
 
 class MenstruationPillCard extends HTMLElement {
-  static getStubConfig() {
-    return { type: 'custom:menstruation-pill-card', entity: 'sensor.menstruation' };
+  static getStubConfig(hass) {
+    return { type: 'custom:menstruation-pill-card', entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a && 'pill_pack' in a; }) || 'sensor.menstruation' };
   }
 
   static getConfigElement() {
@@ -360,6 +360,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-pill-card',
   name: 'Menstruation Pill Pack',
+  preview: true,
   description: 'Pill blister: taken pills, pause days, tap today\'s pill to log it',
   // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
   getEntitySuggestion: (hass, entityId) => {

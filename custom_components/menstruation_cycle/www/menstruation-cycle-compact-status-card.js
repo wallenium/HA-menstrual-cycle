@@ -17,10 +17,10 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
     return { columns: 6, min_columns: 3 };
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: 'custom:menstruation-cycle-compact-status',
-      entity: 'sensor.menstruation',
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
       title: '',
       show_title: false,
@@ -924,6 +924,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-cycle-compact-status',
   name: 'Menstruation Cycle Compact Status',
+  preview: true,
   description: 'Compact cycle status with circular day indicator and status icon',
   // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
   getEntitySuggestion: (hass, entityId) => {

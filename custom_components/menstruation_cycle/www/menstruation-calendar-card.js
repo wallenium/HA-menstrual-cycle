@@ -42,10 +42,10 @@ class MenstruationCalendarCard extends HTMLElement {
     return document.createElement('menstruation-calendar-card-editor');
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: 'custom:menstruation-calendar-card',
-      entity: 'sensor.menstruation',
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
       title: 'Cycle Calendar',
       show_fertile_period: true,
@@ -2317,6 +2317,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-calendar-card',
   name: 'Menstruation Calendar Card',
+  preview: true,
   description: 'Standalone full-month calendar with period, fertile window, and ovulation markers.',
   // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
   getEntitySuggestion: (hass, entityId) => {

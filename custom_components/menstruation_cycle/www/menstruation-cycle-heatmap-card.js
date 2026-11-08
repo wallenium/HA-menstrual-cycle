@@ -65,10 +65,10 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     return document.createElement('menstruation-cycle-heatmap-card-editor');
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: 'custom:menstruation-cycle-heatmap-card',
-      entity: 'sensor.menstruation',
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
       title: 'Zyklus Heatmap',
       max_cycles: 18,
@@ -1400,5 +1400,6 @@ window.customCards.push({
   // Lovelace-"Karte hinzufügen"-Auswahldialog - alle anderen 8
   // registrierten Karten nutzen dort Englisch (der Dialog selbst ist
   // ohnehin nicht lokalisiert). Für Konsistenz auf Englisch umgestellt.
+  preview: true,
   description: 'Heatmap with one column per cycle and one cell per cycle day (grouped_starts compatible).',
 });

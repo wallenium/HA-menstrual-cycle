@@ -16,10 +16,10 @@ class MenstruationGaugeCard extends HTMLElement {
     return { columns: 12, min_columns: 6 };
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
     return {
       type: 'custom:menstruation-gauge-card',
-      entity: 'sensor.menstruation',
+      entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
       friendly_name: '',
       theme_mode: 'auto',
@@ -3116,6 +3116,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'menstruation-gauge-card',
   name: 'Menstruation Gauge Card',
+  preview: true,
   description: 'A card to visualize menstruation cycle, fertile window, ovulation, and related symptoms.',
   // HA 2026.6 card picker: offered only for a cycle sensor of this integration (attributes that survive every visibility level).
   getEntitySuggestion: (hass, entityId) => {
