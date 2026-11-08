@@ -1550,6 +1550,7 @@
   "dashboard_anomaly_outlier_short": "Ciclo desde el {date}: {days} días más corto de lo habitual ({len} en lugar de {avg} de media)",
   "dashboard_anomaly_running_long": "Ciclo actual: ya {len} días, {days} días más largo de lo habitual (media {avg})",
   "dashboard_cc_ovulation_lh": "Ovulación (tras test de LH)",
+  "dashboard_cc_ovulation_temp": "Ovulación (tras subida de temperatura)",
   "dashboard_anomaly_compare": "Comparar con el ciclo anterior",
   "dashboard_anomaly_compare_hidden": "Muestra la tarjeta \"Comparar ciclos\" para verlo.",
   "teen_dashboard_anomaly_regular": "Tu ciclo es bastante regular",

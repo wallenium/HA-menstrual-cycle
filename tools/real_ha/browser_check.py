@@ -1,6 +1,6 @@
 """Loads the dashboard panel and all cards in a real Chromium against data a real Home Assistant produced.
 
-Usage: python3 browser_check.py FIXTURE_DIR [SCREENSHOT_DIR]     (needs: pip install playwright && playwright install chromium)
+Usage: python3 browser_check.py FIXTURE_DIR [SCREENSHOT_DIR]     (needs: pip install playwright axe-playwright-python && playwright install chromium)
 The fixtures come from test_browser_fixtures.py; hass is a stand-in object (states, callService, sendMessagePromise) fed with them,
 so this checks rendering and privacy of the shipped JavaScript, not the Home Assistant frontend around it."""
 import http.server
@@ -37,7 +37,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-PAGE = "<!doctype html><meta charset=utf-8><body style='margin:0'><div id=root></div>" + "".join(
+PAGE = "<!doctype html><html lang=en><meta charset=utf-8><title>M-Cycle check</title><body style='margin:0'><div id=root></div>" + "".join(
     f'<script type="module" src="/{f}"></script>' for f in FILES)
 
 HASS_JS = """
@@ -914,9 +914,16 @@ def mobile_dark_check(browser, base, fixture, shots=None):
         page.screenshot(path=str(Path(shots) / "teen_mobile_dark.png"), full_page=True)
     page.evaluate("() => document.querySelectorAll('menstruation-cycle-dashboard-panel').forEach((p) => p.remove())")
     # the standalone cards follow the profile
-    for tag in ("menstruation-calendar-card", "menstruation-gauge-card", "menstruation-cycle-compact-status"):
+    # (the support card shows only in early stages, the inventory card reads the profile of its household member)
+    page.evaluate("""([h, entity]) => { const s = h.states[entity];
+        h.states[entity] = {...s, attributes: {...s.attributes, onboarding_stage: 'early_menarche'}};
+        h.states['sensor.household_product_stock'] = {entity_id: 'sensor.household_product_stock', state: 'ok', context: {},
+          attributes: {inventory: {pads: 5}, thresholds: {}, household_members: [{name: 'Anna', profile: s.attributes.profile}]}}; }""", [hass, ENTITY])
+    for tag in ("menstruation-calendar-card", "menstruation-gauge-card", "menstruation-cycle-compact-status", "menstruation-cycle-heatmap-card",
+                "menstruation-statistics-card", "menstruation-pill-card", "menstruation-support-card", "menstruation-product-inventory-card",
+                "menstruation-countdown-timer", "menstruation-cycle-history-card-row"):
         card = page.evaluate_handle("""([tag, h, entity]) => { const el = document.createElement(tag);
-            el.setConfig({entity, entities: [entity], type: 'custom:' + tag});
+            el.setConfig({entity, entities: [entity], type: 'custom:' + tag, ...(tag.includes('inventory') ? {member: 'Anna'} : {})});
             document.getElementById('root').appendChild(el); el.hass = h; return el; }""", [tag, hass, ENTITY])
         page.wait_for_timeout(500)
         info = card.evaluate("""(el) => { const c = el.shadowRoot.querySelector('ha-card'); return {teen: el.hasAttribute('data-teen'), edge: c ? getComputedStyle(c).borderTopStyle : null,
@@ -932,6 +939,81 @@ def mobile_dark_check(browser, base, fixture, shots=None):
     real = [e for e in errors if "favicon" not in e and "only available to administrators" not in e]
     problems += [f"mobile dark: {e}" for e in sorted(set(real))]
     page.close()
+    return problems
+
+
+def axe_check(browser, base, fixture):
+    """axe-core on the dashboard panel (it embeds the countdown timer) in the four looks people see: standard and teen design,
+    light and dark system theme (the teen runs at phone width, profile age 13). Any serious or critical finding is a problem;
+    minor and moderate ones (for example role=button on a heading) are not."""
+    try:
+        from axe_playwright_python.sync_playwright import Axe
+    except ImportError:
+        return ["axe: axe-playwright-python is not installed (pip install axe-playwright-python)"]
+    problems = []
+    for name, width, scheme, age in (("standard-light", 1100, "light", None), ("standard-dark", 1100, "dark", None),
+                                     ("teen-light", 390, "light", 13), ("teen-dark", 390, "dark", 13)):
+        page = browser.new_page(viewport={"width": width, "height": 900}, color_scheme=scheme)
+        page.goto(base + "/_page.html")
+        page.evaluate("async () => { await customElements.whenDefined('menstruation-cycle-dashboard-panel'); }")
+        hass = page.evaluate_handle(HASS_JS, [fixture, "en"])
+        if age:
+            page.evaluate("""([h, e, age]) => { const s = h.states[e]; h.states[e] = {...s, attributes: {...s.attributes, age_at_tracking: age}};
+                try { localStorage.clear(); } catch (err) { /* none */ } }""", [hass, ENTITY, age])
+        page.evaluate("""(h) => { const p = document.createElement('menstruation-cycle-dashboard-panel');
+            p.panel = {config: {}}; p.narrow = false; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = h; }""", hass)
+        page.wait_for_timeout(2500)
+        skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
+        if skip.count():
+            skip.first.click()
+        page.wait_for_timeout(4000)  # fade-in animations end; axe would otherwise read half-transparent colours
+        found = {}
+        for v in Axe().run(page).response["violations"]:
+            if v["impact"] in ("serious", "critical"):
+                for n in v["nodes"]:
+                    found.setdefault((v["id"], v["impact"]), []).append(n["target"][-1])
+        for (rule, impact), nodes in sorted(found.items()):
+            problems.append(f"axe[{name}]: {impact} {rule} on {len(nodes)} element(s), e.g. {nodes[0]}")
+        page.close()
+    return problems
+
+
+def teen_choice_check(browser, base, fixture_dir):
+    """The Teen-Design switch end to end: the choice was saved and read back by the real service (fixtures teen_on / teen_off, written by
+    test_browser_fixtures.py), nothing is mocked in between. "On" for an adult profile and "off" for a 13-year-old must reach the panel
+    and the calendar card; the profile itself says the opposite, so only the saved choice can explain the result."""
+    problems = []
+    for choice, age, expected in (("on", None, True), ("off", 13, False)):
+        path = Path(fixture_dir) / f"teen_{choice}.json"
+        if not path.exists():
+            problems.append(f"teen choice: fixture {path.name} is missing")
+            continue
+        fixture = json.loads(path.read_text())
+        saved = (fixture["services"].get("get_dashboard_prefs") or {}).get("prefs") or {}
+        if saved.get("teenStyle") != choice:
+            problems.append(f"teen choice {choice}: the real service returned {saved}")
+        page = browser.new_page(viewport={"width": 1100, "height": 1000})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+        page.goto(base + "/_page.html")
+        page.evaluate("async (names) => { await Promise.all(names.map((n) => customElements.whenDefined(n))); }",
+                      ["menstruation-calendar-card", "menstruation-cycle-dashboard-panel"])
+        hass = page.evaluate_handle(HASS_JS, [fixture, "en"])
+        if age:
+            page.evaluate("""([h, e, age]) => { const s = h.states[e]; h.states[e] = {...s, attributes: {...s.attributes, age_at_tracking: age}};
+                try { localStorage.clear(); } catch (err) { /* none */ } }""", [hass, ENTITY, age])
+        card = page.evaluate_handle("""([h, entity]) => { const el = document.createElement('menstruation-calendar-card');
+            el.setConfig({entity, entities: [entity], type: 'custom:menstruation-calendar-card'});
+            document.getElementById('root').appendChild(el); el.hass = h; return el; }""", [hass, ENTITY])
+        panel = page.evaluate_handle("""(h) => { const p = document.createElement('menstruation-cycle-dashboard-panel');
+            p.panel = {config: {}}; p.narrow = false; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = h; return p; }""", hass)
+        page.wait_for_timeout(3000)
+        for label, handle in (("calendar card", card), ("panel", panel)):
+            got = handle.evaluate("(el) => el.hasAttribute('data-teen')")
+            if got != expected:
+                problems.append(f"teen choice {choice}: {label} has data-teen={got}, expected {expected}")
+        problems += [f"teen choice {choice}: {e}" for e in sorted(set(errors))]
+        page.close()
     return problems
 
 
@@ -1013,7 +1095,10 @@ def run(fixture_dir, shots=None):
                 real = [e for e in errors if "favicon" not in e and "only available to administrators" not in e]
                 problems += [f"{label}: {e}" for e in sorted(set(real))]
                 page.close()
-        problems += mobile_dark_check(browser, base, json.loads((Path(fixture_dir) / "full.json").read_text()), shots)
+        full = json.loads((Path(fixture_dir) / "full.json").read_text())
+        problems += mobile_dark_check(browser, base, full, shots)
+        problems += axe_check(browser, base, full)
+        problems += teen_choice_check(browser, base, fixture_dir)
         browser.close()
     server.shutdown()
     if not seen_at_full:  # the privacy check below "full" means nothing if the data never shows up at "full"

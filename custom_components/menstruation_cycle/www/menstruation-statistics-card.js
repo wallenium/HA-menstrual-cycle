@@ -513,7 +513,7 @@ function getHygieneStyles(options = {}) {
     }
     .mgp-subtitle {
       margin: 4px 0 0;
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       font-size: 0.9rem;
     }
     .mgp-content {
@@ -539,7 +539,7 @@ function getHygieneStyles(options = {}) {
     }
     .mgp-section-meta {
       font-size: 11px;
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       margin-bottom: 8px;
     }
     .mgp-stat-grid {
@@ -556,7 +556,7 @@ function getHygieneStyles(options = {}) {
       box-sizing: border-box;
     }
     .mgp-stat-label {
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
@@ -571,7 +571,7 @@ function getHygieneStyles(options = {}) {
     }
     .mgp-stat-detail {
       margin-top: 4px;
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       font-size: 11px;
       line-height: 1.35;
     }
@@ -588,7 +588,7 @@ function getHygieneStyles(options = {}) {
       font: inherit;
     }
     .mgp-empty-state {
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       font-size: 12px;
       padding: 6px 0;
     }
@@ -604,7 +604,7 @@ function getHygieneStyles(options = {}) {
       align-items: start;
     }
     .mgp-timeline-date {
-      color: var(--secondary-text-color, #6b7280);
+      color: var(--secondary-text-color, #5f6673);
       font-size: 0.8rem;
       padding-top: 4px;
     }
@@ -2523,13 +2523,13 @@ class MenstruationStatisticsCard extends HTMLElement {
     let tick = Math.ceil(minTemp / step) * step;
     const yLabels = [];
     while (tick <= maxTemp + 0.01) {
-      yLabels.push(`<text x="${padL - 4}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${(fahrenheit ? tick * 9 / 5 + 32 : tick).toFixed(1)}</text>`);
+      yLabels.push(`<text x="${padL - 4}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--secondary-text-color,#666)">${(fahrenheit ? tick * 9 / 5 + 32 : tick).toFixed(1)}</text>`);
       tick = Math.round((tick + step) * 100) / 100;
     }
     const xStep = Math.max(1, Math.round(maxDay / 7));
     const xLabels = [];
     for (let d = 1; d <= maxDay; d += xStep) {
-      xLabels.push(`<text x="${x(d).toFixed(1)}" y="${padT + chartH + 11}" text-anchor="middle" font-size="8" fill="#888">${d}</text>`);
+      xLabels.push(`<text x="${x(d).toFixed(1)}" y="${padT + chartH + 11}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#666)">${d}</text>`);
     }
 
     const rows = cycles.map((c, i) => {
@@ -2724,14 +2724,14 @@ class MenstruationStatisticsCard extends HTMLElement {
       tickTemp = Math.round((tickTemp + step) * 100) / 100;
     }
     const yLabels = yTicks.map(temp =>
-      `<text x="${(padL - 4).toFixed(0)}" y="${(yScale(temp) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#888">${(fahrenheit ? temp * 9 / 5 + 32 : temp).toFixed(1)}</text>`
+      `<text x="${(padL - 4).toFixed(0)}" y="${(yScale(temp) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--secondary-text-color,#666)">${(fahrenheit ? temp * 9 / 5 + 32 : temp).toFixed(1)}</text>`
     ).join('');
 
     // X-axis labels (every ~5 days)
     const xStep = Math.max(1, Math.round(maxDay / 7));
     const xLabels = [];
     for (let d = 1; d <= maxDay; d += xStep) {
-      xLabels.push(`<text x="${xScale(d).toFixed(1)}" y="${(padT + chartH + 10).toFixed(1)}" text-anchor="middle" font-size="8" fill="#888">${d}</text>`);
+      xLabels.push(`<text x="${xScale(d).toFixed(1)}" y="${(padT + chartH + 10).toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--secondary-text-color,#666)">${d}</text>`);
     }
 
     // Legend
@@ -2906,15 +2906,17 @@ class MenstruationStatisticsCard extends HTMLElement {
 
     const hasNfp = this._hasNfpData(attrs);
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, stateObj);
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         :host { display: block; }
         ha-card { padding: 12px 16px 16px; }
         .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--primary-text-color); }
         .toolbar-wrap { position: relative; margin-bottom: 12px; }
         .tab-toolbar { display: flex; align-items: flex-end; gap: 8px; }
         .tabs { flex: 1; display: flex; gap: 4px; border-bottom: 2px solid var(--divider-color, #ddd); padding-bottom: 0; }
-        .tab-btn { flex: 1; padding: 8px 4px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--secondary-text-color, #888); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .tab-btn { flex: 1; padding: 8px 4px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--secondary-text-color, #666); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
         .tab-btn.active { color: var(--primary-color, #c0392b); border-bottom-color: var(--primary-color, #c0392b); }
         .tab-btn:hover:not(.active) { color: var(--primary-text-color); }
         .filter-toggle { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--divider-color, #ddd); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; }
@@ -2927,58 +2929,58 @@ class MenstruationStatisticsCard extends HTMLElement {
         .section-icon { font-size: 16px; }
         .section-icon-img { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
         .method-icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px; }
-        .section-meta { font-size: 11px; color: var(--secondary-text-color, #888); margin-bottom: 8px; }
+        .section-meta { font-size: 11px; color: var(--secondary-text-color, #666); margin-bottom: 8px; }
         .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 8px; }
         .stat-box { background: var(--secondary-background-color, #f5f5f5); border-radius: 8px; padding: 8px; text-align: center; border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.18)); }
         .stat-val { font-size: 18px; font-weight: 700; color: var(--primary-color, #c0392b); }
-        .stat-key { font-size: 10px; color: var(--secondary-text-color, #888); margin-top: 2px; }
+        .stat-key { font-size: 10px; color: var(--secondary-text-color, #666); margin-top: 2px; }
         .regularity-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: auto; }
         .reg-very_regular { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
-        .reg-regular { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #f39c12); }
+        .reg-regular { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #8a5300); }
         .reg-irregular { background: color-mix(in srgb, var(--error-color, #e74c3c) 14%, transparent); color: var(--error-color, #e74c3c); }
         .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
         .bar-label { flex: 0 0 120px; font-size: 12px; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .bar-outer { flex: 1; height: 10px; background: var(--secondary-background-color, #f0f0f0); border-radius: 5px; overflow: hidden; }
         .bar-fill { height: 100%; background: var(--primary-color, #c0392b); border-radius: 5px; transition: width 0.4s; }
-        .bar-pct { flex: 0 0 36px; font-size: 11px; color: var(--secondary-text-color, #888); text-align: right; }
-        .sparkline-legend { font-size: 11px; color: var(--secondary-text-color, #888); margin-top: 4px; }
-        .no-data { color: var(--secondary-text-color, #888); font-size: 12px; padding: 8px 0; }
-        .description { font-size: 12px; color: var(--secondary-text-color, #888); margin-bottom: 12px; line-height: 1.5; }
+        .bar-pct { flex: 0 0 36px; font-size: 11px; color: var(--secondary-text-color, #666); text-align: right; }
+        .sparkline-legend { font-size: 11px; color: var(--secondary-text-color, #666); margin-top: 4px; }
+        .no-data { color: var(--secondary-text-color, #666); font-size: 12px; padding: 8px 0; }
+        .description { font-size: 12px; color: var(--secondary-text-color, #666); margin-bottom: 12px; line-height: 1.5; }
         .form-field { margin-bottom: 12px; }
-        .form-field label { display: block; font-size: 12px; color: var(--secondary-text-color, #888); margin-bottom: 4px; }
+        .form-field label { display: block; font-size: 12px; color: var(--secondary-text-color, #666); margin-bottom: 4px; }
         .form-field input, .form-field select { width: 100%; padding: 8px; border: 1px solid var(--divider-color, #ddd); border-radius: 6px; font-size: 13px; background: var(--card-background-color, #fff); color: var(--primary-text-color); }
         .export-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--primary-color, #c0392b); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
         .export-btn:hover { opacity: 0.85; }
         .export-btn:disabled { opacity: 0.5; cursor: default; }
-        .export-hint { font-size: 11px; color: var(--secondary-text-color, #888); margin-top: 8px; line-height: 1.5; }
+        .export-hint { font-size: 11px; color: var(--secondary-text-color, #666); margin-top: 8px; line-height: 1.5; }
         .days-buttons { display: flex; gap: 8px; }
         .days-buttons.compact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
         .days-btn { min-height: 34px; padding: 8px; border: 1px solid var(--divider-color, #ddd); border-radius: 8px; background: var(--secondary-background-color, #f5f5f5); cursor: pointer; font-size: 12px; color: var(--primary-text-color); }
         .days-btn.active { background: var(--primary-color, #c0392b); color: #fff; border-color: var(--primary-color, #c0392b); }
-        .empty { padding: 20px; text-align: center; color: var(--secondary-text-color, #888); }
+        .empty { padding: 20px; text-align: center; color: var(--secondary-text-color, #666); }
         .hygiene-tab { min-height: 0; }
         .nfp-confidence-badge { margin-left: auto; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .nfp-conf-high { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
-        .nfp-conf-medium { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #f39c12); }
-        .nfp-conf-low { background: color-mix(in srgb, var(--secondary-text-color, #888) 14%, transparent); color: var(--secondary-text-color, #888); }
+        .nfp-conf-high { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #1e7a45); }
+        .nfp-conf-medium { background: color-mix(in srgb, var(--warning-color, #f39c12) 16%, transparent); color: var(--warning-color, #8a5300); }
+        .nfp-conf-low { background: color-mix(in srgb, var(--secondary-text-color, #666) 10%, transparent); color: var(--secondary-text-color, #666); }
         .nfp-likelihood-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .nfp-likelihood-high { background: color-mix(in srgb, var(--error-color, #ef4444) 16%, transparent); color: var(--error-color, #ef4444); }
-        .nfp-likelihood-elevated { background: color-mix(in srgb, var(--warning-color, #f59e0b) 16%, transparent); color: var(--warning-color, #f59e0b); }
-        .nfp-likelihood-low { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #27ae60); }
-        .nfp-likelihood-unknown { background: color-mix(in srgb, var(--secondary-text-color, #888) 14%, transparent); color: var(--secondary-text-color, #888); }
-        .nfp-likelihood-disclaimer { font-size: 10px; color: var(--secondary-text-color, #888); font-style: italic; margin: 2px 0 6px 24px; padding: 0; }
+        .nfp-likelihood-high { background: color-mix(in srgb, var(--error-color, #ef4444) 16%, transparent); color: var(--error-color, #b91c1c); }
+        .nfp-likelihood-elevated { background: color-mix(in srgb, var(--warning-color, #f59e0b) 16%, transparent); color: var(--warning-color, #8a5300); }
+        .nfp-likelihood-low { background: color-mix(in srgb, var(--success-color, #27ae60) 16%, transparent); color: var(--success-color, #1e7a45); }
+        .nfp-likelihood-unknown { background: color-mix(in srgb, var(--secondary-text-color, #666) 14%, transparent); color: var(--secondary-text-color, #666); }
+        .nfp-likelihood-disclaimer { font-size: 10px; color: var(--secondary-text-color, #666); font-style: italic; margin: 2px 0 6px 24px; padding: 0; }
         .nfp-info-box { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--divider-color, rgba(128,128,128,0.18)); }
         .nfp-info-row { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--divider-color, rgba(128,128,128,0.1)); font-size: 12px; }
         .nfp-info-row:last-child { border-bottom: none; }
-        .nfp-info-row.nfp-info-highlight { font-weight: 600; color: var(--success-color, #16a34a); }
+        .nfp-info-row.nfp-info-highlight { font-weight: 600; color: var(--success-color, #157a3c); }
         .nfp-info-icon { flex: 0 0 18px; }
         .nfp-info-icon-img { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
-        .nfp-info-label { flex: 0 0 140px; color: var(--secondary-text-color, #888); }
+        .nfp-info-label { flex: 0 0 140px; color: var(--secondary-text-color, #666); }
         .nfp-info-value { flex: 1; color: var(--primary-text-color); }
         .planning-range-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 4px; }
-        .planning-range-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--secondary-text-color, #888); }
+        .planning-range-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--secondary-text-color, #666); }
         .planning-range-inputs input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color, #ddd); background: var(--card-background-color, #fff); color: var(--primary-text-color); font-size: 12px; }
-        .planning-range-hint { margin: 2px 0 6px 24px; font-size: 10px; color: var(--secondary-text-color, #888); font-style: italic; }
+        .planning-range-hint { margin: 2px 0 6px 24px; font-size: 10px; color: var(--secondary-text-color, #666); font-style: italic; }
         .planning-mini-calendar { margin: 8px 0 0 24px; max-width: calc(100% - 24px); }
         .planning-mini-calendar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); gap: 6px; width: 100%; }
         .mini-calendar-day { min-width: 0; display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 4px 6px; border-radius: 8px; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #ddd); font-size: 10px; color: var(--primary-text-color); }
@@ -2986,12 +2988,12 @@ class MenstruationStatisticsCard extends HTMLElement {
         .mini-calendar-day-period { background: #dc2626; border-color: #b91c1c; color: #ffffff; }
         .mini-calendar-day-fertile { background: #facc15; border-color: #ca8a04; color: #3a2f00; }
         .mini-calendar-day-ovulation { background: #16a34a; border-color: #15803d; color: #ffffff; }
-        .planning-mini-calendar-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; font-size: 10px; color: var(--secondary-text-color, #888); }
+        .planning-mini-calendar-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; font-size: 10px; color: var(--secondary-text-color, #666); }
         .planning-mini-calendar-legend-item { display: inline-flex; align-items: center; gap: 4px; }
         .mini-calendar-legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--divider-color, #ddd); display: inline-block; }
         .nfp-chart-wrap { width: 100%; overflow: hidden; }
         .nfp-temp-chart { display: block; width: 100%; }
-        .nfp-chart-axis-label { text-align: center; font-size: 10px; color: var(--secondary-text-color, #888); margin-top: 2px; }
+        .nfp-chart-axis-label { text-align: center; font-size: 10px; color: var(--secondary-text-color, #666); margin-top: 2px; }
         .anomaly-list { display: flex; flex-direction: column; gap: 8px; }
         .anomaly-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border-left: 4px solid; font-size: 12px; }
         .anomaly-info { background: color-mix(in srgb, #3b82f6 10%, transparent); border-color: #3b82f6; }
@@ -3000,9 +3002,9 @@ class MenstruationStatisticsCard extends HTMLElement {
         .anomaly-icon { font-size: 16px; flex: 0 0 auto; margin-top: 1px; }
         .anomaly-body { display: flex; flex-direction: column; gap: 3px; }
         .anomaly-msg { font-weight: 600; color: var(--primary-text-color); }
-        .anomaly-detail { color: var(--secondary-text-color, #888); font-size: 11px; }
-        .anomaly-suggestion { color: var(--secondary-text-color, #888); font-size: 11px; font-style: italic; }
-        .anomaly-no-data { color: var(--secondary-text-color, #888); font-size: 12px; padding: 8px 0; }
+        .anomaly-detail { color: var(--secondary-text-color, #666); font-size: 11px; }
+        .anomaly-suggestion { color: var(--secondary-text-color, #666); font-size: 11px; font-style: italic; }
+        .anomaly-no-data { color: var(--secondary-text-color, #666); font-size: 12px; padding: 8px 0; }
         .corr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .corr-card { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px; border-left: 3px solid; display: flex; flex-direction: column; gap: 4px; }
         .corr-high { border-color: var(--success-color, #27ae60); }
@@ -3010,12 +3012,12 @@ class MenstruationStatisticsCard extends HTMLElement {
         .corr-low { border-color: var(--divider-color, #aaa); }
         .corr-sym { font-weight: 600; font-size: 12px; color: var(--primary-text-color); }
         .corr-pct { font-size: 20px; font-weight: 700; color: var(--primary-color, #c0392b); line-height: 1; }
-        .corr-phase { font-size: 11px; color: var(--secondary-text-color, #888); }
-        .corr-strength-badge { font-size: 10px; font-weight: 600; margin-top: 2px; color: var(--secondary-text-color, #888); text-transform: uppercase; letter-spacing: 0.5px; }
+        .corr-phase { font-size: 11px; color: var(--secondary-text-color, #666); }
+        .corr-strength-badge { font-size: 10px; font-weight: 600; margin-top: 2px; color: var(--secondary-text-color, #666); text-transform: uppercase; letter-spacing: 0.5px; }
         .insight-list { display: flex; flex-direction: column; gap: 8px; }
         .insight-card { background: var(--secondary-background-color, #f5f5f5); border-radius: 10px; padding: 10px 12px; }
         .insight-text { font-size: 12px; color: var(--primary-text-color); }
-        .insight-meta { margin-top: 4px; font-size: 11px; color: var(--secondary-text-color, #888); }
+        .insight-meta { margin-top: 4px; font-size: 11px; color: var(--secondary-text-color, #666); }
         .progress-section { }
         .progress-badge-list { display: flex; flex-direction: column; gap: 8px; }
         .progress-badge { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--divider-color, rgba(128,128,128,0.18)); background: var(--secondary-background-color, #f5f5f5); font-size: 12px; }
@@ -3025,10 +3027,10 @@ class MenstruationStatisticsCard extends HTMLElement {
         .progress-badge-icon { font-size: 18px; flex: 0 0 auto; margin-top: 1px; }
         .progress-badge-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
         .progress-badge-title { font-weight: 600; color: var(--primary-text-color); font-size: 12px; }
-        .progress-badge-desc { color: var(--secondary-text-color, #888); font-size: 11px; }
+        .progress-badge-desc { color: var(--secondary-text-color, #666); font-size: 11px; }
         .progress-bar-wrap { height: 6px; border-radius: 3px; background: var(--divider-color, rgba(128,128,128,0.2)); overflow: hidden; margin: 3px 0 1px; }
         .progress-bar-fill { height: 100%; border-radius: 3px; background: var(--primary-color, #c0392b); transition: width 0.3s; }
-        .progress-empty-state { color: var(--secondary-text-color, #888); font-size: 12px; font-style: italic; padding: 4px 0; }
+        .progress-empty-state { color: var(--secondary-text-color, #666); font-size: 12px; font-style: italic; padding: 4px 0; }
         ${productStyles}
         @media (max-width: 480px) {
           ha-card { padding: 12px; }

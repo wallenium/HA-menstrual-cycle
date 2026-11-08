@@ -170,6 +170,19 @@ class TestSensorAttributeCompaction(unittest.TestCase):
         for level in (const.VISIBILITY_LEVEL_STATUS_ONLY, const.VISIBILITY_LEVEL_PRIVATE):
             self.assertNotIn("temperature_unit", sensor_module._filter_attributes_for_visibility(attrs, level))
 
+    def test_temperature_rise_days_reach_the_dashboard_only_at_full_visibility(self) -> None:
+        attrs = {**self._base_attrs(), "temperature_rise_days": {"2026-07-01": "2026-07-15"}}
+        full = sensor_module._filter_attributes_for_visibility(attrs, const.VISIBILITY_LEVEL_FULL)
+        self.assertEqual(sensor_module._build_compact_sensor_attributes(full)["temperature_rise_days"], {"2026-07-01": "2026-07-15"})
+        for level in (const.VISIBILITY_LEVEL_STATUS_ONLY, const.VISIBILITY_LEVEL_PRIVATE):
+            self.assertNotIn("temperature_rise_days", sensor_module._filter_attributes_for_visibility(attrs, level))
+
+    def test_sensor_publishes_the_temperature_rise_of_every_cycle(self) -> None:
+        source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")
+        self.assertEqual(
+            source.count('"temperature_rise_days": temperature_rise_by_cycle(model.symptom_history, model.grouped_starts, model.period_duration_days)'), 1
+        )
+
     def test_sensor_publishes_the_profile_option_as_temperature_unit(self) -> None:
         # ponytail: source check instead of running the whole sensor update
         source = (COMPONENT_ROOT / "sensor.py").read_text(encoding="utf-8")

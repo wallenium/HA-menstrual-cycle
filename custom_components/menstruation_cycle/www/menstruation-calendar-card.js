@@ -1957,11 +1957,11 @@ class MenstruationCalendarCard extends HTMLElement {
           ` : ''}
           <div class="months-row">
             <div class="month-col">
-              <div class="grid" role="grid" aria-label="${this._monthLabel(locale)}">${this._calendarGrid(model, locale)}</div>
+              <div class="grid" role="group" aria-label="${this._monthLabel(locale)}">${this._calendarGrid(model, locale)}</div>
             </div>
             <div class="month-col month-col-next">
               <div class="month month-next-label">${this._monthLabel(locale, this._nextMonthDate())}</div>
-              <div class="grid" role="grid" aria-label="${this._monthLabel(locale, this._nextMonthDate())}">${this._calendarGrid(model, locale, this._nextMonthDate())}</div>
+              <div class="grid" role="group" aria-label="${this._monthLabel(locale, this._nextMonthDate())}">${this._calendarGrid(model, locale, this._nextMonthDate())}</div>
             </div>
           </div>
           <div class="legend">

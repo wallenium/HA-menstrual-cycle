@@ -1953,6 +1953,21 @@ const makeHass = (stateObj) => ({
   assert.ok(onlyFertile.includes('dashboard_cc_fertile_est') && !onlyFertile.includes('dashboard_cc_ovulation_est') && !onlyFertile.includes('dashboard_cc_ovulation_lh'), 'a test today and no other estimate: fertile days only, no ovulation entry');
   const lhFirstDay = cdPanel._renderCycleCompare(cdState({ symptom_history: [...meanHistory, { date: dayAt(-9), test: ['positive_ovulation'] }] }));
   assert.deepStrictEqual(rowRects(lhFirstDay, 181).map((r) => r.opacity), ['0.55', '1'], 'a test on cycle day 1: ovulation on day 2, and only day 1 before it: nothing before the cycle starts');
+  // a confirmed temperature rise (sensor attribute temperature_rise_days) makes it measured too, and beats the LH test
+  const riseOf = (cycleStart, riseIso) => ({ temperature_rise_days: { [cycleStart]: riseIso } });
+  const riseHtml = cdPanel._renderCycleCompare(cdState({ ...riseOf(dayAt(-9), dayAt(-4)), symptom_history: lhHistory }));
+  const riseRow = rowRects(riseHtml, 181);
+  assert.deepStrictEqual(riseRow.map((r) => r.opacity), ['0.55', '0.55', '0.55', '0.55', '0.55', '1'], 'rise on cycle day 6: ovulation on that day, five fertile days before it');
+  assert.ok(riseRow[5].x < lhRow[5].x, 'one day earlier than the LH test would put it (day 7)');
+  assert.ok(riseHtml.includes('dashboard_cc_ovulation_temp') && !riseHtml.includes('dashboard_cc_ovulation_lh'), 'the legend names the measurement that is drawn');
+  const riseSecond = cdPanel._renderCycleCompare(cdState({ ...riseOf(dayAt(-65), dayAt(-52)), symptom_history: meanHistory }));
+  assert.strictEqual(rowRects(riseSecond, 187).slice(-1)[0].opacity, '1', 'the second cycle is read from its own start date');
+  assert.ok(rowRects(riseSecond, 181).every((r) => r.opacity === '0.55'), 'and the first stays an estimate');
+  for (const [what, extra] of [['before the cycle', riseOf(dayAt(-9), dayAt(-20))], ['after the cycle so far', riseOf(dayAt(-9), dayAt(5))], ['a text', { temperature_rise_days: 'x' }], ['a rise of another cycle', riseOf(dayAt(-37), dayAt(-30))]]) {
+    const ignored = cdPanel._renderCycleCompare(cdState({ ...extra, symptom_history: meanHistory }));
+    assert.ok(!ignored.includes('dashboard_cc_ovulation_temp') && rowRects(ignored, 181).every((r) => r.opacity === '0.55'), `${what}: ignored`);
+    assert.deepStrictEqual(rowRects(ignored, 181), rowRects(cdPanel._renderCycleCompare(cdState({ symptom_history: meanHistory })), 181), `${what}: the strips are those of the estimate`);
+  }
   cdPanel._compare = { a: dayAt(-9), b: dayAt(-65), metric: 'pain' };
   cdPanel._prefs.categoryVisibility = { ...cdPanel._prefs.categoryVisibility, pain: false };
   const noPain = cdPanel._renderCycleCompare(cdState());

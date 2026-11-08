@@ -33,11 +33,14 @@ async def _seed(hass, entry):
     await hass.services.async_call(DOMAIN, "manage_household_inventory", {"inventory_action": "add", "product": "tampon", "quantity": 20}, blocking=True)
 
 
-async def _dump(hass, entry, name):
+async def _dump(hass, entry, name, prefs=None):
     # the browser plays an ordinary user: below "full" the read services refuse, exactly as in a real instance
     await hass.auth.async_create_user("owner", group_ids=["system-admin"])  # the first user created is the owner and always an admin
     viewer = await hass.auth.async_create_user("viewer", group_ids=["system-users"])
     await hass.async_block_till_done()
+    if prefs is not None:  # saved through the real service as the viewer, so get_dashboard_prefs below returns it for the same user
+        await hass.services.async_call(DOMAIN, "save_dashboard_prefs", {"profile": "anna", "prefs": prefs}, blocking=True,
+                                       context=Context(user_id=viewer.id))
     registry = er.async_get(hass)
     fixture = {
         "states": {s.entity_id: {"state": s.state, "attributes": dict(s.attributes)} for s in hass.states.async_all()},
@@ -68,3 +71,11 @@ async def test_dump(hass, level):
     if level != "full":
         await hass.services.async_call(DOMAIN, "set_profile_visibility", {"entry_id": entry.entry_id, "level": level}, blocking=True)
     await _dump(hass, entry, level)
+
+
+@pytest.mark.parametrize("choice", ["on", "off"])
+async def test_dump_teen_choice(hass, choice):
+    """The Teen-Design switch as the real saved-settings service stores and returns it (browser_check.py teen_choice_check)."""
+    entry = await _add_profile(hass)
+    await _seed(hass, entry)
+    await _dump(hass, entry, f"teen_{choice}", prefs={"teenStyle": choice})

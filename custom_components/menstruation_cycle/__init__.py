@@ -1376,6 +1376,14 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "test_message": "{name}: this is a test notification. Reminders will arrive here.",
         "badge_title": "New badge unlocked",
         "badge_message": "{name} unlocked the \"{badge}\" badge.",
+        "teen_period_message": "{name}: your period will probably start around {date}. Good to have supplies with you.",
+        "teen_log_message": "{name}: nothing in your diary for today yet. It only takes a few seconds.",
+        "teen_pill_message": "{name}: pill time! One tap on \"Pill taken\" and you are done.",
+        "teen_recap_message": "{name}: cycle done! It lasted {cycle_days} days, your period {period_days} days.",
+        "teen_overdue_message": "{name}: your period is {days} days later than predicted ({date}). That happens a lot, especially in the first years. If it has started, just log it.",
+        "teen_badge_title": "New sticker!",
+        "teen_badge_message": "{name} earned the sticker \"{badge}\".",
+        "teen_test_message": "{name}: test message. Your reminders will show up here.",
     },
     "de": {
         "period_title": "Perioden-Erinnerung",
@@ -1449,6 +1457,14 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "test_message": "{name}: Das ist eine Testbenachrichtigung. Erinnerungen kommen hier an.",
         "badge_title": "Neues Abzeichen freigeschaltet",
         "badge_message": "{name} hat das Abzeichen \"{badge}\" freigeschaltet.",
+        "teen_period_message": "{name}: Deine Periode kommt voraussichtlich um den {date}. Gut, wenn du etwas dabeihast.",
+        "teen_log_message": "{name}: Heute hast du noch nichts eingetragen. Das dauert nur ein paar Sekunden.",
+        "teen_pill_message": "{name}: Pillen-Zeit! Kurz auf \"Pille genommen\" tippen, dann ist es erledigt.",
+        "teen_recap_message": "{name}: Zyklus geschafft! Er dauerte {cycle_days} Tage, deine Periode {period_days} Tage.",
+        "teen_overdue_message": "{name}: Deine Periode ist {days} Tage später als berechnet ({date}). Das kommt vor allem am Anfang oft vor. Falls sie begonnen hat, trag sie einfach ein.",
+        "teen_badge_title": "Neuer Sticker!",
+        "teen_badge_message": "{name} hat den Sticker \"{badge}\" bekommen.",
+        "teen_test_message": "{name}: Testnachricht. Deine Erinnerungen kommen hier an.",
     },
     "fr": {
         "period_title": "Rappel de règles",
@@ -1522,6 +1538,14 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "test_message": "{name} : ceci est une notification de test. Les rappels arriveront ici.",
         "badge_title": "Nouveau badge débloqué",
         "badge_message": "{name} a débloqué le badge « {badge} ».",
+        "teen_period_message": "{name} : tes règles devraient arriver vers le {date}. Mieux vaut avoir ce qu'il faut sur toi.",
+        "teen_log_message": "{name} : tu n'as encore rien noté pour aujourd'hui. Ça ne prend que quelques secondes.",
+        "teen_pill_message": "{name} : c'est l'heure de ta pilule ! Un petit appui sur « Pilule prise » et c'est fait.",
+        "teen_recap_message": "{name} : cycle terminé ! Il a duré {cycle_days} jours, tes règles {period_days} jours.",
+        "teen_overdue_message": "{name} : tes règles ont {days} jours de retard sur la date prévue ({date}). Ça arrive souvent, surtout au début. Si elles ont commencé, note-les simplement.",
+        "teen_badge_title": "Nouveau sticker !",
+        "teen_badge_message": "{name} a gagné le sticker « {badge} ».",
+        "teen_test_message": "{name} : message de test. Tes rappels arriveront ici.",
     },
     "es": {
         "period_title": "Recordatorio de menstruación",
@@ -1595,6 +1619,14 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "test_message": "{name}: esta es una notificación de prueba. Los recordatorios llegarán aquí.",
         "badge_title": "Nueva insignia desbloqueada",
         "badge_message": "{name} desbloqueó la insignia \"{badge}\".",
+        "teen_period_message": "{name}: tu menstruación llegará probablemente sobre el {date}. Mejor llevar algo contigo.",
+        "teen_log_message": "{name}: hoy todavía no has apuntado nada. Solo lleva unos segundos.",
+        "teen_pill_message": "{name}: ¡hora de la píldora! Un toque en «Píldora tomada» y listo.",
+        "teen_recap_message": "{name}: ¡ciclo completado! Duró {cycle_days} días y tu menstruación {period_days} días.",
+        "teen_overdue_message": "{name}: tu menstruación lleva {days} días de retraso sobre lo previsto ({date}). Pasa a menudo, sobre todo al principio. Si ya empezó, solo regístrala.",
+        "teen_badge_title": "¡Nueva pegatina!",
+        "teen_badge_message": "{name} ha conseguido la pegatina \"{badge}\".",
+        "teen_test_message": "{name}: mensaje de prueba. Tus recordatorios llegarán aquí.",
     },
     "sv": {
         "period_title": "Mens-påminnelse",
@@ -1668,13 +1700,37 @@ _NOTIFY_STRINGS: dict[str, dict[str, str]] = {
         "test_message": "{name}: det här är en testavisering. Påminnelser kommer att visas här.",
         "badge_title": "Nytt märke upplåst",
         "badge_message": "{name} låste upp märket \"{badge}\".",
+        "teen_period_message": "{name}: din mens kommer troligen runt {date}. Bra att ha skydd med sig.",
+        "teen_log_message": "{name}: du har inte skrivit något för idag än. Det tar bara några sekunder.",
+        "teen_pill_message": "{name}: dags för p-pillret! Tryck snabbt på \"P-piller taget\" så är det klart.",
+        "teen_recap_message": "{name}: cykeln är klar! Den varade {cycle_days} dagar, din mens {period_days} dagar.",
+        "teen_overdue_message": "{name}: din mens är {days} dagar sen jämfört med beräkningen ({date}). Det händer ofta, särskilt i början. Om den har börjat, logga den bara.",
+        "teen_badge_title": "Ny sticker!",
+        "teen_badge_message": "{name} fick stickern \"{badge}\".",
+        "teen_test_message": "{name}: testmeddelande. Dina påminnelser dyker upp här.",
     },
 }
 
 
-def _notify_strings(lang: str | None) -> dict[str, str]:
+def _notify_strings(lang: str | None, teen: bool = False) -> dict[str, str]:
+    """The texts of one language; with teen=True a `teen_<key>` entry replaces `<key>` (same language, never another one).
+    Only the friendly everyday reminders have a teen text; health hints (pill gap, unprotected, cycle hint, pregnancy)
+    stay as they are."""
     key = str(lang or "en").strip().lower()[:2]
-    return _NOTIFY_STRINGS.get(key, _NOTIFY_STRINGS["en"])
+    table = _NOTIFY_STRINGS.get(key, _NOTIFY_STRINGS["en"])
+    return {**table, **{k[5:]: v for k, v in table.items() if k.startswith("teen_")}} if teen else table
+
+
+async def _async_notify_teen(hass: HomeAssistant, entry: ConfigEntry, runtime: "MenstruationRuntime") -> bool:
+    """Teen wording for this profile's notifications: the choice saved in the dashboard (Teen-Design An/Aus, from any
+    user's saved panel settings of this profile), otherwise the stage the person set (pre/early menarche) or an age
+    under 16 by the birth date. The stage the model falls back to while it is still learning (few logged cycles) does
+    not count: an adult who has just started logging must not get the young wording."""
+    suffix = f":{runtime.profile}"
+    for key, prefs in (await _async_ensure_dashboard_prefs_loaded(hass)).items():
+        if key.endswith(suffix) and isinstance(prefs, dict) and prefs.get("teenStyle") in ("on", "off"):
+            return prefs["teenStyle"] == "on"
+    return wall_calendar_is_teen(getattr(runtime, "onboarding_stage", None), entry.data.get(CONF_BIRTH_DATE), dt_util.now().date())
 
 
 def _baby_size_sentence(lang: str | None, week: int) -> str:
@@ -1783,7 +1839,7 @@ async def _async_check_and_send_notifications(hass: HomeAssistant, entry: Config
         entry.options.get(CONF_NOTIFY_FERTILE_MUTE_HORMONAL, DEFAULT_NOTIFY_FERTILE_MUTE_HORMONAL)
     ) and compute_contraception_status(runtime.symptom_history, today=today, renewed=_renewed(runtime))["is_hormonal"]
 
-    strings = _notify_strings(hass.config.language)
+    strings = _notify_strings(hass.config.language, await _async_notify_teen(hass, entry, runtime))
     async def _send(title: str, message: str, actions: list[dict[str, str]] | None = None) -> None:
         await _async_send_notification(hass, entry, title, message, actions)
 
@@ -2169,7 +2225,7 @@ async def _async_send_log_reminder(hass: HomeAssistant, entry: ConfigEntry, runt
         isinstance(e, dict) and e.get("date") == today_iso for e in runtime.symptom_history
     ):
         return
-    strings = _notify_strings(hass.config.language)
+    strings = _notify_strings(hass.config.language, await _async_notify_teen(hass, entry, runtime))
     await _async_send_notification(
         hass,
         entry,
@@ -2199,7 +2255,7 @@ async def _async_send_pill_reminder(hass: HomeAssistant, entry: ConfigEntry, run
         for e in runtime.symptom_history
     ):
         return
-    strings = _notify_strings(hass.config.language)
+    strings = _notify_strings(hass.config.language, await _async_notify_teen(hass, entry, runtime))
     message = strings["pill_message"]
     last_taken = status.get("pill_last_taken")
     gap_days = (today - date.fromisoformat(last_taken)).days if last_taken else 0
@@ -5563,12 +5619,12 @@ async def _async_handle_import_full_backup(hass: HomeAssistant, call: ServiceCal
 
 async def _async_handle_send_test_notification(hass: HomeAssistant, call: ServiceCall) -> None:
     """Send a harmless test message to the notify target of one profile (or all). Ignores the notification master switch."""
-    strings = _notify_strings(hass.config.language)
     for entry_id in _target_entry_ids_for_call(hass, call):
         entry = hass.config_entries.async_get_entry(entry_id)
         runtime = hass.data.get(DOMAIN, {}).get(entry_id)
         if entry is None or runtime is None:
             continue
+        strings = _notify_strings(hass.config.language, await _async_notify_teen(hass, entry, runtime))
         # no action buttons on purpose: a test must never be able to log anything
         await _async_send_notification(
             hass, entry, strings["test_title"], strings["test_message"].format(name=runtime.friendly_name)

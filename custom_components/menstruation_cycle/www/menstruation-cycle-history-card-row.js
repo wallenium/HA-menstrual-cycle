@@ -268,11 +268,13 @@ class MenstruationCycleHistoryCardRow extends HTMLElement {
       });
     }
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, stateObj);
     const html = `<style>
+      ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
       :host {
         display: block;
         --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
-        --mg-text-secondary: var(--secondary-text-color, #6b7280);
+        --mg-text-secondary: var(--secondary-text-color, #5f6673);
         --mg-border: var(--divider-color, rgba(127, 127, 127, 0.35));
       }
       ha-card { padding: 12px; background: var(--mg-card-bg); }

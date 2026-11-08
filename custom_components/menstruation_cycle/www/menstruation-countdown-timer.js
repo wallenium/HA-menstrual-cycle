@@ -219,8 +219,9 @@ class MenstruationCountdownTimer extends HTMLElement {
       return;
     }
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, this._hass.states?.[this.config.entity]);
     root.innerHTML = `
-      <style>${this.getStyles()}</style>
+      <style>${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}${this.getStyles()}</style>
       <ha-card>
         <div class="card-header">
           <h2 class="card-title">${this._t('card_title')}</h2>
@@ -577,7 +578,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       <div class="product-selector">
         <label class="selector-label">${this._t('ct_select_product')}</label>
         <div class="product-dropdown-wrapper">
-          <select id="productSelect" class="product-select">
+          <select id="productSelect" class="product-select" aria-label="${this._t('ct_select_product')}">
             <option value="">${this._t('ct_select_product_option')}</option>
           </select>
         </div>
@@ -2081,9 +2082,9 @@ class MenstruationCountdownTimer extends HTMLElement {
         display: block;
         --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
         --mg-border: var(--divider-color, rgba(127, 127, 127, 0.35));
-        --mg-status-error: var(--error-color, #e74c3c);
+        --mg-status-error: var(--error-color, #c0392b);
         --mg-status-warning: var(--warning-color, #f39c12);
-        --mg-status-success: var(--success-color, #27ae60);
+        --mg-status-success: var(--success-color, #1e8449);
         --mg-status-info: var(--state-icon-color, #2980b9);
         --mg-status-accent: var(--primary-color, #8e44ad);
       }
@@ -2666,7 +2667,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       }
 
       .btn-reset {
-        background: #95a5a6;
+        background: #5f6d6e;
       }
 
       .btn-usage {
@@ -2876,7 +2877,7 @@ class MenstruationCountdownTimer extends HTMLElement {
       }
 
       .pm-btn-secondary {
-        background: #95a5a6;
+        background: #5f6d6e;
         padding: 10px 20px;
         flex: none;
       }

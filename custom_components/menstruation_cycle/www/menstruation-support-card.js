@@ -254,6 +254,7 @@ class YoungGirlsSupportCard extends HTMLElement {
     if (cfg.show_school_scenarios !== false) sections.push(safeRender('school_scenarios', this._renderSchoolScenarios));
     if (cfg.show_reassurance_cards !== false) sections.push(safeRender('reassurance_cards', this._renderReassuranceCards));
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, this._hass?.states?.[cfg.entity]);
     this.shadowRoot.innerHTML = `
       ${this._renderStyles()}
       <ha-card>
@@ -759,6 +760,7 @@ class YoungGirlsSupportCard extends HTMLElement {
   _renderStyles() {
     return `<style>
       ${window.MenstruationFunctions ? window.MenstruationFunctions.mcStateStyles() : ''}
+      ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
       :host {
         display: block;
         --ygs-accent: var(--primary-color, #e91e63);

@@ -172,8 +172,10 @@ class MenstruationPillCard extends HTMLElement {
     }
     // title: '' hides the heading (the dashboard panel renders its own).
     const title = this._config.title ?? this._t('pill_card_title');
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, stateObj);
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         ha-card { padding: 16px; }
         .title { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: var(--primary-text-color); }
         .blister { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; max-width: 320px; }

@@ -1053,7 +1053,7 @@ test('BBT chart: axis labels and threshold caption follow the profile temperatur
   card._hass = makeHass();
   const tempDays = [1, 2, 3, 4, 5, 6, 7, 8].map((day) => ({ day, temp: 36.5 }));
   const attrs = makeBbtAttrs(daysAgo(14), [], tempDays);
-  const labels = (html) => [...html.matchAll(/text-anchor="end" font-size="9" fill="#888">([\d.]+)</g)].map((m) => Number(m[1]));
+  const labels = (html) => [...html.matchAll(/text-anchor="end" font-size="9" fill="var\(--secondary-text-color,#666\)">([\d.]+)</g)].map((m) => Number(m[1]));
   const c = card._renderNfpTempChart(attrs, null);
   assert.ok(c.includes('Threshold (+0.2°C)'), 'celsius caption');
   assert.ok(labels(c).length > 0 && labels(c).every((v) => v < 40), 'celsius ticks');

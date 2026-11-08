@@ -313,18 +313,18 @@ class MenstruationProductInventoryCard extends HTMLElement {
     return null;
   }
 
-  _resolvePregnancyContext(attrs, inventoryEntityId) {
+  // The member the card is about (selected one, or the only one); null for a household with several and no choice.
+  _targetMemberCycleState(attrs, inventoryEntityId) {
     const members = Array.isArray(attrs.household_members) ? attrs.household_members : [];
     const selectedMember = String((this._selectedMember ?? this.config.member) || "").trim();
     const targetMember = selectedMember
       ? members.find((member) => member?.name === selectedMember || member?.profile === selectedMember) || { name: selectedMember, profile: selectedMember }
       : (members.length === 1 ? members[0] : null);
+    return targetMember ? this._findMemberCycleState(targetMember, inventoryEntityId) : null;
+  }
 
-    if (!targetMember) {
-      return { isPregnant: false, week: 1, month: 1, trimester: 1 };
-    }
-
-    const cycleState = this._findMemberCycleState(targetMember, inventoryEntityId);
+  _resolvePregnancyContext(attrs, inventoryEntityId) {
+    const cycleState = this._targetMemberCycleState(attrs, inventoryEntityId);
     if (!cycleState) {
       return { isPregnant: false, week: 1, month: 1, trimester: 1 };
     }
@@ -530,13 +530,18 @@ class MenstruationProductInventoryCard extends HTMLElement {
       })
       .join("");
 
+    // the household sensor has no age of its own: the look follows the profile of the member the card is about
+    const memberState = this._targetMemberCycleState(attrs, entityId);
+    if (memberState) window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, memberState);
+    else this.removeAttribute?.("data-teen");
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ""}
         :host {
           display: block;
           --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));
           --mg-text-primary: var(--primary-text-color, #1f2937);
-          --mg-text-secondary: var(--secondary-text-color, #6b7280);
+          --mg-text-secondary: var(--secondary-text-color, #5f6673);
           --mg-border: var(--divider-color, rgba(127, 127, 127, 0.35));
           --mg-status-success: var(--success-color, #1e8449);
           --mg-status-warning: var(--warning-color, #b9770e);
@@ -762,7 +767,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
           margin-bottom: 8px;
           padding-bottom: 4px;
           border-bottom: 1px solid var(--divider-color, rgba(127, 127, 127, 0.35));
-          color: var(--secondary-text-color, #6b7280);
+          color: var(--secondary-text-color, #5f6673);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -811,7 +816,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
           background: color-mix(in srgb, var(--primary-color, #6200ea) 8%, transparent);
         }
         .drag-handle {
-          color: var(--secondary-text-color, #6b7280);
+          color: var(--secondary-text-color, #5f6673);
           font-size: 1.1rem;
           line-height: 1;
           pointer-events: none;
@@ -836,7 +841,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
           align-items: center;
           gap: 6px;
           font-size: 0.9rem;
-          color: var(--secondary-text-color, #6b7280);
+          color: var(--secondary-text-color, #5f6673);
         }
         .threshold-inputs input[type="number"] {
           width: 70px;
@@ -904,7 +909,7 @@ class MenstruationProductInventoryCardEditor extends HTMLElement {
       </div>
       <div class="section">
         <div class="section-title">${this._escapeHtml(this._t("area"))}</div>
-        <div class="hint" style="font-size: 0.85rem; color: var(--secondary-text-color, #6b7280); margin-bottom: 6px;">${this._escapeHtml(this._t("area_help"))}</div>
+        <div class="hint" style="font-size: 0.85rem; color: var(--secondary-text-color, #5f6673); margin-bottom: 6px;">${this._escapeHtml(this._t("area_help"))}</div>
         ${hasHaSelector
           ? '<ha-selector id="area_selector"></ha-selector>'
           : `<input id="area_input" type="text" value="${this._escapeHtml(this._config.area_id || "")}" placeholder="bathroom_upstairs">`}

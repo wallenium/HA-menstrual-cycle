@@ -71,11 +71,13 @@ setImmediate(() => {
 function done() {
   // the look: the tint is the one the panel's contrast test checks
   assert.ok(F.TEEN_CARD_CSS.includes('88%, #F4A6CF 12%') && F.TEEN_CARD_CSS.includes('94%, #F4A6CF 6%'), 'same tint shares as the panel');
-  // the three cards call it at the start of their render and carry the style
-  for (const file of ['menstruation-calendar-card.js', 'menstruation-gauge-card.js', 'menstruation-cycle-compact-status-card.js']) {
+  // these cards call it at the start of their render and carry the style (cycle-card, the editors and the old compact card have no look)
+  const cards = ['calendar-card', 'gauge-card', 'cycle-compact-status-card', 'cycle-heatmap-card', 'statistics-card', 'pill-card', 'support-card',
+    'product-inventory-card', 'countdown-timer', 'cycle-history-card-row'];
+  for (const file of cards.map((name) => `menstruation-${name}.js`)) {
     const src = fs.readFileSync(path.join(www, file), 'utf8');
     assert.strictEqual((src.match(/MenstruationFunctions\?\.applyTeenLook\?\.\(this, this\._hass,/g) || []).length, 1, `${file}: applies the look`);
-    assert.strictEqual((src.match(/\$\{window\.MenstruationFunctions\?\.TEEN_CARD_CSS \|\| ''\}/g) || []).length, 1, `${file}: carries the style`);
+    assert.strictEqual((src.match(/\$\{window\.MenstruationFunctions\?\.TEEN_CARD_CSS \|\| ['"]{2}\}/g) || []).length, 1, `${file}: carries the style`);
   }
   console.log('teen-cards: ok');
 }

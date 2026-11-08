@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Browser check: loads the dashboard panel and all cards in Chromium against data a real Home Assistant produced.
 # Usage: tools/real_ha/browser.sh [HA_VERSION] [SCREENSHOT_DIR]
-# Needs what run.sh needs, plus Playwright: pip install playwright && playwright install chromium (PLAYWRIGHT_PYTHON overrides python3).
+# Needs what run.sh needs, plus Playwright and axe-core: pip install playwright axe-playwright-python && playwright install chromium (PLAYWRIGHT_PYTHON overrides python3).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 version="${1:-}"

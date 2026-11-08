@@ -764,8 +764,10 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
       `;
     }).join('');
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, stateObj);
     this.shadowRoot.innerHTML = `
       <style>
+      ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         :host {
           display: block;
           --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));

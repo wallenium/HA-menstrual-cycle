@@ -1230,6 +1230,34 @@ def pregnancy_week_notification(
     return {"week": weeks, "trimester": trimester}
 
 
+TEMPERATURE_RISE_CYCLES = 6  # the same number of cycles the sensor keeps for bleeding_blocks
+
+
+def temperature_rise_by_cycle(
+    symptom_history: list[dict[str, Any]],
+    grouped_starts: list[str],
+    period_duration_days: int = 5,
+    limit: int = TEMPERATURE_RISE_CYCLES,
+) -> dict[str, str]:
+    """{cycle start: day of the confirmed temperature rise} for the last `limit` cycles (Roetzer rule, as in analyze_nfp_cycle).
+
+    Each cycle only sees its own readings (up to the next start), so a later cycle cannot confirm or spoil an earlier one.
+    Cycles without a confirmed rise are left out.
+    """
+    starts = sorted(grouped_starts)[-limit:]
+    rises: dict[str, str] = {}
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else None
+        entries = [
+            e for e in symptom_history
+            if isinstance(e, dict) and isinstance(e.get("date"), str) and e["date"] >= start and (end is None or e["date"] < end)
+        ]
+        rise = analyze_nfp_cycle(entries, start, period_duration_days).get("temperature_rise_day")
+        if rise:
+            rises[start] = rise
+    return rises
+
+
 def analyze_nfp_cycle(
     symptom_history: list[dict[str, Any]],
     cycle_start_iso: str,

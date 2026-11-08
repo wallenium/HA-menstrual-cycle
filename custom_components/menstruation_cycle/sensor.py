@@ -108,6 +108,7 @@ from .const import (
 from .badges import evaluate_badges, new_badges_this_week
 from .model import (
     bleeding_blocks,
+    temperature_rise_by_cycle,
     cached_cycle_model,
     compute_contraception_status,
     pill_pack_view,
@@ -1478,6 +1479,8 @@ class MenstruationGaugeSensor(SensorEntity):
             "cycle_statistics": cycle_statistics,
             "cycle_length_override": runtime.cycle_length_override,
             ATTR_NFP_ANALYSIS: model.nfp_analysis,
+            # per cycle (last six), for the cycle comparison in the dashboard; hidden below "full" like the rest of the temperature data
+            "temperature_rise_days": temperature_rise_by_cycle(model.symptom_history, model.grouped_starts, model.period_duration_days),
             "learned_ovulation_offset": model.learned_ovulation_offset,
             "nfp_mode": model.nfp_mode,
             ATTR_ONBOARDING_STAGE: model.onboarding_stage,

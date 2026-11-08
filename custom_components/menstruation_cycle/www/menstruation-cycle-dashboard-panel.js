@@ -5296,7 +5296,7 @@
             <path d="M16,70 A54,54 0 0,1 124,70" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
               stroke-dasharray="${circumference}" stroke-dashoffset="${Math.round(arcOffset * 10) / 10}" style="transition:stroke-dashoffset 0.4s;"/>
             <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="20" font-weight="700" fill="var(--primary-text-color,#1f2937)">${cycleDay}</text>
-            <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="9" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day'))}</text>
+            <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="9" fill="var(--secondary-text-color,#5f6673)">${escapeHtml(this._t('cycle_day'))}</text>
           </svg>
           ${phase ? `<div class="helper" style="text-align:center">${escapeHtml(phase)}</div>` : ''}
         </div>
@@ -5355,7 +5355,7 @@
           const th = thresholds[key] || {};
           const critical = Number(th.critical ?? 0);
           const warning = Number(th.warning ?? 0);
-          let stockColor = 'var(--mc-sage)';
+          let stockColor = 'var(--mc-sage-deep,#3F5A47)';
           if (stock <= critical) stockColor = 'var(--mc-rose-deep)';
           else if (stock <= warning) stockColor = 'var(--mc-amber)';
           const restockDays = inventoryState?.attributes?.restock_forecast?.[key]?.days_remaining;
@@ -5374,7 +5374,7 @@
             <div style="color:var(--mc-rose-deep);flex:none;">${this._productIconSvg(key)}</div>
             <div style="flex:1 1 130px;min-width:0;">
               <div style="font-size:13px;font-weight:600;">${escapeHtml(label)}</div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;font-family:var(--mc-font-mono);font-size:10.5px;color:var(--secondary-text-color,#6b7280);">
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;font-family:var(--mc-font-mono);font-size:10.5px;color:var(--secondary-text-color,#5f6673);">
                 <span>${this._t('dashboard_today_short') || 'Heute'}: ${t}</span>
                 <span>${this._t('dashboard_this_cycle') || 'Zyklus'}: ${c}</span>
                 ${a !== null ? `<span>${this._t('dashboard_avg_short') || 'Ø'}: ${a}</span>` : ''}
@@ -5567,7 +5567,7 @@
         const label = String(c.len);
         const cx = slotX + slotW / 2;
         return `<rect x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(barW)}" height="${Math.round(barH2)}" fill="${fill}" opacity="0.85" rx="5"${this._tip(c.start, this._t('dashboard_cc_length_days').replace('{n}', label))}/>
-                <text x="${Math.round(cx)}" y="${Math.round(y - 6)}" text-anchor="middle" font-size="10" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(label)}</text>
+                <text x="${Math.round(cx)}" y="${Math.round(y - 6)}" text-anchor="middle" font-size="10" fill="var(--secondary-text-color,#5f6673)">${escapeHtml(label)}</text>
                 <text x="${Math.round(cx)}" y="${H - 10}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">Z${idx + 1}</text>`;
       }).join('');
 
@@ -6158,7 +6158,7 @@
               <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), var(--mc-rose));"></div>
               <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#5f6673);">
               <span>${observedCount} / ${signKeys.length} ${this._t('dashboard_widget_progress')}</span>
               <span>${daysUntil !== null && daysUntil !== undefined ? `${escapeHtml(daysUntil)} ${this._t('days_until_menarche')}` : (estDateStr ? escapeHtml(this._formatDate(estDateStr)) : '—')}</span>
             </div>
@@ -6217,7 +6217,7 @@
               <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), ${isConfirmed ? 'var(--mc-plum)' : 'var(--mc-rose)'});"></div>
               <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#5f6673);">
               <span>${this._t('dashboard_last_period') || 'Letzte Periode'}</span>
               <span>${this._t('dashboard_menopause_threshold') || '12 Monate ohne Periode'}</span>
             </div>
@@ -6271,7 +6271,7 @@
               <div style="position:absolute;top:0;left:0;bottom:0;width:${pct}%;border-radius:999px;background:linear-gradient(90deg, var(--mc-sage), var(--mc-rose));"></div>
               <div style="position:absolute;top:50%;left:${pct}%;width:14px;height:14px;border-radius:50%;background:var(--card-background-color,#fff);border:2.5px solid var(--primary-text-color,#2B1B24);transform:translate(-50%,-50%);"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#5f6673);">
               <span>${this._t('dashboard_birth') || 'Geburt'}</span>
               <span>${weeksSinceBirth !== null ? `${this._t('week')} ${weeksSinceBirth} / ${totalWeeks}` : `${durationDays} ${this._t('days') || 'Tage'}`}</span>
             </div>
@@ -6426,7 +6426,7 @@
       `;
 
       const legend = `
-        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#6b7280);row-gap:4px;">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#5f6673);row-gap:4px;">
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#6B3654;margin-right:5px;vertical-align:middle"></span>Gebärmutterschleimhaut</span>
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E3A23D;margin-right:5px;vertical-align:middle"></span>Östrogen</span>
           <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3F5A47;margin-right:5px;vertical-align:middle"></span>Progesteron</span>
@@ -6467,7 +6467,7 @@
         return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;min-width:88px;flex:1;">
           <div style="width:12px;height:12px;border-radius:50%;background:${state === 'done' ? 'var(--mc-sage)' : (state === 'current' ? 'var(--mc-rose-deep)' : 'var(--card-background-color,#fff)')};border:2.5px solid ${state === 'current' ? 'var(--mc-rose-deep)' : 'var(--mc-sage)'};${state === 'current' ? 'box-shadow:0 0 0 4px var(--mc-rose-tint);' : ''}"></div>
           <div style="font-size:11px;font-weight:600;">${escapeHtml(this._t(m.labelKey))}</div>
-          <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(weekUnit)} ${m.week}</div>
+          <div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#5f6673);">${escapeHtml(weekUnit)} ${m.week}</div>
         </div>`;
       }).join('<div style="flex:0.4;height:2px;background:var(--divider-color,#e5e7eb);align-self:flex-start;margin-top:6px;"></div>');
       const isHighRisk = !!(attrs.pregnancy_high_risk ?? (attrs.pregnancy_data || {}).high_risk);
@@ -6560,7 +6560,7 @@
                 const desc = this._t(descKey);
                 if (desc === descKey) return '';
                 const optLabel = this._t('opt_' + opt) !== ('opt_' + opt) ? this._t('opt_' + opt) : opt;
-                return `<p style="margin:0;font-size:11px;color:var(--secondary-text-color,#6b7280);"><strong style="color:var(--primary-text-color,inherit);">${escapeHtml(optLabel)}:</strong> ${escapeHtml(desc)}</p>`;
+                return `<p style="margin:0;font-size:11px;color:var(--secondary-text-color,#5f6673);"><strong style="color:var(--primary-text-color,inherit);">${escapeHtml(optLabel)}:</strong> ${escapeHtml(desc)}</p>`;
               }).join('')}
             </div>`
           : '';
@@ -6568,15 +6568,15 @@
         const picker = isExpanded ? `
           <div style="display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px 4px 46px;">
             ${optionButtons}
-            ${done ? `<button type="button" data-action="remove-sign" data-sign="${signKey}" style="padding:6px 12px;border-radius:10px;border:1px solid var(--divider-color,#d1d5db);background:transparent;font-size:12px;color:var(--secondary-text-color,#6b7280);cursor:pointer;">${this._t('remove') || 'Entfernen'}</button>` : ''}
+            ${done ? `<button type="button" data-action="remove-sign" data-sign="${signKey}" style="padding:6px 12px;border-radius:10px;border:1px solid var(--divider-color,#d1d5db);background:transparent;font-size:12px;color:var(--secondary-text-color,#5f6673);cursor:pointer;">${this._t('remove') || 'Entfernen'}</button>` : ''}
           </div>
           ${stageDescriptions}` : '';
 
         return `<div style="border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;overflow:hidden;">
           <div data-action="toggle-sign-picker" data-sign="${signKey}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;">
             <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${done ? 'var(--mc-sage)' : 'transparent'};border:${done ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${done ? '✓' : ''}</div>
-            <div style="flex:1;font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(this._t(meta.labelKey))}${done ? ` — ${detail}` : ''}</div>
-            <div style="color:var(--secondary-text-color,#6b7280);font-size:11px;transform:rotate(${isExpanded ? '180deg' : '0deg'});transition:transform 0.15s;">▾</div>
+            <div style="flex:1;font-size:13px;${done ? '' : 'color:var(--secondary-text-color,#5f6673);'}">${escapeHtml(this._t(meta.labelKey))}${done ? ` — ${detail}` : ''}</div>
+            <div style="color:var(--secondary-text-color,#5f6673);font-size:11px;transform:rotate(${isExpanded ? '180deg' : '0deg'});transition:transform 0.15s;">▾</div>
           </div>
           ${picker}
         </div>`;
@@ -6613,7 +6613,7 @@
         return `<li class="dev-step" style="display:flex;gap:12px;align-items:flex-start;margin:0 0 10px;">
           <span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;background:var(--mc-sage);flex:none;margin-top:4px;"></span>
           <span style="font-size:13px;"><strong>${escapeHtml(this._t(PRE_MENARCHE_SIGNS[key].checklistLabelKey))}</strong>: ${escapeHtml(stage)}
-            <span style="display:block;font-size:11px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(this._formatDate(entry.loggedAt))} · ${escapeHtml(ago(monthsSince(entry.loggedAt)))}</span></span>
+            <span style="display:block;font-size:11px;color:var(--secondary-text-color,#5f6673);">${escapeHtml(this._formatDate(entry.loggedAt))} · ${escapeHtml(ago(monthsSince(entry.loggedAt)))}</span></span>
         </li>`;
       }).join('');
       const breastNote = entries.some(({ key }) => key === 'breast_development')
@@ -6625,7 +6625,7 @@
           <li class="dev-step dev-open" style="display:flex;gap:12px;align-items:flex-start;">
             <span aria-hidden="true" style="width:12px;height:12px;border-radius:50%;border:2px dashed var(--mc-rose-deep);flex:none;margin-top:4px;"></span>
             <span style="font-size:13px;"><strong>${escapeHtml(this._t('dashboard_dev_first_period'))}</strong>
-              <span style="display:block;font-size:11px;color:var(--secondary-text-color,#6b7280);">${escapeHtml(this._t('dashboard_dev_first_period_hint'))}</span></span>
+              <span style="display:block;font-size:11px;color:var(--secondary-text-color,#5f6673);">${escapeHtml(this._t('dashboard_dev_first_period_hint'))}</span></span>
           </li>
         </ol>
         ${breastNote}
@@ -6699,13 +6699,13 @@
       // Center day text
       const centerLabel = cycleDay > 0
         ? `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="30" font-family="Fraunces, serif" font-weight="500" fill="var(--mc-rose-deep,#C43F5E)">${cycleDay}</text>
-           <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#6b7280)">${escapeHtml(this._t('cycle_day')).toUpperCase()}</text>`
-        : `<text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" fill="var(--secondary-text-color,#6b7280)">—</text>`;
+           <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#5f6673)">${escapeHtml(this._t('cycle_day')).toUpperCase()}</text>`
+        : `<text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="13" fill="var(--secondary-text-color,#5f6673)">—</text>`;
 
       // Legend below
       const legendItems = phases.map((ph, idx) => {
         const isActive = idx === activeIdx;
-        return `<span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--mc-font-mono);font-size:0.78rem;color:${isActive ? ph.color : 'var(--secondary-text-color,#6b7280)'};font-weight:${isActive ? 600 : 400}">
+        return `<span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--mc-font-mono);font-size:0.78rem;color:${isActive ? 'var(--primary-text-color,#1f2937)' : 'var(--secondary-text-color,#5f6673)'};font-weight:${isActive ? 600 : 400}">
           <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${ph.color};opacity:${isActive ? 1 : 0.5}"></span>${ph.label} ${ph.days}d
         </span>`;
       }).join('');
@@ -7225,7 +7225,7 @@
           const alpha = 0.1 + (val / 3) * 0.55;
           return `<td style="width:14px;height:14px;background:rgba(196,63,94,${alpha});border-radius:4px;border:1px solid var(--card-background-color,#fff);"></td>`;
         }).join('');
-        return `<tr><td style="font-size:0.72rem;font-family:var(--mc-font-mono);color:var(--secondary-text-color,#6b7280);padding-right:8px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
+        return `<tr><td style="font-size:0.72rem;font-family:var(--mc-font-mono);color:var(--secondary-text-color,#5f6673);padding-right:8px;white-space:nowrap;">${escapeHtml(this._t(key))}</td>${cells}</tr>`;
       }).join('');
 
       return `${statHeader}<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:2px;"><tbody>${rows}</tbody></table></div>`;
@@ -7694,8 +7694,8 @@
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
           ${mark}
           <div style="flex:1;">
-            <div style="font-size:13px;${earned ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(label)}${isNew ? ` <span class="badge-new">${escapeHtml(this._t('dashboard_badge_new'))}</span>` : ''}</div>
-            ${detail ? `<div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);margin-top:2px;">${detail}</div>` : ''}
+            <div style="font-size:13px;${earned ? '' : 'color:var(--secondary-text-color,#5f6673);'}">${escapeHtml(label)}${isNew ? ` <span class="badge-new">${escapeHtml(this._t('dashboard_badge_new'))}</span>` : ''}</div>
+            ${detail ? `<div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#5f6673);margin-top:2px;">${detail}</div>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -8159,11 +8159,19 @@
       // Estimated fertile days and ovulation (calendar method: ovulation 14 days before the next period, fertile = the five days before it and that day).
       // A running cycle needs the predicted start of the next one; without it (or for a very short cycle) there is nothing to estimate.
       const nextStart = stateObj?.attributes?.next_predicted_start;
-      // A positive LH test measures it better: ovulation the day after the test, and the strip is drawn solid.
+      // Measured is better than estimated, and the strip is drawn solid. A confirmed temperature rise (sensor attribute, as in the model's
+      // strict mode: ovulation on the rise day) beats a positive LH test (ovulation the day after the test).
+      const riseDays = stateObj?.attributes?.temperature_rise_days;
+      const riseDay = (cycle) => {
+        const iso = riseDays && typeof riseDays === 'object' ? riseDays[cycle.start] : null;
+        const day = iso ? Math.round((new Date(`${iso}T12:00:00`) - new Date(`${cycle.start}T12:00:00`)) / 86400000) + 1 : 0;
+        return day >= 1 && day <= cycle.length ? day : 0;
+      };
       const phaseDays = [cycleA, cycleB].map((cycle, i) => {
-        if (lhDays[i]) {
-          const ovulation = lhDays[i].day + 1;
-          return { ovulation: ovulation <= cycle.length ? ovulation : 0, measured: true, fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1].filter((day) => day >= 1) };
+        const byTemperature = riseDay(cycle);
+        if (byTemperature || lhDays[i]) {
+          const ovulation = byTemperature || lhDays[i].day + 1;
+          return { ovulation: ovulation <= cycle.length ? ovulation : 0, measured: true, by: byTemperature ? 'temp' : 'lh', fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1].filter((day) => day >= 1) };
         }
         const end = cycle.running ? nextStart : cycle.end;
         const length = end ? Math.round((new Date(`${end}T12:00:00`) - new Date(`${cycle.start}T12:00:00`)) / 86400000) : 0;
@@ -8171,7 +8179,8 @@
         return ovulation >= 6 ? { ovulation, fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1] } : { ovulation: 0, fertile: [] };
       });
       const hasPhases = phaseDays.some((phase) => phase.fertile.length);
-      const hasLhOvulation = phaseDays.some((phase) => phase.measured && phase.ovulation);
+      const hasLhOvulation = phaseDays.some((phase) => phase.by === 'lh' && phase.ovulation);
+      const hasTempOvulation = phaseDays.some((phase) => phase.by === 'temp' && phase.ovulation);
       const hasEstimate = phaseDays.some((phase) => phase.ovulation && !phase.measured);
       const hasBleeding = bleedingDays.some((days) => days.length);
       const stripped = hasBleeding || hasPhases;
@@ -8212,7 +8221,7 @@
       }).join('');
       const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('')
         + (hasBleeding ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="var(--secondary-text-color,#9ca3af)" opacity="0.75"/></svg>${escapeHtml(this._t('dashboard_cc_bleeding_days'))}</span>` : '')
-        + [[hasPhases, 'fertile', 'fertile_est', 0.55], [hasEstimate, 'ovulation', 'ovulation_est', 0.55], [hasLhOvulation, 'ovulation', 'ovulation_lh', 1]].filter((key) => key[0]).map(([, kind, text, opacity]) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="${phaseFill[kind]}" opacity="${opacity}"/></svg>${escapeHtml(this._t(`dashboard_cc_${text}`))}</span>`).join('')
+        + [[hasPhases, 'fertile', 'fertile_est', 0.55], [hasEstimate, 'ovulation', 'ovulation_est', 0.55], [hasLhOvulation, 'ovulation', 'ovulation_lh', 1], [hasTempOvulation, 'ovulation', 'ovulation_temp', 1]].filter((key) => key[0]).map(([, kind, text, opacity]) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="${phaseFill[kind]}" opacity="${opacity}"/></svg>${escapeHtml(this._t(`dashboard_cc_${text}`))}</span>`).join('')
         + (avgLine ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${escapeHtml(this._t('dashboard_cc_average'))}</span>` : '');
       const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
       return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H + (stripped ? 14 : 0)}" width="100%" height="${H + (stripped ? 14 : 0)}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}${stripsSvg}</svg><div class="cc-legend">${legend}</div></div>`;
@@ -8426,7 +8435,7 @@
       const xLabels = `<text x="${padL}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${escapeHtml(firstDate)}</text>
                        <text x="${W - padR}" y="${H - 2}" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)" text-anchor="end">${escapeHtml(lastDate)}</text>`;
 
-      const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+      const legend = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:0.7rem;color:var(--secondary-text-color,#5f6673);align-items:center;">
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E8637D;margin-right:4px;vertical-align:middle"></span>${escapeHtml(useStrength ? this._t('pain_intensity_label') : (this._t('dashboard_pain_types_count') || 'Anzahl Schmerzarten'))}</span>
         ${unrated.some(Boolean) ? `<span><span style="display:inline-block;width:8px;height:3px;background:#E8637D;opacity:.4;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_pain_unrated'))}</span>` : ''}
         ${hasMoodData ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#6B3654;margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('mood'))}</span>` : ''}
@@ -8552,15 +8561,15 @@
         }
 
         months.push(`
-          <div class="year-month" ${isCurrentMonth ? 'style="opacity:1"' : 'style="opacity:0.8"'}>
+          <div class="year-month">
             <div class="year-month-label">${escapeHtml(monthLabel)}</div>
-            <div class="year-month-days">${dayCells.join('')}</div>
+            <div class="year-month-days" ${isCurrentMonth ? "" : 'style="opacity:0.8"'}>${dayCells.join('')}</div>
           </div>
         `);
       }
 
       const legend = `
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#6b7280);align-items:center;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:0.7rem;color:var(--secondary-text-color,#5f6673);align-items:center;">
           <span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-rose-deep);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_label_state'))} (Ø ${avgPeriodDuration}${this._t('dashboard_days_short') || 'T'})</span>
           ${predictedStarts.length ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:rgba(232,99,125,0.32);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('period_forecast_window'))}</span>` : ''}
           ${(fertileStart || hasEstimatedFertileData) ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--mc-amber,#E3A23D);margin-right:4px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_fertility_window'))}</span>` : ''}
@@ -8649,7 +8658,7 @@
       return ['full', 'partner']
         .filter((kind) => fetched[kind] && fmt(fetched[kind]))
         .map((kind) => this._t(`dashboard_ics_fetched_${kind}`).replace('{when}', fmt(fetched[kind])))
-        .map((line) => `<span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${escapeHtml(line)}</span>`)
+        .map((line) => `<span style="font-size:0.68rem;color:var(--secondary-text-color,#5f6673);">${escapeHtml(line)}</span>`)
         .join('');
     }
 
@@ -8679,9 +8688,9 @@
           <a href="${escapeHtml(webcalUrl)}" style="font-size:0.72rem;color:var(--mc-rose-deep);text-decoration:none;font-weight:600;">
             📅 ${this._t('dashboard_ics_subscribe') || 'Kalender abonnieren'}
           </a>
-          <span style="font-size:0.68rem;color:var(--secondary-text-color,#6b7280);">${this._t('dashboard_ics_hint') || '(als iCal-Feed, z. B. für Google/Apple Kalender)'}</span>
-          <button type="button" data-action="rotate-ics-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_rotate'))}</button>
-          ${this._icsPartnerUrls?.[attrs.profile] ? `<button type="button" data-action="copy-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner'))}</button><button type="button" data-action="rotate-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#6b7280);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner_rotate'))}</button>` : ''}
+          <span style="font-size:0.68rem;color:var(--secondary-text-color,#5f6673);">${this._t('dashboard_ics_hint') || '(als iCal-Feed, z. B. für Google/Apple Kalender)'}</span>
+          <button type="button" data-action="rotate-ics-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#5f6673);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_rotate'))}</button>
+          ${this._icsPartnerUrls?.[attrs.profile] ? `<button type="button" data-action="copy-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#5f6673);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner'))}</button><button type="button" data-action="rotate-ics-partner-url" data-profile="${escapeHtml(attrs.profile)}" style="font-size:0.68rem;background:none;border:none;padding:0;color:var(--secondary-text-color,#5f6673);text-decoration:underline;cursor:pointer;">${escapeHtml(this._t('dashboard_ics_partner_rotate'))}</button>` : ''}
           ${this._renderIcsLastFetch(attrs.profile)}
         </div>
       `;
@@ -9454,7 +9463,7 @@
           .mc-unavailable-icon { font-size: 2rem; margin-bottom: 10px; }
           .mc-unavailable-title { font-family: var(--mc-font-display, serif); font-size: 1.1rem; font-weight: 500; margin: 0 0 8px; }
           .mode-switch { display: flex; gap: 3px; background: var(--mc-sand, #f3ebe7); border: 1px solid var(--divider-color, #e5e7eb); border-radius: 999px; padding: 3px; flex-wrap: wrap; }
-          .mode-btn { border: none; background: transparent; cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--secondary-text-color, #6b7280); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
+          .mode-btn { border: none; background: transparent; cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--secondary-text-color, #5f6673); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
           .mode-btn.active { background: var(--card-background-color, #fff); color: var(--mc-rose-deep, #C43F5E); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
           .entity-picker { border: 1px solid var(--divider-color, #d1d5db); border-radius: 999px; padding: 7px 12px; background: var(--card-background-color, #fff); color: inherit; font-size: 0.875rem; }
         </style>
@@ -9486,7 +9495,7 @@
           .mc-loading-page { padding: 16px; display: grid; gap: 16px; }
           .mc-loading-spin {
             display: flex; align-items: center; gap: 10px;
-            font-size: 0.875rem; color: var(--secondary-text-color, #6b7280);
+            font-size: 0.875rem; color: var(--secondary-text-color, #5f6673);
           }
           .mc-spinner {
             width: 16px; height: 16px; border-radius: 50%;
@@ -9612,7 +9621,7 @@
           }
           :host([data-theme="light"]) {
             color-scheme: light; background: var(--primary-background-color);
-            --primary-text-color: #1f2937; --secondary-text-color: #6b7280; --primary-background-color: #f5f5f7;
+            --primary-text-color: #1f2937; --secondary-text-color: #5f6673; --primary-background-color: #f5f5f7;
             --card-background-color: #fff; --ha-card-background: #fff; --divider-color: #e5e7eb;
           }
           .accent-picker { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -9630,7 +9639,7 @@
           .week-fertile .week-dot { background: var(--mc-sage); }
           .week-ovulation .week-dot { background: var(--mc-amber); }
           .week-pill_pause .week-dot, .week-pill_new .week-dot { background: var(--mc-plum); }
-          .week-renewal .week-dot { background: var(--secondary-text-color, #6b7280); }
+          .week-renewal .week-dot { background: var(--secondary-text-color, #5f6673); }
           .week-when { text-align: right; font-size: .85rem; }
           .week-rel { color: var(--secondary-text-color); font-size: .78rem; }
           .hs-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -9782,7 +9791,7 @@
           .mode-btn {
             border: none; background: transparent; cursor: pointer;
             font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
             padding: 7px 14px;
             border-radius: 999px;
             transition: background .15s ease, color .15s ease;
@@ -9864,7 +9873,7 @@
             background: var(--mc-sand);
             border-bottom: 1px solid var(--divider-color, #e5e7eb);
             font-size: 0.72rem;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
             flex: none;
           }
           .mc-chat-fab-disclaimer ha-icon { --mdc-icon-size: 16px; flex: none; margin-top: 1px; }
@@ -9962,14 +9971,14 @@
             border-radius: 999px;
             background: var(--mc-sand);
             border: 1px solid var(--divider-color, #e5e7eb);
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
             white-space: nowrap;
           }
           /* Discreet-mode quick toggle — now a bordered pill matching the other
              header controls' height/color instead of floating borderless. */
           .toolbar button.discreet-toggle {
             display: flex; align-items: center; gap: 9px;
-            font-size: 0.8125rem; color: var(--secondary-text-color, #6b7280);
+            font-size: 0.8125rem; color: var(--secondary-text-color, #5f6673);
             font-weight: 400;
             background: var(--mc-sand);
             border: 1px solid var(--divider-color, #e5e7eb);
@@ -10028,7 +10037,7 @@
           .today-count { font-size: .75rem; padding: 2px 10px; border-radius: 999px; background: var(--mc-amber-tint); color: var(--mc-amber-deep); }
           .today-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 40px; padding: 6px 0; border-top: 1px solid var(--divider-color, #ececec); font-size: .875rem; }
           .today-row p { margin: 0; flex: 1 1 100%; }
-          .today-label { flex: 0 1 12rem; min-width: 7rem; color: var(--secondary-text-color, #6b7280); }
+          .today-label { flex: 0 1 12rem; min-width: 7rem; color: var(--secondary-text-color, #5f6673); }
           .today-row.done .today-label { color: var(--mc-sage-deep); }
           .today-row.done .today-label::before { content: '✓ '; font-weight: 700; }
           .today-card button {
@@ -10038,7 +10047,7 @@
           .today-card button:hover { background: var(--mc-rose-tint); border-color: var(--mc-rose); }
           .today-card button.primary, .today-card button.mode-btn.active { background: var(--mc-rose-tint); border-color: var(--mc-rose); color: var(--mc-rose-deep); font-weight: 600; }
           .today-card button:disabled { opacity: .55; cursor: default; }
-          .today-card .today-more { border: none; background: none; color: var(--secondary-text-color, #6b7280); padding: 4px 8px; }
+          .today-card .today-more { border: none; background: none; color: var(--secondary-text-color, #5f6673); padding: 4px 8px; }
           .today-card input[type="text"] { width: 6.5rem; }
           .today-card input[data-action="doctor-report-name"] { width: min(14rem, 100%); }
           .today-card select { width: auto; }
@@ -10082,7 +10091,7 @@
             align-items: center; justify-content: center; text-align: center;
           }
           .hero-wheel-center .hw-num { font-family: var(--mc-font-display); font-size: 34px; font-weight: 500; line-height: 1; color: var(--mc-rose-deep); }
-          .hero-wheel-center .hw-sub { font-family: var(--mc-font-mono); font-size: 10px; letter-spacing: .04em; color: var(--secondary-text-color,#6b7280); margin-top: 3px; }
+          .hero-wheel-center .hw-sub { font-family: var(--mc-font-mono); font-size: 10px; letter-spacing: .04em; color: var(--secondary-text-color,#5f6673); margin-top: 3px; }
           .hero-wheel-center .hw-tag { margin-top: 8px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--mc-sage-tint); color: var(--mc-sage-deep); }
           .kpi-strip {
             display: flex;
@@ -10117,7 +10126,7 @@
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: .04em;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
             line-height: 1.2;
           }
           /* Hero stat tiles (3-up) + confidence bars, matching the original mockup */
@@ -10135,7 +10144,7 @@
             background: var(--mc-sand);
           }
           .stat .stat-label {
-            font-size: 11.5px; color: var(--secondary-text-color, #6b7280);
+            font-size: 11.5px; color: var(--secondary-text-color, #5f6673);
             text-transform: uppercase; letter-spacing: .06em;
             margin-bottom: 8px;
           }
@@ -10143,8 +10152,8 @@
             font-family: var(--mc-font-display); font-size: 28px; font-weight: 500;
             color: var(--primary-text-color, #1f2937); line-height: 1.1;
           }
-          .stat .stat-value small { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: var(--secondary-text-color, #6b7280); }
-          .stat .stat-foot { font-size: 12px; color: var(--secondary-text-color, #6b7280); margin-top: 6px; }
+          .stat .stat-value small { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: var(--secondary-text-color, #5f6673); }
+          .stat .stat-foot { font-size: 12px; color: var(--secondary-text-color, #5f6673); margin-top: 6px; }
           .stat.mc-rose { background: var(--mc-rose-tint); }
           .stat.mc-rose .stat-value { color: var(--mc-rose-deep); }
           .stat.mc-plum { background: var(--mc-plum-tint); }
@@ -10166,7 +10175,7 @@
           }
           .confidence-row .confidence-pct {
             font-family: var(--mc-font-mono); font-size: 0.8rem;
-            color: var(--secondary-text-color, #6b7280); flex: 0 0 auto; min-width: 34px; text-align: right;
+            color: var(--secondary-text-color, #5f6673); flex: 0 0 auto; min-width: 34px; text-align: right;
           }
           /* Status icon badge on the hero wheel — deliberately outside the ring's
              center content (not overlapping the day number/label), small by default,
@@ -10230,7 +10239,7 @@
           .kv:last-child { border-bottom: none; }
           .kv span { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); }
           .kv strong { font-size: 0.875rem; font-weight: 600; }
-          .helper { font-size: .85rem; color: var(--secondary-text-color, #6b7280); line-height: 1.5; }
+          .helper { font-size: .85rem; color: var(--secondary-text-color, #5f6673); line-height: 1.5; }
           .quick-log { display: grid; gap: 10px; }
           label { font-size: 0.875rem; color: var(--secondary-text-color, #4b5563); display: grid; gap: 4px; }
           select, input[type="text"], textarea {
@@ -10277,7 +10286,7 @@
             border: 1px solid var(--divider-color, #d1d5db);
             box-shadow: 0 6px 24px rgba(0,0,0,0.12);
           }
-          .edit-bar-hint { font-size: .8rem; color: var(--secondary-text-color, #6b7280); flex: 1 1 260px; }
+          .edit-bar-hint { font-size: .8rem; color: var(--secondary-text-color, #5f6673); flex: 1 1 260px; }
           .edit-bar-buttons { display: flex; gap: 8px; }
           .edit-bar-buttons button {
             border: 1px solid var(--divider-color, #d1d5db); border-radius: 8px; padding: 5px 14px;
@@ -10408,7 +10417,7 @@
           }
           .stat-icon { font-size: 1rem; line-height: 1; }
           .stat-value { font-family: var(--mc-font-display); font-size: 1.3rem; font-weight: 500; color: var(--mc-rose-deep); }
-          .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--secondary-text-color, #6b7280); text-align: center; }
+          .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--secondary-text-color, #5f6673); text-align: center; }
           /* Cycle history graph */
           .cycle-history-wrap { width: 100%; }
           .cycle-history-legend {
@@ -10418,7 +10427,7 @@
             flex-wrap: wrap;
             margin-top: 6px;
             font-size: 0.75rem;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
           }
           .legend-dot {
             display: inline-block;
@@ -10490,7 +10499,7 @@
           .anomaly-tag {
             font-family: var(--mc-font-mono);
             font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-            color: var(--secondary-text-color, #6b7280); display: block; margin-bottom: 3px;
+            color: var(--secondary-text-color, #5f6673); display: block; margin-bottom: 3px;
           }
           .anomaly-text { margin: 0; font-size: 0.8125rem; line-height: 1.45; }
           button.anomaly-link { all: unset; display: block; cursor: pointer; font-size: 0.8125rem; line-height: 1.45; text-decoration: underline dotted; text-underline-offset: 3px; }
@@ -10523,7 +10532,7 @@
           .year-month-label {
             font-family: var(--mc-font-mono);
             font-size: 0.7rem;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
             white-space: nowrap;
           }
           .year-month-days {
@@ -10546,7 +10555,7 @@
             font-family: var(--mc-font-display, inherit);
             font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: var(--secondary-text-color, #6b7280);
+            color: var(--secondary-text-color, #5f6673);
           }
           .household-counters { display: flex; flex-wrap: wrap; gap: 10px; }
           .household-stat {
@@ -10560,7 +10569,7 @@
           }
           .household-stat-label {
             font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em;
-            color: var(--secondary-text-color, #6b7280); margin-top: 2px;
+            color: var(--secondary-text-color, #5f6673); margin-top: 2px;
           }
           .household-stat--period { background: var(--mc-rose-tint, #FBE3E8); }
           .household-stat--period .household-stat-value { color: var(--mc-rose-deep, #C43F5E); }
@@ -10578,7 +10587,7 @@
             background: rgba(0, 0, 0, 0.15);
           }
           .household-member strong { color: var(--primary-text-color, #1f2937); font-weight: 600; }
-          .household-member-point { color: var(--secondary-text-color, #6b7280); }
+          .household-member-point { color: var(--secondary-text-color, #5f6673); }
           .household-member-detail { display: none; }
           @media (hover: hover) {
             .household-member { position: relative; transition: transform 0.15s ease; }
@@ -10625,14 +10634,14 @@
               font-size: 0.8rem; line-height: 1.35; color: var(--primary-text-color, #1f2937);
             }
             .household-member-detail-line:not(:first-of-type) {
-              font-size: 0.74rem; color: var(--secondary-text-color, #6b7280);
+              font-size: 0.74rem; color: var(--secondary-text-color, #5f6673);
             }
           }
-          .household-synchrony { font-size: 0.72rem; color: var(--secondary-text-color, #6b7280); }
+          .household-synchrony { font-size: 0.72rem; color: var(--secondary-text-color, #5f6673); }
           .household-timeline { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
           .household-timeline-title {
             font-family: var(--mc-font-display, inherit); font-size: 0.72rem; font-weight: 600;
-            letter-spacing: 0.04em; text-transform: uppercase; color: var(--secondary-text-color, #6b7280);
+            letter-spacing: 0.04em; text-transform: uppercase; color: var(--secondary-text-color, #5f6673);
           }
           .household-timeline-row { display: flex; align-items: center; gap: 8px; }
           .household-timeline-label {
@@ -10654,10 +10663,10 @@
           .mc-log-fab:hover { transform: scale(1.05); }
           .mc-log-fab ha-icon { --mdc-icon-size: 30px; }
           .chip-select { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 42px; box-sizing: border-box; padding: 0 10px 0 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--mc-sand); cursor: pointer; font-size: .875rem; white-space: nowrap; }
-          .chip-select ha-icon { --mdc-icon-size: 18px; flex: none; color: var(--secondary-text-color, #6b7280); }
+          .chip-select ha-icon { --mdc-icon-size: 18px; flex: none; color: var(--secondary-text-color, #5f6673); }
           .chip-select:focus-within { outline: 2px solid var(--mc-rose-deep); outline-offset: 2px; }
           .chip-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; font-size: 1rem; }
-          .chip-date { font-family: var(--mc-font-mono); color: var(--secondary-text-color, #6b7280); }
+          .chip-date { font-family: var(--mc-font-mono); color: var(--secondary-text-color, #5f6673); }
           .toolbar .jump-chip { height: 32px; font-size: .78rem; }
           @media (max-width: 700px) {
             .page { padding-bottom: 88px; }

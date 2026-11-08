@@ -126,6 +126,7 @@ def _runtime(**overrides):
         cycle_length_override=None,
         visibility_level="full",
         onboarding_stage=None,
+        profile="test",
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -151,6 +152,7 @@ def _hass():
         config=SimpleNamespace(language="en"),
         states=SimpleNamespace(get=lambda entity_id: None),
         async_add_executor_job=_executor,
+        data={integration.DASHBOARD_PREFS_DATA_KEY: {}},  # no saved dashboard settings
     )
 
 
@@ -1960,6 +1962,73 @@ class LhPositiveEventTests(unittest.TestCase):
             self.assertEqual(len(self._log(data, event=event)), 1, event)
             self.assertEqual(self._log(data, visibility="status_only", event=event), [], event)
             self.assertEqual(self._log(data, visibility="private", event=event), [], event)
+
+
+class TeenNotificationTests(unittest.TestCase):
+    """Friendly wording for teen profiles: the saved dashboard choice, otherwise pre/early menarche or under 16 by birth date."""
+
+    YOUNG = {const.CONF_BIRTH_DATE: _iso(-365 * 13 - 100)}
+    ADULT = {const.CONF_BIRTH_DATE: _iso(-365 * 30)}
+
+    def _overdue_message(self, data, prefs=None) -> str:
+        entry = _entry(**{const.CONF_NOTIFY_OVERDUE_ENABLED: True})
+        entry.data = data
+        runtime = OverdueNotificationTests._runtime(None, 10)
+        sent = _Sent()
+        hass = _hass()
+        if prefs is not None:
+            hass.data[integration.DASHBOARD_PREFS_DATA_KEY] = {"user1:test": prefs, "user2:other": {"teenStyle": "on"}}
+        with patch.object(integration, "_async_send_notification", sent), patch.object(integration, "_async_save_and_notify", AsyncMock()):
+            _run(integration._async_check_and_send_notifications(hass, entry, runtime))
+        return sent.calls[0][1]
+
+    def test_the_automatic_rule_follows_the_birth_date(self) -> None:
+        self.assertIn("happens a lot", self._overdue_message(self.YOUNG))
+        self.assertNotIn("happens a lot", self._overdue_message(self.ADULT))
+        self.assertNotIn("happens a lot", self._overdue_message({}))
+
+    def test_the_saved_dashboard_choice_wins_and_belongs_to_the_profile(self) -> None:
+        self.assertNotIn("happens a lot", self._overdue_message(self.YOUNG, {"teenStyle": "off"}))
+        self.assertIn("happens a lot", self._overdue_message(self.ADULT, {"teenStyle": "on"}))
+        # another profile's "on" does not count, and "auto" (or nothing) falls back to the automatic rule
+        self.assertNotIn("happens a lot", self._overdue_message(self.ADULT, {"teenStyle": "auto"}))
+
+    def test_pill_reminder_follows_the_choice(self) -> None:
+        entry = _entry(**{const.CONF_NOTIFY_PILL_ENABLED: True})
+        entry.data = self.YOUNG
+        sent = _run_pill_reminder(entry, _runtime(symptom_history=_pill_entries(-2, -1)))
+        self.assertEqual(sent.calls[0][1], "Test: pill time! One tap on \"Pill taken\" and you are done.")
+
+    def test_the_stage_the_person_set_counts_but_not_the_learning_fallback(self) -> None:
+        entry = _entry(**{const.CONF_NOTIFY_PILL_ENABLED: True})
+        entry.data = self.ADULT
+        young = _run_pill_reminder(entry, _runtime(symptom_history=_pill_entries(-2, -1), onboarding_stage="early_menarche"))
+        self.assertIn("pill time!", young.calls[0][1])
+        plain = _run_pill_reminder(entry, _runtime(symptom_history=_pill_entries(-2, -1), onboarding_stage="established_cycle"))
+        self.assertEqual(plain.calls[0][1], "Test: time to take the pill.")
+        # a new profile with few cycles gets effective stage early_menarche from the model (learning phase): not young wording
+        source = (COMPONENT_ROOT / "__init__.py").read_text(encoding="utf-8")
+        self.assertNotIn("onboarding_stage_effective", source[source.index("async def _async_notify_teen"):source.index("def _baby_size_sentence")])
+
+    def test_only_everyday_texts_change_never_a_health_hint(self) -> None:
+        plain, teen = integration._notify_strings("en"), integration._notify_strings("en", teen=True)
+        self.assertNotEqual(plain["period_message"], teen["period_message"])
+        for key in ("unprotected_message", "pill_gap_message", "cyclehint_short", "pregnancy_week_message", "period_title"):
+            self.assertEqual(plain[key], teen[key], key)
+        self.assertIs(integration._notify_strings("en"), integration._NOTIFY_STRINGS["en"])
+
+    def test_every_language_has_the_same_teen_texts_with_the_same_placeholders(self) -> None:
+        keys = {k for k in integration._NOTIFY_STRINGS["en"] if k.startswith("teen_")}
+        self.assertGreaterEqual(len(keys), 8)
+        for lang, table in integration._NOTIFY_STRINGS.items():
+            self.assertEqual({k for k in table if k.startswith("teen_")}, keys, lang)
+            for key in keys:
+                self.assertIn(key[5:], table, f"{lang}: {key} has no normal text")
+                holes = lambda text: sorted(re.findall(r"\{(\w+)\}", text))  # noqa: E731
+                self.assertEqual(holes(table[key]), holes(table[key[5:]]), f"{lang}: {key}")
+
+    def test_a_language_without_teen_texts_keeps_its_own_normal_text(self) -> None:
+        self.assertEqual(integration._notify_strings("zz", teen=True)["period_message"], integration._NOTIFY_STRINGS["en"]["teen_period_message"])
 
 
 if __name__ == "__main__":

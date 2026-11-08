@@ -1550,6 +1550,7 @@
   "dashboard_anomaly_outlier_short": "Cykel från {date}: {days} dagar kortare än vanligt ({len} i stället för {avg} i snitt)",
   "dashboard_anomaly_running_long": "Pågående cykel: redan {len} dagar, {days} dagar längre än vanligt (snitt {avg})",
   "dashboard_cc_ovulation_lh": "Ägglossning (efter LH-test)",
+  "dashboard_cc_ovulation_temp": "Ägglossning (efter temperaturstegring)",
   "dashboard_anomaly_compare": "Jämför med föregående cykel",
   "dashboard_anomaly_compare_hidden": "Visa kortet \"Jämför cykler\" för att se det.",
   "teen_dashboard_anomaly_regular": "Din cykel är ganska regelbunden",

@@ -1550,6 +1550,7 @@
   "dashboard_anomaly_outlier_short": "Zyklus ab {date}: {days} Tage kürzer als sonst ({len} statt Ø {avg})",
   "dashboard_anomaly_running_long": "Aktueller Zyklus: schon {len} Tage, {days} Tage länger als sonst (Ø {avg})",
   "dashboard_cc_ovulation_lh": "Eisprung (nach LH-Test)",
+  "dashboard_cc_ovulation_temp": "Eisprung (nach Temperaturanstieg)",
   "dashboard_anomaly_compare": "Mit dem Zyklus davor vergleichen",
   "dashboard_anomaly_compare_hidden": "Blende die Karte \"Zyklen vergleichen\" ein, um ihn zu sehen.",
   "teen_dashboard_anomaly_regular": "Dein Zyklus ist ziemlich regelmäßig",

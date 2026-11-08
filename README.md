@@ -53,6 +53,17 @@ For manual installation, extra cards, service examples, and troubleshooting, use
 
 <img width="1016" height="431" alt="HA Menstruation Cycle dashboard" src="https://github.com/user-attachments/assets/6c516de7-4b1e-4c1c-aa3d-2e9d753a8987" />
 
+The dashboard panel in the standard look (light and dark), the cycle comparison with the measured ovulation, and the teen design on a phone. The screenshots show invented demo data (`tools/real_ha/screenshots.py` regenerates them).
+
+<p>
+<img width="49%" alt="Dashboard panel, light" src="https://raw.githubusercontent.com/wallenium/HA-menstrual-cycle/main/docs/screenshots/panel-light.png" />
+<img width="49%" alt="Dashboard panel, dark" src="https://raw.githubusercontent.com/wallenium/HA-menstrual-cycle/main/docs/screenshots/panel-dark.png" />
+</p>
+<p>
+<img width="49%" alt="Cycle comparison with temperature curve and phase band" src="https://raw.githubusercontent.com/wallenium/HA-menstrual-cycle/main/docs/screenshots/cycle-compare.png" />
+<img width="30%" alt="Teen design on a phone" src="https://raw.githubusercontent.com/wallenium/HA-menstrual-cycle/main/docs/screenshots/panel-teen-mobile.png" />
+</p>
+
 ## 📚 Full documentation
 
 **Start here:** [Documentation Hub](https://github.com/wallenium/HA-menstrual-cycle/wiki)
