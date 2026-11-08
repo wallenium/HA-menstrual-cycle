@@ -465,8 +465,26 @@ const makeHass = (stateObj) => ({
   });
   const availableEntityIds = panelEntityFilter._getAvailableEntities().map((entity) => entity.entityId);
   assert.deepStrictEqual(availableEntityIds, ['sensor.menstruation_anna'], 'period-products helpers should be excluded from entity picker');
-  // Up to five profiles render as a button group, a dropdown (class="entity-picker") only beyond that.
-  assert.ok(panelEntityFilter.shadowRoot.innerHTML.includes('data-action="select-entity" data-entity-id="sensor.menstruation_anna"'), 'entity picker should remain visible with one entity');
+  // Profile switcher: one round avatar with a chevron badge (like the macOS app); the list opens on tap, also for a single profile.
+  {
+    const html = () => panelEntityFilter.shadowRoot.innerHTML;
+    assert.ok(/<button type="button" class="profile-avatar" data-action="profile-menu-toggle" aria-haspopup="menu" aria-expanded="false"/.test(html()), 'avatar button with menu semantics, closed');
+    assert.ok(html().includes('profile-chevron') && !html().includes('class="profile-menu"'), 'chevron badge, no list while closed');
+    panelEntityFilter._handleClick({ target: new ClickTarget({ action: 'profile-menu-toggle' }) });
+    assert.ok(html().includes('aria-expanded="true"') && html().includes('class="profile-menu" role="menu"'), 'tap opens the list');
+    assert.ok(html().includes('data-action="select-entity" data-entity-id="sensor.menstruation_anna"') && /role="menuitemradio" aria-checked="true"/.test(html()), 'the profile is listed and marked as current');
+    panelEntityFilter._handleKeydown({ key: 'Escape', target: new ClickTarget(), preventDefault() {} });
+    assert.ok(!html().includes('class="profile-menu"') && panelEntityFilter._profileMenuOpen === false, 'Escape closes the list');
+    panelEntityFilter._handleClick({ target: new ClickTarget({ action: 'profile-menu-toggle' }) });
+    const outside = new ClickTarget();
+    outside.closest = () => null;
+    panelEntityFilter._handleClick({ target: outside });
+    assert.ok(!html().includes('class="profile-menu"'), 'a tap elsewhere closes the list');
+    panelEntityFilter._handleClick({ target: new ClickTarget({ action: 'profile-menu-toggle' }) });
+    panelEntityFilter._handleClick({ target: new ClickTarget({ action: 'select-entity', entityId: 'sensor.menstruation_anna' }) });
+    assert.ok(panelEntityFilter._profileMenuOpen === false && !html().includes('class="profile-menu"'), 'picking a profile closes the list');
+    assert.ok(/class="profile-avatar"/.test(html()) && !html().includes('class="entity-picker"'), 'no pills or dropdown any more');
+  }
 
   // the countdown card is configured with the main sensor (its state picks the mode), not with the timer-state entity
   const timerMount = source.slice(source.indexOf('data-mount="timer-card"'), source.indexOf('data-mount="statistics-card"'));
@@ -988,14 +1006,17 @@ const makeHass = (stateObj) => ({
   const realQA = navPanel.shadowRoot.querySelectorAll;
   const mkCard = (id) => ({ dataset: { card: id }, scrollIntoView: (o) => scrolls.push([id, o.block, o.behavior]) });
   navPanel.shadowRoot.querySelectorAll = () => [mkCard('kpi_strip'), mkCard('timer_card'), mkCard('inventory_card'), mkCard('calendar_card')];
-  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'supplies' }) });
+  const jumpTo = (group) => { const sel = new ClickTarget({ action: 'jump-select' }); sel.tagName = 'SELECT'; sel.value = group; navPanel._handleChange({ target: sel }); return sel; };
+  assert.strictEqual(jumpTo('supplies').value, '', 'the list springs back to its caption');
+  assert.ok(navHtml.includes('<select data-action="jump-select"') && navHtml.includes('chip-caret'), 'compact dropdown with caret instead of a row of chips');
   assert.deepStrictEqual(scrolls, [['timer_card', 'start', 'smooth']], 'first card of the group in page order');
   navPanel._prefs.animations = false;
-  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'calendar' }) });
+  jumpTo('calendar');
   assert.deepStrictEqual(scrolls[1], ['calendar_card', 'start', 'auto'], 'no smooth scrolling with animations off');
   scrolls.pop();
   navPanel._prefs.animations = true;
-  navPanel._handleClick({ target: new ClickTarget({ action: 'jump', group: 'nonsense' }) });
+  jumpTo('nonsense');
+  jumpTo('');
   assert.strictEqual(scrolls.length, 1, 'unknown group does nothing');
   navPanel.shadowRoot.querySelectorAll = realQA;
   navPanel._prefs.widgetVisibility.cycle_history = true;
@@ -1008,11 +1029,12 @@ const makeHass = (stateObj) => ({
   assert.ok(!navPanel.shadowRoot.innerHTML.includes('class="jump-nav"') && !navPanel.shadowRoot.innerHTML.includes('data-card='), 'no bar while editing');
   navPanel._editMode = false;
   navPanel.render();
-  assert.ok(navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"') && navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"><button type="button" data-action="open-quick-log"'), 'phone bar with Log today');
-  assert.ok(/@media \(max-width: 700px\) \{[^@]*\.mobile-bar \{\s*display: flex; position: fixed;/.test(source), 'the bar is only shown on narrow screens');
+  assert.ok(/class="icon-only log-icon" data-action="open-quick-log"/.test(navPanel.shadowRoot.innerHTML) && navPanel.shadowRoot.innerHTML.includes('class="mc-log-fab" data-action="open-quick-log"'), 'compact plus in the header and a round plus on phones');
+  assert.ok(/@media \(max-width: 700px\) \{[^@]*\.toolbar button\.log-icon \{ display: none; \}\s*\.mc-log-fab \{ display: flex;/.test(source), 'the round plus replaces the header one on narrow screens only');
+  assert.ok(/<label class="chip-select range-chip"[^>]*>.*<select class="range-picker" data-pref="chartRange"/.test(navPanel.shadowRoot.innerHTML) && !navPanel.shadowRoot.innerHTML.includes('class="today-pill"'), 'date and chart period are one chip');
   navPanel._editMode = true;
   navPanel.render();
-  assert.ok(!navPanel.shadowRoot.innerHTML.includes('class="mobile-bar"'), 'no phone bar while editing');
+  assert.ok(!navPanel.shadowRoot.innerHTML.includes('class="mc-log-fab"') && !navPanel.shadowRoot.innerHTML.includes('class="icon-only log-icon"'), 'no log button while editing');
   navPanel._editMode = false;
 
   // ---- Views ----

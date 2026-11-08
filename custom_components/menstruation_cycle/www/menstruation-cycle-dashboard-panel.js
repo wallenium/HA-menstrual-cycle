@@ -984,6 +984,7 @@
       this._fullHistoryCache = {};
       this._fullHistoryFetching = new Set();
       this._historyErrors = new Set(); // profiles whose full history could not be loaded
+      this._profileMenuOpen = false;
       // Wunsch 01.10.2026: dashboard prefs (widgets + categories) now sync
       // through the backend (get/save_dashboard_prefs) instead of being stuck
       // to one browser's localStorage - this just dedupes in-flight fetches,
@@ -4355,6 +4356,11 @@
         this._handleEditCardKey(event, editCard);
         return;
       }
+      if (this._profileMenuOpen && event.key === 'Escape') {
+        event.preventDefault();
+        this._toggleProfileMenu(false);
+        return;
+      }
       if (this._wizard && event.key === 'Escape') {
         event.preventDefault();
         this._wizardFinish(false);
@@ -4394,6 +4400,12 @@
       if (rawTarget.classList.contains('mc-modal-backdrop') && !rawTarget.classList.contains('wizard-backdrop')) {
         this._closeQuickLog();
         return;
+      }
+
+      // a tap anywhere outside the profile menu closes it (the tap itself still does what it was meant to)
+      if (this._profileMenuOpen && !rawTarget.closest('.profile-switcher')) {
+        this._profileMenuOpen = false;
+        this.render();
       }
 
       const target = rawTarget.closest('[data-action]');
@@ -4551,7 +4563,10 @@
           this._savePrefs();
           this.render();
         }
+      } else if (action === 'profile-menu-toggle') {
+        this._toggleProfileMenu();
       } else if (action === 'select-entity' && target.dataset.entityId) {
+        this._profileMenuOpen = false;
         this._handleEntityChange(target.dataset.entityId);
       } else if (action === 'log-product' && target.dataset.product) {
         this._logProductUsage(target.dataset.product);
@@ -4633,8 +4648,6 @@
       } else if (action === 'view-delete' && this._editMode && this._editDraft && target.dataset.view) {
         this._deleteViewIn(this._editDraft, target.dataset.view);
         this.render();
-      } else if (action === 'jump' && target.dataset.group) {
-        this._jumpTo(target.dataset.group);
       } else if (action === 'toggle-today-more') {
         this._todayMore = !this._todayMore;
         this.render();
@@ -4720,6 +4733,12 @@
         else this._historySearch.range = ['30', '90', '180', 'all'].includes(target.value) ? target.value : '90';
         this._historySearch.limit = 30;
         this.render();
+        return;
+      }
+
+      if (target.tagName === 'SELECT' && target.dataset.action === 'jump-select') {
+        if (target.value) this._jumpTo(target.value);
+        target.value = '';
         return;
       }
 
@@ -8394,19 +8413,22 @@
       this.render();
     }
 
+    // Date and chart period in ONE chip: shows "8 Nov 2026 · Default" with a caret, the invisible select on top opens the period list.
     _renderRangePicker() {
       const current = CHART_RANGES.includes(this._prefs?.chartRange) ? this._prefs.chartRange : 'auto';
       const label = { auto: 'dashboard_range_auto', 3: 'months_3', 6: 'months_6', 12: 'months_12', all: 'dashboard_range_all' };
       const options = CHART_RANGES.map((value) => `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(`${this._t('dashboard_chart_range')}: ${this._t(label[value])}`)}</option>`).join('');
       const aria = escapeHtml(this._t('dashboard_chart_range'));
-      return `<select class="range-picker" data-pref="chartRange" aria-label="${aria}" title="${aria}">${options}</select>`;
+      return `<label class="chip-select range-chip" title="${aria}"><ha-icon icon="mdi:calendar-range"></ha-icon><span class="chip-text"><span class="chip-date">${escapeHtml(this._todayText('short'))} · </span>${escapeHtml(this._t(label[current]))}</span><ha-icon class="chip-caret" icon="mdi:chevron-down"></ha-icon><select class="range-picker" data-pref="chartRange" aria-label="${aria}">${options}</select></label>`;
     }
 
     // Jump bar: one chip per group that has a visible card (shown from three groups on, below that there is little to jump over).
     _renderJumpNav(shownIds) {
       const groups = NAV_GROUPS.filter(([, , ids]) => ids.some((id) => shownIds.includes(id)));
       if (groups.length < 3) return '';
-      return `<nav class="jump-nav" aria-label="${escapeHtml(this._t('dashboard_nav_aria'))}">${groups.map(([key, label]) => `<button type="button" data-action="jump" data-group="${key}">${escapeHtml(this._t(label))}</button>`).join('')}</nav>`;
+      const aria = escapeHtml(this._t('dashboard_nav_aria'));
+      const options = groups.map(([key, label]) => `<option value="${key}" data-group="${key}">${escapeHtml(this._t(label))}</option>`).join('');
+      return `<nav class="jump-nav" aria-label="${aria}"><label class="chip-select jump-chip" title="${aria}"><ha-icon icon="mdi:format-list-bulleted"></ha-icon><span class="chip-text">${aria}</span><ha-icon class="chip-caret" icon="mdi:chevron-down"></ha-icon><select data-action="jump-select" aria-label="${aria}"><option value="" selected disabled hidden>${aria}</option>${options}</select></label></nav>`;
     }
 
     _jumpTo(group) {
@@ -8415,15 +8437,16 @@
       card?.scrollIntoView?.({ block: 'start', behavior: this._prefs?.animations === false ? 'auto' : 'smooth' });
     }
 
-    _renderTodayPill() {
-      const today = new Date();
-      let formatted;
+    _todayText(month = 'long') {
       try {
-        formatted = today.toLocaleDateString(this._localeCode(), { day: 'numeric', month: 'long', year: 'numeric' });
+        return new Date().toLocaleDateString(this._localeCode(), { day: 'numeric', month, year: 'numeric' });
       } catch (_err) {
-        formatted = this._formatDate(this._todayIso());
+        return this._formatDate(this._todayIso());
       }
-      return `<div class="today-pill">${escapeHtml(formatted)}</div>`;
+    }
+
+    _renderTodayPill() {
+      return `<div class="today-pill">${escapeHtml(this._todayText())}</div>`;
     }
 
     _renderLastUpdated(stateObj) {
@@ -8628,32 +8651,37 @@
         </div>`;
     }
 
+    // Profile switcher, compact like in the macOS app: one round avatar (profile colour as ring, small arrow badge),
+    // a tap opens a short list of all profiles. Shown for a single profile too (it carries the identity).
     _renderEntityPicker(availableEntities) {
-      const entities = Array.isArray(availableEntities) ? availableEntities.filter(Boolean) : [];
-      if (entities.length === 0) return '';
-
-      if (entities.length <= 5) {
-        const buttons = entities.map((entity) => {
-          const entityId = String(entity?.entityId ?? '');
-          const name = String(entity?.name ?? entityId ?? 'Unknown');
-          if (!entityId) return '';
-          const active = entityId === this._selectedEntityId;
-          return `<button type="button" class="mode-btn${active ? ' active' : ''}" data-action="select-entity" data-entity-id="${escapeHtml(entityId)}" aria-pressed="${active}">${escapeHtml(name)}</button>`;
-        }).filter(Boolean).join('');
-        return `<div class="mode-switch" role="tablist" aria-label="${this._t('dashboard_entity_picker_aria')}">${buttons}</div>`;
+      let entities = (Array.isArray(availableEntities) ? availableEntities : []).filter((entity) => entity?.entityId);
+      const selectedId = this._selectedEntityId;
+      if (!entities.length && selectedId && this._hass?.states?.[selectedId]) {
+        entities = [{ entityId: selectedId, name: this._hass.states[selectedId].attributes?.friendly_name || selectedId }];
       }
+      if (!entities.length) return '';
+      const nameOf = (entity) => String(entity.name ?? entity.entityId);
+      const identityOf = (entity) => {
+        const attrs = this._hass?.states?.[entity.entityId]?.attributes || {};
+        return { profile: attrs.profile || entity.profile || entity.name, friendly_name: attrs.friendly_name || entity.name, profile_picture: attrs.profile_picture };
+      };
+      const current = entities.find((entity) => entity.entityId === selectedId) || entities[0];
+      const open = this._profileMenuOpen === true && entities.length > 0;
+      const label = `${this._t('dashboard_entity_picker_aria')}: ${nameOf(current)}`;
+      const button = `<button type="button" class="profile-avatar" data-action="profile-menu-toggle" aria-haspopup="menu" aria-expanded="${open}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${this._avatarHtml(identityOf(current), 34)}<svg class="profile-chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      const items = entities.map((entity) => {
+        const active = entity.entityId === current.entityId;
+        return `<button type="button" role="menuitemradio" aria-checked="${active}" class="profile-item${active ? ' active' : ''}" data-action="select-entity" data-entity-id="${escapeHtml(entity.entityId)}">${this._avatarHtml(identityOf(entity), 26)}<span class="profile-name">${escapeHtml(nameOf(entity))}</span>${active ? '<span class="profile-check" aria-hidden="true">✓</span>' : ''}</button>`;
+      }).join('');
+      return `<div class="profile-switcher">${button}${open ? `<div class="profile-menu" role="menu" aria-label="${escapeHtml(this._t('dashboard_entity_picker_aria'))}">${items}</div>` : ''}</div>`;
+    }
 
-      const options = entities
-        .map((entity) => {
-          const entityId = String(entity?.entityId ?? '');
-          const name = String(entity?.name ?? entityId ?? 'Unknown');
-          if (!entityId) return '';
-          const selected = entityId === this._selectedEntityId ? 'selected' : '';
-          return `<option value="${escapeHtml(entityId)}" ${selected}>${escapeHtml(name)}</option>`;
-        })
-        .filter(Boolean)
-        .join('');
-      return `<select class="entity-picker" aria-label="${this._t('dashboard_entity_picker_aria')}">${options}</select>`;
+    _toggleProfileMenu(force) {
+      this._profileMenuOpen = typeof force === 'boolean' ? force : !this._profileMenuOpen;
+      this.render();
+      const root = this.shadowRoot;
+      if (this._profileMenuOpen) root?.querySelector?.('.profile-menu [aria-checked="true"]')?.focus?.();
+      else if (force === false) root?.querySelector?.('.profile-avatar')?.focus?.();
     }
 
     render() {
@@ -8882,6 +8910,16 @@
           .hs-chip { padding: 2px 8px; border-radius: 999px; background: var(--mc-rose-tint); font-size: .78rem; }
           .hs-more { margin-top: 8px; padding: 6px 16px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .85rem; }
           @media (max-width: 700px) { .hs-row { grid-template-columns: 1fr; gap: 4px; } }
+          .profile-switcher { position: relative; flex: none; }
+          .profile-avatar { position: relative; width: 42px; height: 42px; padding: 0; border: none; border-radius: 50%; background: transparent; cursor: pointer; display: grid; place-items: center; color: var(--primary-text-color, #1f2937); }
+          .profile-avatar > img { display: block; }
+          .profile-chevron { position: absolute; right: -2px; bottom: -1px; width: 15px; height: 15px; padding: 2px; box-sizing: border-box; border-radius: 50%; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #d1d5db); }
+          .profile-menu { position: absolute; z-index: 960; top: calc(100% + 8px); left: 0; min-width: 190px; max-width: 80vw; display: grid; gap: 2px; padding: 6px; border-radius: 14px; background: var(--card-background-color, #fff); border: 1px solid var(--divider-color, #e5e7eb); box-shadow: 0 12px 32px -10px rgba(0,0,0,.35); }
+          .profile-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: none; border-radius: 10px; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: .9rem; text-align: left; }
+          .profile-item:hover, .profile-item:focus-visible { background: var(--mc-sand); }
+          .profile-item.active { font-weight: 600; }
+          .profile-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .profile-check { color: var(--mc-rose-deep); }
           .status-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--mc-sand); border-left: 4px solid var(--mc-amber); font-size: .88rem; }
           .status-banner.warn { border-left-color: var(--error-color, #dc2626); }
           .status-banner button { flex: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .82rem; }
@@ -9248,7 +9286,7 @@
             .page { padding: 0; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
             .toolbar { position: static; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; margin: 0; }
-            .toolbar button, .toolbar select, .subnav, .mobile-bar, .today-card, .edit-bar, .page > div.helper, .mc-modal-backdrop, .mc-chat-fab-button, .mc-chat-fab-panel, .message { display: none !important; }
+            .toolbar button, .toolbar select, .subnav, .mc-log-fab, .chip-select, .today-card, .edit-bar, .page > div.helper, .mc-modal-backdrop, .mc-chat-fab-button, .mc-chat-fab-panel, .message { display: none !important; }
             .card { break-inside: avoid; box-shadow: none; }
             .card h2.collapsible::after { content: none; }
           }
@@ -9844,23 +9882,27 @@
           }
           .household-timeline-cell--period { background: var(--mc-rose, #E8637D); }
           .household-timeline-cell--fertile { background: var(--mc-sage, #7C9885); }
-          .mobile-bar { display: none; }
-          /* Phone: "Log today" sits in a bar at the bottom (thumb reach), the header gets shorter. */
+          .toolbar button.log-icon { background: var(--mc-accent-solid, #C43F5E); border-color: transparent; color: #fff; }
+          .mc-log-fab {
+            display: none; position: fixed; bottom: 20px; right: 20px; z-index: 950; width: 56px; height: 56px; border-radius: 50%; border: none; padding: 0;
+            background: var(--mc-accent-solid, #C43F5E); color: #fff; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; transition: transform .15s ease;
+          }
+          .mc-log-fab:hover { transform: scale(1.05); }
+          .mc-log-fab ha-icon { --mdc-icon-size: 30px; }
+          .chip-select { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 42px; box-sizing: border-box; padding: 0 10px 0 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--mc-sand); cursor: pointer; font-size: .875rem; white-space: nowrap; }
+          .chip-select ha-icon { --mdc-icon-size: 18px; flex: none; color: var(--secondary-text-color, #6b7280); }
+          .chip-select:focus-within { outline: 2px solid var(--mc-rose-deep); outline-offset: 2px; }
+          .chip-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; font-size: 1rem; }
+          .chip-date { font-family: var(--mc-font-mono); color: var(--secondary-text-color, #6b7280); }
+          .toolbar .jump-chip { height: 32px; font-size: .78rem; }
           @media (max-width: 700px) {
             .page { padding-bottom: 88px; }
-            .mobile-bar {
-              display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 940; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-              background: color-mix(in srgb, var(--card-background-color, #fff) 88%, transparent);
-              -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
-              border-top: 1px solid var(--divider-color, #e5e7eb);
-            }
-            .mobile-bar button {
-              flex: 1; height: 46px; border: none; border-radius: 999px; font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
-              background: var(--mc-accent-solid, #C43F5E); color: #fff;
-            }
-            .toolbar .today-pill, .toolbar button[data-action="open-quick-log"], .toolbar button[data-action="print"], .toolbar button.discreet-toggle span:first-child { display: none; }
-            .mc-chat-fab-button { bottom: 80px; right: 14px; width: 48px; height: 48px; }
-            .mc-chat-fab-panel { bottom: 140px; right: 14px; }
+            .toolbar .today-pill, .toolbar button[data-action="print"], .toolbar button.discreet-toggle span:first-child, .range-chip .chip-date, .jump-chip .chip-text { display: none; }
+            .toolbar button.log-icon { display: none; }
+            .mc-log-fab { display: flex; width: 52px; height: 52px; right: 14px; bottom: 16px; }
+            .mc-chat-fab-button { bottom: 78px; right: 14px; width: 48px; height: 48px; }
+            .mc-chat-fab-panel { bottom: 136px; right: 14px; }
           }
           @media (max-width: 480px) {
             .page { padding: 10px; gap: 10px; padding-bottom: 88px; }
@@ -9901,14 +9943,13 @@
             </div>
             <div class="header-right">
               ${this._renderEntityPicker(availableEntities)}
-              ${this._renderTodayPill()}
-              ${!this._editMode ? this._renderRangePicker() : ''}
+              ${this._editMode ? this._renderTodayPill() : this._renderRangePicker()}
               ${!this._editMode ? `
                 <button type="button" class="discreet-toggle" data-action="toggle-discreet-quick" role="switch" aria-checked="${discreetMode}" aria-label="${discreetMode ? (this._t('dashboard_discreet_quick_off_aria') || 'Diskreten Modus ausschalten') : (this._t('dashboard_discreet_quick_on_aria') || 'Diskreten Modus einschalten')}">
                   <span>${this._t('dashboard_discreet_mode')}</span>
                   <div class="switch${discreetMode ? ' on' : ''}"></div>
                 </button>` : ''}
-              ${!this._editMode ? `<button type="button" data-action="open-quick-log" aria-label="${this._t('dashboard_log_today') || 'Heute loggen'}">${this._t('dashboard_log_today') || 'Heute loggen'}</button>` : ''}
+              ${!this._editMode ? `<button type="button" class="icon-only log-icon" data-action="open-quick-log" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}" title="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}"><ha-icon icon="mdi:plus"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="theme-cycle" aria-label="${escapeHtml(this._t('dashboard_theme_cycle_aria').replace('{mode}', this._t(`dashboard_theme_${this._prefs?.theme || 'auto'}`)))}" title="${escapeHtml(this._t('dashboard_theme'))}"><ha-icon icon="mdi:theme-light-dark"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="print" aria-label="${this._t('dashboard_print')}" title="${this._t('dashboard_print')}"><ha-icon icon="mdi:printer-outline"></ha-icon></button>` : ''}
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
@@ -9927,7 +9968,7 @@
           ${this._renderWizard()}
           ${this._renderChatFab(stateObj)}
           <section class="grid${enter ? ' mc-enter' : ''}" aria-label="${this._t('dashboard_page_title')}">${cardHtml}</section>
-          ${this._editMode ? '' : `<div class="mobile-bar"><button type="button" data-action="open-quick-log">${this._t('dashboard_log_today') || 'Heute loggen'}</button></div>`}
+          ${this._editMode ? '' : `<button type="button" class="mc-log-fab" data-action="open-quick-log" aria-label="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}" title="${escapeHtml(this._t('dashboard_log_today') || 'Heute loggen')}"><ha-icon icon="mdi:plus"></ha-icon></button>`}
         </main>
       `;
       this._applyLook(this._look());

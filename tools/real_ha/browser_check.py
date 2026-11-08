@@ -147,12 +147,12 @@ def ui_check(page):
             problems.append(f"ui: buttons in the card Today look like default buttons (radius {radius})")
 
     # jump bar: a tap brings the group's first card below the sticky header
-    chips = page.locator(root + 'css=.jump-nav button[data-group]')
+    chips = page.locator(root + 'css=.jump-nav option[data-group]')
     if chips.count() < 3:
-        problems.append(f"ui: jump bar has {chips.count()} chips")
+        problems.append(f"ui: jump dropdown has {chips.count()} entries")
     else:
         group = chips.nth(chips.count() - 1).get_attribute("data-group")
-        chips.nth(chips.count() - 1).click()
+        page.locator(root + "css=.jump-nav select").select_option(group)
         page.wait_for_timeout(900)
         header = page.locator(root + "css=header.toolbar").bounding_box()
         first = page.eval_on_selector_all(root + "css=[data-card]", "(els) => els.map((e) => e.dataset.card)")
@@ -194,16 +194,18 @@ def ui_check(page):
         if pressed != 1:
             problems.append(f"ui: {pressed} pressed view buttons")
 
-    # phone: bottom bar, compact header, no sideways scrolling
+    # phone: round plus at the bottom, compact header, no sideways scrolling
     page.set_viewport_size({"width": 390, "height": 800})
     page.wait_for_timeout(300)
-    bar = page.locator(root + "css=.mobile-bar")
+    bar = page.locator(root + "css=.mc-log-fab")
     if not bar.is_visible():
-        problems.append("ui: phone bar is not visible on a narrow screen")
+        problems.append("ui: round plus is not visible on a narrow screen")
     else:
         box = bar.bounding_box()
-        if abs(box["y"] + box["height"] - 800) > 2:
-            problems.append(f"ui: phone bar is not at the bottom ({box})")
+        if box["y"] + box["height"] < 700:
+            problems.append(f"ui: round plus is not at the bottom ({box})")
+    if page.locator(root + "css=.toolbar .log-icon").is_visible():
+        problems.append("ui: header plus should be hidden on the phone (round plus replaces it)")
     if page.locator(root + "css=.toolbar .today-pill").is_visible():
         problems.append("ui: date pill should be hidden on the phone")
     overflow = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
@@ -221,8 +223,20 @@ def ui_check(page):
     page.screenshot(path="/tmp/shots/panel_phone.png")
     page.set_viewport_size({"width": 1100, "height": 1400})
     page.wait_for_timeout(200)
-    if page.locator(root + "css=.mobile-bar").is_visible():
-        problems.append("ui: phone bar must not show on a wide screen")
+    if page.locator(root + "css=.mc-log-fab").is_visible():
+        problems.append("ui: round plus must not show on a wide screen")
+    if not page.locator(root + "css=.toolbar .log-icon").is_visible():
+        problems.append("ui: header plus is missing on a wide screen")
+    # profile switcher: avatar opens a list, a second tap on the avatar closes it
+    page.locator(root + "css=.profile-avatar").click()
+    page.wait_for_timeout(200)
+    if not page.locator(root + "css=.profile-menu .profile-item").count():
+        problems.append("ui: profile menu did not open")
+    page.screenshot(path="/tmp/shots/panel_profile_menu.png", clip={"x": 0, "y": 0, "width": 1100, "height": 400})
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(200)
+    if page.locator(root + "css=.profile-menu").count():
+        problems.append("ui: Escape did not close the profile menu")
     return problems
 
 

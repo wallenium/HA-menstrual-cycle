@@ -1120,7 +1120,7 @@
   "dashboard_wizard_cards_all": "Todo",
   "dashboard_wizard_cards_all_hint": "Todas las tarjetas, incluidas estadísticas y análisis",
   "dashboard_wizard_view_title": "¿Añadir una segunda vista?",
-  "dashboard_wizard_view_hint": "Una vista es un conjunto guardado de tarjetas, por ejemplo uno corto para salir. Deja el nombre vacío para omitir.",
+  "dashboard_wizard_view_hint": "Una vista es un conjunto guardado de tarjetas, por ejemplo uno reducido para cuando estás de viaje. Deja el nombre vacío para omitir.",
   "dashboard_wizard_view_placeholder": "p. ej. De viaje",
   "dashboard_pain_today": "Intensidad del dolor",
   "dashboard_pain_unrated": "Dolor sin intensidad",
