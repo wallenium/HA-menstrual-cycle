@@ -906,6 +906,53 @@ function periodWindowText(attrs, locale, expectedWord, today = new Date()) {
   return `${expectedWord} ${label(start)} \u2013 ${label(end)}`;
 }
 
+// ---- Teen design for the standalone cards (same decision as the dashboard panel) ----
+// "on"/"off" is the choice saved with the panel's settings for the profile (get_dashboard_prefs); otherwise
+// the young profile (pre/early menarche, or under 16 by the stored age) gets it.
+const TEEN_ADULT_AGE = 16;
+
+function isTeen(attrs, prefs) {
+  if (prefs?.teenStyle === 'on') return true;
+  if (prefs?.teenStyle === 'off') return false;
+  const stage = String(attrs?.onboarding_stage_effective || attrs?.onboarding_stage || 'established_cycle').toLowerCase();
+  const age = attrs?.age_at_tracking;
+  return stage === 'pre_menarche' || stage === 'early_menarche' || (Number.isInteger(age) && age >= 0 && age < TEEN_ADULT_AGE);
+}
+
+// Sets or removes data-teen on the card (call it at the start of every render). The saved choice is fetched once per
+// profile; until it arrives (or if it cannot be read) the automatic decision applies, and the attribute is corrected then.
+function applyTeenLook(host, hass, stateObj) {
+  if (!host || !stateObj) return;
+  const profile = stateObj.attributes?.profile || 'default';
+  host._teenPrefs = host._teenPrefs || {};
+  const set = () => host.toggleAttribute?.('data-teen', isTeen(stateObj.attributes, host._teenPrefs[profile]));
+  set();
+  if (profile in host._teenPrefs || host._teenFetching === profile || !hass?.connection?.sendMessagePromise) return;
+  host._teenFetching = profile;
+  hass.connection.sendMessagePromise({
+    type: 'call_service',
+    domain: 'menstruation_cycle',
+    service: 'get_dashboard_prefs',
+    service_data: { profile },
+    return_response: true,
+  }).then((result) => {
+    host._teenPrefs[profile] = result?.response?.prefs || null;
+    host._teenFetching = null;
+    set();
+  }).catch(() => {
+    host._teenPrefs[profile] = null;
+    host._teenFetching = null;
+  });
+}
+
+// Pastel look, only the tint is read from the panel's contrast-checked values (88 % card, 94 % on dark).
+const TEEN_CARD_CSS = `
+  :host([data-teen]) { --ha-card-background: color-mix(in srgb, var(--card-background-color, #fff) 88%, #F4A6CF 12%); }
+  @media (prefers-color-scheme: dark) { :host([data-teen]) { --ha-card-background: color-mix(in srgb, var(--card-background-color, #fff) 94%, #F4A6CF 6%); } }
+  :host([data-teen]) ha-card { border: 2px dashed #F4A6CF; border-radius: 30px; background: var(--ha-card-background); font-family: ui-rounded, 'Nunito', 'Quicksand', 'Inter', system-ui, sans-serif; }
+  :host([data-teen]) button { border-radius: 999px; }
+`;
+
 const MenstruationFunctions = {
   periodWindowText,
   normalizeOptionKey,
@@ -920,6 +967,9 @@ const MenstruationFunctions = {
   renderErrorState,
   renderEmptyState,
   mcStateStyles,
+  isTeen,
+  applyTeenLook,
+  TEEN_CARD_CSS,
 };
 
 if (typeof window !== 'undefined') {

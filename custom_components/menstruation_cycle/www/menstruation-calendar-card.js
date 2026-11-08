@@ -1674,6 +1674,8 @@ class MenstruationCalendarCard extends HTMLElement {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, this._hass?.states?.[this._resolveEntityId()]);
+
     // Skip full DOM replacement when nothing visible has changed — prevents
     // date pickers and modal inputs from losing focus on unrelated hass updates.
     const renderKey = this._buildRenderKey();
@@ -1691,6 +1693,7 @@ class MenstruationCalendarCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         :host { display: block; position: relative; }
         .wrap { padding: 12px; display: grid; gap: 10px; container-type: inline-size; container-name: mc-cal; }
         .months-row { display: flex; gap: 20px; align-items: flex-start; }

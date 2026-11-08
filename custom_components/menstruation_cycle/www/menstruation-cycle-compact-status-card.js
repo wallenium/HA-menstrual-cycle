@@ -585,6 +585,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
       return;
     }
 
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, stateObj);
     const attrs = stateObj.attributes || {};
     const { cycleDay, cycleLength } = this._calcCycleDay(attrs);
     const statusKey = this._resolveStatus(stateObj);
@@ -650,6 +651,7 @@ class MenstruationCycleCompactStatusCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         :host {
           display: block;
           --mg-card-bg: var(--ha-card-background, var(--card-background-color, #fff));

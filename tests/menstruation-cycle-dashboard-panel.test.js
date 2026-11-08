@@ -1379,6 +1379,41 @@ const makeHass = (stateObj) => ({
   while (codes._viewsOf(codes._editDraft).length < 8) codes._addViewIn(codes._editDraft);
   assert.strictEqual(codes._importViewCode(codes._editDraft, code), 'full', 'no ninth view');
 
+  // the look as a code: theme, accent and teen design go over, the cards stay as they are
+  codes._editDraft.theme = 'dark';
+  codes._editDraft.accent = 'plum';
+  codes._editDraft.teenStyle = 'on';
+  codeClick('look-export');
+  const lookCode = codes._lookCodeText;
+  assert.ok(lookCode.startsWith('MCL1:') && codes.shadowRoot.innerHTML.includes(lookCode), 'the look code names its format and is shown for manual copying');
+  assert.strictEqual(codes._message, codes._t('dashboard_look_exported_manual'));
+  codes._editDraft.theme = 'light';
+  codes._editDraft.accent = 'rose';
+  codes._editDraft.teenStyle = 'off';
+  const cardsBefore = JSON.stringify(codes._editDraft.widgetVisibility);
+  codes.shadowRoot.querySelector = (sel) => (sel.includes('lookCode') ? { value: lookCode } : null);
+  codeClick('look-import');
+  assert.deepStrictEqual([codes._editDraft.theme, codes._editDraft.accent, codes._editDraft.teenStyle], ['dark', 'plum', 'on'], 'the look comes back');
+  assert.strictEqual(JSON.stringify(codes._editDraft.widgetVisibility), cardsBefore, 'the cards are not touched');
+  assert.strictEqual(codes._message, codes._t('dashboard_look_imported'));
+  assert.strictEqual(codes._lookCodeText, '', 'the field is emptied');
+  const lookDraft = { theme: 'auto', accent: 'rose', teenStyle: 'auto' };
+  const lookB64 = (value) => `MCL1:${Buffer.from(JSON.stringify(value)).toString('base64')}`;
+  assert.strictEqual(codes._importLookCode(lookDraft, lookB64({ t: 'dark', a: 'nope', n: 'bogus' })), true, 'a code with one valid part applies that part');
+  assert.deepStrictEqual(lookDraft, { theme: 'dark', accent: 'rose', teenStyle: 'auto' }, 'the invalid parts are ignored');
+  for (const bad of ['', 'MCL1:', 'MCL1:%%%', `XXXX:${Buffer.from('{}').toString('base64')}`, lookB64({}), lookB64({ t: 'neon', a: 'x', n: 5 }), lookB64(null), lookB64([1]), lookB64('x'), `MCV1:${Buffer.from('{}').toString('base64')}`]) {
+    const before = JSON.stringify(lookDraft);
+    assert.strictEqual(codes._importLookCode(lookDraft, bad), false, `rejects ${bad}`);
+    assert.strictEqual(JSON.stringify(lookDraft), before, 'and changes nothing');
+  }
+  assert.strictEqual(codes._importLookCode({ theme: 'auto' }, `XXXX:${Buffer.from(JSON.stringify({ t: 'dark' })).toString('base64')}`), false, 'a valid look inside another format is not accepted');
+  assert.strictEqual(codes._importLookCode(lookDraft, lookB64({ a: '__proto__' })), false, 'no prototype keys as accent');
+  codes._lookCodeText = '';
+  codes.shadowRoot.querySelector = (sel) => (sel.includes('lookCode') ? { value: 'garbage' } : null);
+  codeClick('look-import');
+  assert.strictEqual(codes._message, codes._t('dashboard_look_import_error'), 'an invalid code is named');
+  codeClick('cancel-edit');
+
   // ---- Swipe and pull ----
   const swipe = await freshPanel();
   swipe._prefs.discreetMode = false;
@@ -1902,6 +1937,22 @@ const makeHass = (stateObj) => ({
   assert.strictEqual((lhHtml.match(/>LH<\/text>/g) || []).length, 1, 'one mark: the first positive test of the cycle that has one; a negative test is no mark');
   assert.ok(lhHtml.includes(`${tipDay(dayAt(-4))} · dashboard_cc_day · dashboard_cc_lh`), 'the tip names the day of the first positive test');
   assert.ok(lhHtml.includes('<line x1="133"'), 'cycle day 6 of 28 on the axis');
+  // a positive LH test makes the ovulation of that cycle measured: the day after the test, drawn solid, with the fertile days before it
+  const rowRects = (html, y) => [...html.matchAll(new RegExp(`<rect x="([\\d.]+)" y="${y}" width="[\\d.]+" height="4" fill="([^"]+)" opacity="([\\d.]+)"`, 'g'))].map((m) => ({ x: Number(m[1]), fill: m[2], opacity: m[3] }));
+  const lhRow = rowRects(lhHtml, 181);
+  assert.deepStrictEqual(lhRow.map((r) => r.opacity), ['0.55', '0.55', '0.55', '0.55', '0.55', '1'], 'five fertile days (pale) and the ovulation day (solid) in the cycle with the test');
+  assert.ok(lhRow[5].fill.includes('mc-sage-deep') && lhRow.slice(0, 5).every((r) => r.fill.includes('mc-sage,')), 'colours as for the estimate');
+  assert.ok(lhHtml.includes('dashboard_cc_ovulation_lh') && lhHtml.includes('dashboard_cc_ovulation_est'), 'both kinds in the legend: measured for one cycle, estimated for the other');
+  assert.ok(rowRects(lhHtml, 187).every((r) => r.opacity === '0.55'), 'the cycle without a test stays an estimate');
+  const lhToday = cdPanel._renderCycleCompare(cdState({ symptom_history: [...meanHistory, { date: dayAt(0), test: ['positive_ovulation'] }] }));
+  assert.deepStrictEqual(rowRects(lhToday, 181).map((r) => r.opacity), ['0.55', '0.55', '0.55', '0.55', '0.55'], 'a test today: ovulation is tomorrow, outside the cycle shown, so only the fertile days');
+  assert.ok(!lhToday.includes('dashboard_cc_ovulation_lh'), 'and no legend entry for an ovulation that is not drawn');
+  const onlyMeasured = cdPanel._renderCycleCompare(cdState({ grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-47), dayAt(-9)], symptom_history: lhHistory }));
+  assert.ok(onlyMeasured.includes('dashboard_cc_ovulation_lh') && onlyMeasured.includes('dashboard_cc_fertile_est') && !onlyMeasured.includes('dashboard_cc_ovulation_est'), 'only a measured ovulation: no entry for an estimated one');
+  const onlyFertile = cdPanel._renderCycleCompare(cdState({ grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-47), dayAt(-9)], symptom_history: [...meanHistory, { date: dayAt(0), test: ['positive_ovulation'] }] }));
+  assert.ok(onlyFertile.includes('dashboard_cc_fertile_est') && !onlyFertile.includes('dashboard_cc_ovulation_est') && !onlyFertile.includes('dashboard_cc_ovulation_lh'), 'a test today and no other estimate: fertile days only, no ovulation entry');
+  const lhFirstDay = cdPanel._renderCycleCompare(cdState({ symptom_history: [...meanHistory, { date: dayAt(-9), test: ['positive_ovulation'] }] }));
+  assert.deepStrictEqual(rowRects(lhFirstDay, 181).map((r) => r.opacity), ['0.55', '1'], 'a test on cycle day 1: ovulation on day 2, and only day 1 before it: nothing before the cycle starts');
   cdPanel._compare = { a: dayAt(-9), b: dayAt(-65), metric: 'pain' };
   cdPanel._prefs.categoryVisibility = { ...cdPanel._prefs.categoryVisibility, pain: false };
   const noPain = cdPanel._renderCycleCompare(cdState());
@@ -1980,7 +2031,8 @@ const makeHass = (stateObj) => ({
   // estimated fertile days and ovulation
   const phased = cdPanel._renderCycleCompare(cdState());
   assert.ok(phased.includes('viewBox="0 0 560 194"'), 'a finished cycle of 28 days gets an estimate');
-  const sage = (html, y, fill) => (html.match(new RegExp(`<rect x="[\\d.]+" y="${y}" width="[\\d.]+" height="4" fill="${fill.replace(/[()]/g, '\\$&')}"`, 'g')) || []).length;
+  const reEscape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sage = (html, y, fill) => (html.match(new RegExp(`<rect x="[\\d.]+" y="${y}" width="[\\d.]+" height="4" fill="${reEscape(fill)}"`, 'g')) || []).length;
   const FERTILE = 'var(--mc-sage,#7C9885)';
   const OVULATION = 'var(--mc-sage-deep,#3F5A47)';
   assert.strictEqual(sage(phased, 187, FERTILE), 5, 'five fertile days before ovulation, on the row of the second cycle');
@@ -2095,13 +2147,26 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(teenPanel._widgetHeading('calendar_card', 'Normal title', false), '<h2>Normal title</h2>', 'the edit mode keeps the real names');
   teenPanel._editMode = false;
   teenPanel._t = teenRealT;
+  // every teen wording belongs to a normal text and keeps its placeholders ({date}, {days}, ...), in all five languages
+  for (const lang of ['en', 'de', 'es', 'fr', 'sv']) {
+    const texts = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'custom_components', 'menstruation_cycle', 'www', 'translations', `${lang}.json`), 'utf8'));
+    const placeholders = (text) => (String(text).match(/\{\w+\}/g) || []).sort().join(',');
+    const teenKeys = Object.keys(texts).filter((key) => key.startsWith('teen_'));
+    assert.ok(teenKeys.length >= 20, `${lang}: the teen wordings are there`);
+    teenKeys.forEach((key) => {
+      const base = key.slice(5);
+      assert.ok(texts[base] !== undefined, `${lang}: ${key} has no normal text ${base}`);
+      assert.strictEqual(placeholders(texts[key]), placeholders(texts[base]), `${lang}: ${key} keeps the placeholders of ${base}`);
+      assert.ok(String(texts[key]).trim() !== '', `${lang}: ${key} is not empty`);
+    });
+  }
   // ---- Findings card: one sentence per finding, with date and difference ----
   const enTexts = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'custom_components', 'menstruation_cycle', 'www', 'translations', 'en.json'), 'utf8'));
   const anomalyPanel = await freshPanel();
-  anomalyPanel._t = (key) => enTexts[key] || key;
+  anomalyPanel._t = (key) => (anomalyPanel._teen() ? enTexts[`teen_${key}`] : undefined) ?? enTexts[key] ?? key;
   anomalyPanel._formatDate = (iso) => `D(${iso})`;
   const anomalyBase = [dayAt(-200), dayAt(-172), dayAt(-144), dayAt(-116), dayAt(-88), dayAt(-60)];
-  const anomalyTexts = (starts) => [...anomalyPanel._renderAnomalyInsights(makeState({ grouped_starts: starts })).matchAll(/<p class="anomaly-text">([^<]*)<\/p>/g)].map((m) => m[1]);
+  const anomalyTexts = (starts) => [...anomalyPanel._renderAnomalyInsights(makeState({ grouped_starts: starts })).matchAll(/<(?:p|button type="button") class="anomaly-text[^"]*"[^>]*>([^<]*)<\/(?:p|button)>/g)].map((m) => m[1]);
   const longOne = anomalyTexts([...anomalyBase, dayAt(-20)]);
   assert.ok(longOne.includes(`Cycle from D(${dayAt(-60)}): 10 days longer than usual (40 instead of avg 30)`), 'a long cycle: start date, difference, own length and average');
   assert.strictEqual(longOne.length, 3, 'rating, consistency and the one finding (the current cycle is only 20 days old)');
@@ -2119,6 +2184,40 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(many.length, 5, 'at most five lines');
   assert.ok(many[2].startsWith('Current cycle') && many[3].startsWith('Cycle from') && many[4].startsWith('Cycle from') && many[3].localeCompare(many[4]) !== 0, 'the running cycle, then the findings');
   assert.ok(many[3].includes(dayAt(-130)) && many[4].includes(dayAt(-218)), 'newest finding first, the oldest one is cut');
+  anomalyPanel._activeMode = 'young';
+  const teenTexts = anomalyTexts([...anomalyBase, dayAt(-20)]);
+  assert.ok(teenTexts.includes(enTexts.teen_dashboard_anomaly_regular), 'the teen design says it in its own words');
+  assert.ok(teenTexts.some((t) => t.includes(' – that happens') && t.includes('{') === false), 'with the date and numbers filled in');
+  anomalyPanel._activeMode = 'general';
+  // a finding about a cycle is a button that opens the comparison of that cycle with the one before it
+  const withStart = anomalyPanel._renderAnomalyInsights(makeState({ grouped_starts: [...anomalyBase, dayAt(-20)] }));
+  assert.ok(withStart.includes(`data-action="anomaly-compare" data-start="${dayAt(-60)}"`), 'the finding names its cycle');
+  const overdueHtml = anomalyPanel._renderAnomalyInsights(makeState({ grouped_starts: anomalyBase }));
+  assert.ok(overdueHtml.includes(`data-start="${dayAt(-60)}"`) && /anomaly-link"[^>]*>Current cycle/.test(overdueHtml), 'the running cycle that is too long is a button for its own cycle');
+  assert.strictEqual((withStart.match(/data-action="anomaly-compare"/g) || []).length, 1, 'the rating and consistency lines are plain text');
+  const cmpPanel = await freshPanel();
+  const cmpState = painState({ grouped_starts: [dayAt(-93), dayAt(-65), dayAt(-37), dayAt(-9)], symptom_history: [] });
+  cmpPanel._hass.states[cmpPanel._selectedEntityId] = cmpState;
+  cmpPanel._compare = { a: '', b: '', metric: '' };
+  cmpPanel._compareProfile = cmpPanel._activeProfile;
+  const cmpSaved = [];
+  const realCmpSet = localStorage.setItem;
+  localStorage.setItem = (key, value) => cmpSaved.push(key);
+  cmpPanel._handleClick({ target: new ClickTarget({ action: 'anomaly-compare', start: dayAt(-65) }) });
+  localStorage.setItem = realCmpSet;
+  assert.ok(cmpSaved.some((key) => key.startsWith('menstruation_cycle_compare.')), 'the choice is remembered like any other comparison choice');
+  assert.deepStrictEqual([cmpPanel._compare.a, cmpPanel._compare.b], [dayAt(-65), dayAt(-93)], 'this cycle against the one before it');
+  cmpPanel._handleClick({ target: new ClickTarget({ action: 'anomaly-compare', start: dayAt(-93) }) });
+  assert.deepStrictEqual([cmpPanel._compare.a, cmpPanel._compare.b], [dayAt(-93), dayAt(-65)], 'the oldest cycle against the one after it');
+  cmpPanel._handleClick({ target: new ClickTarget({ action: 'anomaly-compare', start: '1999-01-01' }) });
+  assert.deepStrictEqual([cmpPanel._compare.a, cmpPanel._compare.b], [dayAt(-93), dayAt(-65)], 'an unknown cycle changes nothing');
+  assert.ok(cmpPanel._message && cmpPanel._message === cmpPanel._t('dashboard_anomaly_compare_hidden'), 'a hidden comparison card is named (here the card is not on the page)');
+  const scrolled = [];
+  const realCardQuery = cmpPanel.shadowRoot.querySelector;
+  cmpPanel.shadowRoot.querySelector = (selector) => (selector === '[data-card="cycle_compare"]' ? { scrollIntoView: (options) => scrolled.push(options.block) } : realCardQuery.call(cmpPanel.shadowRoot, selector));
+  cmpPanel._handleClick({ target: new ClickTarget({ action: 'anomaly-compare', start: dayAt(-37) }) });
+  cmpPanel.shadowRoot.querySelector = realCardQuery;
+  assert.deepStrictEqual([scrolled, cmpPanel._message], [['start'], ''], 'the comparison card is on the page: scroll to it, no hint');
   assert.ok(anomalyPanel._renderAnomalyInsights(makeState({ grouped_starts: anomalyBase.slice(0, 3) })).includes(enTexts.dashboard_not_enough_data), 'too little data still says so');
   // ---- Teen design: the switch, friendlier texts, badge stickers ----
   assert.strictEqual(teenPanel._normalizePrefs(null, 'a', 'general').teenStyle, 'auto', 'default: automatic');

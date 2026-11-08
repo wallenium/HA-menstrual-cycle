@@ -2482,6 +2482,7 @@ class MenstruationGaugeCard extends HTMLElement {
     }
 
     const model = this._buildModel();
+    window.MenstruationFunctions?.applyTeenLook?.(this, this._hass, model.stateObj);
     const palette = this._palette(model.state);
     // Use width from ResizeObserver; fall back to a direct measurement only if not yet available.
     if (!this._lastCardWidth) {
@@ -2517,6 +2518,7 @@ class MenstruationGaugeCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
+        ${window.MenstruationFunctions?.TEEN_CARD_CSS || ''}
         :host { display: block; position: relative; }
         .root-wrap { position: relative; }
         ha-card {

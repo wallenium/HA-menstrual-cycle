@@ -40,6 +40,30 @@ for (const [themeName, theme] of Object.entries(themes)) {
 }
 assert.deepStrictEqual(failures, [], `contrast below 4.5:1:\n${failures.join('\n')}`);
 
+// Teen design: the cards are tinted with four pastel colours; text, secondary text and the accent text must stay readable on them,
+// for the default teen accent and for every accent the user can pick, and white on the teen "New!" tag.
+const teenAccent = hex(src.match(/:host\(\[data-teen\]\) \{ --mc-accent: (#[0-9A-Fa-f]{6});/)[1]);
+const teenColours = [...src.matchAll(/:host\(\[data-teen\]\) \.grid > \.card(?::nth-child\(4n\+\d\))? \{ --teen-c: (#[0-9A-Fa-f]{6}); \}/g)].map((m) => hex(m[1]));
+assert.strictEqual(teenColours.length, 4, 'four pastel card colours');
+const teenCardShare = share(/:host\(\[data-teen\]\) \.card \{[^}]*background: color-mix\(in srgb, var\(--card-background-color, #fff\) (\d+)%, var\(--teen-c/, 'teen card tint');
+const teenDarkShare = share(/:host\(\[data-theme="dark"\]\[data-teen\]\) \.card \{ background: color-mix\(in srgb, var\(--card-background-color, #fff\) (\d+)%, var\(--teen-c/, 'teen card tint on dark');
+assert.ok(/@media \(prefers-color-scheme: dark\) \{ :host\(\[data-teen\]:not\(\[data-theme="light"\]\)\) \.card \{ background: color-mix\(in srgb, var\(--card-background-color, #fff\) 94%/.test(src) && teenDarkShare === 94, 'the paler tint also applies when the theme is not set and the system is dark');
+const secondary = { light: hex(themeBlock('light').match(/--secondary-text-color: (#[0-9a-fA-F]{3,6})/)[1]), dark: hex(themeBlock('dark').match(/--secondary-text-color: (#[0-9a-fA-F]{3,6})/)[1]) };
+const teenFailures = [];
+for (const [themeName, theme] of Object.entries(themes)) {
+  for (const [accentName, accent] of Object.entries({ 'teen default': teenAccent, ...accents })) {
+    const text = mix(mix(accent, deepShare, [0, 0, 0]), textShare, theme.text);
+    const solid = mix(accent, solidShare, [0, 0, 0]);
+    if (ratio([255, 255, 255], solid) < 4.5) teenFailures.push(`${themeName}/${accentName}: white on the "New!" tag ${ratio([255, 255, 255], solid).toFixed(2)}:1`);
+    teenColours.forEach((colour, i) => {
+      const bg = mix(theme.card, themeName === 'dark' ? teenDarkShare : teenCardShare, colour);
+      const checks = { 'text': ratio(theme.text, bg), 'secondary text': ratio(secondary[themeName], bg), 'accent text': ratio(text, bg) };
+      for (const [what, value] of Object.entries(checks)) if (value < 4.5) teenFailures.push(`${themeName}/${accentName}/card ${i + 1}: ${what} ${value.toFixed(2)}:1`);
+    });
+  }
+}
+assert.deepStrictEqual(teenFailures, [], `teen design contrast below 4.5:1:\n${teenFailures.join('\n')}`);
+
 // no white text on the plain accent text colour any more (it is for text on the card, not for fills)
 assert.ok(!/background:\s*var\(--mc-rose-deep[^;]*;[^}]*color:\s*#fff/.test(src), 'white text belongs on --mc-accent-solid');
 console.log('dashboard-contrast: ok');

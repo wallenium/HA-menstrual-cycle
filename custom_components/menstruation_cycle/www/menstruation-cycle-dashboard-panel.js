@@ -228,6 +228,8 @@
     dashboard_anomaly_short_cycle: 'Short cycle',
     dashboard_anomaly_long_cycle: 'Long cycle',
     dashboard_anomaly_consistency: 'Consistency',
+    dashboard_anomaly_compare: 'Compare with the cycle before',
+    dashboard_anomaly_compare_hidden: 'Show the card "Compare cycles" to see it.',
     dashboard_anomaly_outlier_long: 'Cycle from {date}: {days} days longer than usual ({len} instead of avg {avg})',
     dashboard_anomaly_outlier_short: 'Cycle from {date}: {days} days shorter than usual ({len} instead of avg {avg})',
     dashboard_anomaly_running_long: 'Current cycle: already {len} days, {days} days longer than usual (avg {avg})',
@@ -648,6 +650,7 @@
   const TEEN_ADULT_AGE = 16;
   const TEEN_BADGE_STICKERS = { first_entry: '🌱', cycles_3_logged: '🌸', cycles_6_logged: '🌷', cycles_12_logged: '🌻', consistent_logging_30d: '💫', pattern_emerging: '🔮', symptom_variety: '🌈', nfp_confirmed_ovulation: '🌙', insights_unlocked: '💡', temperature_tracker: '🌡️', doctor_report_exported: '📋', profile_personalized: '🎀', first_sign_logged: '⭐', signs_explored: '🧭', wellness_thriving: '✨' };
   const VIEW_CODE_PREFIX = 'MCV1:';
+  const LOOK_CODE_PREFIX = 'MCL1:';
   // Setup assistant: three steps, and the card choice of step 2.
   const WIZARD_STEPS = 3;
   // Ready-made views: the cards that belong to a situation, in this order (everything else is hidden in the new view).
@@ -1009,6 +1012,7 @@
       this._prefsSyncFetching = new Set();
       this._wizard = null; // setup assistant: { step, cards, viewName } while open
       this._viewCodeText = '';
+      this._lookCodeText = '';
       this._swipe = null;
       this._historySearch = { q: '', category: '', range: '90', limit: 30 };
       this._compare = { a: '', b: '', metric: '', valuesOnly: false }; // start dates of the two cycles and the curve shown in the comparison card
@@ -1833,6 +1837,29 @@
     _viewCode(prefs) {
       const view = this._viewsOf(prefs).find((item) => item.id === this._activeViewId(prefs));
       return VIEW_CODE_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify({ n: view?.name || '', l: this._layoutOf(prefs) }))));
+    }
+
+    // The look (theme, accent colour, teen design) as a short text for another device or profile, and back.
+    _lookCode(prefs) {
+      return LOOK_CODE_PREFIX + btoa(JSON.stringify({ t: prefs.theme, a: prefs.accent, n: prefs.teenStyle }));
+    }
+
+    // Applies what is valid in the code to the prefs; false when there is nothing valid in it.
+    _importLookCode(prefs, code) {
+      let data;
+      try {
+        const text = String(code || '').trim();
+        if (!text.startsWith(LOOK_CODE_PREFIX)) return false;
+        data = JSON.parse(atob(text.slice(LOOK_CODE_PREFIX.length)));
+      } catch (_error) {
+        return false;
+      }
+      if (!data || typeof data !== 'object') return false;
+      let found = false;
+      if (THEMES.includes(data.t)) { prefs.theme = data.t; found = true; }
+      if (Object.prototype.hasOwnProperty.call(ACCENTS, data.a)) { prefs.accent = data.a; found = true; }
+      if (TEEN_STYLES.includes(data.n)) { prefs.teenStyle = data.n; found = true; }
+      return found;
     }
 
     // Returns the new view's name, or 'error' / 'full'.
@@ -4864,6 +4891,22 @@
           this._message = this._t('dashboard_view_exported');
           this.render();
         }, () => {});
+      } else if (action === 'look-export' && this._editMode && this._editDraft) {
+        this._lookCodeText = this._lookCode(this._editDraft);
+        this._message = this._t('dashboard_look_exported_manual');
+        this.render();
+        navigator.clipboard?.writeText?.(this._lookCodeText).then(() => {
+          this._message = this._t('dashboard_look_exported');
+          this.render();
+        }, () => {});
+      } else if (action === 'look-import' && this._editMode && this._editDraft) {
+        if (this._importLookCode(this._editDraft, this.shadowRoot?.querySelector('[data-pref="lookCode"]')?.value)) {
+          this._lookCodeText = '';
+          this._message = this._t('dashboard_look_imported');
+        } else {
+          this._message = this._t('dashboard_look_import_error');
+        }
+        this.render();
       } else if (action === 'view-import' && this._editMode && this._editDraft) {
         const result = this._importViewCode(this._editDraft, this.shadowRoot?.querySelector('[data-pref="viewCode"]')?.value);
         if (result === 'error') this._message = this._t('dashboard_view_import_error');
@@ -4916,6 +4959,8 @@
       } else if (action === 'view-delete' && this._editMode && this._editDraft && target.dataset.view) {
         this._deleteViewIn(this._editDraft, target.dataset.view);
         this.render();
+      } else if (action === 'anomaly-compare' && target.dataset.start) {
+        this._compareWithPrevious(target.dataset.start);
       } else if (action === 'toggle-today-more') {
         this._todayMore = !this._todayMore;
         this.render();
@@ -7454,6 +7499,7 @@
         insights.push({
           severity: 'alert',
           tag: this._t('severity_alert'),
+          start: allStarts[allStarts.length - 1],
           label: sentence('dashboard_anomaly_running_long', { len: running, days: Math.round(running - avg), avg: avgText }),
         });
       }
@@ -7461,6 +7507,7 @@
         insights.push({
           severity: 'alert',
           tag: this._t('severity_alert'),
+          start: c.start,
           label: sentence(c.len < avg ? 'dashboard_anomaly_outlier_short' : 'dashboard_anomaly_outlier_long', {
             date: this._formatDate(c.start, { day: 'numeric', month: 'short' }),
             days: Math.round(Math.abs(c.len - avg)),
@@ -7476,7 +7523,7 @@
             <span class="anomaly-dot" aria-hidden="true"></span>
             <div class="anomaly-body">
               <span class="anomaly-tag">${escapeHtml(ins.tag)}</span>
-              <p class="anomaly-text">${escapeHtml(ins.label)}</p>
+              ${ins.start ? `<button type="button" class="anomaly-text anomaly-link" data-action="anomaly-compare" data-start="${escapeHtml(ins.start)}" title="${escapeHtml(this._t('dashboard_anomaly_compare'))}">${escapeHtml(ins.label)}</button>` : `<p class="anomaly-text">${escapeHtml(ins.label)}</p>`}
             </div>
           </div>
         `).join('')}
@@ -8023,6 +8070,26 @@
       }).reverse();
     }
 
+    // A finding about one cycle opens the comparison with the cycle before it (the one after it for the oldest).
+    _compareWithPrevious(start) {
+      const stateObj = this._selectedEntityId ? (this._hass?.states?.[this._selectedEntityId] || null) : null;
+      const cycles = this._compareCycles(stateObj);
+      const index = cycles.findIndex((cycle) => cycle.start === start);
+      if (index < 0) return;
+      this._loadCompare();
+      this._compare.a = start;
+      this._compare.b = (cycles[index + 1] || cycles[index - 1] || {}).start || '';
+      this._saveCompare();
+      this._message = '';
+      this.render();
+      const card = this.shadowRoot?.querySelector?.('[data-card="cycle_compare"]');
+      if (card) card.scrollIntoView?.({ block: 'start', behavior: this._prefs?.animations === false ? 'auto' : 'smooth' });
+      else {
+        this._message = this._t('dashboard_anomaly_compare_hidden');
+        this.render();
+      }
+    }
+
     // The choice (two cycles, curve) is remembered per profile in this browser, one entry each.
     // Only checked values are taken over from storage, and what is saved is never a stored value written back.
     _compareKey() {
@@ -8092,13 +8159,20 @@
       // Estimated fertile days and ovulation (calendar method: ovulation 14 days before the next period, fertile = the five days before it and that day).
       // A running cycle needs the predicted start of the next one; without it (or for a very short cycle) there is nothing to estimate.
       const nextStart = stateObj?.attributes?.next_predicted_start;
-      const phaseDays = [cycleA, cycleB].map((cycle) => {
+      // A positive LH test measures it better: ovulation the day after the test, and the strip is drawn solid.
+      const phaseDays = [cycleA, cycleB].map((cycle, i) => {
+        if (lhDays[i]) {
+          const ovulation = lhDays[i].day + 1;
+          return { ovulation: ovulation <= cycle.length ? ovulation : 0, measured: true, fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1].filter((day) => day >= 1) };
+        }
         const end = cycle.running ? nextStart : cycle.end;
         const length = end ? Math.round((new Date(`${end}T12:00:00`) - new Date(`${cycle.start}T12:00:00`)) / 86400000) : 0;
         const ovulation = length - 13;
         return ovulation >= 6 ? { ovulation, fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1] } : { ovulation: 0, fertile: [] };
       });
-      const hasPhases = phaseDays.some((phase) => phase.ovulation);
+      const hasPhases = phaseDays.some((phase) => phase.fertile.length);
+      const hasLhOvulation = phaseDays.some((phase) => phase.measured && phase.ovulation);
+      const hasEstimate = phaseDays.some((phase) => phase.ovulation && !phase.measured);
       const hasBleeding = bleedingDays.some((days) => days.length);
       const stripped = hasBleeding || hasPhases;
       const W = 560; const H = 180; const padL = 38; const padR = 10; const padT = 10; const padB = 24;
@@ -8123,11 +8197,11 @@
         }).join('');
         return `<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="2"${dashes[i]} stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
       }).join('');
-      const strip = (day, i, fill) => `<rect x="${(toX(day) - (W - padL - padR) / (maxDay - 1) / 2).toFixed(1)}" y="${H + 1 + i * 6}" width="${((W - padL - padR) / (maxDay - 1)).toFixed(1)}" height="4" fill="${fill}" opacity="0.75"/>`;
+      const strip = (day, i, fill, opacity = 0.75) => `<rect x="${(toX(day) - (W - padL - padR) / (maxDay - 1) / 2).toFixed(1)}" y="${H + 1 + i * 6}" width="${((W - padL - padR) / (maxDay - 1)).toFixed(1)}" height="4" fill="${fill}" opacity="${opacity}"/>`;
       const phaseFill = { fertile: 'var(--mc-sage,#7C9885)', ovulation: 'var(--mc-sage-deep,#3F5A47)' };
       const stripsSvg = [cycleA, cycleB].map((_cycle, i) => [
-        ...phaseDays[i].fertile.filter((day) => !bleedingDays[i].includes(day)).map((day) => strip(day, i, phaseFill.fertile)),
-        ...(phaseDays[i].ovulation && !bleedingDays[i].includes(phaseDays[i].ovulation) ? [strip(phaseDays[i].ovulation, i, phaseFill.ovulation)] : []),
+        ...phaseDays[i].fertile.filter((day) => !bleedingDays[i].includes(day)).map((day) => strip(day, i, phaseFill.fertile, 0.55)),
+        ...(phaseDays[i].ovulation && !bleedingDays[i].includes(phaseDays[i].ovulation) ? [phaseDays[i].measured ? strip(phaseDays[i].ovulation, i, phaseFill.ovulation, 1) : strip(phaseDays[i].ovulation, i, phaseFill.ovulation, 0.55)] : []),
         ...bleedingDays[i].map((day) => strip(day, i, colors[i])),
       ].join('')).join('');
       const avgLine = average.length >= 2 ? `<path d="${average.map((point, j) => `${j === 0 ? 'M' : 'L'}${Math.round(toX(point.day))},${Math.round(toY(point.value))}`).join(' ')}" fill="none" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3" stroke-linecap="round"/>` : '';
@@ -8138,7 +8212,7 @@
       }).join('');
       const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('')
         + (hasBleeding ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="var(--secondary-text-color,#9ca3af)" opacity="0.75"/></svg>${escapeHtml(this._t('dashboard_cc_bleeding_days'))}</span>` : '')
-        + (hasPhases ? ['fertile', 'ovulation'].map((kind) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="${phaseFill[kind]}" opacity="0.75"/></svg>${escapeHtml(this._t(`dashboard_cc_${kind}_est`))}</span>`).join('') : '')
+        + [[hasPhases, 'fertile', 'fertile_est', 0.55], [hasEstimate, 'ovulation', 'ovulation_est', 0.55], [hasLhOvulation, 'ovulation', 'ovulation_lh', 1]].filter((key) => key[0]).map(([, kind, text, opacity]) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="${phaseFill[kind]}" opacity="${opacity}"/></svg>${escapeHtml(this._t(`dashboard_cc_${text}`))}</span>`).join('')
         + (avgLine ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${escapeHtml(this._t('dashboard_cc_average'))}</span>` : '');
       const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
       return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H + (stripped ? 14 : 0)}" width="100%" height="${H + (stripped ? 14 : 0)}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}${stripsSvg}</svg><div class="cc-legend">${legend}</div></div>`;
@@ -8722,6 +8796,8 @@
           <label class="toggle"><input type="checkbox" data-pref="discreetMode" ${draft.discreetMode ? 'checked' : ''}/> ${this._t('dashboard_discreet_mode')}</label>
           <label class="toggle"><input type="checkbox" data-pref="animations" ${draft.animations !== false ? 'checked' : ''}/> ${this._t('dashboard_animations')}</label>
           ${this._renderLookControls(draft)}
+          <div class="view-code-row"><button type="button" data-action="look-export">${escapeHtml(this._t('dashboard_look_export'))}</button><button type="button" data-action="look-import">${escapeHtml(this._t('dashboard_look_import'))}</button></div>
+          <textarea rows="1" data-pref="lookCode" placeholder="${escapeHtml(this._t('dashboard_look_code'))}" aria-label="${escapeHtml(this._t('dashboard_look_code'))}">${escapeHtml(this._lookCodeText || '')}</textarea>
           <label>${this._t('friendly_name')} <input type="text" data-pref="displayName" value="${escapeHtml(draft.myInfo.displayName)}"/></label>
           <label>${this._t('dashboard_pronouns')} <input type="text" data-pref="pronouns" value="${escapeHtml(draft.myInfo.pronouns)}"/></label>
           ${this._renderViewEditor()}
@@ -10417,6 +10493,8 @@
             color: var(--secondary-text-color, #6b7280); display: block; margin-bottom: 3px;
           }
           .anomaly-text { margin: 0; font-size: 0.8125rem; line-height: 1.45; }
+          button.anomaly-link { all: unset; display: block; cursor: pointer; font-size: 0.8125rem; line-height: 1.45; text-decoration: underline dotted; text-underline-offset: 3px; }
+          button.anomaly-link:focus-visible { outline: 2px solid var(--mc-accent, currentColor); outline-offset: 2px; border-radius: 4px; }
           .cycle-bars { display: flex; align-items: flex-end; gap: 4px; height: 36px; margin-top: 8px; }
           .cycle-bar { flex: 1 1 0; max-width: 28px; border-radius: 3px 3px 0 0; background: var(--mc-sage); opacity: .55; }
           .cycle-bar.latest { opacity: 1; background: var(--primary-color, #2563eb); }
@@ -10625,7 +10703,10 @@
           :host([data-teen]) .grid > .card:nth-child(4n+2) { --teen-c: #C9B3F2; }
           :host([data-teen]) .grid > .card:nth-child(4n+3) { --teen-c: #8FDDBE; }
           :host([data-teen]) .grid > .card:nth-child(4n+4) { --teen-c: #FFC592; }
-          :host([data-teen]) .card { position: relative; border: 2px dashed color-mix(in srgb, var(--teen-c, #F4A6CF) 75%, transparent); border-radius: 30px; background: color-mix(in srgb, var(--card-background-color, #fff) 82%, var(--teen-c, #F4A6CF) 18%); }
+          :host([data-teen]) .card { position: relative; border: 2px dashed color-mix(in srgb, var(--teen-c, #F4A6CF) 75%, transparent); border-radius: 30px; background: color-mix(in srgb, var(--card-background-color, #fff) 88%, var(--teen-c, #F4A6CF) 12%); }
+          /* a pastel on a dark card gets lighter and the accent text loses contrast: a paler tint there */
+          :host([data-theme="dark"][data-teen]) .card { background: color-mix(in srgb, var(--card-background-color, #fff) 94%, var(--teen-c, #F4A6CF) 6%); }
+          @media (prefers-color-scheme: dark) { :host([data-teen]:not([data-theme="light"])) .card { background: color-mix(in srgb, var(--card-background-color, #fff) 94%, var(--teen-c, #F4A6CF) 6%); } }
           :host([data-teen]) .card::after { content: '✦'; position: absolute; right: 18px; bottom: 10px; color: var(--teen-c, #F4A6CF); font-size: 1rem; pointer-events: none; }
           :host([data-teen]) .card h2 { font-size: 1.125rem; font-weight: 800; letter-spacing: 0; }
           :host([data-teen]) .card h2.collapsible { justify-content: flex-start; }

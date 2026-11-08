@@ -877,6 +877,64 @@ def settings_check(page, hass):
     return problems
 
 
+def mobile_dark_check(browser, base, fixture, shots=None):
+    """Real browser at phone width with a dark system theme: the teen design must fit the screen, apply to the panel and to
+    the calendar, gauge and compact status cards (profile age 13), and stay readable (text darker/lighter than the card)."""
+    problems = []
+    page = browser.new_page(viewport={"width": 390, "height": 844}, color_scheme="dark")
+    errors = []
+    page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errors.append(f"console.{m.type}: {m.text}") if m.type in ("error", "warning") else None)
+    page.goto(base + "/_page.html")
+    page.evaluate("async (names) => { await Promise.all(names.map((n) => customElements.whenDefined(n))); }",
+                  ["menstruation-calendar-card", "menstruation-gauge-card", "menstruation-cycle-compact-status", "menstruation-cycle-dashboard-panel"])
+    hass = page.evaluate_handle(HASS_JS, [fixture, "en"])
+    page.evaluate("""([h, entity]) => { const state = h.states[entity]; h.states[entity] = {...state, attributes: {...state.attributes, age_at_tracking: 13}};
+        try { localStorage.clear(); } catch (e) { /* none */ } }""", [hass, ENTITY])
+    panel = page.evaluate_handle("""(h) => { const p = document.createElement('menstruation-cycle-dashboard-panel');
+        p.panel = {config: {}}; p.narrow = true; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = h; return p; }""", hass)
+    page.wait_for_timeout(2500)
+    skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
+    if skip.count():
+        skip.first.click()
+        page.wait_for_timeout(300)
+    state = panel.evaluate("""(p) => { const card = p.shadowRoot.querySelector('.grid > .card'); const cs = getComputedStyle(card);
+        const rgb = (c) => (c.match(/[\\d.]+/g) || []).slice(0, 3).map((v) => (c.startsWith('color(srgb') ? Number(v) * 255 : Number(v)));
+        const lum = (c) => { const f = (v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+        const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+        return {teen: p.hasAttribute('data-teen'), edge: cs.borderTopStyle, overflow: document.documentElement.scrollWidth - window.innerWidth,
+          hostOverflow: p.scrollWidth - p.clientWidth, bg: cs.backgroundColor, color: cs.color, contrast: ratio(rgb(cs.color), rgb(cs.backgroundColor))}; }""")
+    if not state["teen"] or state["edge"] != "dashed":
+        problems.append(f"mobile dark: teen design not applied {state}")
+    if state["overflow"] > 1 or state["hostOverflow"] > 1:
+        problems.append(f"mobile dark: the panel is wider than the screen ({state})")
+    if state["contrast"] < 4.5:
+        problems.append(f"mobile dark: card text contrast {state['contrast']:.2f}:1 on the teen card ({state})")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "teen_mobile_dark.png"), full_page=True)
+    page.evaluate("() => document.querySelectorAll('menstruation-cycle-dashboard-panel').forEach((p) => p.remove())")
+    # the standalone cards follow the profile
+    for tag in ("menstruation-calendar-card", "menstruation-gauge-card", "menstruation-cycle-compact-status"):
+        card = page.evaluate_handle("""([tag, h, entity]) => { const el = document.createElement(tag);
+            el.setConfig({entity, entities: [entity], type: 'custom:' + tag});
+            document.getElementById('root').appendChild(el); el.hass = h; return el; }""", [tag, hass, ENTITY])
+        page.wait_for_timeout(500)
+        info = card.evaluate("""(el) => { const c = el.shadowRoot.querySelector('ha-card'); return {teen: el.hasAttribute('data-teen'), edge: c ? getComputedStyle(c).borderTopStyle : null,
+            overflow: el.scrollWidth - el.clientWidth}; }""")
+        if not info["teen"] or info["edge"] != "dashed":
+            problems.append(f"mobile dark: {tag} has no teen design for a 13-year-old profile {info}")
+        if info["overflow"] > 1:
+            problems.append(f"mobile dark: {tag} is wider than the screen {info}")
+        if shots:
+            card.evaluate("(el) => el.scrollIntoView()")
+            page.screenshot(path=str(Path(shots) / f"teen_{tag}_mobile_dark.png"))
+        card.evaluate("(el) => el.remove()")
+    real = [e for e in errors if "favicon" not in e and "only available to administrators" not in e]
+    problems += [f"mobile dark: {e}" for e in sorted(set(real))]
+    page.close()
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -955,6 +1013,7 @@ def run(fixture_dir, shots=None):
                 real = [e for e in errors if "favicon" not in e and "only available to administrators" not in e]
                 problems += [f"{label}: {e}" for e in sorted(set(real))]
                 page.close()
+        problems += mobile_dark_check(browser, base, json.loads((Path(fixture_dir) / "full.json").read_text()), shots)
         browser.close()
     server.shutdown()
     if not seen_at_full:  # the privacy check below "full" means nothing if the data never shows up at "full"
