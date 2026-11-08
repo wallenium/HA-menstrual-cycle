@@ -3,6 +3,7 @@
 ## 1.10.0
 
 ### Added
+- **Screenshot tooling for the wiki:** `tools/real_ha/screenshots.py` also takes a screenshot of every card (`cards`) and of the panel cards (`panel-cards`) from invented demo data, used for the wiki pages "Cards Documentation" and "Dashboard Panel"; the README screenshots are regenerated with consistent demo data.
 - **Card picker, live preview:** calendar, gauge, compact status, heatmap, history table, pill, status badge and countdown timer now show a live preview in the "Add card" dialog (`preview: true`). The preview uses your first cycle sensor of this integration instead of an invented entity id (the pill card needs one with a pill pack). Statistics, support and inventory stay without preview.
 - **Dashboard panel, card "Compare cycles", ovulation measured by temperature:** a cycle with a clear temperature rise (Roetzer rule on the logged basal temperatures, as in the NFP evaluation, for the last cycles) draws the rise day as a solid ovulation strip with the fertile days before it; the legend says "Ovulation (after temperature rise)". An LH test is still used when there is no rise, and without either the pale calendar-method estimate remains. New attribute `temperature_rise_days` on the main sensor (cycle start date to rise day), in the same visibility levels as the other symptom attributes.
 - **Teen design in the remaining cards:** heatmap, statistics, pill, support, product inventory, countdown timer and cycle-history row follow the same switch as the panel and the calendar, gauge and compact status cards (Automatic / On / Off in the panel settings). Appearance only; no stickers and no other texts.
@@ -92,6 +93,9 @@
 - The translation loader no longer tries the legacy `/hacsfiles/` path (the integration serves its own files, so the HACS Marketplace in Home Assistant 2026.11 does not affect it).
 
 ### Fixed
+- **Statistics card, badge titles:** the progress badges (symptom variety, confirmed ovulation, insights unlocked, temperature tracker, 12 cycles logged, doctor report, personalised profile, first sign, signs explored, wellness) showed raw keys; they now have titles, descriptions and icons (`tests/statistics-badge-titles.test.js`).
+- **Dashboard panel, card "Cycle phase overview":** the labels (uterine lining, estrogen, progesterone, LH surge, note on the curve) were hard-coded German; they are translated in all five languages now (FR/ES/SV self-translated, please proofread; `tests/phase-overview-i18n.test.js`).
+- **Heatmap card:** the default title is English ("Cycle Heatmap") instead of German; a title set in the card configuration is unchanged.
 - **Calendar card:** the click handler of the day dialog was attached again on every redraw, so one tap on "Save" could run several times (several saves, several conflict questions). It is attached once now.
 - The saved visibility of dashboard cards now only keeps known cards (an imported or old entry with other keys is dropped).
 - **Dashboard panel on the phone:** the page no longer scrolls sideways (cards in the grid and product rows could be wider than the screen).

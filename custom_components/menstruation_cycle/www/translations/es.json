@@ -1571,5 +1571,11 @@
   "dashboard_look_exported": "Código de aspecto copiado.",
   "dashboard_look_exported_manual": "El código de aspecto está en el campo de abajo, cópialo desde allí.",
   "dashboard_look_import_error": "Este no es un código de aspecto válido.",
-  "dashboard_look_imported": "Aspecto aplicado (guarda para conservarlo)."
+  "dashboard_look_imported": "Aspecto aplicado (guarda para conservarlo).",
+  "dashboard_po_endometrium": "Endometrio",
+  "dashboard_po_estrogen": "Estrógeno",
+  "dashboard_po_progesterone": "Progesterona",
+  "dashboard_po_lh_surge": "Pico de LH",
+  "dashboard_po_lh_surge_ovulation": "Pico de LH (ovulación)",
+  "dashboard_po_curve_note": "La forma de la curva es típica (no son valores hormonales medidos); el eje de tiempo se basa en los datos reales de tu ciclo."
 }

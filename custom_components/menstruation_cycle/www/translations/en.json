@@ -1571,5 +1571,11 @@
   "dashboard_look_exported": "Look code copied.",
   "dashboard_look_exported_manual": "Look code is in the field below, copy it from there.",
   "dashboard_look_import_error": "This is not a valid look code.",
-  "dashboard_look_imported": "Look applied (save to keep it)."
+  "dashboard_look_imported": "Look applied (save to keep it).",
+  "dashboard_po_endometrium": "Uterine lining",
+  "dashboard_po_estrogen": "Estrogen",
+  "dashboard_po_progesterone": "Progesterone",
+  "dashboard_po_lh_surge": "LH surge",
+  "dashboard_po_lh_surge_ovulation": "LH surge (ovulation)",
+  "dashboard_po_curve_note": "The curve shape is typical (not measured hormone levels); the time axis is based on your real cycle data."
 }

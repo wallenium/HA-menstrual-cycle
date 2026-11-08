@@ -70,7 +70,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
       type: 'custom:menstruation-cycle-heatmap-card',
       entity: Object.keys(hass?.states || {}).find((id) => { const a = hass.states[id]?.attributes; return a && 'visibility_level' in a && 'onboarding_stage' in a; }) || 'sensor.menstruation',
       entry_id: '',
-      title: 'Zyklus Heatmap',
+      title: 'Cycle Heatmap',
       max_cycles: 18,
       period_duration_days: 5,
       show_fertile_period: true,
@@ -88,7 +88,7 @@ class MenstruationCycleHeatmapCard extends HTMLElement {
     this._config = {
       max_cycles: 18,
       period_duration_days: 5,
-      title: 'Zyklus Heatmap',
+      title: 'Cycle Heatmap',
       show_fertile_period: true,
       show_predicted_cycles: true,
       num_predicted_cycles: 6,
@@ -1246,7 +1246,7 @@ class MenstruationCycleHeatmapCardEditor extends HTMLElement {
           <div class="section-title">${this._t('display')}</div>
           <div class="row">
             <label for="title">${this._t('title')}</label>
-            <input id="title" type="text" value="${this._escapeHtml(this._config.title || '')}" placeholder="Zyklus Heatmap">
+            <input id="title" type="text" value="${this._escapeHtml(this._config.title || '')}" placeholder="Cycle Heatmap">
           </div>
           <div class="row" style="margin-top:8px;">
             <label>${this._t('max_cycles')} (1-50)</label>

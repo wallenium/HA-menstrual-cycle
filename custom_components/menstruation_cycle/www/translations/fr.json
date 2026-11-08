@@ -1571,5 +1571,11 @@
   "dashboard_look_exported": "Code d’apparence copié.",
   "dashboard_look_exported_manual": "Le code d’apparence est dans le champ ci-dessous, copie-le depuis là.",
   "dashboard_look_import_error": "Ce n’est pas un code d’apparence valide.",
-  "dashboard_look_imported": "Apparence appliquée (enregistre pour la garder)."
+  "dashboard_look_imported": "Apparence appliquée (enregistre pour la garder).",
+  "dashboard_po_endometrium": "Muqueuse utérine",
+  "dashboard_po_estrogen": "Œstrogène",
+  "dashboard_po_progesterone": "Progestérone",
+  "dashboard_po_lh_surge": "Pic de LH",
+  "dashboard_po_lh_surge_ovulation": "Pic de LH (ovulation)",
+  "dashboard_po_curve_note": "La forme de la courbe est typique (pas de valeurs hormonales mesurées) ; l'axe du temps repose sur les données réelles de ton cycle."
 }

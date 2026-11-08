@@ -1571,5 +1571,11 @@
   "dashboard_look_exported": "Aussehen-Code kopiert.",
   "dashboard_look_exported_manual": "Der Aussehen-Code steht im Feld darunter, kopiere ihn von dort.",
   "dashboard_look_import_error": "Das ist kein gültiger Aussehen-Code.",
-  "dashboard_look_imported": "Aussehen übernommen (zum Behalten speichern)."
+  "dashboard_look_imported": "Aussehen übernommen (zum Behalten speichern).",
+  "dashboard_po_endometrium": "Gebärmutterschleimhaut",
+  "dashboard_po_estrogen": "Östrogen",
+  "dashboard_po_progesterone": "Progesteron",
+  "dashboard_po_lh_surge": "LH-Anstieg",
+  "dashboard_po_lh_surge_ovulation": "LH-Anstieg (Eisprung)",
+  "dashboard_po_curve_note": "Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten."
 }

@@ -6420,18 +6420,18 @@
         <path d="${pathFor('prog')}" fill="none" stroke="#3F5A47" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round"/>
         <line x1="${ovLineX}" x2="${ovLineX}" y1="${plotT}" y2="${plotB}" stroke="var(--primary-text-color,#2B1B24)" stroke-width="1.4" stroke-dasharray="3 3"/>
         <circle cx="${ovLineX}" cy="${yCurve(1.0).toFixed(1)}" r="5" fill="var(--primary-text-color,#2B1B24)"/>
-        <text x="${ovLineX}" y="${plotT - 6}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" fill="var(--primary-text-color,#2B1B24)">LH-Anstieg</text>
+        <text x="${ovLineX}" y="${plotT - 6}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" fill="var(--primary-text-color,#2B1B24)">${escapeHtml(this._t('dashboard_po_lh_surge'))}</text>
         ${todayLineX ? `<line x1="${todayLineX}" x2="${todayLineX}" y1="${plotT}" y2="${bandY + bandH}" stroke="var(--mc-rose-deep,#C43F5E)" stroke-width="1.6"/>
         <text x="${todayLineX}" y="${plotT - 6}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" font-weight="600" fill="var(--mc-rose-deep,#C43F5E)">${escapeHtml(this._t('dashboard_today'))}</text>` : ''}
       `;
 
       const legend = `
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:0.75rem;color:var(--secondary-text-color,#5f6673);row-gap:4px;">
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#6B3654;margin-right:5px;vertical-align:middle"></span>Gebärmutterschleimhaut</span>
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E3A23D;margin-right:5px;vertical-align:middle"></span>Östrogen</span>
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3F5A47;margin-right:5px;vertical-align:middle"></span>Progesteron</span>
-          <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--primary-text-color,#2B1B24);margin-right:5px;vertical-align:middle"></span>LH-Anstieg (Eisprung)</span>
-          <span style="font-size:0.7rem;">Kurvenform ist typisiert (keine gemessenen Hormonwerte), Zeitachse basiert auf deinen echten Zyklusdaten.</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#6B3654;margin-right:5px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_po_endometrium'))}</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E3A23D;margin-right:5px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_po_estrogen'))}</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#3F5A47;margin-right:5px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_po_progesterone'))}</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--primary-text-color,#2B1B24);margin-right:5px;vertical-align:middle"></span>${escapeHtml(this._t('dashboard_po_lh_surge_ovulation'))}</span>
+          <span style="font-size:0.7rem;">${escapeHtml(this._t('dashboard_po_curve_note'))}</span>
           ${this._renderNfpSummaryLine(stateObj, true)}
         </div>
       `;

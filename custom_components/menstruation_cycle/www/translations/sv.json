@@ -1571,5 +1571,11 @@
   "dashboard_look_exported": "Utseendekod kopierad.",
   "dashboard_look_exported_manual": "Utseendekoden finns i fältet nedanför, kopiera den därifrån.",
   "dashboard_look_import_error": "Det här är ingen giltig utseendekod.",
-  "dashboard_look_imported": "Utseendet har tillämpats (spara för att behålla det)."
+  "dashboard_look_imported": "Utseendet har tillämpats (spara för att behålla det).",
+  "dashboard_po_endometrium": "Livmoderslemhinna",
+  "dashboard_po_estrogen": "Östrogen",
+  "dashboard_po_progesterone": "Progesteron",
+  "dashboard_po_lh_surge": "LH-topp",
+  "dashboard_po_lh_surge_ovulation": "LH-topp (ägglossning)",
+  "dashboard_po_curve_note": "Kurvans form är typisk (inga uppmätta hormonvärden); tidsaxeln bygger på dina verkliga cykeldata."
 }
