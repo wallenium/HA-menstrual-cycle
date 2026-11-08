@@ -228,6 +228,9 @@
     dashboard_anomaly_short_cycle: 'Short cycle',
     dashboard_anomaly_long_cycle: 'Long cycle',
     dashboard_anomaly_consistency: 'Consistency',
+    dashboard_anomaly_outlier_long: 'Cycle from {date}: {days} days longer than usual ({len} instead of avg {avg})',
+    dashboard_anomaly_outlier_short: 'Cycle from {date}: {days} days shorter than usual ({len} instead of avg {avg})',
+    dashboard_anomaly_running_long: 'Current cycle: already {len} days, {days} days longer than usual (avg {avg})',
     dashboard_pain_no_data: 'No symptom data available.',
     dashboard_year_overview_title: 'Year at a glance',
     severity_info: 'Info',
@@ -638,10 +641,12 @@
   const MAX_VIEWS = 8;
   // Look of the panel per profile: light/dark independent of Home Assistant, and the accent colour of the app.
   const THEMES = ['auto', 'light', 'dark'];
+  const TEEN_STYLES = ['auto', 'on', 'off'];
   const ACCENTS = { rose: '#E8637D', plum: '#8E4B73', sage: '#5E8C6A', amber: '#D98E1F', blue: '#3B82C4', slate: '#64748B' };
   // Teen design (pre/early menarche or under 16): a sticker in front of the card titles, and friendlier titles for a few cards.
   const TEEN_STICKERS = { kpi_strip: '✨', phase_timeline: '🌙', phase_donut: '🌸', calendar_card: '📅', pill_card: '💊', support_card: '💬', progress_badges: '⭐', product_usage: '🛍️', inventory_card: '🎀', timer_card: '⏰' };
   const TEEN_ADULT_AGE = 16;
+  const TEEN_BADGE_STICKERS = { first_entry: '🌱', cycles_3_logged: '🌸', cycles_6_logged: '🌷', cycles_12_logged: '🌻', consistent_logging_30d: '💫', pattern_emerging: '🔮', symptom_variety: '🌈', nfp_confirmed_ovulation: '🌙', insights_unlocked: '💡', temperature_tracker: '🌡️', doctor_report_exported: '📋', profile_personalized: '🎀', first_sign_logged: '⭐', signs_explored: '🧭', wellness_thriving: '✨' };
   const VIEW_CODE_PREFIX = 'MCV1:';
   // Setup assistant: three steps, and the card choice of step 2.
   const WIZARD_STEPS = 3;
@@ -1522,6 +1527,7 @@
       const animations = typeof raw?.animations === 'boolean' ? raw.animations : true;
       const chartRange = CHART_RANGES.includes(raw?.chartRange) ? raw.chartRange : 'auto';
       const theme = THEMES.includes(raw?.theme) ? raw.theme : 'auto';
+      const teenStyle = TEEN_STYLES.includes(raw?.teenStyle) ? raw.teenStyle : 'auto';
       const accent = ACCENTS[raw?.accent] ? raw.accent : 'rose';
       // Prefs that exist already (an existing user, or a reset) never start the setup assistant.
       const onboarded = raw ? raw.onboarded !== false : false;
@@ -1539,6 +1545,7 @@
         animations,
         chartRange,
         theme,
+        teenStyle,
         accent,
         onboarded,
         ...this._normalizeLayout(raw, preset),
@@ -1705,7 +1712,10 @@
       return this._editMode ? this._editDraft : this._prefs;
     }
 
-    _teen() {
+    // Teen design: "on" or "off" by the user's choice, otherwise (auto) for the young profile.
+    _teen(prefs = this._look()) {
+      if (prefs?.teenStyle === 'on') return true;
+      if (prefs?.teenStyle === 'off') return false;
       return this._activeMode === 'young';
     }
 
@@ -1726,7 +1736,7 @@
       const theme = THEMES.includes(prefs?.theme) ? prefs.theme : 'auto';
       if (theme === 'auto') this.removeAttribute?.('data-theme');
       else this.setAttribute?.('data-theme', theme);
-      if (this._teen()) this.setAttribute?.('data-teen', '');
+      if (this._teen(prefs)) this.setAttribute?.('data-teen', '');
       else this.removeAttribute?.('data-teen');
       const accent = prefs?.accent && prefs.accent !== 'rose' ? ACCENTS[prefs.accent] : null;
       if (accent) {
@@ -1741,7 +1751,9 @@
     _renderLookControls(prefs) {
       const themes = THEMES.map((id) => `<option value="${id}"${prefs.theme === id ? ' selected' : ''}>${escapeHtml(this._t(`dashboard_theme_${id}`))}</option>`).join('');
       const swatches = Object.entries(ACCENTS).map(([id, color]) => `<button type="button" class="accent-swatch" data-action="accent" data-accent="${id}" aria-pressed="${prefs.accent === id}" aria-label="${escapeHtml(this._t(`dashboard_accent_${id}`))}" title="${escapeHtml(this._t(`dashboard_accent_${id}`))}" style="background:${color}"></button>`).join('');
+      const teenStyles = TEEN_STYLES.map((id) => `<option value="${id}"${(prefs.teenStyle || 'auto') === id ? ' selected' : ''}>${escapeHtml(this._t(`dashboard_teen_style_${id}`))}</option>`).join('');
       return `<label>${escapeHtml(this._t('dashboard_theme'))} <select data-pref="theme">${themes}</select></label>
+          <label>${escapeHtml(this._t('dashboard_teen_style'))} <select data-pref="teenStyle">${teenStyles}</select></label>
           <div class="accent-picker" role="group" aria-label="${escapeHtml(this._t('dashboard_accent'))}">${swatches}</div>`;
     }
 
@@ -2288,6 +2300,11 @@
       const i18n = this._getI18n();
       const dict = i18n.cache?.[this._lang] || {};
       const english = i18n.cache?.en || i18n.fallback?.en || PANEL_FALLBACK_EN;
+      // The teen design has a friendlier wording for some texts (translation key "teen_<key>").
+      if (this._teen()) {
+        const friendly = dict[`teen_${key}`] ?? english[`teen_${key}`];
+        if (friendly !== undefined) return friendly;
+      }
       return dict[key] ?? english[key] ?? key;
     }
 
@@ -4924,7 +4941,7 @@
       } else if (action === 'reset-preset') {
         const reset = this._normalizePrefs(this._preset(this._activeMode), this._activeProfile, this._activeMode);
         const current = this._editMode ? this._editDraft : this._prefs;
-        Object.assign(reset, { theme: current?.theme, accent: current?.accent });
+        Object.assign(reset, { theme: current?.theme, accent: current?.accent, teenStyle: current?.teenStyle });
         reset.views = current?.views || []; // only the layout of the current view goes back to the preset
         reset.activeView = current?.activeView || null;
         if (this._editMode) {
@@ -5017,6 +5034,14 @@
       if (target.tagName === 'SELECT' && target.dataset.pref === 'theme') {
         const prefs = this._look();
         prefs.theme = THEMES.includes(target.value) ? target.value : 'auto';
+        if (!this._editMode) this._savePrefs();
+        this.render();
+        return;
+      }
+
+      if (target.tagName === 'SELECT' && target.dataset.pref === 'teenStyle') {
+        const prefs = this._look();
+        prefs.teenStyle = TEEN_STYLES.includes(target.value) ? target.value : 'auto';
         if (!this._editMode) this._savePrefs();
         this.render();
         return;
@@ -7382,17 +7407,18 @@
     _renderAnomalyInsights(stateObj) {
       const attrs = stateObj?.attributes || {};
       const allStarts = Array.isArray(attrs.grouped_starts) ? attrs.grouped_starts.slice().sort() : [];
-      const cycleLengths = [];
+      const cycles = [];
       for (let i = 1; i < allStarts.length; i++) {
         const len = Math.round((new Date(allStarts[i]) - new Date(allStarts[i - 1])) / 86400000);
-        if (len > 10 && len < 80) cycleLengths.push(len);
+        if (len > 10 && len < 80) cycles.push({ start: allStarts[i - 1], len });
       }
 
-      if (cycleLengths.length < 3) {
+      if (cycles.length < 3) {
         return `<div class="helper">${this._t('dashboard_not_enough_data')}</div>`;
       }
 
-      const recent = cycleLengths.slice(-12);
+      const recentCycles = cycles.slice(-12);
+      const recent = recentCycles.map((c) => c.len);
       const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
       const variance = recent.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / recent.length;
       const stdDev = Math.sqrt(variance);
@@ -7420,18 +7446,32 @@
         label: `${this._t('dashboard_anomaly_consistency')}: ${regularityPercent}%`,
       });
 
-      const outliers = recent.filter((l) => Math.abs(l - avg) > threshold);
-      outliers.forEach((len) => {
-        const isShort = len < avg;
+      // One sentence per finding, with the date and the difference to the usual length.
+      const sentence = (key, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replace(`{${k}}`, String(v)), this._t(key));
+      const avgText = String(Math.round(avg));
+      const running = Math.round((new Date(this._todayIso()) - new Date(allStarts[allStarts.length - 1])) / 86400000);
+      if (running > avg + threshold && running < 120) {
         insights.push({
           severity: 'alert',
           tag: this._t('severity_alert'),
-          label: `${isShort ? this._t('dashboard_anomaly_short_cycle') : this._t('dashboard_anomaly_long_cycle')}: ${len}d`,
+          label: sentence('dashboard_anomaly_running_long', { len: running, days: Math.round(running - avg), avg: avgText }),
+        });
+      }
+      recentCycles.filter((c) => Math.abs(c.len - avg) > threshold).reverse().forEach((c) => {
+        insights.push({
+          severity: 'alert',
+          tag: this._t('severity_alert'),
+          label: sentence(c.len < avg ? 'dashboard_anomaly_outlier_short' : 'dashboard_anomaly_outlier_long', {
+            date: this._formatDate(c.start, { day: 'numeric', month: 'short' }),
+            days: Math.round(Math.abs(c.len - avg)),
+            len: c.len,
+            avg: avgText,
+          }),
         });
       });
 
       return `<div class="anomaly-list">
-        ${insights.slice(0, 4).map((ins) => `
+        ${insights.slice(0, 5).map((ins) => `
           <div class="anomaly-item ${ins.severity}">
             <span class="anomaly-dot" aria-hidden="true"></span>
             <div class="anomaly-body">
@@ -7529,6 +7569,28 @@
       return `${todayHtml}<div class="anomaly-list">${items}</div>`;
     }
 
+    // Badges earned since this profile's card was last shown in this browser (nothing is "new" on the very first look).
+    // What is stored is the current list of earned badges, never a value read back from storage.
+    _freshBadges(profile, earnedKeys) {
+      this._badgesFresh = this._badgesFresh || {};
+      if (!(profile in this._badgesFresh)) {
+        const key = `menstruation_cycle_badges_seen.${profile}`;
+        let seen = null;
+        try {
+          seen = safeJsonParse(localStorage.getItem(key));
+        } catch (_error) {
+          seen = null;
+        }
+        this._badgesFresh[profile] = Array.isArray(seen) ? earnedKeys.filter((badge) => !seen.includes(badge)) : [];
+        try {
+          localStorage.setItem(key, JSON.stringify(earnedKeys));
+        } catch (_error) {
+          // no storage: nothing is new next time either
+        }
+      }
+      return this._badgesFresh[profile];
+    }
+
     _renderProgressBadges(stateObj) {
       const attrs = stateObj?.attributes || {};
       const badges = Array.isArray(attrs.progress_badges) ? attrs.progress_badges : [];
@@ -7559,6 +7621,10 @@
       };
       const byKey = {};
       badges.forEach((b) => { if (b && b.key) byKey[b.key] = b; });
+      // Teen design: earned badges are stickers; those earned since the card was last seen get a "New!" tag and pop in once.
+      const teen = this._teen();
+      const fresh = teen ? this._freshBadges(this._activeProfile, Object.keys(badgeLabels).filter((key) => byKey[key]?.state === 'earned')) : [];
+      this._badgesPopped = this._badgesPopped || new Set();
 
       const items = Object.keys(badgeLabels).map((key) => {
         const badge = byKey[key];
@@ -7572,10 +7638,16 @@
         } else if (inProgress && badge.progress_target) {
           detail = `${escapeHtml(badge.progress_value)} / ${escapeHtml(badge.progress_target)}`;
         }
+        const isNew = fresh.includes(key);
+        const pop = isNew && !this._badgesPopped.has(key);
+        if (pop) this._badgesPopped.add(key);
+        const mark = teen && earned
+          ? `<div class="badge-sticker${pop ? ' pop' : ''}" aria-hidden="true">${TEEN_BADGE_STICKERS[key] || '⭐'}</div>`
+          : `<div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${earned ? 'var(--mc-sage)' : 'transparent'};border:${earned ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${earned ? '✓' : ''}</div>`;
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--mc-sand);border:1px solid var(--divider-color,#e5e7eb);margin-bottom:8px;">
-          <div style="width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:${earned ? 'var(--mc-sage)' : 'transparent'};border:${earned ? 'none' : '1.5px solid var(--divider-color,#d1d5db)'};">${earned ? '✓' : ''}</div>
+          ${mark}
           <div style="flex:1;">
-            <div style="font-size:13px;${earned ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(label)}</div>
+            <div style="font-size:13px;${earned ? '' : 'color:var(--secondary-text-color,#6b7280);'}">${escapeHtml(label)}${isNew ? ` <span class="badge-new">${escapeHtml(this._t('dashboard_badge_new'))}</span>` : ''}</div>
             ${detail ? `<div style="font-family:var(--mc-font-mono);font-size:10px;color:var(--secondary-text-color,#6b7280);margin-top:2px;">${detail}</div>` : ''}
           </div>
         </div>`;
@@ -8017,7 +8089,18 @@
       // bleeding days of the two cycles (the sensor keeps the last six bleeding blocks), drawn as strips under the curve
       const bleeding = new Set((Array.isArray(stateObj?.attributes?.bleeding_blocks) ? stateObj.attributes.bleeding_blocks : []).flat());
       const bleedingDays = [cycleA, cycleB].map((cycle) => Array.from({ length: cycle.length }, (_, i) => i + 1).filter((day) => bleeding.has(addDaysIso(cycle.start, day - 1))));
-      const stripped = bleedingDays.some((days) => days.length);
+      // Estimated fertile days and ovulation (calendar method: ovulation 14 days before the next period, fertile = the five days before it and that day).
+      // A running cycle needs the predicted start of the next one; without it (or for a very short cycle) there is nothing to estimate.
+      const nextStart = stateObj?.attributes?.next_predicted_start;
+      const phaseDays = [cycleA, cycleB].map((cycle) => {
+        const end = cycle.running ? nextStart : cycle.end;
+        const length = end ? Math.round((new Date(`${end}T12:00:00`) - new Date(`${cycle.start}T12:00:00`)) / 86400000) : 0;
+        const ovulation = length - 13;
+        return ovulation >= 6 ? { ovulation, fertile: [ovulation - 5, ovulation - 4, ovulation - 3, ovulation - 2, ovulation - 1] } : { ovulation: 0, fertile: [] };
+      });
+      const hasPhases = phaseDays.some((phase) => phase.ovulation);
+      const hasBleeding = bleedingDays.some((days) => days.length);
+      const stripped = hasBleeding || hasPhases;
       const W = 560; const H = 180; const padL = 38; const padR = 10; const padT = 10; const padB = 24;
       const maxDay = Math.max(cycleA.length, cycleB.length, 2);
       const values = [...series.flat(), ...(average.length >= 2 ? average : [])].map((point) => point.value);
@@ -8040,7 +8123,13 @@
         }).join('');
         return `<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="2"${dashes[i]} stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
       }).join('');
-      const stripsSvg = bleedingDays.map((days, i) => days.map((day) => `<rect x="${(toX(day) - (W - padL - padR) / (maxDay - 1) / 2).toFixed(1)}" y="${H + 1 + i * 6}" width="${((W - padL - padR) / (maxDay - 1)).toFixed(1)}" height="4" fill="${colors[i]}" opacity="0.75"/>`).join('')).join('');
+      const strip = (day, i, fill) => `<rect x="${(toX(day) - (W - padL - padR) / (maxDay - 1) / 2).toFixed(1)}" y="${H + 1 + i * 6}" width="${((W - padL - padR) / (maxDay - 1)).toFixed(1)}" height="4" fill="${fill}" opacity="0.75"/>`;
+      const phaseFill = { fertile: 'var(--mc-sage,#7C9885)', ovulation: 'var(--mc-sage-deep,#3F5A47)' };
+      const stripsSvg = [cycleA, cycleB].map((_cycle, i) => [
+        ...phaseDays[i].fertile.filter((day) => !bleedingDays[i].includes(day)).map((day) => strip(day, i, phaseFill.fertile)),
+        ...(phaseDays[i].ovulation && !bleedingDays[i].includes(phaseDays[i].ovulation) ? [strip(phaseDays[i].ovulation, i, phaseFill.ovulation)] : []),
+        ...bleedingDays[i].map((day) => strip(day, i, colors[i])),
+      ].join('')).join('');
       const avgLine = average.length >= 2 ? `<path d="${average.map((point, j) => `${j === 0 ? 'M' : 'L'}${Math.round(toX(point.day))},${Math.round(toY(point.value))}`).join(' ')}" fill="none" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3" stroke-linecap="round"/>` : '';
       const lhMarks = lhDays.map((lh, i) => {
         if (!lh) return '';
@@ -8048,7 +8137,8 @@
         return `<line x1="${x}" x2="${x}" y1="${padT}" y2="${H - padB}" stroke="${colors[i]}" stroke-width="1" opacity="0.55"/><text x="${x + 3}" y="${padT + 8}" font-size="9" font-family="IBM Plex Mono, monospace" fill="${colors[i]}">LH</text><rect x="${x - 6}" y="${padT}" width="12" height="${H - padT - padB}" fill="transparent"${this._tip(lh.date, `${this._t('dashboard_cc_day').replace('{n}', String(lh.day))} · ${this._t('dashboard_cc_lh')}`)}/>`;
       }).join('');
       const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('')
-        + (stripped ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="var(--secondary-text-color,#9ca3af)" opacity="0.75"/></svg>${escapeHtml(this._t('dashboard_cc_bleeding_days'))}</span>` : '')
+        + (hasBleeding ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="var(--secondary-text-color,#9ca3af)" opacity="0.75"/></svg>${escapeHtml(this._t('dashboard_cc_bleeding_days'))}</span>` : '')
+        + (hasPhases ? ['fertile', 'ovulation'].map((kind) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><rect x="1" y="2" width="20" height="4" fill="${phaseFill[kind]}" opacity="0.75"/></svg>${escapeHtml(this._t(`dashboard_cc_${kind}_est`))}</span>`).join('') : '')
         + (avgLine ? `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="var(--secondary-text-color,#9ca3af)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${escapeHtml(this._t('dashboard_cc_average'))}</span>` : '');
       const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
       return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H + (stripped ? 14 : 0)}" width="100%" height="${H + (stripped ? 14 : 0)}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${avgLine}${lhMarks}${lines}${stripsSvg}</svg><div class="cc-legend">${legend}</div></div>`;
@@ -10540,6 +10630,10 @@
           :host([data-teen]) .card h2 { font-size: 1.125rem; font-weight: 800; letter-spacing: 0; }
           :host([data-teen]) .card h2.collapsible { justify-content: flex-start; }
           :host([data-teen]) .card h2.collapsible::after { margin-left: auto; }
+          :host([data-teen]) .badge-sticker { flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--card-background-color, #fff); box-shadow: 0 2px 6px -2px var(--mc-accent); transform: rotate(-8deg); }
+          :host([data-teen]) .badge-sticker.pop { animation: mc-sticker-pop .7s cubic-bezier(.2, 1.4, .4, 1); }
+          :host([data-teen]) .badge-new { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; background: var(--mc-accent-solid, #C43F5E); color: #fff; }
+          @keyframes mc-sticker-pop { 0% { transform: scale(0) rotate(-40deg); } 60% { transform: scale(1.25) rotate(8deg); } 100% { transform: scale(1) rotate(-8deg); } }
           :host([data-teen]) .sticker { display: inline-block; margin-right: .35em; transform: rotate(-8deg); font-size: 1.15em; }
           :host([data-teen]) button, :host([data-teen]) .toolbar button { border-radius: 999px; }
           :host([data-teen]) .mc-log-fab { border-radius: 999px; box-shadow: 0 6px 18px -6px var(--mc-accent); }

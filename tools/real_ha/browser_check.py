@@ -824,6 +824,59 @@ def teen_check(page, hass, shots=None):
     return problems
 
 
+def settings_check(page, hass):
+    """Real browser: click the look settings (teen switch, accent colour) and a view switch, reload the panel, and see that they are still there."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    make = """([h, entity]) => { const p = document.createElement('menstruation-cycle-dashboard-panel');
+        p.panel = {config: {}}; p.narrow = false; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = h; return p; }"""
+    page.evaluate("() => { try { localStorage.clear(); } catch (e) { /* none */ } document.querySelectorAll('menstruation-cycle-dashboard-panel').forEach((p) => p.remove()); }")
+    page.evaluate_handle(make, [hass, ENTITY])
+    page.wait_for_timeout(2500)
+    skip = page.locator(root + "css=[data-action=wizard-skip]")
+    if skip.count():
+        skip.first.click()
+        page.wait_for_timeout(300)
+    attr = "() => { const p = document.querySelector('menstruation-cycle-dashboard-panel'); return {teen: p.hasAttribute('data-teen'), accent: p.style.getPropertyValue('--mc-accent')}; }"
+    if page.evaluate(attr)["teen"]:
+        return ["settings: the test profile already has the teen design, cannot test the switch"]
+    page.locator(root + "css=[data-action=toggle-edit]").first.click()
+    page.wait_for_timeout(300)
+    page.locator(root + "css=select[data-pref=teenStyle]").first.select_option("on")
+    page.wait_for_timeout(200)
+    page.locator(root + "css=[data-action=accent][data-accent=blue]").first.click()
+    page.wait_for_timeout(200)
+    page.locator(root + "css=[data-action=view-add]").first.click()
+    page.wait_for_timeout(300)
+    page.locator(root + "css=[data-action=save-edit]").first.click()
+    page.wait_for_timeout(400)
+    now = page.evaluate(attr)
+    if not now["teen"] or not now["accent"]:
+        problems.append(f"settings: switch or accent not applied after saving {now}")
+    views = page.locator(root + "css=.view-switch [data-action=view-switch]")
+    if views.count() < 2:
+        return problems + [f"settings: no view switch after adding a view ({views.count()} buttons)"]
+    views.first.click()
+    page.wait_for_timeout(300)
+    first_id = views.first.get_attribute("data-view")
+    stored = page.evaluate("Object.entries(localStorage).filter(([k]) => k.startsWith('menstruation_cycle.dashboard_prefs.')).map(([, v]) => v).join(' ')")
+    for needle in ('"teenStyle":"on"', '"accent":"blue"', f'"activeView":"{first_id}"'):
+        if needle not in stored:
+            problems.append(f"settings: {needle} not stored: {stored[:200]!r}")
+    # reload: a new panel reads the stored settings
+    page.evaluate("() => document.querySelectorAll('menstruation-cycle-dashboard-panel').forEach((p) => p.remove())")
+    page.evaluate_handle(make, [hass, ENTITY])
+    page.wait_for_timeout(2500)
+    again = page.evaluate(attr)
+    if not again["teen"] or again["accent"] != now["accent"]:
+        problems.append(f"settings: not kept after reload {again} (before {now})")
+    pressed = page.locator(root + "css=.view-switch [aria-pressed=true]")
+    if pressed.count() != 1 or pressed.first.get_attribute("data-view") != first_id:
+        problems.append("settings: the chosen view is not the active one after reload")
+    page.evaluate("() => { try { localStorage.clear(); } catch (e) { /* none */ } document.querySelectorAll('menstruation-cycle-dashboard-panel').forEach((p) => p.remove()); }")
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -873,6 +926,7 @@ def run(fixture_dir, shots=None):
                     problems += round8_check(page, hass, shots)
                     problems += round9_check(page, hass, shots)
                     problems += teen_check(page, hass, shots)
+                    problems += settings_check(page, hass)
                 else:
                     skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
                     if skip.count():
