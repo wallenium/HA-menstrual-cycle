@@ -3,6 +3,9 @@
 ## 1.10.0
 
 ### Added
+- **Pill card, several forgotten days at once:** "Log several days" turns the open days into toggles; one question, then one entry per picked day (oldest first). Only the days the card offers for a single tap can be picked.
+- **Calendar card, copy a day:** the day dialog has "Like yesterday" and, when an earlier cycle exists, "Like this cycle day last cycle". The entries are filled in for checking and only saved with "Save"; a measured temperature is never copied.
+- **Dashboard panel, card "Compare cycles", curve:** temperature or pain strength of the two picked cycles over the cycle day (second cycle dashed, values in the tooltip). The choice of cycles and curve is remembered per profile in the browser.
 - **Calendar card, several days at once:** the new switch "Several days" lets you tap a first and a last day (past days, at most 31); one dialog then saves the same entries for all of them and can enter them all as period days. A single temperature is not offered for several days.
 - **Dashboard panel, card "This cycle day before":** shows what was logged on the same cycle day in the earlier cycles (up to six) and names a value that came back in at least two of them. Not shown in discreet mode, pregnancy, menarche, menopause and postpartum; off in the "young" preset.
 - **Dashboard panel, card "Week in review":** the last seven days in three lines (days logged, pain strength average and maximum, most frequent entries). Not shown in discreet mode; off in the "young" preset.

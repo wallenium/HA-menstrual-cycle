@@ -22,6 +22,11 @@ const MC_PILL_FALLBACK_EN = {
   pill_card_tap_past: 'Tap to log it for {date}.',
   pill_card_forgot_hint: 'Forgot a pill? Tap its day to log it.',
   pill_card_confirm_past: 'Log the pill for {date}?',
+  pill_card_multi: 'Log several days',
+  pill_card_multi_hint: 'Tap the days you took the pill.',
+  pill_card_multi_save: 'Log {n} pills',
+  pill_card_multi_cancel: 'Cancel',
+  pill_card_confirm_multi: 'Log the pill for {n} days ({from} to {to})?',
   pill_card_new_pack_question: 'No pill is logged since {date}. Does a new pack start today?\n\nOK: yes, new pack from today.\nCancel: no, it is still the same pack (the missed days stay open to log).',
   pill_card_no_pill: 'No pill pack to show. Log "pill" as the contraception method to see your blister.',
   pill_card_state_taken: 'taken',
@@ -131,12 +136,16 @@ class MenstruationPillCard extends HTMLElement {
       for (let day = 1; day <= total; day += 1) {
         const state = this._cellState(pack, day);
         const editable = state === 'missed' && Array.isArray(pack.editable) && pack.editable.includes(day);
+        const picking = editable && this._picked;
+        const picked = picking && this._picked.has(day);
         const label = `${day}: ${this._t(`pill_card_state_${state}`)}${editable ? `. ${this._t('pill_card_tap_past', { date: this._dateLabel(this._cellDate(pack, day)) })}` : ''}`;
         const here = day === pack.position && !pack.new_pack ? ' here' : '';
         const mark = MC_PILL_MARKS[state] ? ` data-mark="${MC_PILL_MARKS[state]}"` : '';
         cells.push(state === 'today'
           ? `<button class="cell today" data-action="take" aria-label="${this._esc(label)}"${this._busy ? ' disabled' : ''}>${day}</button>`
-          : (editable
+          : (picking
+            ? `<button class="cell missed${picked ? ' picked' : ''}" data-action="pick" data-day="${day}"${mark} aria-pressed="${picked}" aria-label="${this._esc(label)}"${this._busy ? ' disabled' : ''}>${day}</button>`
+            : editable
             ? `<button class="cell missed" data-action="take-past" data-day="${day}"${mark} aria-label="${this._esc(label)}" title="${this._esc(label)}"${this._busy ? ' disabled' : ''}>${day}</button>`
             : `<div class="cell ${state}${here}"${mark} role="img" aria-label="${this._esc(label)}">${day}</div>`));
       }
@@ -148,8 +157,17 @@ class MenstruationPillCard extends HTMLElement {
         (state) => `<span class="legend-item"><span class="swatch ${state}"${MC_PILL_MARKS[state] ? ` data-mark="${MC_PILL_MARKS[state]}"` : ''}></span>${this._esc(this._t(`pill_card_state_${state}`))}</span>`,
       ).join('')}</div>`;
       if (Array.isArray(pack.editable) && pack.editable.length) status += ` ${this._t('pill_card_forgot_hint')}`;
+      if (this._picked) {
+        // days that are no longer open (the sensor changed) drop out of the selection
+        const open = new Set(pack.editable || []);
+        this._picked = new Set([...this._picked].filter((day) => open.has(day)));
+      }
+      const count = this._picked ? this._picked.size : 0;
+      const multi = this._picked
+        ? `<div class="multi-row"><span class="multi-hint">${this._esc(this._t('pill_card_multi_hint'))}</span><button type="button" class="multi" data-action="multi-save"${count && !this._busy ? '' : ' disabled'}>${this._esc(this._t('pill_card_multi_save', { n: count }))}</button><button type="button" class="multi ghost" data-action="multi-cancel">${this._esc(this._t('pill_card_multi_cancel'))}</button></div>`
+        : (Array.isArray(pack.editable) && pack.editable.length >= 2 ? `<div class="multi-row"><button type="button" class="multi ghost" data-action="multi"${this._busy ? ' disabled' : ''}>${this._esc(this._t('pill_card_multi'))}</button></div>` : '');
       const error = this._error ? `<div class="error" role="alert">${this._esc(this._t('pill_card_save_error'))}</div>` : '';
-      body = `<div class="blister"${this._busy ? ' aria-busy="true"' : ''}>${cells.join('')}</div>${legend}<div class="status">${this._esc(status)}</div>${error}`;
+      body = `<div class="blister"${this._busy ? ' aria-busy="true"' : ''}>${cells.join('')}</div>${legend}<div class="status">${this._esc(status)}</div>${multi}${error}`;
     }
     // title: '' hides the heading (the dashboard panel renders its own).
     const title = this._config.title ?? this._t('pill_card_title');
@@ -175,6 +193,12 @@ class MenstruationPillCard extends HTMLElement {
                                   border-radius: 50%; padding: 1px 2px; }
         .cell.taken[data-mark]::after { color: var(--primary-color, #9b59b6); }
         .cell.missed[data-mark]::after { color: var(--warning-color, #f39c12); }
+        button.cell.picked { background: var(--warning-color, #f39c12); color: #fff; }
+        .multi-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+        .multi-hint { flex-basis: 100%; font-size: 0.8rem; color: var(--secondary-text-color); }
+        button.multi { font: inherit; font-size: 0.8rem; padding: 4px 12px; border-radius: 999px; cursor: pointer; border: 1px solid var(--primary-color, #9b59b6); background: var(--primary-color, #9b59b6); color: #fff; }
+        button.multi.ghost { background: transparent; color: var(--primary-text-color); border-color: var(--divider-color, #ccc); }
+        button.multi:disabled { opacity: 0.5; cursor: default; }
         .cell:disabled { opacity: 0.6; cursor: progress; }
         .cell:focus-visible { outline: 2px solid var(--primary-color, #9b59b6); outline-offset: 2px; }
         .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 0.75rem; color: var(--secondary-text-color); }
@@ -201,6 +225,36 @@ class MenstruationPillCard extends HTMLElement {
   _onClick(ev) {
     if (this._busy || !this._hass) return;
     const pack = this._hass.states?.[this._config.entity]?.attributes?.pill_pack;
+    const action = ev.target?.closest?.('[data-action]')?.dataset?.action;
+    if (action === 'multi' || action === 'multi-cancel') {
+      this._picked = action === 'multi' ? new Set() : null;
+      this._render();
+      return;
+    }
+    if (action === 'pick') {
+      const day = Number(ev.target.closest('[data-action]').dataset.day);
+      if (!this._picked || !pack || !Array.isArray(pack.editable) || !pack.editable.includes(day)) return;
+      if (!this._picked.delete(day)) this._picked.add(day);
+      this._render();
+      return;
+    }
+    if (action === 'multi-save') {
+      const open = new Set(pack?.editable || []);
+      const days = [...(this._picked || [])].filter((day) => open.has(day)).sort((a, b) => a - b);
+      if (!days.length) return;
+      const dates = days.map((day) => this._cellDate(pack, day));
+      if (!window.confirm(this._t('pill_card_confirm_multi', { n: days.length, from: this._dateLabel(dates[0]), to: this._dateLabel(dates[dates.length - 1]) }))) return;
+      this._picked = null;
+      this._busy = true;
+      this._error = false;
+      this._render();
+      dates.reduce((chain, when) => chain.then(() => this._hass.callService('menstruation_cycle', 'add_symptom', {
+        entity_id: this._config.entity,
+        date: this._iso(when),
+        symptom_data: { contraception_method: 'pill' },
+      })), Promise.resolve()).catch(() => { this._error = true; }).finally(() => { this._busy = false; this._render(); });
+      return;
+    }
     let date;
     let packStart = null; // set when the pack start is settled by a question, so it stops being guessed
     if (ev.target?.closest?.('[data-action="take"]')) {

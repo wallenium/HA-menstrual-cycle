@@ -740,6 +740,55 @@ def round8_check(page, hass, shots=None):
     return problems
 
 
+def round9_check(page, hass, shots=None):
+    """Real browser: several pill days at once, copy buttons in the calendar day dialog, curve in the compare card."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    shadow = "document.querySelector('menstruation-cycle-dashboard-panel').shadowRoot"
+    # compare cycles: curve area and the remembered metric choice
+    if page.locator(root + "css=select[data-action=cc-metric]").count():
+        page.locator(root + "css=select[data-action=cc-metric]").first.select_option("temp")
+        page.wait_for_timeout(200)
+        if not page.locator(root + "css=.cc-chart, .helper").count():
+            problems.append("round9: compare card shows neither curve nor note")
+        stored = page.evaluate("localStorage.getItem('menstruation_cycle_compare')")
+        if not stored or '"temp"' not in stored:
+            problems.append(f"round9: compare choice not remembered: {stored!r}")
+    else:
+        problems.append("round9: compare card has no metric select")
+    # pill card: select mode with three open days
+    handle = page.evaluate_handle("""([h, entity]) => { const el = document.createElement('menstruation-pill-card');
+        el.setConfig({entity, type: 'custom:menstruation-pill-card'});
+        const hh = JSON.parse(JSON.stringify(h)); hh.states[entity].attributes.pill_pack = {active: 21, pause: 7, taken: [1], position: 8, in_pause: false, today_taken: true, new_pack: false, anchored: true, editable: [2, 3, 4]};
+        document.getElementById('root').appendChild(el); el.hass = hh; return el; }""", [hass, ENTITY])
+    page.wait_for_timeout(300)
+    state = handle.evaluate("""(el) => { const r = el.shadowRoot; const click = (sel) => r.querySelector(sel).click();
+        click('[data-action=multi]');
+        const cells = r.querySelectorAll('[data-action=pick]').length;
+        const off = r.querySelector('[data-action=multi-save]').disabled;
+        r.querySelector('[data-action=pick][data-day="3"]').click();
+        r.querySelector('[data-action=pick][data-day="2"]').click();
+        return {cells, off, save: r.querySelector('[data-action=multi-save]').textContent.trim(), disabled: r.querySelector('[data-action=multi-save]').disabled}; }""")
+    if state["cells"] != 3 or not state["off"] or state["disabled"] or "2" not in state["save"]:
+        problems.append(f"round9: pill select mode {state}")
+    elif shots:
+        handle.evaluate("(el) => el.scrollIntoView()")
+        page.screenshot(path=str(Path(shots) / "round9_pill.png"))
+    handle.evaluate("(el) => el.remove()")
+    # calendar: day dialog has the copy buttons, a second one for the same cycle day when an earlier cycle exists
+    cal = page.evaluate_handle("""([h, entity]) => { const el = document.createElement('menstruation-calendar-card');
+        el.setConfig({entity, entities: [entity], type: 'custom:menstruation-calendar-card'});
+        document.getElementById('root').appendChild(el); el.hass = h; return el; }""", [hass, ENTITY])
+    page.wait_for_timeout(400)
+    buttons = cal.evaluate("""async (el) => { const d = new Date(); const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        await el._openSymptomModalForDay(iso); await new Promise((r) => setTimeout(r, 300));
+        return [...el.shadowRoot.querySelectorAll('.sym-copy-btn')].map((b) => b.dataset.copy); }""")
+    if "yesterday" not in buttons:
+        problems.append(f"round9: calendar day dialog copy buttons {buttons}")
+    cal.evaluate("(el) => el.remove()")
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -787,6 +836,7 @@ def run(fixture_dir, shots=None):
                     problems += ui_check(page)
                     problems += round7_check(page, hass, shots)
                     problems += round8_check(page, hass, shots)
+                    problems += round9_check(page, hass, shots)
                 else:
                     skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
                     if skip.count():

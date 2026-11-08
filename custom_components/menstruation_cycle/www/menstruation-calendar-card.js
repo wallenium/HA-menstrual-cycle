@@ -33,6 +33,9 @@ class MenstruationCalendarCard extends HTMLElement {
     this._undo = null; // {iso, data}: the entries of a day that was just deleted, for "Undo"
     this._undoNote = '';
     this._undoTimer = null;
+    this._prefill = null; // {iso, data, seq}: entries copied from another day into the open dialog, not saved yet
+    this._copyNote = '';
+    this._prefillSeq = 0;
   }
 
   static getConfigElement() {
@@ -124,6 +127,10 @@ class MenstruationCalendarCard extends HTMLElement {
         confirm_remove_day: 'Delete all entries of this day? A period day stays.',
         delete_day: 'Delete all entries of this day',
         day_deleted: 'Entries of {date} deleted.',
+        copy_yesterday: 'Like yesterday',
+        copy_cycle_day: 'Like this cycle day last cycle',
+        copy_done: 'Copied from {date}. Check it and save.',
+        copy_empty: 'Nothing logged on {date}.',
         undo_delete: 'Undo',
         undo_done: 'Restored.',
         undo_failed: 'Could not restore everything.',
@@ -843,6 +850,8 @@ class MenstruationCalendarCard extends HTMLElement {
    */
   async _openSymptomModalForDay(iso) {
     await this._refreshSymptomOverrideForDay(iso);
+    this._prefill = null;
+    this._copyNote = '';
     this._modalIso = iso;
     this._render();
     this.dispatchEvent(new CustomEvent('menstruation-calendar-day-click', {
@@ -874,7 +883,7 @@ class MenstruationCalendarCard extends HTMLElement {
     if (!this._modalIso || this._modalClosing) return;
     const day = this._modalIso;
     const finish = () => {
-      this._modalClosing = false; this._modalIso = null; this._modalRange = null; this._rangeMode = false; this._render();
+      this._modalClosing = false; this._modalIso = null; this._modalRange = null; this._rangeMode = false; this._prefill = null; this._copyNote = ''; this._render();
       this.shadowRoot?.querySelector?.(`[data-iso="${day}"]`)?.focus?.({ preventScroll: true }); // back to the day that was open
     };
     this._modalClosing = true;
@@ -958,7 +967,8 @@ class MenstruationCalendarCard extends HTMLElement {
 
     const isPeriodDay = model.confirmedSet.has(iso);
     const range = this._modalRange;
-    const existing = range ? {} : (this._symptomOverrides?.[iso] || model.symptomByDate?.[iso] || {});
+    const stored = range ? {} : (this._symptomOverrides?.[iso] || model.symptomByDate?.[iso] || {});
+    const existing = this._prefill?.iso === iso && !range ? { ...stored, ...this._prefill.data } : stored;
     const isPreMenarche = model.state === 'pre_menarche';
     const isPregnant = Boolean(model.pregnancyInfo?.isPregnant);
     const periodModalContext = this._periodModalContext(iso, model);
@@ -1040,6 +1050,7 @@ class MenstruationCalendarCard extends HTMLElement {
                 <button type="button" class="sym-opt-btn${!isPeriodDay ? ' sym-selected' : ''}" data-cat="_period" data-val="no">✗</button>
               </div>
             </div>`)}
+            ${range ? '' : this._copyRow(iso, model)}
             ${categoryRows}
             ${range ? '' : `<div class="sym-row">
               <div class="sym-cat-head"><ha-icon icon="mdi:thermometer"></ha-icon><span>${this._t('basal_temp_label').replace('{unit}', fahrenheit ? '°F' : '°C')}</span></div>
@@ -1051,12 +1062,57 @@ class MenstruationCalendarCard extends HTMLElement {
             </div>
           </div>
           <div class="sym-footer">
-            ${!range && Object.keys(existing).some((key) => key !== 'date' && key !== 'found') ? `<button type="button" class="btn ghost sym-delete">${this._t('delete_day')}</button>` : ''}
+            ${!range && Object.keys(stored).some((key) => key !== 'date' && key !== 'found') ? `<button type="button" class="btn ghost sym-delete">${this._t('delete_day')}</button>` : ''}
             <button type="button" class="btn sym-save">${saveLabel}</button>
             <button type="button" class="btn ghost sym-cancel">${this._t('cancel')}</button>
           </div>
         </div>
       </div>`;
+  }
+
+  // The same cycle day in the cycle before: the cycle start at or before `iso`, and the one before that.
+  _sameCycleDayBefore(iso, model) {
+    const starts = this._actualCycleStarts(model.stateObj?.attributes);
+    const current = starts.filter((start) => start <= iso).pop();
+    const previous = current ? starts.filter((start) => start < current).pop() : null;
+    if (!previous) return '';
+    const source = this._addDaysToISO(previous, this._dayDiff(iso, current));
+    return source && source < current ? source : '';
+  }
+
+  _copyRow(iso, model) {
+    if (model.missing) return '';
+    const cycleDay = this._sameCycleDayBefore(iso, model);
+    const note = this._copyNote ? `<div class="sym-copy-note" role="status">${this._copyNote}</div>` : '';
+    return `<div class="sym-row sym-copy"><div class="sym-copy-buttons"><button type="button" class="btn ghost sym-copy-btn" data-copy="yesterday">${this._t('copy_yesterday')}</button>${cycleDay ? `<button type="button" class="btn ghost sym-copy-btn" data-copy="cycle">${this._t('copy_cycle_day')}</button>` : ''}</div>${note}</div>`;
+  }
+
+  // Fills the open dialog with the entries of another day (not saved until "Save"). A measured temperature is not copied.
+  async _handleCopyDay(kind) {
+    const iso = this._modalIso;
+    if (!iso || this._modalRange) return;
+    const model = this._buildModel();
+    if (model.missing) return;
+    const source = kind === 'cycle' ? this._sameCycleDayBefore(iso, model) : this._addDaysToISO(iso, -1);
+    if (!source || !window.MenstruationFunctions) return;
+    const locale = this._hass?.locale?.language || 'en';
+    const dt = this._parseISO(source);
+    const label = dt ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(dt) : source;
+    const { data } = await window.MenstruationFunctions.fetchFreshSymptomData(this._hass, model.entityId || this._config?.entity || '', source, '[menstruation-calendar-card]');
+    if (this._modalIso !== iso) return; // closed or switched while loading
+    const copy = {};
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (['date', 'found', 'basal_temp'].includes(key) || value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length)) return;
+      copy[key] = value;
+    });
+    if (Object.keys(copy).length) {
+      this._prefillSeq += 1;
+      this._prefill = { iso, data: copy, seq: this._prefillSeq };
+      this._copyNote = this._t('copy_done').replace('{date}', label);
+    } else {
+      this._copyNote = this._t('copy_empty').replace('{date}', label);
+    }
+    this._render();
   }
 
   _rangeLabel(range, locale) {
@@ -1609,6 +1665,8 @@ class MenstruationCalendarCard extends HTMLElement {
       extra_predicted_count: this._extraPredictedStarts.length,
       undo: this._undo ? this._undo.iso : '',
       undo_note: this._undoNote,
+      prefill: this._prefill ? `${this._prefill.iso}:${this._prefill.seq}` : '',
+      copy_note: this._copyNote,
     });
   }
 
@@ -1808,6 +1866,8 @@ class MenstruationCalendarCard extends HTMLElement {
         .sym-close { background: transparent; border: none; cursor: pointer; font-size: 1rem; color: inherit; opacity: .7; padding: 2px 6px; }
         .sym-close:hover { opacity: 1; }
         .sym-body { overflow-y: auto; padding: 10px 14px; display: grid; gap: 10px; }
+        .sym-copy-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        .sym-copy-note { margin-top: 6px; font-size: .8rem; color: var(--secondary-text-color); }
         .sym-delete { margin-right: auto; color: var(--error-color, #be123c); }
         .sym-footer { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid rgba(128,128,128,.2); justify-content: flex-end; }
         .sym-row { display: grid; gap: 6px; min-width: 0; }
@@ -2004,6 +2064,11 @@ class MenstruationCalendarCard extends HTMLElement {
       // Close on backdrop or close/cancel buttons
       if (ev.target?.closest('.sym-backdrop') || ev.target?.closest('.sym-close') || ev.target?.closest('.sym-cancel')) {
         this._closeModal();
+        return;
+      }
+      const copyBtn = ev.target?.closest('.sym-copy-btn');
+      if (copyBtn) {
+        this._handleCopyDay(copyBtn.getAttribute('data-copy'));
         return;
       }
       // Save

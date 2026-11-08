@@ -1116,6 +1116,92 @@ async function testDeleteDayWithUndo() {
   }
 }
 
+async function testCopyFromAnotherDay() {
+  const realFns = window.MenstruationFunctions;
+  try {
+    const card = new CardClass();
+    card.setConfig({ entity: 'sensor.menstruation' });
+    const hass = makeHass(); // cycle starts 2026-07-02 and 2026-07-30
+    card._hass = hass;
+    const asked = [];
+    const stored = {
+      '2026-07-14': { date: '2026-07-14', found: true, bleeding_strength: 'light', pain: ['cramps'], basal_temp: 36.6, pain_intensity: 4, note: '' },
+      '2026-08-05': { date: '2026-08-05', found: true, mood: 'tired', pain: ['headache'] },
+    };
+    window.MenstruationFunctions = { ...realFns, fetchFreshSymptomData: async (h, e, iso) => { asked.push(iso); return { data: stored[iso] || { date: iso, found: false } }; } };
+    const model = card._buildModel();
+
+    // which day is "the same cycle day last cycle": 2026-08-14 is day 16 of the cycle that started 07-30; day 16 before is 07-17
+    assert.strictEqual(card._sameCycleDayBefore('2026-08-02', model), '2026-07-05', 'cycle day 4 -> cycle day 4 of the cycle before');
+    assert.strictEqual(card._sameCycleDayBefore('2026-07-30', model), '2026-07-02', 'the start day maps to the start day');
+    assert.strictEqual(card._sameCycleDayBefore('2026-07-10', model), '', 'no earlier cycle before the first start');
+    assert.strictEqual(card._sameCycleDayBefore('2026-06-20', model), '', 'before any start');
+    const shortPrev = makeHass(); shortPrev.states['sensor.menstruation'].attributes.grouped_starts = ['2026-07-02', '2026-07-12', '2026-07-30'];
+    card._hass = shortPrev;
+    assert.strictEqual(card._sameCycleDayBefore('2026-08-20', card._buildModel()), '', 'a day later than the earlier cycle lasted has no counterpart');
+    card._hass = hass;
+
+    card._modalIso = '2026-08-05';
+    const html = card._renderSymptomModal('2026-08-05', card._buildModel());
+    assert.ok(html.includes('data-copy="yesterday"') && html.includes('data-copy="cycle"'), 'both buttons');
+    card._modalRange = { from: '2026-08-05', to: '2026-08-06', days: ['2026-08-05', '2026-08-06'] };
+    assert.ok(!card._renderSymptomModal('2026-08-05', card._buildModel()).includes('sym-copy'), 'not for several days');
+    card._modalRange = null;
+    card._modalIso = '2026-07-10';
+    assert.ok(!card._renderSymptomModal('2026-07-10', card._buildModel()).includes('data-copy="cycle"'), 'no cycle button without an earlier cycle');
+    assert.ok(card._renderSymptomModal('2026-07-10', card._buildModel()).includes('data-copy="yesterday"'));
+
+    // copy yesterday into 2026-07-15: everything but the temperature, nothing is saved
+    const calls = [];
+    hass.callService = async (d, svc, data) => { calls.push(svc); };
+    card._modalIso = '2026-07-15';
+    await card._handleCopyDay('yesterday');
+    assert.deepStrictEqual(asked, ['2026-07-14']);
+    assert.deepStrictEqual(card._prefill.data, { bleeding_strength: 'light', pain: ['cramps'], pain_intensity: 4 }, 'no date, found, temperature or empty note');
+    const filled = card._renderSymptomModal('2026-07-15', card._buildModel());
+    assert.ok(filled.includes('value="4"') && /sym-selected[^>]*data-cat="bleeding_strength" data-val="light"|data-cat="bleeding_strength" data-val="light"/.test(filled) && filled.includes('Copied from'), 'the dialog shows the copy and says so');
+    assert.ok(!filled.includes('sym-delete'), 'nothing is stored for that day, so no delete button');
+    assert.deepStrictEqual(calls, [], 'copying saves nothing');
+    assert.ok(card._buildRenderKey().includes('2026-07-15:'), 'the render key knows about the copy');
+
+    // another copy replaces the first one
+    card._modalIso = '2026-08-06';
+    await card._handleCopyDay('yesterday'); // 08-05
+    assert.deepStrictEqual(card._prefill.data, { mood: 'tired', pain: ['headache'] });
+    assert.strictEqual(card._prefill.iso, '2026-08-06');
+
+    // an empty source day: a note, no change
+    card._modalIso = '2026-08-20';
+    const before = card._prefill;
+    await card._handleCopyDay('yesterday');
+    assert.strictEqual(card._prefill, before, 'nothing found: the earlier copy stays');
+    assert.ok(card._copyNote.startsWith('Nothing logged on'));
+
+    // the cycle-day button reads the day in the cycle before
+    card._modalIso = '2026-08-02';
+    asked.length = 0;
+    await card._handleCopyDay('cycle');
+    assert.deepStrictEqual(asked, ['2026-07-05']);
+
+    // closed while loading: the answer is dropped
+    card._modalIso = '2026-07-15';
+    card._prefill = null;
+    window.MenstruationFunctions = { ...realFns, fetchFreshSymptomData: async () => { card._modalIso = null; return { data: stored['2026-07-14'] }; } };
+    await card._handleCopyDay('yesterday');
+    assert.strictEqual(card._prefill, null);
+
+    // reopening a day starts without the copy
+    window.MenstruationFunctions = { ...realFns, fetchFreshSymptomData: async () => ({ data: null }) };
+    card._prefill = { iso: '2026-07-15', data: { pain: ['cramps'] }, seq: 9 };
+    card._copyNote = 'x';
+    await card._openSymptomModalForDay('2026-07-15');
+    assert.strictEqual(card._prefill, null);
+    assert.strictEqual(card._copyNote, '');
+  } finally {
+    window.MenstruationFunctions = realFns;
+  }
+}
+
 function testPainStrengthInTheMonthGrid() {
   const card = new CardClass();
   card.setConfig({ entity: 'sensor.menstruation' });
@@ -1151,6 +1237,7 @@ function testPainStrengthInTheMonthGrid() {
 
 [
   testDeleteDayWithUndo,
+  testCopyFromAnotherDay,
   testPainStrengthInTheMonthGrid,
   testRegistration,
   testWeekStartOption,

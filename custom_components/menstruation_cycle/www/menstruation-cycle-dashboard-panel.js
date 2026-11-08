@@ -998,7 +998,8 @@
       this._viewCodeText = '';
       this._swipe = null;
       this._historySearch = { q: '', category: '', range: '90', limit: 30 };
-      this._compare = { a: '', b: '' }; // start dates of the two cycles in the comparison card
+      this._compare = { a: '', b: '', metric: '' }; // start dates of the two cycles and the curve shown in the comparison card
+      this._compareProfile = null;
       // Cross-profile household summary (Runde 37, Nachtrag zu Punkt 87 -
       // "kriegen wir aber nicht ins cycle dashboard?") - fetched via the
       // get_household_summary service and shown as a compact bar above the
@@ -4840,8 +4841,9 @@
         return;
       }
 
-      if (target.tagName === 'SELECT' && ['cc-a', 'cc-b'].includes(target.dataset.action)) {
-        this._compare[target.dataset.action === 'cc-a' ? 'a' : 'b'] = target.value;
+      if (target.tagName === 'SELECT' && ['cc-a', 'cc-b', 'cc-metric'].includes(target.dataset.action)) {
+        this._compare[{ 'cc-a': 'a', 'cc-b': 'b', 'cc-metric': 'metric' }[target.dataset.action]] = target.value;
+        this._saveCompare();
         this.render();
         return;
       }
@@ -7728,10 +7730,79 @@
       }).reverse();
     }
 
+    // The choice (two cycles, curve) is remembered per profile in this browser.
+    _loadCompare() {
+      if (this._compareProfile === this._activeProfile) return;
+      this._compareProfile = this._activeProfile;
+      let saved = null;
+      try {
+        saved = (safeJsonParse(localStorage.getItem('menstruation_cycle_compare')) || {})[this._activeProfile];
+      } catch (_error) {
+        saved = null;
+      }
+      this._compare = { a: saved?.a || '', b: saved?.b || '', metric: saved?.metric || '' };
+    }
+
+    _saveCompare() {
+      try {
+        const all = safeJsonParse(localStorage.getItem('menstruation_cycle_compare')) || {};
+        all[this._activeProfile] = { ...this._compare };
+        localStorage.setItem('menstruation_cycle_compare', JSON.stringify(all));
+      } catch (_error) {
+        // no storage: the choice just lasts for this session
+      }
+    }
+
+    // Temperature or pain strength of two cycles over the cycle day.
+    _renderCompareChart(stateObj, cycleA, cycleB, metric, dateLabel) {
+      const history = this._getFullSymptomHistory(stateObj);
+      const byDate = new Map((Array.isArray(history) ? history : []).filter((entry) => entry?.date).map((entry) => [entry.date, entry]));
+      const unit = this._temperatureUnit(stateObj?.attributes || {});
+      const read = (entry) => {
+        if (metric === 'pain') {
+          const value = entry?.pain_intensity ?? entry?.symptom_data?.pain_intensity;
+          return Number.isInteger(value) ? value : null;
+        }
+        const value = entry?.basal_temp ?? entry?.symptom_data?.basal_temp;
+        return value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
+      };
+      const series = [cycleA, cycleB].map((cycle) => Array.from({ length: cycle.length }, (_, i) => {
+        const date = addDaysIso(cycle.start, i);
+        return { day: i + 1, date, value: read(byDate.get(date)) };
+      }).filter((point) => point.value !== null));
+      if (series.flat().length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_cc_chart_none'))}</div>`;
+      const W = 560; const H = 180; const padL = 38; const padR = 10; const padT = 10; const padB = 24;
+      const maxDay = Math.max(cycleA.length, cycleB.length, 2);
+      const values = series.flat().map((point) => point.value);
+      const lo = metric === 'pain' ? 0 : Math.min(...values) - 0.1;
+      const hi = metric === 'pain' ? 10 : Math.max(...values) + 0.1;
+      const toX = (day) => padL + ((day - 1) / (maxDay - 1)) * (W - padL - padR);
+      const toY = (value) => padT + (1 - (value - lo) / (hi - lo || 1)) * (H - padT - padB);
+      const grid = [lo, (lo + hi) / 2, hi].map((value) => `<line x1="${padL}" x2="${W - padR}" y1="${Math.round(toY(value))}" y2="${Math.round(toY(value))}" stroke="var(--divider-color,#e5e7eb)" stroke-width="1"/><text x="4" y="${Math.round(toY(value)) + 3}" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${metric === 'pain' ? Math.round(value) : this._displayTemperature(value, unit)}</text>`).join('');
+      const ticks = Array.from({ length: Math.floor(maxDay / 7) + 1 }, (_, i) => (i === 0 ? 1 : i * 7)).filter((day) => day <= maxDay);
+      const xLabels = ticks.map((day) => `<text x="${Math.round(toX(day))}" y="${H - 8}" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--secondary-text-color,#9ca3af)">${day}</text>`).join('');
+      const colors = ['var(--mc-rose-deep)', 'var(--mc-sage-deep,#3F5A47)'];
+      const dashes = ['', ' stroke-dasharray="6 4"'];
+      const lines = series.map((points, i) => {
+        if (!points.length) return '';
+        const path = points.map((point, j) => `${j === 0 ? 'M' : 'L'}${Math.round(toX(point.day))},${Math.round(toY(point.value))}`).join(' ');
+        const dots = points.map((point) => {
+          const text = metric === 'pain' ? `${point.value}/10` : `${this._displayTemperature(point.value, unit, 2)} ${unit}`;
+          const x = Math.round(toX(point.day)); const y = Math.round(toY(point.value));
+          return `<circle cx="${x}" cy="${y}" r="2.6" fill="${colors[i]}"/><circle cx="${x}" cy="${y}" r="9" fill="transparent"${this._tip(point.date, `${this._t('dashboard_cc_day').replace('{n}', String(point.day))} · ${text}`)}/>`;
+        }).join('');
+        return `<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="2"${dashes[i]} stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
+      }).join('');
+      const legend = [cycleA, cycleB].map((cycle, i) => `<span class="cc-key"><svg width="22" height="8" aria-hidden="true"><line x1="1" x2="21" y1="4" y2="4" stroke="${colors[i]}" stroke-width="2"${dashes[i]}/></svg>${escapeHtml(dateLabel(cycle.start))}</span>`).join('');
+      const label = `${this._t(metric === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp')}: ${dateLabel(cycleA.start)} / ${dateLabel(cycleB.start)}`;
+      return `<div class="cc-chart" role="img" aria-label="${escapeHtml(label)}"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;">${grid}${xLabels}${lines}</svg><div class="cc-legend">${legend}</div></div>`;
+    }
+
     _renderCycleCompare(stateObj) {
       if (NON_CYCLE_STATES.includes(String(stateObj?.state || ''))) return '';
       const cycles = this._compareCycles(stateObj);
       if (cycles.length < 2) return `<div class="helper">${escapeHtml(this._t('dashboard_not_enough_data'))}</div>`;
+      this._loadCompare();
       const pick = (start, fallback) => cycles.find((cycle) => cycle.start === start) || fallback;
       const a = pick(this._compare.a, cycles[0]);
       const b = pick(this._compare.b, cycles.find((cycle) => cycle !== a) || cycles[1]);
@@ -7755,8 +7826,13 @@
       const right = column(b);
       const labels = ['dashboard_cc_length', 'dashboard_cc_logged', 'dashboard_wr_pain', 'dashboard_wr_common'];
       const rows = labels.map((key, i) => `<tr><th scope="row">${escapeHtml(this._t(key))}</th><td>${escapeHtml(left[i])}</td><td>${escapeHtml(right[i])}</td></tr>`).join('');
+      const painShown = this._prefs?.categoryVisibility?.pain !== false;
+      const metrics = painShown ? ['temp', 'pain'] : ['temp'];
+      const metric = metrics.includes(this._compare.metric) ? this._compare.metric : 'temp';
+      const metricSelect = `<select data-action="cc-metric" aria-label="${escapeHtml(this._t('dashboard_cc_curve'))}">${metrics.map((key) => `<option value="${key}"${key === metric ? ' selected' : ''}>${escapeHtml(this._t(key === 'pain' ? 'dashboard_cc_metric_pain' : 'dashboard_cc_metric_temp'))}</option>`).join('')}</select>`;
       return `<div class="cc-pick">${select('a', a, this._t('dashboard_cc_first'))}${select('b', b, this._t('dashboard_cc_second'))}</div>
-        <table class="cc-table"><tbody>${rows}</tbody></table>`;
+        <table class="cc-table"><tbody>${rows}</tbody></table>
+        <div class="cc-metric">${metricSelect}</div>${this._renderCompareChart(stateObj, a, b, metric, date)}`;
     }
 
     _historySearchRows(stateObj) {
@@ -9166,6 +9242,11 @@
           .cc-table th { width: 28%; text-align: left; font-weight: 400; color: var(--secondary-text-color); }
           .cc-table th, .cc-table td { padding: 5px 6px 5px 0; border-top: 1px solid var(--divider-color, #e5e7eb); vertical-align: top; overflow-wrap: anywhere; }
           .cc-table td { padding-left: 6px; font-weight: 600; }
+          .cc-metric { margin-top: 10px; }
+          .cc-metric select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; font: inherit; font-size: .82rem; }
+          .cc-chart { margin-top: 8px; }
+          .cc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: .75rem; color: var(--secondary-text-color); }
+          .cc-key { display: inline-flex; align-items: center; gap: 5px; }
           .wr-share { align-self: flex-start; margin-top: 8px; padding: 4px 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: .8rem; }
           .wr-day { flex: 1; text-align: center; padding: 5px 0; border-radius: 8px; background: var(--mc-sand); font-size: .75rem; color: var(--secondary-text-color); }
           .wr-day.on { background: var(--mc-accent-solid); color: #fff; font-weight: 600; }
