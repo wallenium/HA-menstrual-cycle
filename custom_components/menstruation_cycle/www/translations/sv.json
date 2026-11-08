@@ -1146,6 +1146,8 @@
   "dashboard_offline": "Ingen anslutning till Home Assistant. Du ser de senast mottagna uppgifterna.",
   "dashboard_history_failed": "Hela historiken kunde inte läsas in. Vissa kort kan vara ofullständiga.",
   "dashboard_retry": "Försök igen",
+  "dashboard_quick_frequent": "Ofta hos dig",
+  "dashboard_history_loading": "Historiken läses in",
   "dashboard_view_templates": "Mallar",
   "dashboard_tpl_doctor": "Läkarbesök",
   "dashboard_tpl_travel": "På språng",

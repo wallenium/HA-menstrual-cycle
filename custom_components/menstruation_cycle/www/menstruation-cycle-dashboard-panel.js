@@ -1024,6 +1024,11 @@
       this._boundDragPointerDown = (event) => this._handleDragPointerDown(event);
       this._boundDragPointerMove = (event) => this._handleDragPointerMove(event);
       this._boundDragPointerUp = (event) => this._handleDragPointerUp(event);
+      this._boundScroll = () => this._rememberScroll();
+      this._scrollMemo = null;
+      this._scrollSlotDone = null;
+      this._scrollRestoring = false;
+      this._scrollTimer = null;
     }
 
     disconnectedCallback() {
@@ -1032,9 +1037,11 @@
       // destroyed with the element) so they don't need explicit removal here, and the
       // setTimeout-based resource-loading polls are self-terminating.
       this._dragState = null;
+      window.removeEventListener?.('scroll', this._boundScroll);
     }
 
     connectedCallback() {
+      window.addEventListener?.('scroll', this._boundScroll, { passive: true });
       this.shadowRoot?.addEventListener('click', this._boundHandleClick);
       this.shadowRoot?.addEventListener('change', this._boundHandleChange);
       this.shadowRoot?.addEventListener('input', this._boundHandleQuickLogSearchInput);
@@ -1857,6 +1864,69 @@
         // localStorage may be unavailable (e.g. Safari private mode)
       }
       return this._normalizePrefs(raw, profile, mode);
+    }
+
+    // Scroll position per profile and view (localStorage, one small map): the panel opens where you left it.
+    _scrollSlot() {
+      return this._prefs && this._activeProfile ? `${this._activeProfile}|${this._activeViewId(this._prefs)}` : null;
+    }
+
+    _scrollMap() {
+      if (!this._scrollMemo) {
+        try {
+          this._scrollMemo = safeJsonParse(localStorage.getItem('menstruation_cycle_scroll')) || {};
+        } catch (_error) {
+          this._scrollMemo = {};
+        }
+      }
+      return this._scrollMemo;
+    }
+
+    _rememberScroll() {
+      if (this._editMode) return;
+      clearTimeout(this._scrollTimer);
+      this._scrollTimer = setTimeout(() => {
+        const slot = this._scrollSlot();
+        if (!slot || this._scrollRestoring) return;
+        const y = Math.round(window.scrollY || 0);
+        const map = this._scrollMap();
+        if (y > 80) map[slot] = y;
+        else delete map[slot];
+        try {
+          localStorage.setItem('menstruation_cycle_scroll', JSON.stringify(map));
+        } catch (_error) {
+          // localStorage may be unavailable
+        }
+      }, 300);
+    }
+
+    // After a render: the first time a profile+view is shown, go back to the remembered position. Late-loading cards make the page taller, so try again (only while the user has not scrolled on their own).
+    _restoreScroll() {
+      const slot = this._scrollSlot();
+      if (this._editMode || !slot || slot === this._scrollSlotDone || !this.shadowRoot?.querySelector?.('[data-card]')) return;
+      const first = this._scrollSlotDone === null;
+      this._scrollSlotDone = slot;
+      const y = this._scrollMap()[slot] || 0;
+      if (first && !y) return;
+      this._scrollRestoring = true;
+      this._scrollAttempt(y, [500, 1200]);
+    }
+
+    _scrollAttempt(y, delays) {
+      const go = () => {
+        window.scrollTo?.(0, y);
+        const at = window.scrollY || 0;
+        if (!delays.length || Math.abs(at - y) <= 4) {
+          this._scrollRestoring = false;
+          return;
+        }
+        setTimeout(() => {
+          if (Math.abs((window.scrollY || 0) - at) > 4) this._scrollRestoring = false; // the user scrolled meanwhile
+          else this._scrollAttempt(y, delays.slice(1));
+        }, delays[0]);
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+      else go();
     }
 
     _savePrefs() {
@@ -4028,6 +4098,27 @@
     }
 
 
+    // The options this profile logs most often (last 90 days, at least 3 times), for one-tap chips on top of the dialog.
+    _frequentOptions(stateObj, fields) {
+      const days = new Date(`${this._todayIso()}T12:00:00`);
+      days.setDate(days.getDate() - 90);
+      const cutoff = `${days.getFullYear()}-${String(days.getMonth() + 1).padStart(2, '0')}-${String(days.getDate()).padStart(2, '0')}`;
+      const counts = new Map();
+      (this._getFullSymptomHistory(stateObj) || []).forEach((entry) => {
+        if (!entry?.date || entry.date < cutoff) return;
+        fields.forEach((cat) => {
+          if (cat.key === 'contraception_method' || cat.hiddenInModal) return; // the pill has its own card and would top every list
+          const value = entry[cat.key];
+          (Array.isArray(value) ? value : (value ? [value] : [])).forEach((opt) => {
+            if (!(cat.options || []).includes(opt)) return;
+            const id = `${cat.key}\u0000${opt}`;
+            counts.set(id, { cat, opt, n: (counts.get(id)?.n || 0) + 1 });
+          });
+        });
+      });
+      return [...counts.values()].filter((item) => item.n >= 3).sort((a, b) => b.n - a.n).slice(0, 6);
+    }
+
     _renderQuickLogModal(stateObj) {
       if (!this._quickLogOpen) {
         this._quickLogPopped = false;
@@ -4116,9 +4207,21 @@
               <input type="number" min="0" max="10" step="1" data-action="quick-log-pain-intensity" value="${Number.isInteger(this._quickLogSelections.pain_intensity) ? this._quickLogSelections.pain_intensity : ''}" aria-label="${escapeHtml(painLabel)}" style="width:80px;padding:5px 8px;border-radius:8px;border:1px solid var(--divider-color,#e5e7eb);background:var(--card-background-color,#fff);color:inherit;" />
             </div>` : '';
 
+      // "Often for you": one-tap chips (same buttons as the tiles below, so selecting works the same); hidden while searching.
+      const frequent = !searchTerm && window.MenstruationFunctions ? this._frequentOptions(stateObj, visibleFields) : [];
+      const frequentRow = frequent.length ? `
+            <div class="sym-row sym-frequent" style="grid-column:1/-1;">
+              <div class="sym-cat-head"><span>${escapeHtml(this._t('dashboard_quick_frequent'))}</span></div>
+              <div class="sym-options-wrap"><div class="sym-options">${frequent.map(({ cat, opt }) => {
+                const current = cat.multi ? (Array.isArray(this._quickLogSelections[cat.key]) ? this._quickLogSelections[cat.key] : []) : [this._quickLogSelections[cat.key]];
+                const isSelected = current.includes(opt);
+                return `<button type="button" class="sym-opt-btn sym-quick-chip${isSelected ? ' sym-selected' : ''}" data-action="${cat.multi ? 'quick-log-toggle-multi' : 'quick-log-select'}" data-key="${escapeHtml(cat.key)}" data-val="${escapeHtml(opt)}" aria-pressed="${isSelected}"><span class="sym-opt-text">${escapeHtml(`${tCategory(cat.key)}: ${tOption(opt)}`)}</span></button>`;
+              }).join('')}</div></div>
+            </div>` : '';
+
       const rowsOrFallback = !window.MenstruationFunctions
         ? `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_loading') || 'Wird geladen, bitte kurz erneut versuchen …')}</p>`
-        : ((rows + painStrengthRow) || `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_no_match') || 'Keine passende Kategorie gefunden.')}</p>`);
+        : ((frequentRow + rows + painStrengthRow) || `<p class="helper" style="grid-column:1/-1;">${escapeHtml(this._t('dashboard_quick_log_no_match') || 'Keine passende Kategorie gefunden.')}</p>`);
 
       return `
         <div class="mc-modal-backdrop${popClass}" role="presentation">
@@ -6456,6 +6559,14 @@
       const key = this._historyKey(stateObj);
       if (!key || !this._historyErrors.has(key)) return '';
       return `<div class="status-banner" role="status"><span>${escapeHtml(this._t('dashboard_history_failed'))}</span><button type="button" data-action="retry-history">${escapeHtml(this._t('dashboard_retry'))}</button></div>`;
+    }
+
+    // Thin bar under the header while the long history loads (one service call, so no real percentage: it just runs).
+    _renderLoadBar(stateObj) {
+      const key = this._historyKey(stateObj);
+      if (this._editMode || !key || !this._fullHistoryFetching.has(key) || this._hass?.connected === false) return '';
+      const label = escapeHtml(this._t('dashboard_history_loading'));
+      return `<div class="load-bar" role="progressbar" aria-busy="true" aria-label="${label}" title="${label}"><span></span></div>`;
     }
 
     _retryHistory() {
@@ -8924,6 +9035,9 @@
           .status-banner.warn { border-left-color: var(--error-color, #dc2626); }
           .status-banner button { flex: none; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--divider-color, #d1d5db); background: var(--card-background-color, #fff); color: inherit; cursor: pointer; font: inherit; font-size: .82rem; }
           .card.is-syncing { opacity: .62; transition: opacity .2s; }
+          .load-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--mc-rose-deep) 18%, transparent); }
+          .load-bar span { display: block; height: 100%; width: 40%; border-radius: 3px; background: var(--mc-accent-solid, #C43F5E); animation: mc-load 1.1s ease-in-out infinite; }
+          @keyframes mc-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
           .cde-list, .wr-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
           .cde-row { display: grid; gap: 4px; }
           .cde-when, .cde-none { font-size: .8rem; color: var(--secondary-text-color); }
@@ -9131,6 +9245,8 @@
           }
           .sym-opt-btn:hover { border-color: var(--primary-color); }
           .sym-opt-btn.sym-selected { background: var(--error-color, #be123c); color: #fff; border-color: var(--error-color, #be123c); }
+          .sym-opt-btn.sym-quick-chip { flex: 0 0 auto; width: auto; min-height: 0; flex-direction: row; padding: 7px 14px; border-radius: 999px; }
+          .sym-quick-chip .sym-opt-text { max-width: none; font-size: .8rem; }
           .sym-opt-icon, .sym-opt-btn img { width: 64px; height: 64px; object-fit: contain; flex: 0 0 auto; border-radius: 12px; }
           .sym-opt-text { font-size: .72rem; line-height: 1.15; text-align: center; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .sym-options-wrap { position: relative; min-width: 0; }
@@ -9955,6 +10071,7 @@
               ${!this._editMode ? `<button type="button" class="icon-only" data-action="toggle-edit" aria-label="${this._t('dashboard_edit_mode')}" title="${this._t('dashboard_edit_mode')}"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ''}
             </div>
             ${this._editMode || isFreshProfile ? '' : this._renderSubnav(shown)}
+            ${this._renderLoadBar(stateObj)}
           </header>
           ${this._renderStatusBanner(stateObj)}
           ${this._renderHouseholdSummary(availableEntities, discreetMode)}
@@ -9973,6 +10090,7 @@
       `;
       this._applyLook(this._look());
       this._mountEmbeddedCards();
+      this._restoreScroll();
       this._messageShown = this._message || null;
       if (enter) {
         this._enterPlayed = true;

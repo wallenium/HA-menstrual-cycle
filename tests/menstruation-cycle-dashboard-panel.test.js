@@ -1784,6 +1784,152 @@ const makeHass = (stateObj) => ({
   assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'general').widgetVisibility.history_search, true);
   assert.strictEqual(hsPanel._normalizePrefs(null, 'a', 'young').widgetVisibility.history_search, false);
 
+  // ---- Round 7: frequent options as chips, loading bar, scroll position ----
+  {
+    const realFns = global.window.MenstruationFunctions;
+    global.window.MenstruationFunctions = {
+      getSymptomConfig: () => [
+        { key: 'pain', multi: true, options: ['cramps', 'headache', 'back', 'o4', 'o5', 'o6', 'o7', 'o8'] },
+        { key: 'mood', options: ['good', 'bad'] },
+        { key: 'contraception_method', options: ['pill'] },
+      ],
+      normalizeOptionKey: (v) => v, renderOptionIcon: () => '', renderCategoryIcon: () => '',
+    };
+    const daysBack = (n) => { const d = new Date(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}T12:00:00`); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const hist = [];
+    for (let i = 1; i <= 4; i += 1) hist.push({ date: daysBack(i), pain: ['headache'] });
+    for (let i = 5; i <= 6; i += 1) hist.push({ date: daysBack(i), pain: ['cramps'] }); // only twice: not frequent
+    for (let i = 7; i <= 9; i += 1) hist.push({ date: daysBack(i), mood: 'good' }); // single-select field, exactly 3
+    for (let i = 10; i <= 14; i += 1) hist.push({ date: daysBack(i), contraception_method: 'pill' }); // never offered
+    for (let i = 100; i <= 105; i += 1) hist.push({ date: daysBack(i), mood: 'bad' }); // older than 90 days
+    const fqState = { ...makeState({ symptom_history: hist, grouped_starts: fiveStarts }), state: 'follicular' };
+    const fq = await freshPanel();
+    fq._quickLogOpen = true;
+    fq._quickLogSelections = {};
+    const found = fq._frequentOptions(fqState, global.window.MenstruationFunctions.getSymptomConfig()).map((i) => `${i.cat.key}:${i.opt}`);
+    assert.deepStrictEqual(found, ['pain:headache', 'mood:good'], 'most often first; under 3 times, the pill and older than 90 days are left out');
+    const fqHtml = fq._renderQuickLogModal(fqState);
+    assert.ok(fqHtml.includes('sym-frequent') && /sym-frequent[\s\S]*?data-action="quick-log-toggle-multi" data-key="pain" data-val="headache"/.test(fqHtml), 'chips sit on top of the dialog');
+    assert.ok(/sym-frequent[\s\S]*?data-action="quick-log-select" data-key="mood" data-val="good"/.test(fqHtml), 'single-select options keep their own action');
+    fq._quickLogCategorySearch = 'mood';
+    assert.ok(!fq._renderQuickLogModal(fqState).includes('sym-frequent'), 'no chips while searching');
+    fq._quickLogCategorySearch = '';
+    fq._handleClick({ target: new ClickTarget({ action: 'quick-log-toggle-multi', key: 'pain', val: 'headache' }) });
+    assert.deepStrictEqual(fq._quickLogSelections.pain, ['headache'], 'a tap on the chip selects it');
+    assert.ok(/sym-frequent[\s\S]*?sym-selected" data-action="quick-log-toggle-multi" data-key="pain" data-val="headache" aria-pressed="true"/.test(fq._renderQuickLogModal(fqState)), 'and the chip shows it');
+    const many = [];
+    ['cramps', 'headache', 'back', 'o4', 'o5', 'o6', 'o7', 'o8'].forEach((opt) => { for (let i = 1; i <= 3; i += 1) many.push({ date: daysBack(i), pain: [opt] }); });
+    assert.strictEqual(fq._frequentOptions({ ...fqState, attributes: { ...fqState.attributes, symptom_history: many } }, global.window.MenstruationFunctions.getSymptomConfig()).length, 6, 'at most six chips');
+    global.window.MenstruationFunctions = realFns;
+
+    // loading bar
+    const lb = await freshPanel();
+    const lbState = lb._hass.states[lb._selectedEntityId];
+    assert.strictEqual(lb._renderLoadBar(lbState), '', 'nothing while idle');
+    lb._fullHistoryFetching.add(lb._historyKey(lbState));
+    assert.ok(/role="progressbar" aria-busy="true"/.test(lb._renderLoadBar(lbState)), 'a bar while the history loads');
+    lb._editMode = true;
+    assert.strictEqual(lb._renderLoadBar(lbState), '', 'not in the edit mode');
+    lb._editMode = false;
+    lb._hass.connected = false;
+    assert.strictEqual(lb._renderLoadBar(lbState), '', 'not without a connection (the notice says so)');
+    lb._hass.connected = true;
+    lb._fullHistoryFetching.clear();
+
+    // scroll position per profile and view
+    const sp = await freshPanel();
+    const timers = [];
+    const realST = global.setTimeout;
+    global.setTimeout = (fn, ms) => { timers.push([fn, ms]); return timers.length; };
+    const scrolls = [];
+    let pageHeight = 1000;
+    global.window.scrollTo = (x, y) => { scrolls.push(y); global.window.scrollY = Math.min(y, pageHeight); };
+    const runTimers = (ms) => timers.splice(0).filter(([, t]) => t === ms).forEach(([fn]) => fn());
+    sp.shadowRoot.querySelector = () => ({});
+    global.window.scrollY = 600;
+    sp._rememberScroll();
+    runTimers(300);
+    const slot = sp._scrollSlot();
+    assert.strictEqual(JSON.parse(storage.get('menstruation_cycle_scroll'))[slot], 600, 'position saved for profile+view');
+    global.window.scrollY = 20;
+    sp._rememberScroll();
+    runTimers(300);
+    assert.ok(!(slot in JSON.parse(storage.get('menstruation_cycle_scroll'))), 'near the top: nothing to remember');
+    global.window.scrollY = 600;
+    sp._rememberScroll();
+    runTimers(300);
+    sp._editMode = true;
+    global.window.scrollY = 900;
+    sp._rememberScroll();
+    runTimers(300);
+    assert.strictEqual(JSON.parse(storage.get('menstruation_cycle_scroll'))[slot], 600, 'edit mode does not overwrite it');
+    sp._editMode = false;
+
+    const savedScroll = storage.get('menstruation_cycle_scroll');
+    const sp2 = await freshPanel(); // new page load (freshPanel empties the storage, so put the memory back)
+    storage.set('menstruation_cycle_scroll', savedScroll);
+    sp2.shadowRoot.querySelector = () => ({});
+    sp2._scrollSlotDone = null;
+    pageHeight = 100; // cards still loading: the page is short
+    global.window.scrollY = 0;
+    scrolls.length = 0;
+    sp2._restoreScroll();
+    assert.deepStrictEqual(scrolls, [600], 'goes back to the remembered position');
+    assert.strictEqual(sp2._scrollRestoring, true, 'not remembered while restoring');
+    pageHeight = 1000; // cards arrived
+    runTimers(500);
+    assert.deepStrictEqual(scrolls, [600, 600], 'tries again when the page was too short');
+    assert.strictEqual(global.window.scrollY, 600);
+    assert.strictEqual(sp2._scrollRestoring, false, 'done once it is there');
+    scrolls.length = 0;
+    sp2._restoreScroll();
+    assert.deepStrictEqual(scrolls, [], 'only once per profile and view');
+    // user scrolls on their own while the page was short: no second attempt
+    sp2._scrollSlotDone = null;
+    pageHeight = 100;
+    sp2._restoreScroll();
+    global.window.scrollY = 50;
+    pageHeight = 1000;
+    scrolls.length = 0;
+    runTimers(500);
+    assert.deepStrictEqual(scrolls, [], 'the page is not pulled away from a user who scrolled');
+    assert.strictEqual(sp2._scrollRestoring, false);
+    // another view without a memory starts at the top; the very first load without memory does nothing
+    storage.delete('menstruation_cycle_scroll');
+    sp2._scrollMemo = null;
+    sp2._scrollSlotDone = 'other|view';
+    scrolls.length = 0;
+    sp2._restoreScroll();
+    assert.deepStrictEqual(scrolls, [0], 'switching to a view without memory scrolls to the top');
+    // restoring in progress: the scroll events it causes are not remembered
+    storage.set('menstruation_cycle_scroll', savedScroll);
+    sp2._scrollMemo = null;
+    sp2._scrollRestoring = true;
+    global.window.scrollY = 123;
+    sp2._rememberScroll();
+    sp2._scrollRestoring = false; // the restore finishes after the timer was set: the timer must still check
+    sp2._scrollRestoring = true;
+    runTimers(300);
+    assert.strictEqual(storage.get('menstruation_cycle_scroll'), savedScroll, 'nothing is written while restoring');
+    sp2._scrollRestoring = false;
+    // edit mode: the page is not moved
+    sp2._editMode = true;
+    sp2._scrollSlotDone = null;
+    scrolls.length = 0;
+    sp2._restoreScroll();
+    assert.deepStrictEqual(scrolls, [], 'no restoring in the edit mode');
+    sp2._editMode = false;
+    const sp3 = await freshPanel();
+    sp3.shadowRoot.querySelector = () => ({});
+    sp3._scrollSlotDone = null;
+    scrolls.length = 0;
+    sp3._restoreScroll();
+    assert.deepStrictEqual(scrolls, [], 'first load without memory: leave the scroll position alone');
+    global.setTimeout = realST;
+    delete global.window.scrollTo;
+    delete global.window.scrollY;
+  }
+
   console.log('All extended dashboard edit mode tests passed.');
 })().catch((error) => {
   console.error(error);

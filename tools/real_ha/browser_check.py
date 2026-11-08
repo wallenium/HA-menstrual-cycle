@@ -496,7 +496,7 @@ def pain_week_search_check(page):
     # week ahead: a forecast window two days from now
     page.evaluate(f"""() => {{ const p = {panel_js}; const e = p._selectedEntityId;
         const d = (n) => {{ const x = new Date(); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }};
-        p._hass.states[e] = {{...window.__saved, attributes: {{...window.__saved.attributes, period_forecast: {{window_start: d(2), window_end: d(3)}}}}}}; p.render(); }}""")
+        p._hass.states[e] = {{...window.__saved, state: 'follicular', attributes: {{...window.__saved.attributes, period_forecast: {{window_start: d(2), window_end: d(3)}}}}}}; p.render(); }}""")
     page.wait_for_timeout(300)
     item = page.locator(root + "css=.week-list .week-period")
     if item.count() != 1:
@@ -627,6 +627,56 @@ def round5_check(page, shots=None):
     return problems
 
 
+def round7_check(page, hass, shots=None):
+    """Real browser: frequent chips in the quick-log dialog, the scroll position survives a new page load, no loading bar left over."""
+    problems = []
+    root = "menstruation-cycle-dashboard-panel >> "
+    page.evaluate("window.scrollTo(0, 0)")
+    page.evaluate("""() => { const p = document.querySelector('menstruation-cycle-dashboard-panel'); const e = p._selectedEntityId;
+        const d = (n) => { const x = new Date(); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+        const history = [1, 2, 3, 4].map((n) => ({date: d(n), spotting: 'brown', discharge: 'white'}));
+        const st = p._hass.states[e]; const key = p._historyKey(st); window.__cache = p._fullHistoryCache[key];
+        p._fullHistoryCache[key] = {symptom_history: history, product_usage: [], stamp: st.last_updated || null, days: 730}; p.render(); }""")
+    page.locator(root + "css=.toolbar .log-icon").click()
+    page.wait_for_timeout(400)
+    if not page.locator(root + "css=.sym-frequent .sym-opt-btn").count():
+        problems.append("round7: no frequent chips although four days with the same entries are logged")
+    if shots:
+        page.screenshot(path=str(Path(shots) / "round7_quick_log.png"))
+    chips = page.locator(root + "css=.sym-frequent .sym-opt-btn")
+    if chips.count():
+        chips.first.click()
+        page.wait_for_timeout(150)
+        if page.locator(root + "css=.sym-frequent .sym-opt-btn").first.get_attribute("aria-pressed") != "true":
+            problems.append("round7: a tap on a frequent chip did not select it")
+    page.locator(root + "css=[data-action=quick-log-close]").first.click()
+    page.evaluate("() => { const p = document.querySelector('menstruation-cycle-dashboard-panel'); p._fullHistoryCache[p._historyKey(p._hass.states[p._selectedEntityId])] = window.__cache; p.render(); }")
+    page.wait_for_timeout(200)
+
+    if shots:  # the loading bar for a moment: pretend the history is loading
+        page.evaluate("""() => { const p = document.querySelector('menstruation-cycle-dashboard-panel'); window.__bar = p._historyKey(p._hass.states[p._selectedEntityId]); p._fullHistoryFetching.add(window.__bar); p.render(); }""")
+        page.screenshot(path=str(Path(shots) / "round7_load_bar.png"), clip={"x": 0, "y": 0, "width": 1100, "height": 220})
+        page.evaluate("() => { const p = document.querySelector('menstruation-cycle-dashboard-panel'); p._fullHistoryFetching.delete(window.__bar); p.render(); }")
+    page.evaluate("window.scrollTo(0, 1400)")
+    page.wait_for_timeout(700)
+    y = page.evaluate("window.scrollY")
+    stored = page.evaluate("localStorage.getItem('menstruation_cycle_scroll')")
+    if y < 600 or not stored or max(json.loads(stored).values()) < y * 0.9:
+        problems.append(f"round7: scroll position {y} was not remembered ({stored})")
+    else:
+        page.evaluate("document.querySelector('menstruation-cycle-dashboard-panel').remove(); window.scrollTo(0, 0)")
+        page.evaluate_handle("""(h) => { const p = document.createElement('menstruation-cycle-dashboard-panel');
+            p.panel = {config: {}}; p.narrow = false; p.route = {path: ''}; document.getElementById('root').appendChild(p); p.hass = h; return p; }""", hass)
+        page.wait_for_timeout(3000)
+        back = page.evaluate("window.scrollY")
+        if abs(back - y) > 40:
+            problems.append(f"round7: a new panel opened at {back}, expected about {y}")
+    if page.locator(root + "css=.load-bar").count():
+        problems.append("round7: the loading bar is still there after loading")
+    page.evaluate("window.scrollTo(0, 0)")
+    return problems
+
+
 def run(fixture_dir, shots=None):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -672,6 +722,7 @@ def run(fixture_dir, shots=None):
                     problems += calendar_dialog_check(page)
                     problems += edit_mode_check(page, shots)
                     problems += ui_check(page)
+                    problems += round7_check(page, hass, shots)
                 else:
                     skip = page.locator("menstruation-cycle-dashboard-panel >> css=[data-action=wizard-skip]")
                     if skip.count():

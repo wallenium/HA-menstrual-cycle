@@ -1146,6 +1146,8 @@
   "dashboard_offline": "Sin conexión con Home Assistant. Ves los últimos datos recibidos.",
   "dashboard_history_failed": "No se pudo cargar todo el historial. Algunas tarjetas pueden estar incompletas.",
   "dashboard_retry": "Reintentar",
+  "dashboard_quick_frequent": "Frecuente en tu caso",
+  "dashboard_history_loading": "Cargando el historial",
   "dashboard_view_templates": "Plantillas",
   "dashboard_tpl_doctor": "Cita médica",
   "dashboard_tpl_travel": "De viaje",

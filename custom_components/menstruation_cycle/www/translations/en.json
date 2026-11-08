@@ -634,6 +634,8 @@
   "dashboard_offline": "No connection to Home Assistant. You see the last data received.",
   "dashboard_history_failed": "The full history could not be loaded. Some cards may be incomplete.",
   "dashboard_retry": "Try again",
+  "dashboard_quick_frequent": "Often for you",
+  "dashboard_history_loading": "Loading history",
   "dashboard_view_templates": "Templates",
   "dashboard_tpl_doctor": "Doctor visit",
   "dashboard_tpl_travel": "On the go",

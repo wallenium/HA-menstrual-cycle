@@ -634,6 +634,8 @@
   "dashboard_offline": "Keine Verbindung zu Home Assistant. Du siehst die zuletzt empfangenen Daten.",
   "dashboard_history_failed": "Der gesamte Verlauf konnte nicht geladen werden. Manche Karten sind evtl. unvollständig.",
   "dashboard_retry": "Erneut versuchen",
+  "dashboard_quick_frequent": "Häufig bei dir",
+  "dashboard_history_loading": "Verlauf wird geladen",
   "dashboard_view_templates": "Vorlagen",
   "dashboard_tpl_doctor": "Arzttermin",
   "dashboard_tpl_travel": "Unterwegs",
